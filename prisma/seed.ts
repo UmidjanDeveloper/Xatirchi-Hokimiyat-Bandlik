@@ -2,9 +2,10 @@
  * ============================================================
  *  BOSHLANG'ICH TO'LDIRISH
  *
- *  Ikki narsani yaratadi:
+ *  Uch narsani yaratadi:
  *    1. 70 ta MFY va ularning baza statistikasi (svod jadvalidan)
- *    2. Birinchi administrator - u qolgan xodimlarni o'zi qo'shadi
+ *    2. Har MFY uchun rais hisobi - parollar `mfy-parollar.txt` ga
+ *    3. Birinchi administrator - u qolgan xodimlarni o'zi qo'shadi
  *
  *  Qayta ishga tushirish xavfsiz: mavjud yozuvlar yangilanadi,
  *  ikki nusxa yaratilmaydi.
@@ -15,6 +16,8 @@ import { PrismaClient } from '@prisma/client';
 import { MAHALLALAR_BAZASI } from '../src/lib/mahallalar';
 import { parolXeshla, parolYaroqlimi } from '../src/lib/auth';
 import { lotinga } from '../src/lib/alifbo';
+import { parolYarat } from '../src/lib/parol-yarat';
+import { writeFileSync } from 'node:fs';
 
 const prisma = new PrismaClient();
 
@@ -92,14 +95,25 @@ async function adminYarat() {
  * turadi, ya'ni javobgarligi rasmiy - xatlov uning hisobi ostida
  * kiritiladi.
  *
- * Boshlang'ich parol raisning telefon raqamidan hosil qilinadi:
- * u og'zaki yetkazishga qulay, lekin tashqaridan taxmin qilib
- * bo'lmaydi (raqamlar ro'yxati ichki hujjat). Birinchi kirishda
- * baribir majburiy almashtiriladi.
+ * Boshlang'ich parol TASODIFIY yaratiladi.
+ *
+ * Avval u telefon raqamidan hosil qilinardi - og'zaki yetkazishga
+ * qulay edi. Lekin bu xavfli: login mahalla nomidan tuziladi
+ * (`mfy_uyshun`), mahalla nomlari ochiq, rais esa mansabdor shaxs
+ * va uning telefoni ko'pincha ma'lum. Ya'ni bitta telefon raqamini
+ * bilgan odam o'sha mahalladagi barcha xonadonlarning shaxsiy
+ * ma'lumotini ochib ko'rardi. Majburiy parol almashtirish ham
+ * yordam bermaydi: rais birinchi marta kirgunicha oyna ochiq
+ * turadi.
+ *
+ * Endi parollar `mfy-parollar.txt` fayliga yoziladi. Fayl
+ * `.gitignore` da - git'ga tushmaydi. Administrator uni tarqatib
+ * bo'lgach O'CHIRIB TASHLASHI kerak.
  */
 async function raislarYarat() {
   let yangi = 0;
   let mavjud = 0;
+  const royxat: { mahalla: string; rais: string; username: string; parol: string }[] = [];
 
   for (const m of MAHALLALAR_BAZASI) {
     const mahalla = await prisma.mahalla.findUnique({
@@ -120,8 +134,8 @@ async function raislarYarat() {
       continue;
     }
 
-    const raqamlar = m.raisTelefon.replace(/\D/g, '');
-    const parol = `Mfy${raqamlar.slice(-7)}`;
+    const parol = parolYarat();
+    royxat.push({ mahalla: m.nomiKirill, rais: m.raisFish, username, parol });
 
     await prisma.user.create({
       data: {
@@ -139,9 +153,41 @@ async function raislarYarat() {
   }
 
   console.log(`  MFY raislari: ${yangi} ta yangi hisob, ${mavjud} ta allaqachon bor`);
-  if (yangi > 0) {
-    console.log('  Login: mfy_<mahalla nomi>, parol: Mfy + telefonning oxirgi 7 raqami');
-  }
+
+  if (royxat.length === 0) return;
+
+  /*
+   * Parollar faqat shu yerda - bir marta - ochiq ko'rinadi.
+   * Bazada ular scrypt bilan xeshlangan, ya'ni orqaga qaytarib
+   * bo'lmaydi. Fayl yo'qolsa, parolni administrator paneldan
+   * qaytadan tayinlash kerak bo'ladi.
+   */
+  const fayl = 'mfy-parollar.txt';
+  const eni = Math.max(...royxat.map((r) => r.username.length));
+
+  writeFileSync(
+    fayl,
+    [
+      'XATIRCHI TUMANI - MFY RAISLARI UCHUN BOSHLANG\u2018ICH PAROLLAR',
+      `Yaratilgan: ${new Date().toLocaleString('uz-UZ')}`,
+      '',
+      'DIQQAT: bu fayl maxfiy. Parollarni raislarga yetkazgach',
+      'faylni O\u2018CHIRIB TASHLANG. Har bir rais birinchi kirishda',
+      'parolni almashtirishga majbur.',
+      '',
+      royxat
+        .map(
+          (r) =>
+            `${r.username.padEnd(eni)}  ${r.parol}   ${r.mahalla} \u2014 ${r.rais}`
+        )
+        .join('\n'),
+      '',
+    ].join('\n'),
+    { mode: 0o600 }
+  );
+
+  console.log(`  Parollar yozildi: ${fayl} (${royxat.length} ta)`);
+  console.log('  Tarqatib bo\u2018lgach faylni o\u2018chirib tashlang.');
 }
 
 async function main() {

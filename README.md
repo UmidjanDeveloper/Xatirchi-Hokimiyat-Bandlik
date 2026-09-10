@@ -293,11 +293,37 @@ npm run db:seed    # 70 ta MFY, 70 ta rais hisobi, administrator
   Mahallalar: 70 ta yangi, 0 ta yangilandi
   Baza: 200 836 aholi, 3345 ishsiz
   MFY raislari: 70 ta yangi hisob, 0 ta allaqachon bor
+  Parollar yozildi: mfy-parollar.txt (70 ta)
   Administrator yaratildi: admin
 ```
 
 `db:seed` ni qayta ishlatish xavfsiz: u bor narsani buzmaydi,
 faqat yetishmayotganini qo'shadi.
+
+#### `mfy-parollar.txt`
+
+Raislarning boshlang'ich parollari **faqat shu faylda** ochiq
+ko'rinadi — bazada ular scrypt bilan xeshlangan, ya'ni orqaga
+qaytarib bo'lmaydi.
+
+```
+mfy_uyshun          Pjcjdfm46   Уйшун — Шоназаров Ахмад Шоназарович
+mfy_alisher_navoiy  Vcyaucj24   Алишер Навоий — Тўрақулов Умиджон ...
+```
+
+Fayl `.gitignore` da va `600` huquqi bilan yoziladi — git'ga
+tushmaydi. **Parollarni raislarga yetkazgach faylni o'chirib
+tashlang.** Yo'qolib qolsa, administrator paneldan yangi parol
+tayinlash mumkin.
+
+> **Nega telefon raqamidan emas.** Avvalgi variantda parol raisning
+> telefonidan hosil qilinardi — og'zaki yetkazishga qulay edi.
+> Lekin login mahalla nomidan tuziladi (`mfy_uyshun`), mahalla
+> nomlari esa ochiq, rais mansabdor shaxs va uning telefoni
+> ko'pincha ma'lum. Ya'ni bitta telefon raqamini bilgan odam o'sha
+> mahalladagi barcha xonadonlarning shaxsiy ma'lumotini ochib
+> ko'rardi. Majburiy parol almashtirish bu teshikni yopmaydi: rais
+> birinchi marta kirgunicha oyna ochiq turadi.
 
 > **`db:push` emas, `db:deploy`.** `db:push` sxemani "tezda" bazaga
 > uradi va nima o'zgarganini hech qayerda yozib qo'ymaydi — ishlab

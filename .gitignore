@@ -44,3 +44,7 @@ yarn-error.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Boshlang'ich parollar ro'yxati - seed yaratadi, git'ga hech qachon tushmasin
+mfy-parollar.txt
+*-parollar.txt

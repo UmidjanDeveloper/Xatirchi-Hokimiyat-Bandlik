@@ -8,6 +8,7 @@ import { KeyRound, Loader2, Plus, UserPlus, X } from 'lucide-react';
 import type { Rol } from '@prisma/client';
 import { ROL_NOMI } from '@/components/shell/navigatsiya';
 import { formatPhone } from '@/lib/utils';
+import { parolYarat } from '@/lib/parol-yarat';
 
 interface Xodim {
   id: string;
@@ -369,26 +370,5 @@ export function XodimBoshqaruvi({
         ))}
       </div>
     </div>
-  );
-}
-
-/**
- * O'qish oson, lekin taxmin qilish qiyin parol.
- *
- * Administrator uni og'zaki yoki qog'ozda uzatadi, shuning uchun
- * chalkashadigan belgilar (0/O, 1/l/I) chiqarib tashlangan - aks
- * holda xodim "nol edimi, o harfimidi?" deb telefon qiladi.
- */
-function parolYarat(): string {
-  const harflar = 'abcdefghjkmnpqrstuvwxyz';
-  const bosh = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-  const raqamlar = '23456789';
-  const t = (s: string) => s[Math.floor(Math.random() * s.length)];
-
-  return (
-    t(bosh) +
-    Array.from({ length: 6 }, () => t(harflar)).join('') +
-    t(raqamlar) +
-    t(raqamlar)
   );
 }
