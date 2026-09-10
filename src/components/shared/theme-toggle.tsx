@@ -17,7 +17,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Yorug' temaga o'tish" : "Qorong'i temaga o'tish"}
-      className={`glass relative flex h-11 w-11 items-center justify-center rounded-md text-ink-muted transition-colors hover:text-ink ${className ?? ''}`}
+      className={`karta relative flex h-11 w-11 items-center justify-center rounded-md text-ink-muted transition-colors hover:text-ink ${className ?? ''}`}
     >
       <motion.span
         key={isDark ? 'moon' : 'sun'}

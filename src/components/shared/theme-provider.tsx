@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 
 export type Theme = 'light' | 'dark' | 'system';
 
-const THEME_KEY = 'kelajak_theme';
+const THEME_KEY = 'bandlik_tema';
 
 interface ThemeContextValue {
   theme: Theme;
@@ -17,12 +17,12 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 /**
- * Kompyuter zaifligini aniqlaydi.
+ * Qurilma zaifligini aniqlaydi.
  *
- * Maktab sinflaridagi eski kompyuterlarda `backdrop-filter` (shisha
- * effekti) va uzluksiz animatsiyalar kadrlar sonini keskin tushiradi.
- * Shu sababli quvvat past bo'lsa, effektlar avtomatik yengillashadi —
- * dizayn saqlanadi, lekin sayt ravon ishlaydi.
+ * Mahalla xodimlarining telefonlari ko'pincha arzon va eski. Uzluksiz
+ * animatsiyalar ularda kadrlar sonini tushiradi va 11 bo'limli anketa
+ * "osilib" qolgandek tuyuladi. Quvvat past bo'lsa, effektlar
+ * avtomatik yengillashadi.
  */
 function detectLowPower(): boolean {
   if (typeof window === 'undefined') return false;

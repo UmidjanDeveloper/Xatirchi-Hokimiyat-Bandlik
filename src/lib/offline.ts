@@ -1,35 +1,48 @@
 /**
  * ============================================================
- *  Oflayn rejim uchun navbat (queue)
- *  Maktab kompyuterlarida internet uzilib qolsa, anketa
- *  localStorage ga saqlanadi va aloqa tiklanganda avtomatik
- *  serverga yuboriladi.
+ *  OFLAYN QORALAMA VA NAVBAT
+ *
+ *  Xatlov hovlida, xonadon eshigi oldida to'ldiriladi. Xatirchi
+ *  tumanining chekka mahallalarida aloqa uzilib turadi, telefonning
+ *  quvvati esa kun oxiriga borib tugaydi.
+ *
+ *  Ikkita alohida himoya:
+ *
+ *  1. QORALAMA - har o'zgarishda brauzer xotirasiga yoziladi.
+ *     Telefon o'chsa yoki sahifa yopilsa, xodim qaytib kelganda
+ *     to'ldirgan joyidan davom etadi.
+ *
+ *  2. NAVBAT - aloqa yo'q bo'lsa, tayyor xatlov navbatga tushadi
+ *     va aloqa tiklanishi bilan avtomatik yuboriladi.
+ *
+ *  Eng muhim qoida: xotira to'lib qolsa, xodimga SOXTA "saqlandi"
+ *  emas, rost xabar ko'rsatiladi. Aks holda u xonadondan ketadi va
+ *  ma'lumot yo'qolganini faqat kechqurun bilib qoladi.
  * ============================================================
  */
-import type { StudentInput } from './validation';
 
-const QUEUE_KEY = 'kelajak_egasi_offline_queue';
+const QORALAMA_KEY = 'bandlik_qoralama';
+const NAVBAT_KEY = 'bandlik_navbat';
 
 /**
- * Navbatdagi anketalarning maksimal soni.
- * Brauzer localStorage odatda ~5 MB, bitta anketa ~1 KB — ya'ni chegara
- * juda uzoq. Shunga qaramay cheklov qo'yamiz: agar kompyuter oylab
- * internetsiz ishlasa, navbat cheksiz o'smasligi kerak.
+ * Navbatdagi xatlovlarning eng ko'p soni.
+ *
+ * Bitta xatlov ~3 KB, localStorage odatda ~5 MB. Chegara texnik
+ * emas, mantiqiy: bitta xodim bir kunda 30-40 xonadondan ortiq
+ * ulgurmaydi, 200 tadan oshgani esa aloqa haftalab yo'q ekanini
+ * bildiradi va bu holda administratorga xabar berish kerak.
  */
-const MAX_QUEUE_SIZE = 500;
+const MAX_NAVBAT = 200;
 
-export interface QueuedSubmission {
-  /** Navbatdagi yozuvning lokal identifikatori */
+export interface NavbatYozuvi {
   localId: string;
-  payload: StudentInput;
-  /** Navbatga qo'shilgan vaqt */
-  queuedAt: string;
-  /** Nechta marta yuborishga urinilgan */
-  attempts: number;
+  /** Yuboriladigan JSON */
+  malumot: unknown;
+  qoshilganVaqt: string;
+  urinishlar: number;
 }
 
-/** Brauzer muhitida ekanini tekshiradi */
-function hasStorage(): boolean {
+function xotiraBormi(): boolean {
   try {
     return typeof window !== 'undefined' && !!window.localStorage;
   } catch {
@@ -37,150 +50,140 @@ function hasStorage(): boolean {
   }
 }
 
-/** Navbatdagi barcha yozuvlarni o'qiydi */
-export function readQueue(): QueuedSubmission[] {
-  if (!hasStorage()) return [];
+// ─────────────────────────────────────────────────────────────
+//  QORALAMA
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Qoralamani saqlaydi.
+ * @returns saqlandimi - `false` bo'lsa foydalanuvchiga aytish SHART
+ */
+export function qoralamaSaqla(id: string, malumot: unknown): boolean {
+  if (!xotiraBormi()) return false;
   try {
-    const raw = window.localStorage.getItem(QUEUE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as QueuedSubmission[]) : [];
+    const barchasi = qoralamalarniOqi();
+    barchasi[id] = { malumot, vaqt: new Date().toISOString() };
+    window.localStorage.setItem(QORALAMA_KEY, JSON.stringify(barchasi));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function qoralamalarniOqi(): Record<string, { malumot: unknown; vaqt: string }> {
+  if (!xotiraBormi()) return {};
+  try {
+    const xom = window.localStorage.getItem(QORALAMA_KEY);
+    if (!xom) return {};
+    const parsed = JSON.parse(xom);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function qoralamaOqi<T>(id: string): T | null {
+  const y = qoralamalarniOqi()[id];
+  return y ? (y.malumot as T) : null;
+}
+
+export function qoralamaOchir(id: string): void {
+  if (!xotiraBormi()) return;
+  try {
+    const barchasi = qoralamalarniOqi();
+    delete barchasi[id];
+    window.localStorage.setItem(QORALAMA_KEY, JSON.stringify(barchasi));
+  } catch {
+    /* xotira o'chirib bo'lmasa - zarari yo'q */
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  NAVBAT
+// ─────────────────────────────────────────────────────────────
+
+export function navbatniOqi(): NavbatYozuvi[] {
+  if (!xotiraBormi()) return [];
+  try {
+    const xom = window.localStorage.getItem(NAVBAT_KEY);
+    if (!xom) return [];
+    const parsed = JSON.parse(xom);
+    return Array.isArray(parsed) ? (parsed as NavbatYozuvi[]) : [];
   } catch {
     return [];
   }
 }
 
-/**
- * Navbatni to'liq qayta yozadi.
- *
- * Xotira to'lib qolsa (QuotaExceededError), eng eski yozuvlarni bosqichma-
- * bosqich o'chirib qayta urinadi. Baribir saqlab bo'lmasa `false` qaytaradi
- * — chaqiruvchi kod buni foydalanuvchiga rostini aytishi uchun.
- *
- * MUHIM: xatoni jimgina yutib yuborish mumkin emas. Aks holda o'quvchiga
- * "anketang saqlandi" deb ko'rsatiladi-yu, aslida hech narsa saqlanmaydi.
- */
-function writeQueue(items: QueuedSubmission[]): boolean {
-  if (!hasStorage()) return false;
-
-  // Chegaradan oshsa — eng eskilarini kesib tashlaymiz
-  let list = items.length > MAX_QUEUE_SIZE ? items.slice(-MAX_QUEUE_SIZE) : items;
-
-  for (let attempt = 0; attempt < 6; attempt++) {
-    try {
-      window.localStorage.setItem(QUEUE_KEY, JSON.stringify(list));
-      return true;
-    } catch {
-      // Xotira to'ldi. Eng eski 25% ni o'chirib qayta urinamiz.
-      if (list.length <= 1) {
-        // Bitta yozuv ham sig'masa — boshqa iloj yo'q
-        return false;
-      }
-      list = list.slice(Math.max(1, Math.ceil(list.length * 0.25)));
-    }
+function navbatYoz(navbat: NavbatYozuvi[]): boolean {
+  try {
+    window.localStorage.setItem(NAVBAT_KEY, JSON.stringify(navbat));
+    return true;
+  } catch {
+    return false;
   }
-
-  return false;
 }
 
-/**
- * Anketani navbatga qo'shadi.
- * Saqlab bo'lmasa (xotira to'la yoki localStorage ishlamayapti) `null`
- * qaytaradi — bunda foydalanuvchiga muvaffaqiyat ko'rsatilmasligi kerak.
- */
-export function enqueue(payload: StudentInput): QueuedSubmission | null {
-  const item: QueuedSubmission = {
+export type NavbatNatijasi =
+  | { ok: true }
+  | { ok: false; sabab: 'xotira-yoq' | 'navbat-toldi' | 'yozib-bolmadi' };
+
+/** Xatlovni navbatga qo'shadi */
+export function navbatgaQosh(malumot: unknown): NavbatNatijasi {
+  if (!xotiraBormi()) return { ok: false, sabab: 'xotira-yoq' };
+
+  const navbat = navbatniOqi();
+  if (navbat.length >= MAX_NAVBAT) return { ok: false, sabab: 'navbat-toldi' };
+
+  navbat.push({
     localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    payload,
-    queuedAt: new Date().toISOString(),
-    attempts: 0,
-  };
+    malumot,
+    qoshilganVaqt: new Date().toISOString(),
+    urinishlar: 0,
+  });
 
-  const queue = readQueue();
-  queue.push(item);
-
-  if (!writeQueue(queue)) return null;
-
-  // Yozildi, lekin kesilgan bo'lishi mumkin — yangi yozuv haqiqatan
-  // saqlanganini tekshiramiz
-  const saved = readQueue().some((i) => i.localId === item.localId);
-  return saved ? item : null;
+  return navbatYoz(navbat) ? { ok: true } : { ok: false, sabab: 'yozib-bolmadi' };
 }
 
-/** Navbatdan bitta yozuvni o'chiradi */
-export function dequeue(localId: string): void {
-  writeQueue(readQueue().filter((i) => i.localId !== localId));
+export function navbatdanOchir(localId: string): void {
+  if (!xotiraBormi()) return;
+  navbatYoz(navbatniOqi().filter((y) => y.localId !== localId));
 }
 
-/** Yozuvning urinishlar sonini oshiradi */
-function bumpAttempts(localId: string): void {
-  writeQueue(
-    readQueue().map((i) => (i.localId === localId ? { ...i, attempts: i.attempts + 1 } : i))
+export function urinishBelgila(localId: string): void {
+  if (!xotiraBormi()) return;
+  navbatYoz(
+    navbatniOqi().map((y) =>
+      y.localId === localId ? { ...y, urinishlar: y.urinishlar + 1 } : y
+    )
   );
 }
 
-/** Navbatdagi yozuvlar soni */
-export function queueSize(): number {
-  return readQueue().length;
-}
-
 /**
- * Ayni damda ketayotgan sinxronizatsiya.
- * Brauzer `online` hodisasini bir necha marta yuborishi mumkin — himoyasiz
- * qoldirilsa, bitta anketa ikki marta jo'natilib, baza ikkilanib ketardi.
+ * Navbatni serverga yuborishga urinadi.
+ *
+ * @param yubor bitta yozuvni yuboradigan funksiya
+ * @returns nechtasi yuborildi
  */
-let activeSync: Promise<SyncResult> | null = null;
+export async function navbatniYubor(
+  yubor: (malumot: unknown) => Promise<boolean>
+): Promise<{ yuborildi: number; qoldi: number }> {
+  const navbat = navbatniOqi();
+  let yuborildi = 0;
 
-/** Sinxronizatsiya natijasi */
-export interface SyncResult {
-  sent: number;
-  failed: number;
-  remaining: number;
-}
-
-/**
- * Navbatdagi barcha anketalarni serverga yuborishga urinadi.
- * Muvaffaqiyatli yuborilganlar (va takror deb rad etilganlar)
- * navbatdan o'chiriladi.
- */
-export function syncQueue(): Promise<SyncResult> {
-  // Allaqachon ishlayotgan bo'lsa — o'shanga qo'shilamiz, yangisini boshlamaymiz
-  if (activeSync) return activeSync;
-
-  activeSync = runSync().finally(() => {
-    activeSync = null;
-  });
-  return activeSync;
-}
-
-/** Sinxronizatsiyaning asosiy mantiqi */
-async function runSync(): Promise<SyncResult> {
-  const queue = readQueue();
-  let sent = 0;
-  let failed = 0;
-
-  for (const item of queue) {
+  for (const yozuv of navbat) {
     try {
-      const res = await fetch('/api/students', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item.payload),
-      });
-
-      // 2xx — qabul qilindi; 409 — takroriy anketa; 422 — noto'g'ri ma'lumot.
-      // Uchala holatda ham navbatda saqlashning ma'nosi yo'q.
-      if (res.ok || res.status === 409 || res.status === 422) {
-        dequeue(item.localId);
-        sent += 1;
+      if (await yubor(yozuv.malumot)) {
+        navbatdanOchir(yozuv.localId);
+        yuborildi++;
       } else {
-        bumpAttempts(item.localId);
-        failed += 1;
+        urinishBelgila(yozuv.localId);
       }
     } catch {
-      bumpAttempts(item.localId);
-      failed += 1;
+      urinishBelgila(yozuv.localId);
+      // Aloqa uzilgan bo'lsa qolganlariga urinish ham behuda
+      break;
     }
   }
 
-  return { sent, failed, remaining: queueSize() };
+  return { yuborildi, qoldi: navbatniOqi().length };
 }

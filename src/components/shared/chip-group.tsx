@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { EntityIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 export interface ChipOption {
@@ -80,14 +79,10 @@ export function ChipGroup({
               'text-sm font-medium transition-[color,background-color,border-color,box-shadow] duration-200',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
               selected
-                ? 'border-accent bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-ink shadow-glow'
-                : 'glass text-ink-muted hover:border-line-strong hover:text-ink'
+                ? 'border-accent bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-ink shadow-md'
+                : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink'
             )}
           >
-            <EntityIcon
-              name={option.name}
-              className={cn('h-[18px] w-[18px] shrink-0', selected ? 'text-accent' : 'text-ink-faint')}
-            />
             <span className="leading-none">{option.name}</span>
 
             {/* Belgi oqimdan tashqarida — chip kengaymaydi */}
@@ -96,7 +91,7 @@ export function ChipGroup({
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 520, damping: 22 }}
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-solid text-accent-contrast shadow-glow"
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-solid text-accent-contrast shadow-md"
               >
                 <Check className="h-3 w-3 stroke-[3.5]" />
               </motion.span>

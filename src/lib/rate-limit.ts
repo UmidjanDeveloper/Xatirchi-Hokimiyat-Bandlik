@@ -2,9 +2,10 @@
  * ============================================================
  *  Oddiy tezlik chegarasi (rate limit)
  *
- *  Anketa yuborish API'si ochiq bo'lgani uchun bitta kompyuterdan
- *  ketma-ket yuzlab so'rov kelishi mumkin (bola F5 ni bosaversa
- *  yoki kimdir ataylab urinsa). Bu ma'lumotni buzadi.
+ *  Asosiy vazifasi - LOGIN sahifasini himoya qilish. Xodimlarning
+ *  loginlari oddiy ("yettilik_uyshun" kabi), shuning uchun parolni
+ *  ketma-ket terib topishga urinish real xavf. Chegara bo'lmasa,
+ *  bir kechada minglab urinish o'tkazish mumkin.
  *
  *  Tashqi xizmat (Redis/Upstash) talab qilmaydigan, xotiradagi
  *  "sirpanuvchi oyna" (sliding window) usuli ishlatilgan.

@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    /* matchAll va boshqa ES2020 imkoniyatlari uchun */
+    "target": "es2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,

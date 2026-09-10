@@ -27,7 +27,7 @@ interface SearchableSelectProps {
  * Qidiruv apostrof, defis va bo'shliqqa befarq: "bogishamol" deb yozib
  * "Bog'ishamol" ni, "oqoltin" deb "Oq-oltin" ni topish mumkin.
  *
- * Qiymat FAQAT ro'yxatdan tanlanadi. Ilgari o'quvchi o'zi ham yozishi
+ * Qiymat FAQAT ro'yxatdan tanlanadi. Ilgari foydalanuvchi o'zi ham yozishi
  * mumkin edi — natijada bazada 41 ta ro'yxatdan tashqari nom paydo
  * bo'ldi ("navruz", "Sangijumon", "sdfsdfds"), ya'ni bitta mahalla
  * hisobotda bir necha qatorga bo'linib ketardi. Qidiruv fonetik

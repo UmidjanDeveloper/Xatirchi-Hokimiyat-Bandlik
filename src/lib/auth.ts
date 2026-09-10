@@ -19,8 +19,9 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
 import type { Rol } from '@prisma/client';
+import { SESSION_COOKIE } from './sessiya-nomi';
 
-export const SESSION_COOKIE = 'bandlik_sessiya';
+export { SESSION_COOKIE } from './sessiya-nomi';
 
 /** Sessiya muddati - 12 soat (bir ish kuni) */
 const SESSION_MS = 12 * 60 * 60 * 1000;

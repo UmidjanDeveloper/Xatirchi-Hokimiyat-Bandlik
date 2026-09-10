@@ -31,7 +31,7 @@ const buttonVariants = cva(
         ].join(' '),
 
         /* Ikkilamchi — shisha yuza */
-        outline: 'glass text-ink hover:border-line-strong hover:-translate-y-[1px]',
+        outline: 'karta text-ink hover:border-line-strong hover:-translate-y-[1px]',
 
         secondary: 'bg-surface-strong text-ink hover:brightness-110',
 

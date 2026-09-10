@@ -32,10 +32,9 @@ const config: Config = {
         elev: 'var(--bg-elev)',
         deep: 'var(--bg-deep)',
 
-        /* Shisha yuzalar */
         surface: {
           DEFAULT: 'var(--surface)',
-          strong: 'var(--surface-strong)',
+          muted: 'var(--surface-muted)',
           solid: 'var(--surface-solid)',
         },
         line: {
@@ -54,8 +53,7 @@ const config: Config = {
         accent: {
           DEFAULT: 'var(--accent)',
           solid: 'var(--accent-solid)',
-          cyan: 'var(--accent-2)',
-          violet: 'var(--accent-3)',
+          soft: 'var(--accent-soft)',
           contrast: 'var(--accent-contrast)',
         },
 
@@ -63,6 +61,20 @@ const config: Config = {
         ok: { DEFAULT: 'var(--ok)', bg: 'var(--ok-bg)' },
         warn: { DEFAULT: 'var(--warn)', bg: 'var(--warn-bg)' },
         danger: { DEFAULT: 'var(--danger)', bg: 'var(--danger-bg)' },
+        info: { DEFAULT: 'var(--info)', bg: 'var(--info-bg)' },
+
+        /*
+         * Ishsiz fuqaroning hayot sikli bosqichlari.
+         * Voronka va holat nishonlari faqat shu ranglarni ishlatadi -
+         * bosqich rangi butun ilova bo'ylab bir xil ma'no bildirishi kerak.
+         */
+        bosqich: {
+          1: 'var(--step-1)',
+          2: 'var(--step-2)',
+          3: 'var(--step-3)',
+          4: 'var(--step-4)',
+          5: 'var(--step-5)',
+        },
       },
 
       borderRadius: {
@@ -70,18 +82,12 @@ const config: Config = {
         DEFAULT: 'var(--r-md)',
         md: 'var(--r-md)',
         lg: 'var(--r-lg)',
-        xl: 'var(--r-xl)',
-      },
-
-      fontFamily: {
-        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'var(--font-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
 
       boxShadow: {
-        float: 'var(--shadow-float)',
-        glow: 'var(--shadow-glow)',
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
       },
 
       /* Mobil-first: eng kichik nishon 360px */
