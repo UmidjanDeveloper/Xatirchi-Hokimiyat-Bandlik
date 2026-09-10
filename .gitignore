@@ -1,0 +1,46 @@
+# Bog'liqliklar
+/node_modules
+/.pnp
+.pnp.js
+
+# Testlar
+/coverage
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+
+# Ishlab chiqarish
+/build
+
+# Turli fayllar
+.DS_Store
+*.pem
+Thumbs.db
+
+# Loglar
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Muhit o'zgaruvchilari
+.env
+.env*.local
+!.env.example
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+
+# Prisma
+/prisma/*.db
+/prisma/*.db-journal
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json

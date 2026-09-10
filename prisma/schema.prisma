@@ -1,0 +1,482 @@
+// ============================================================
+//  XATIRCHI TUMANI - BANDLIK PLATFORMASI
+//  Ma'lumotlar bazasi: PostgreSQL (Supabase bilan mos)
+//
+//  Uchta asosiy obyekt bir-biriga zanjir bo'lib ulanadi:
+//
+//    MAHALLA ──▶ XONADON ──▶ ISHSIZ FUQARO ──▶ CHORA-TADBIR
+//    (baza)      (xatlov)     (shaxsiy anketa)   (topshiriq)
+//
+//  MAHALLA baza raqamlarini saqlaydi (svod jadvalidan) - ular
+//  qamrov foizining maxraji. XONADON ishsizlarni TOPADI, ISHSIZ
+//  FUQARO ular bilan ISHLAYDI, CHORA-TADBIR esa kim nima qilishi
+//  kerakligini va muddatini yozib qo'yadi.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ROLLAR VA FOYDALANUVCHILAR
+// ─────────────────────────────────────────────────────────────
+
+enum Rol {
+  /// Mahalla yettiligi a'zosi - xonadonlarni xatlovdan o'tkazadi.
+  /// FAQAT o'z mahallasini ko'radi.
+  YETTILIK
+
+  /// Bandlikka ko'maklashish markazi xodimi - ishsizlar bilan
+  /// suhbat o'tkazadi, taklif beradi, joylashtiradi. Butun tumanni ko'radi.
+  BANDLIK
+
+  /// Bandlik markazi rahbari - operatsion panel va tayinlash huquqi
+  BANDLIK_RAHBAR
+
+  /// Tuman hokimi va o'rinbosarlari - faqat tahlil paneli, o'zgartirmaydi
+  HOKIM
+
+  /// Tizim administratori - foydalanuvchi yaratadi, kataloglarni boshqaradi
+  ADMIN
+}
+
+model User {
+  id           String  @id @default(cuid())
+  /// Kirish uchun login - lotin harflar va raqamlar
+  username     String  @unique
+  /// scrypt hash: "salt:hash" ko'rinishida
+  passwordHash String
+  fullName     String
+  /// Lavozimi - anketadagi imzo qatorida chiqadi
+  position     String?
+  phone        String?
+  rol          Rol
+
+  /// YETTILIK roli uchun MAJBURIY - xodim faqat shu mahallani ko'radi.
+  /// Boshqa rollar uchun bo'sh (ular butun tumanni ko'radi).
+  mahallaId String?
+  mahalla   Mahalla? @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
+
+  /// Faol emas qilingan xodim tizimga kira olmaydi, lekin uning
+  /// yozuvlari saqlanib qoladi (o'chirish tarixni buzardi).
+  faol Boolean @default(true)
+
+  /// Parolni birinchi kirishda almashtirish talab qilinadimi
+  parolAlmashtirilsin Boolean @default(true)
+
+  oxirgiKirish DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  xatlovlar     Household[]
+  suhbatlar     UnemployedPerson[]
+  topshiriqlar  ActionPlan[]
+  auditYozuvlar AuditLog[]
+
+  @@index([rol, faol])
+  @@index([mahallaId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MAHALLA - KATALOG VA BAZA STATISTIKASI
+// ─────────────────────────────────────────────────────────────
+
+/// 70 ta MFY. Raqamlar 31.08.2026 svod jadvalidan olinadi va
+/// qamrov foizini hisoblashda MAXRAJ bo'lib xizmat qiladi.
+model Mahalla {
+  id         String @id @default(cuid())
+  tartib     Int    @unique
+  nomi       String @unique
+  nomiKirill String
+
+  aholi   Int
+  xonadon Int
+  oila    Int
+
+  kambagalYanvar         Int
+  kambagalJami           Int
+  davlatTaminotida       Int
+  kambagalOilalar        Int
+  kambagallikChegarasida Int
+
+  mehnatgaLayoqatli Int
+  band              Int
+  /// Ro'yxatdagi ishsizlar soni - qamrov foizining maxraji
+  ishsiz            Int
+
+  ayollarDaftari       Int
+  ijtimoiyReestr       Int
+  migratsiyadanQaytgan Int
+  oliyBitiruvchi       Int
+  ortaMaxsusBitiruvchi Int
+  maktabBitiruvchi     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  xodimlar   User[]
+  xonadonlar Household[]
+  ishsizlar  UnemployedPerson[]
+  ishOrinlar Vacancy[]
+
+  @@index([nomi])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  XONADON XATLOVI - 11 BO'LIM
+// ─────────────────────────────────────────────────────────────
+
+enum XatlovHolati {
+  /// Qoralama - xodim to'ldirishni boshlagan, lekin tugatmagan.
+  /// Telefon o'chsa yoki xonadon egasi band bo'lsa, keyin davom etadi.
+  QORALAMA
+  /// Yuborilgan - to'liq to'ldirilgan va tekshiruvdan o'tgan
+  YUBORILGAN
+  /// Tasdiqlangan - bandlik markazi ko'rib chiqqan
+  TASDIQLANGAN
+}
+
+model Household {
+  id     String       @id @default(cuid())
+  holati XatlovHolati @default(QORALAMA)
+
+  viloyat  String @default("Navoiy")
+  tuman    String @default("Xatirchi")
+  mahallaId String
+  mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
+
+  /// Xonadon manzili - takror xatlovni aniqlashda ishlatiladi
+  manzil String
+
+  // ── Oila boshlig'i ──
+  oilaBoshligi String
+  tugilganYili Int?
+  telefon      String?
+
+  jamiAzo      Int
+  bolalarSoni  Int @default(0)
+
+  // ── I. MEHNAT VA BANDLIK ──
+  mehnatgaLayoqatli Int @default(0)
+  ishlaydiganlar    Int @default(0)
+  /// Davlat korxonalarida band
+  davlatKorxonada   Int @default(0)
+  /// Xo'jalik yurituvchi subyektlarda band
+  xususiySektorda   Int @default(0)
+  ishsizlarSoni     Int @default(0)
+  /// 3 yoshgacha bola tarbiyasidagi, bog'cha bo'lsa ishlashga tayyor ayollar
+  bogchaKutayotganAyollar Int @default(0)
+  /// Qancha vaqtdan buyon ishsiz (oyda) - eng uzun muddat
+  ishsizlikMuddatiOy Int?
+
+  ishTuriIstagi         String?
+  kasbHunarIstagi       Boolean @default(false)
+  kasbHunarYonalishi    String[]
+  bandlikTakliflari     String?
+
+  // ── II. TADBIRKORLIK VA KREDIT-SUBSIDIYA ──
+  tadbirkorlikIstagi Boolean  @default(false)
+  tadbirkorlikSohasi String[]
+  moliyaEhtiyoji     Boolean  @default(false)
+  moliyaTuri         String[]
+  /// So'mda. Byudjet rejasiga to'g'ridan-to'g'ri kiradigan raqam.
+  talabQilinganMablag BigInt?
+  mablagYonalishi    String[]
+
+  // ── III. DAROMAD ──
+  oylikDaromad     BigInt?
+  daromadManbalari String[]
+  daromadImkoniyati String?
+  kambagallikSabablari String[]
+
+  // ── IV. BOLALAR TA'LIMI ──
+  maktabgachaYoshdagi   Int      @default(0)
+  maktabgachaQamrovda   Int      @default(0)
+  maktabgachaQamrovsizSababi String?
+  maktabYoshdagi        Int      @default(0)
+  maktabQamrovda        Int      @default(0)
+  bolalarQiziqishlari   String[]
+  togarakQamrovi        Int      @default(0)
+  togarakSababi         String?
+
+  // ── V. SOG'LIQ ──
+  uzoqDavolanish        Boolean @default(false)
+  uzoqDavolanishIzoh    String?
+  doriEhtiyoji          String?
+  tibbiyXizmatEhtiyoji  String?
+  oxirgiTibbiyKorik     String?
+
+  // ── VI. UY-JOY VA KOMMUNAL ──
+  uyHolati       String?
+  ichimlikSuvi   String?
+  sugorishSuvi   Boolean @default(false)
+  elektr         Boolean @default(true)
+  gaz            Boolean @default(false)
+  kanalizatsiya  Boolean @default(false)
+  sanitariya     String?
+  boshqaMuammolar String?
+
+  // ── VII. IJTIMOIY HIMOYA ──
+  nogironlikBor      Boolean @default(false)
+  nogironlikIzoh     String?
+  yolgizKeksa        Boolean @default(false)
+  parvarishgaMuhtoj  Boolean @default(false)
+  parvarishIzoh      String?
+  boshqaMuhtojlar    String?
+
+  // ── VIII. HUJJATLASHTIRISH ──
+  hujjatlarToliq  Boolean @default(true)
+  hujjatIzoh      String?
+  xizmatTosiqlari String?
+
+  // ── IX. TOMORQA, YER, CHORVA, HUNARMANDCHILIK ──
+  tomorqaBor      Boolean @default(false)
+  /// Sotixda
+  tomorqaMaydoni  Float?
+  chorvachilik    String?
+  hunarmandchilik String?
+  zarurKomak      String[]
+  issiqxonaTalabi Boolean @default(false)
+  issiqxonaMaydoni Float?
+  ijaraYer        Boolean @default(false)
+  ijaraYerMaydoni Float?
+
+  // ── X. MAHALLADAGI TADBIRKORLIK SUBYEKTLARI ──
+  tadbirkorSubyektlar Int @default(0)
+  boshIshOrinlari     Int @default(0)
+  subyektMoliyaEhtiyoji Boolean @default(false)
+  yangiIshOrinlari    Int @default(0)
+
+  // ── XI. XULOSA ──
+  umumiyXulosa String?
+
+  // ── Xizmat maydonlari ──
+  xatlovSanasi DateTime @default(now())
+  xodimId      String
+  xodim        User     @relation(fields: [xodimId], references: [id], onDelete: Restrict)
+
+  /// Takror xatlovni aniqlash uchun kalit: mahalla + manzil + oila
+  /// boshlig'i, apostrof va bo'shliqlarsiz normallashtirilgan.
+  takrorKaliti String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ishsizlar    UnemployedPerson[]
+  topshiriqlar ActionPlan[]
+
+  /// Bir xonadonni ikki marta kiritish mumkin emas
+  @@unique([mahallaId, takrorKaliti])
+  @@index([mahallaId, holati])
+  @@index([xodimId])
+  @@index([xatlovSanasi])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ISHSIZ FUQARO - SHAXSIY ANKETA VA HAYOT SIKLI
+// ─────────────────────────────────────────────────────────────
+
+/// Ishsiz fuqaroning bandlik yo'lidagi holati.
+///
+/// Bu platformaning YURAGI. Hokim "nechta ishsiz bor" degan raqamni
+/// allaqachon biladi (3 345). Unga kerak bo'lgani - shu 3 345 tadan
+/// nechtasi qaysi bosqichda turgani.
+enum IshsizHolati {
+  /// Xonadon xatlovida aniqlangan, lekin hali suhbat bo'lmagan
+  ANIQLANDI
+  /// Bandlik mutaxassisi suhbat o'tkazdi va anketani to'ldirdi
+  SUHBAT_OTKAZILDI
+  /// Aniq taklif berildi (ish o'rni, YaTT, kredit, kurs...)
+  TAKLIF_BERILDI
+  /// Ishga joylashtirildi yoki o'z ishini boshladi
+  JOYLASHTIRILDI
+  /// Joylashtirilgani 3 oydan keyin tekshirildi va tasdiqlandi
+  TASDIQLANDI
+  /// Fuqaro taklifdan bosh tortdi - sababi yoziladi
+  RAD_ETDI
+}
+
+model UnemployedPerson {
+  id     String       @id @default(cuid())
+  holati IshsizHolati @default(ANIQLANDI)
+
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+
+  mahallaId String
+  mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
+
+  // ── 3-4. Shaxsiy ma'lumot ──
+  fish        String
+  telefon     String?
+  jinsi       String
+  oilaviyHolat String?
+  farzandlarSoni Int?
+  millati     String?
+  tugilganSana DateTime?
+  malumoti    String?
+  mutaxassisligi String?
+  sogliqHolati String?
+  nogironlik  Boolean @default(false)
+  nogironlikGuruhi String?
+  yashashManzili String?
+
+  // ── 4.10-4.18 ──
+  kasbHunarEhtiyoji Boolean @default(false)
+  organmoqchiKasb   String?
+  ishTajribasiYil   Float?
+  avvalgiIshJoyi    String?
+  oxirgiIshJoyi     String?
+  ishdanBoshaganSana DateTime?
+  xohlaganIsh       String?
+  kutilayotganMaosh BigInt?
+  ishgaTayyorligi   String?
+  haydovchilikGuvohnomasi Boolean @default(false)
+  haydovchilikToifasi String[]
+  imtiyozEhtiyoji   Boolean @default(false)
+  imtiyozTuri       String[]
+
+  // ── 5. Bandlikni ta'minlash bo'yicha takliflar ──
+  takliflar       String[]
+  taklifIzohi     String?
+  /// XULOSA bo'limi
+  xulosa          String?
+
+  // ── Natija ──
+  /// Qayerga joylashtirildi
+  ishJoyi         String?
+  ishLavozimi     String?
+  ishgaKirganSana DateTime?
+  /// Rad etgan bo'lsa - sababi
+  radSababi       String?
+
+  // ── Suhbat o'tkazgan mutaxassis ──
+  suhbatSanasi DateTime?
+  mutaxassisId String?
+  mutaxassis   User?     @relation(fields: [mutaxassisId], references: [id], onDelete: SetNull)
+
+  /// Xonadonda birgalikda tushilgan rasm (anketa talabi)
+  rasmUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topshiriqlar ActionPlan[]
+
+  @@index([mahallaId, holati])
+  @@index([holati])
+  @@index([householdId])
+  @@index([mutaxassisId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  CHORA-TADBIRLAR REJASI
+// ─────────────────────────────────────────────────────────────
+
+enum TopshiriqHolati {
+  KUTILMOQDA
+  BAJARILMOQDA
+  BAJARILDI
+  /// Muddati o'tgan va bajarilmagan. Har kecha avtomatik belgilanadi.
+  KECHIKDI
+  BEKOR_QILINDI
+}
+
+/// Anketaning X/XI bo'limi: muammo -> sabab -> yechim -> mas'ul -> muddat.
+///
+/// Bu jadval platformani so'rovnomadan ISH YURITISH TIZIMIGA
+/// aylantiradi. Hokim paneli "kechikkan topshiriqlar mas'ul tashkilot
+/// kesimida" degan ko'rinishni aynan shundan oladi - va bu eng
+/// kuchli hisobdorlik quroli.
+model ActionPlan {
+  id     String          @id @default(cuid())
+  holati TopshiriqHolati @default(KUTILMOQDA)
+
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  ishsizId String?
+  ishsiz   UnemployedPerson? @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
+
+  muammo         String
+  sababi         String?
+  yechim         String
+  masulTashkilot String
+  muddat         DateTime
+
+  bajarilganSana DateTime?
+  natijaIzohi    String?
+
+  yaratganId String
+  yaratgan   User   @relation(fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([masulTashkilot, holati])
+  @@index([muddat, holati])
+  @@index([householdId])
+  @@index([ishsizId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BO'SH ISH O'RINLARI
+// ─────────────────────────────────────────────────────────────
+
+/// Xatlovning X bo'limida mahalladagi tadbirkorlik subyektlari va
+/// ulardagi bo'sh ish o'rinlari qayd etiladi. Bu jadval ularni
+/// nomma-nom saqlaydi - moslashtirish taxtasi shunga tayanadi.
+model Vacancy {
+  id        String  @id @default(cuid())
+  mahallaId String
+  mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
+
+  korxonaNomi String
+  lavozim     String
+  /// Kasb yo'nalishi - nomzod istagi bilan solishtirish uchun
+  yonalish    String?
+  ornlarSoni  Int     @default(1)
+  maosh       BigInt?
+  talablar    String?
+  telefon     String?
+
+  faol      Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mahallaId, faol])
+  @@index([yonalish, faol])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  AUDIT JURNALI
+// ─────────────────────────────────────────────────────────────
+
+/// Kim qachon nimani ko'rgani va eksport qilgani.
+///
+/// Xatlov ma'lumotlari oila daromadi va sog'liq holatini o'z ichiga
+/// oladi. Kim ularni ko'rgani yozib borilmasa, ma'lumot tarqalganda
+/// javobgarni aniqlab bo'lmaydi.
+model AuditLog {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// KIRISH, KORISH, YARATISH, OZGARTIRISH, EKSPORT, OCHIRISH
+  amal       String
+  obyektTuri String?
+  obyektId   String?
+  izoh       String?
+  ip         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([amal, createdAt])
+}
