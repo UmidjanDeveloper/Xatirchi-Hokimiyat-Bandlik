@@ -19,6 +19,7 @@ va har bosqichda kim javobgar ekani yozib boriladi.
 
 - [Nima uchun bu tizim](#nima-uchun-bu-tizim)
 - [Ishlash zanjiri](#ishlash-zanjiri)
+- [Ikki alifbo](#ikki-alifbo)
 - [Rollar va huquqlar](#rollar-va-huquqlar)
 - [Asosiy imkoniyatlar](#asosiy-imkoniyatlar)
 - [Texnologiyalar](#texnologiyalar)
@@ -38,6 +39,12 @@ Tumanda uchta hujjat bilan ishlanadi:
 | Kambag'al oilalarni xatlovdan o'tkazish so'rovnomasi (11 bo'lim) | Qog'ozda — jamlash uchun har MFY dan yig'ib, qo'lda hisoblash kerak |
 | Ishsizlarni aniqlash so'rovnomasi | Xatlov bilan bog'lanmagan — kim bilan ish qilinayotgani ko'rinmaydi |
 | Svod jadvali (70 MFY, 31.08.2026) | Statik — bugungi holatni ko'rsatmaydi |
+| Tasdiqlangan MFY raislari ro'yxati | Qog'ozda — tizimga ulanmagan |
+
+> **Eslatma.** Ikki manba xonadon sonida farq qiladi (37 ta MFY da,
+> ba'zilarida 200 dan ortiq). Platformada **tasdiqlangan ro'yxat**
+> olingan, chunki qamrov foizining maxraji aynan shu raqam va u
+> rasmiy hujjatga mos kelishi kerak.
 
 Platforma uchalasini bitta zanjirga bog'laydi va svod jadvalidagi
 raqamlarni **maxraj** sifatida ishlatadi.
@@ -68,11 +75,56 @@ kim bilan ishlashini bilmaydi va butun xatlov qog'ozbozlikka aylanadi.
 
 ---
 
+## Ikki alifbo
+
+Butun sayt **lotin va kirill** yozuvida ishlaydi. Yuqori o'ng
+burchakdagi tugma bilan bir bosishda almashtiriladi — anketa
+savollaridan tortib diagramma yorliqlarigacha hammasi o'giriladi.
+
+Tanlov **cookie**da saqlanadi, ya'ni sahifa serverdayoq to'g'ri
+alifboda chiziladi. Bu muhim: aks holda sahifa avval kirillda
+ko'rinib, keyin lotinga sakrardi.
+
+**Nega ikkita matn ro'yxati emas?** Chunki ikkita ro'yxat muqarrar
+bir-biridan uzoqlashadi: kimdir kirill matnni tuzatadi, lotinini
+unutadi va bir oydan keyin ikki alifboda ikki xil savol turadi.
+Shuning uchun matn faqat kirillda yoziladi, lotin ko'rinishi esa
+**o'girish (transliteratsiya)** orqali hosil qilinadi — bitta
+manba, bitta haqiqat.
+
+Qo'shimcha foyda: o'girish **dinamik matnga ham** ishlaydi. Mahalla
+nomi, raisning familiyasi, xodim kiritgan kasb nomi — hammasi
+tanlangan alifboda ko'rinadi.
+
+O'girish o'zbek imlosining nozik joylarini biladi:
+
+| Kirill | Lotin | Qoida |
+|---|---|---|
+| Ерма | Yerma | «е» so'z boshida — «ye» |
+| Бек | Bek | «е» undoshdan keyin — «e» |
+| субъект | subyekt | «ъ» yumshoq unlidan oldin tushadi |
+| маънавият | ma'naviyat | «ъ» qolgan holatda — tutuq belgisi |
+| Хўжақўрғон | Xo'jaqo'rg'on | ў → o', қ → q, ғ → g' |
+
+---
+
 ## Rollar va huquqlar
 
 Har xodimga **alohida login va parol** beriladi. Umumiy parol bu yerda
 yaramaydi: har yozuvning ostida «suhbatni kim o'tkazdi», «xatlovni kim
 qildi» degan javob turishi kerak.
+
+**Har fuqaroga login kerak emas.** Mahalla darajasida bitta hisob
+bo'ladi — **MFY raisi**. Tuman hokimligi tasdiqlagan ro'yxatdagi 70
+ta rais tizimga avtomatik kiritilgan: login `mfy_<mahalla nomi>`
+(masalan `mfy_uyshun`), boshlang'ich parol raisning telefon
+raqamidan hosil qilinadi va birinchi kirishda majburiy
+almashtiriladi.
+
+Yettilikning qolgan a'zolariga alohida hisob berish ham mumkin edi,
+lekin bu 490 ta login degani va ularni boshqarish hokimiyat
+xodimining butun kunini olardi. Rais esa rasmiy ro'yxatda turadi —
+javobgarligi hujjat bilan belgilangan.
 
 | Rol | Ko'radi | Qiladi |
 |---|---|---|
@@ -324,7 +376,10 @@ prisma/
   seed.ts                  # 70 MFY + birinchi administrator
 
 src/lib/
-  mahallalar.ts            # 70 MFY va svod jadvali raqamlari
+  alifbo.ts                # Kirill -> lotin o'girish dvigateli
+  alifbo-server.ts         # Server komponentlari uchun alifbo
+  ishsiz-holati.ts         # Hayot sikli bosqichlari (ma'lumot)
+  mahallalar.ts            # 70 MFY, raislar va svod jadvali raqamlari
   constants.ts             # Anketa variantlari — ikki alifboda
   auth.ts                  # scrypt, sessiya, rol huquqlari
   api-auth.ts              # API qo'riqchisi va audit jurnali
@@ -365,3 +420,5 @@ src/app/(ilova)/
 ---
 
 **Xatirchi tumani hokimligi** · Navoiy viloyati
+
+Made by **Umidjon Zoxiddinovich**

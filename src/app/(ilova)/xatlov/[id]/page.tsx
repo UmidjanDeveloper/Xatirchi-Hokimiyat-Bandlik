@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { matnchi } from '@/lib/alifbo-server';
 import { notFound, redirect } from 'next/navigation';
 import { CheckCircle2, Pencil, UserRound } from 'lucide-react';
 import { joriySessiya, mahallagaRuxsat } from '@/lib/auth';
@@ -21,16 +22,16 @@ import {
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
 
-export const metadata = { title: 'Хонадон хатлови' };
-
-/** Bo'sh qiymatlarni bir xil ko'rinishda ko'rsatadi */
-const q = (v: unknown): string => {
-  if (v == null || v === '') return '—';
-  if (typeof v === 'boolean') return v ? 'Ҳа' : 'Йўқ';
-  if (typeof v === 'bigint') return `${Number(v).toLocaleString('ru-RU')} сўм`;
-  if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
-  return String(v);
-};
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Хонадон хатлови') };
+}
 
 function Qator({ nomi, qiymat }: { nomi: string; qiymat: React.ReactNode }) {
   return (
@@ -62,6 +63,18 @@ function Bolim({
 }
 
 export default async function XonadonSahifasi({ params }: { params: { id: string } }) {
+  const tr = matnchi();
+
+  /* Bo'sh qiymatlarni bir xil ko'rinishda ko'rsatadi */
+  const q = (v: unknown): string => {
+    if (v == null || v === '') return '—';
+    if (typeof v === 'boolean') return v ? tr('Ҳа') : tr('Йўқ');
+    if (typeof v === 'bigint') return tr(`${Number(v).toLocaleString('ru-RU')} сўм`);
+    if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
+    return String(v);
+  };
+
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
 
@@ -91,12 +104,12 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
       <div className="karta p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-ink">{x.oilaBoshligi}</h1>
+            <h1 className="sahifa-sarlavha">{x.oilaBoshligi}</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              {x.manzil} · {x.mahalla.nomiKirill} МФЙ
+              {x.manzil} · {tr(x.mahalla.nomiKirill)} {tr('МФЙ')}
             </p>
             <p className="mt-1 text-xs text-ink-faint">
-              Хатловни ўтказди: {x.xodim.fullName}
+              {tr('Хатловни ўтказди:')} {x.xodim.fullName}
               {x.xodim.position ? ` (${x.xodim.position})` : ''} ·{' '}
               {formatDate(x.xatlovSanasi)}
             </p>
@@ -108,7 +121,7 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
               className="flex shrink-0 items-center gap-1.5 rounded-md border border-line px-3.5 py-2 text-sm font-medium text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
             >
               <Pencil className="h-4 w-4" />
-              Таҳрирлаш
+              {tr('Таҳрирлаш')}
             </Link>
           )}
         </div>
@@ -116,7 +129,7 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
         {x.holati === 'TASDIQLANGAN' && (
           <div className="quti-ok mt-3 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            Хатлов бандлик маркази томонидан тасдиқланган
+            {tr('Хатлов бандлик маркази томонидан тасдиқланган')}
           </div>
         )}
       </div>
@@ -127,11 +140,11 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
           <span className="bolim-raqam">
             <UserRound className="h-4 w-4" />
           </span>
-          <span>Ишсиз фуқаролар ({x.ishsizlar.length})</span>
+          <span>{tr('Ишсиз фуқаролар (')}{x.ishsizlar.length})</span>
         </h2>
 
         {x.ishsizlar.length === 0 ? (
-          <p className="py-2 text-sm text-ink-muted">Бу хонадонда ишсиз фуқаро йўқ.</p>
+          <p className="py-2 text-sm text-ink-muted">{tr('Бу хонадонда ишсиз фуқаро йўқ.')}</p>
         ) : (
           <div className="space-y-2">
             {x.ishsizlar.map((p) => (
@@ -146,8 +159,8 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
                     <HolatNishoni holati={p.holati} />
                   </div>
                   <p className="mt-0.5 truncate text-xs text-ink-faint">
-                    {p.jinsi === 'Erkak' ? 'Эркак' : 'Аёл'}
-                    {p.malumoti ? ` · ${kirillcha(MALUMOT, p.malumoti)}` : ''}
+                    {p.jinsi === 'Erkak' ? tr('Эркак') : tr('Аёл')}
+                    {p.malumoti ? ` · ${tr(kirillcha(MALUMOT, p.malumoti))}` : ''}
                     {p.xohlaganIsh ? ` · ${p.xohlaganIsh}` : ''}
                   </p>
                 </div>
@@ -163,129 +176,129 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
       </section>
 
       {/* ── I ── */}
-      <Bolim raqam="I" sarlavha="Меҳнат ва бандлик">
-        <Qator nomi="Оиладаги умумий аъзолар" qiymat={q(x.jamiAzo)} />
-        <Qator nomi="Болалар (18 ёшгача)" qiymat={q(x.bolalarSoni)} />
-        <Qator nomi="Меҳнатга лаёқатлилар" qiymat={q(x.mehnatgaLayoqatli)} />
-        <Qator nomi="Ишлайдиганлар" qiymat={q(x.ishlaydiganlar)} />
-        <Qator nomi="Давлат корхоналарида" qiymat={q(x.davlatKorxonada)} />
-        <Qator nomi="Хусусий секторда" qiymat={q(x.xususiySektorda)} />
-        <Qator nomi="Ишсизлар" qiymat={q(x.ishsizlarSoni)} />
-        <Qator nomi="Боғча кутаётган аёллар" qiymat={q(x.bogchaKutayotganAyollar)} />
+      <Bolim raqam="I" sarlavha={tr("Меҳнат ва бандлик")}>
+        <Qator nomi={tr("Оиладаги умумий аъзолар")} qiymat={q(x.jamiAzo)} />
+        <Qator nomi={tr("Болалар (18 ёшгача)")} qiymat={q(x.bolalarSoni)} />
+        <Qator nomi={tr("Меҳнатга лаёқатлилар")} qiymat={q(x.mehnatgaLayoqatli)} />
+        <Qator nomi={tr("Ишлайдиганлар")} qiymat={q(x.ishlaydiganlar)} />
+        <Qator nomi={tr("Давлат корхоналарида")} qiymat={q(x.davlatKorxonada)} />
+        <Qator nomi={tr("Хусусий секторда")} qiymat={q(x.xususiySektorda)} />
+        <Qator nomi={tr("Ишсизлар")} qiymat={q(x.ishsizlarSoni)} />
+        <Qator nomi={tr("Боғча кутаётган аёллар")} qiymat={q(x.bogchaKutayotganAyollar)} />
         <Qator
-          nomi="Ишсизлик муддати"
-          qiymat={x.ishsizlikMuddatiOy ? `${x.ishsizlikMuddatiOy} ой` : '—'}
+          nomi={tr("Ишсизлик муддати")}
+          qiymat={x.ishsizlikMuddatiOy ? tr(`${x.ishsizlikMuddatiOy} ой`) : '—'}
         />
-        <Qator nomi="Иш турига истак" qiymat={kirillcha(ISH_TURI_ISTAGI, x.ishTuriIstagi)} />
-        <Qator nomi="Касб-ҳунарга ўқиш истаги" qiymat={q(x.kasbHunarIstagi)} />
+        <Qator nomi={tr("Иш турига истак")} qiymat={tr(kirillcha(ISH_TURI_ISTAGI, x.ishTuriIstagi))} />
+        <Qator nomi={tr("Касб-ҳунарга ўқиш истаги")} qiymat={q(x.kasbHunarIstagi)} />
         <Qator
-          nomi="Ўқиш йўналиши"
-          qiymat={q(x.kasbHunarYonalishi.map((y) => kirillcha(KASB_YONALISHI, y)))}
+          nomi={tr("Ўқиш йўналиши")}
+          qiymat={q(x.kasbHunarYonalishi.map((y) => tr(kirillcha(KASB_YONALISHI, y))))}
         />
       </Bolim>
 
       {/* ── II ── */}
-      <Bolim raqam="II" sarlavha="Тадбиркорлик ва молиявий эҳтиёж">
-        <Qator nomi="Тадбиркорлик истаги" qiymat={q(x.tadbirkorlikIstagi)} />
+      <Bolim raqam="II" sarlavha={tr("Тадбиркорлик ва молиявий эҳтиёж")}>
+        <Qator nomi={tr("Тадбиркорлик истаги")} qiymat={q(x.tadbirkorlikIstagi)} />
         <Qator
-          nomi="Соҳаси"
-          qiymat={q(x.tadbirkorlikSohasi.map((y) => kirillcha(MABLAG_YONALISHI, y)))}
+          nomi={tr("Соҳаси")}
+          qiymat={q(x.tadbirkorlikSohasi.map((y) => tr(kirillcha(MABLAG_YONALISHI, y))))}
         />
-        <Qator nomi="Молиявий эҳтиёж" qiymat={q(x.moliyaEhtiyoji)} />
-        <Qator nomi="Талаб қилинган маблағ" qiymat={q(x.talabQilinganMablag)} />
-        <Qator nomi="Кўмак тури" qiymat={q(x.moliyaTuri.map((y) => kirillcha(MOLIYA_TURI, y)))} />
+        <Qator nomi={tr("Молиявий эҳтиёж")} qiymat={q(x.moliyaEhtiyoji)} />
+        <Qator nomi={tr("Талаб қилинган маблағ")} qiymat={q(x.talabQilinganMablag)} />
+        <Qator nomi={tr("Кўмак тури")} qiymat={q(x.moliyaTuri.map((y) => tr(kirillcha(MOLIYA_TURI, y))))} />
         <Qator
-          nomi="Сарфлаш йўналиши"
-          qiymat={q(x.mablagYonalishi.map((y) => kirillcha(MABLAG_YONALISHI, y)))}
+          nomi={tr("Сарфлаш йўналиши")}
+          qiymat={q(x.mablagYonalishi.map((y) => tr(kirillcha(MABLAG_YONALISHI, y))))}
         />
       </Bolim>
 
       {/* ── III ── */}
-      <Bolim raqam="III" sarlavha="Даромад">
-        <Qator nomi="Ойлик умумий даромад" qiymat={q(x.oylikDaromad)} />
+      <Bolim raqam="III" sarlavha={tr("Даромад")}>
+        <Qator nomi={tr("Ойлик умумий даромад")} qiymat={q(x.oylikDaromad)} />
         <Qator
-          nomi="Даромад манбалари"
-          qiymat={q(x.daromadManbalari.map((y) => kirillcha(DAROMAD_MANBAI, y)))}
+          nomi={tr("Даромад манбалари")}
+          qiymat={q(x.daromadManbalari.map((y) => tr(kirillcha(DAROMAD_MANBAI, y))))}
         />
         <div className="sm:col-span-2">
           <Qator
-            nomi="Камбағалликка тушиш сабаблари"
-            qiymat={q(x.kambagallikSabablari.map((y) => kirillcha(KAMBAGALLIK_SABABI, y)))}
+            nomi={tr("Камбағалликка тушиш сабаблари")}
+            qiymat={q(x.kambagallikSabablari.map((y) => tr(kirillcha(KAMBAGALLIK_SABABI, y))))}
           />
         </div>
       </Bolim>
 
       {/* ── IV ── */}
-      <Bolim raqam="IV" sarlavha="Болалар таълими">
-        <Qator nomi="Мактабгача ёшдаги" qiymat={q(x.maktabgachaYoshdagi)} />
-        <Qator nomi="Боғчага қатнайди" qiymat={q(x.maktabgachaQamrovda)} />
-        <Qator nomi="Мактаб ёшидаги" qiymat={q(x.maktabYoshdagi)} />
-        <Qator nomi="Мактабга қатнайди" qiymat={q(x.maktabQamrovda)} />
-        <Qator nomi="Тўгаракка қатнайди" qiymat={q(x.togarakQamrovi)} />
-        <Qator nomi="Жалб этилмаганлик сабаби" qiymat={q(x.togarakSababi)} />
+      <Bolim raqam="IV" sarlavha={tr("Болалар таълими")}>
+        <Qator nomi={tr("Мактабгача ёшдаги")} qiymat={q(x.maktabgachaYoshdagi)} />
+        <Qator nomi={tr("Боғчага қатнайди")} qiymat={q(x.maktabgachaQamrovda)} />
+        <Qator nomi={tr("Мактаб ёшидаги")} qiymat={q(x.maktabYoshdagi)} />
+        <Qator nomi={tr("Мактабга қатнайди")} qiymat={q(x.maktabQamrovda)} />
+        <Qator nomi={tr("Тўгаракка қатнайди")} qiymat={q(x.togarakQamrovi)} />
+        <Qator nomi={tr("Жалб этилмаганлик сабаби")} qiymat={q(x.togarakSababi)} />
       </Bolim>
 
       {/* ── V ── */}
-      <Bolim raqam="V" sarlavha="Соғлиқни сақлаш">
-        <Qator nomi="Узоқ даволанишга муҳтож" qiymat={q(x.uzoqDavolanish)} />
-        <Qator nomi="Изоҳ" qiymat={q(x.uzoqDavolanishIzoh)} />
-        <Qator nomi="Дори-дармон эҳтиёжи" qiymat={q(x.doriEhtiyoji)} />
-        <Qator nomi="Тиббий хизмат эҳтиёжи" qiymat={q(x.tibbiyXizmatEhtiyoji)} />
+      <Bolim raqam="V" sarlavha={tr("Соғлиқни сақлаш")}>
+        <Qator nomi={tr("Узоқ даволанишга муҳтож")} qiymat={q(x.uzoqDavolanish)} />
+        <Qator nomi={tr("Изоҳ")} qiymat={q(x.uzoqDavolanishIzoh)} />
+        <Qator nomi={tr("Дори-дармон эҳтиёжи")} qiymat={q(x.doriEhtiyoji)} />
+        <Qator nomi={tr("Тиббий хизмат эҳтиёжи")} qiymat={q(x.tibbiyXizmatEhtiyoji)} />
       </Bolim>
 
       {/* ── VI ── */}
-      <Bolim raqam="VI" sarlavha="Уй-жой ва коммунал шароит">
-        <Qator nomi="Уй-жой ҳолати" qiymat={kirillcha(UY_HOLATI, x.uyHolati)} />
-        <Qator nomi="Ичимлик суви" qiymat={kirillcha(ICHIMLIK_SUVI, x.ichimlikSuvi)} />
-        <Qator nomi="Электр" qiymat={q(x.elektr)} />
-        <Qator nomi="Табиий газ" qiymat={q(x.gaz)} />
-        <Qator nomi="Суғориш суви" qiymat={q(x.sugorishSuvi)} />
-        <Qator nomi="Канализация" qiymat={q(x.kanalizatsiya)} />
+      <Bolim raqam="VI" sarlavha={tr("Уй-жой ва коммунал шароит")}>
+        <Qator nomi={tr("Уй-жой ҳолати")} qiymat={tr(kirillcha(UY_HOLATI, x.uyHolati))} />
+        <Qator nomi={tr("Ичимлик суви")} qiymat={tr(kirillcha(ICHIMLIK_SUVI, x.ichimlikSuvi))} />
+        <Qator nomi={tr("Электр")} qiymat={q(x.elektr)} />
+        <Qator nomi={tr("Табиий газ")} qiymat={q(x.gaz)} />
+        <Qator nomi={tr("Суғориш суви")} qiymat={q(x.sugorishSuvi)} />
+        <Qator nomi={tr("Канализация")} qiymat={q(x.kanalizatsiya)} />
         <div className="sm:col-span-2">
-          <Qator nomi="Бошқа муаммолар" qiymat={q(x.boshqaMuammolar)} />
+          <Qator nomi={tr("Бошқа муаммолар")} qiymat={q(x.boshqaMuammolar)} />
         </div>
       </Bolim>
 
       {/* ── VII, VIII ── */}
-      <Bolim raqam="VII" sarlavha="Ижтимоий ҳимоя ва ҳужжатлар">
-        <Qator nomi="Ногиронлиги бўлган шахс" qiymat={q(x.nogironlikBor)} />
-        <Qator nomi="Изоҳ" qiymat={q(x.nogironlikIzoh)} />
-        <Qator nomi="Ёлғиз яшовчи кекса" qiymat={q(x.yolgizKeksa)} />
-        <Qator nomi="Парваришга муҳтож" qiymat={q(x.parvarishgaMuhtoj)} />
-        <Qator nomi="Ҳужжатлар тўлиқ" qiymat={q(x.hujjatlarToliq)} />
-        <Qator nomi="Хизматлардаги тўсиқлар" qiymat={q(x.xizmatTosiqlari)} />
+      <Bolim raqam="VII" sarlavha={tr("Ижтимоий ҳимоя ва ҳужжатлар")}>
+        <Qator nomi={tr("Ногиронлиги бўлган шахс")} qiymat={q(x.nogironlikBor)} />
+        <Qator nomi={tr("Изоҳ")} qiymat={q(x.nogironlikIzoh)} />
+        <Qator nomi={tr("Ёлғиз яшовчи кекса")} qiymat={q(x.yolgizKeksa)} />
+        <Qator nomi={tr("Парваришга муҳтож")} qiymat={q(x.parvarishgaMuhtoj)} />
+        <Qator nomi={tr("Ҳужжатлар тўлиқ")} qiymat={q(x.hujjatlarToliq)} />
+        <Qator nomi={tr("Хизматлардаги тўсиқлар")} qiymat={q(x.xizmatTosiqlari)} />
       </Bolim>
 
       {/* ── IX, X ── */}
-      <Bolim raqam="IX" sarlavha="Ер, чорва ва тадбиркорлик субъектлари">
+      <Bolim raqam="IX" sarlavha={tr("Ер, чорва ва тадбиркорлик субъектлари")}>
         <Qator
-          nomi="Томорқа"
-          qiymat={x.tomorqaBor ? `${x.tomorqaMaydoni ?? 0} сотих` : 'Йўқ'}
+          nomi={tr("Томорқа")}
+          qiymat={x.tomorqaBor ? tr(`${x.tomorqaMaydoni ?? 0} сотих`) : tr('Йўқ')}
         />
         <Qator
-          nomi="Ижара ер"
-          qiymat={x.ijaraYer ? `${x.ijaraYerMaydoni ?? 0} гектар` : 'Йўқ'}
+          nomi={tr("Ижара ер")}
+          qiymat={x.ijaraYer ? tr(`${x.ijaraYerMaydoni ?? 0} гектар`) : tr('Йўқ')}
         />
         <Qator
-          nomi="Иссиқхона талаби"
-          qiymat={x.issiqxonaTalabi ? `Ҳа (${x.issiqxonaMaydoni ?? 0} сотих)` : 'Йўқ'}
+          nomi={tr("Иссиқхона талаби")}
+          qiymat={x.issiqxonaTalabi ? tr(`Ҳа (${x.issiqxonaMaydoni ?? 0} сотих)`) : tr('Йўқ')}
         />
-        <Qator nomi="Чорвачилик" qiymat={q(x.chorvachilik)} />
-        <Qator nomi="Ҳунармандчилик" qiymat={q(x.hunarmandchilik)} />
-        <Qator nomi="Тадбиркорлик субъектлари" qiymat={q(x.tadbirkorSubyektlar)} />
-        <Qator nomi="Бўш иш ўринлари" qiymat={q(x.boshIshOrinlari)} />
-        <Qator nomi="Қўшимча иш ўринлари режаси" qiymat={q(x.yangiIshOrinlari)} />
+        <Qator nomi={tr("Чорвачилик")} qiymat={q(x.chorvachilik)} />
+        <Qator nomi={tr("Ҳунармандчилик")} qiymat={q(x.hunarmandchilik)} />
+        <Qator nomi={tr("Тадбиркорлик субъектлари")} qiymat={q(x.tadbirkorSubyektlar)} />
+        <Qator nomi={tr("Бўш иш ўринлари")} qiymat={q(x.boshIshOrinlari)} />
+        <Qator nomi={tr("Қўшимча иш ўринлари режаси")} qiymat={q(x.yangiIshOrinlari)} />
       </Bolim>
 
       {/* ── Chora-tadbirlar ── */}
-      <Bolim raqam="XI" sarlavha="Чора-тадбирлар режаси">
+      <Bolim raqam="XI" sarlavha={tr("Чора-тадбирлар режаси")}>
         <div className="space-y-2 sm:col-span-2">
           {x.topshiriqlar.map((t) => (
             <div key={t.id} className="rounded-md border border-line p-3">
               <p className="text-sm font-medium text-ink">{t.muammo}</p>
               <p className="mt-1 text-xs text-ink-muted">{t.yechim}</p>
               <p className="mt-1.5 text-[11px] text-ink-faint">
-                {kirillcha(MASUL_TASHKILOT, t.masulTashkilot)} · муддат:{' '}
+                {tr(kirillcha(MASUL_TASHKILOT, t.masulTashkilot))} {tr('· муддат:')}{' '}
                 {formatDate(t.muddat).split(',')[0]}
               </p>
             </div>
@@ -297,7 +310,7 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
 
       {x.umumiyXulosa && (
         <section className="karta p-4 sm:p-5">
-          <h2 className="mb-2 text-sm font-bold text-ink">Умумий хулоса</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">{tr('Умумий хулоса')}</h2>
           <p className="whitespace-pre-wrap text-sm text-ink-muted">{x.umumiyXulosa}</p>
         </section>
       )}

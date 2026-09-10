@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { joriySessiya } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { AppShell } from '@/components/shell/app-shell';
+import { AlifboProvider } from '@/components/alifbo/alifbo-provider';
+import { alifboServer } from '@/lib/alifbo-server';
 
 /**
  * Tizimga kirgan xodimlar uchun umumiy qobiq.
@@ -21,7 +23,7 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
       rol: true,
       faol: true,
       parolAlmashtirilsin: true,
-      mahalla: { select: { nomi: true } },
+      mahalla: { select: { nomi: true, nomiKirill: true } },
     },
   });
 
@@ -31,9 +33,17 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
   // Boshlang'ich parol almashtirilmaguncha boshqa sahifalar ochilmaydi
   if (user.parolAlmashtirilsin) redirect('/parol-almashtirish');
 
+  const alifbo = alifboServer();
+
   return (
-    <AppShell fullName={user.fullName} rol={user.rol} mahallaNomi={user.mahalla?.nomi}>
-      {children}
-    </AppShell>
+    <AlifboProvider boshlangich={alifbo}>
+      <AppShell
+        fullName={user.fullName}
+        rol={user.rol}
+        mahallaNomi={alifbo === 'lot' ? user.mahalla?.nomi : user.mahalla?.nomiKirill}
+      >
+        {children}
+      </AppShell>
+    </AlifboProvider>
   );
 }

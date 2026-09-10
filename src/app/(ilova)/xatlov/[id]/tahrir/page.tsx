@@ -1,12 +1,24 @@
 import { notFound, redirect } from 'next/navigation';
+import { matnchi } from '@/lib/alifbo-server';
 import { joriySessiya, mahallaFiltri, mahallagaRuxsat } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { xatlovniYukla } from '@/lib/xatlov-yuklash';
 import { XatlovFormasi } from '@/components/xatlov/xatlov-formasi';
 
-export const metadata = { title: 'Хатловни таҳрирлаш' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Хатловни таҳрирлаш') };
+}
 
 export default async function TahrirSahifasi({ params }: { params: { id: string } }) {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
 
@@ -32,8 +44,8 @@ export default async function TahrirSahifasi({ params }: { params: { id: string 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div>
-        <h1 className="text-lg font-bold text-ink">
-          {xatlov.holati === 'QORALAMA' ? 'Қоралама — давом эттириш' : 'Хатловни таҳрирлаш'}
+        <h1 className="sahifa-sarlavha">
+          {xatlov.holati === 'QORALAMA' ? tr('Қоралама — давом эттириш') : tr('Хатловни таҳрирлаш')}
         </h1>
         <p className="mt-1 text-sm text-ink-muted">{xatlov.holat.oilaBoshligi}</p>
       </div>

@@ -1,5 +1,6 @@
 import type { VoronkaBosqichi, MahallaQamrovi } from '@/lib/tahlil';
-import { ISHSIZ_HOLATI } from '@/components/ishsiz/holat-nishoni';
+import { matnchi } from '@/lib/alifbo-server';
+import { ISHSIZ_HOLATI } from '@/lib/ishsiz-holati';
 import { MABLAG_YONALISHI, MASUL_TASHKILOT, kirillcha } from '@/lib/constants';
 
 /**
@@ -38,13 +39,15 @@ export function Voronka({
   bosqichlar: VoronkaBosqichi[];
   bazaIshsiz: number;
 }) {
+  const tr = matnchi();
+
   const eng = bosqichlar[0]?.soni ?? 0;
 
   return (
     <section className="karta p-4 sm:p-5">
-      <h2 className="text-sm font-bold text-ink">Бандлик воронкаси</h2>
+      <h2 className="text-sm font-bold text-ink">{tr('Бандлик воронкаси')}</h2>
       <p className="mt-1 text-xs text-ink-faint">
-        Рўйхатдаги {raqam(bazaIshsiz)} та ишсизнинг ҳар босқичдаги улуши
+        {tr(`Рўйхатдаги ${raqam(bazaIshsiz)} та ишсизнинг ҳар босқичдаги улуши`)}
       </p>
 
       <div className="mt-4 space-y-2">
@@ -61,7 +64,7 @@ export function Voronka({
                     style={{ background: `var(--step-${bosqich})` }}
                     aria-hidden="true"
                   />
-                  {ISHSIZ_HOLATI[b.holati].kirill}
+                  {tr(ISHSIZ_HOLATI[b.holati].kirill)}
                 </span>
                 <span className="raqam shrink-0 text-xs text-ink-faint">
                   <b className="text-sm text-ink">{raqam(b.soni)}</b> · {b.foiz}%
@@ -104,6 +107,8 @@ export function QamrovReytingi({
   ortadan: boolean;
   soni?: number;
 }) {
+  const tr = matnchi();
+
   /*
    * 70 ta mahallaning hammasini chizish - o'qib bo'lmaydigan devor.
    * Hokimga kerak bo'lgani "hamma qanday" emas, "kim orqada qolgan".
@@ -138,7 +143,7 @@ export function QamrovReytingi({
             className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-surface-muted"
           >
             <span className="w-24 shrink-0 truncate text-xs text-ink-muted sm:w-32">
-              {m.nomiKirill}
+              {tr(m.nomiKirill)}
             </span>
 
             <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-muted">
@@ -181,11 +186,13 @@ export function KechikkanlarBlogi({
 }: {
   kechikkanlar: { tashkilot: string; soni: number }[];
 }) {
+  const tr = matnchi();
+
   if (kechikkanlar.length === 0) {
     return (
       <section className="karta p-4 sm:p-5">
-        <h2 className="text-sm font-bold text-ink">Муддати ўтган топшириқлар</h2>
-        <p className="quti-ok mt-3">Муддати ўтган топшириқ йўқ.</p>
+        <h2 className="text-sm font-bold text-ink">{tr('Муддати ўтган топшириқлар')}</h2>
+        <p className="quti-ok mt-3">{tr('Муддати ўтган топшириқ йўқ.')}</p>
       </section>
     );
   }
@@ -194,8 +201,8 @@ export function KechikkanlarBlogi({
 
   return (
     <section className="karta p-4 sm:p-5">
-      <h2 className="text-sm font-bold text-ink">Муддати ўтган топшириқлар</h2>
-      <p className="mt-1 text-xs text-ink-faint">Масъул ташкилот кесимида</p>
+      <h2 className="text-sm font-bold text-ink">{tr('Муддати ўтган топшириқлар')}</h2>
+      <p className="mt-1 text-xs text-ink-faint">{tr('Масъул ташкилот кесимида')}</p>
 
       <div className="mt-4 space-y-1.5">
         {kechikkanlar.map((k) => (
@@ -204,7 +211,7 @@ export function KechikkanlarBlogi({
             className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-surface-muted"
           >
             <span className="w-28 shrink-0 truncate text-xs text-ink-muted sm:w-40">
-              {kirillcha(MASUL_TASHKILOT, k.tashkilot)}
+              {tr(kirillcha(MASUL_TASHKILOT, k.tashkilot))}
             </span>
             <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-muted">
               <div
@@ -233,15 +240,18 @@ export function ByudjetBlogi({
   byudjet: { yonalish: string; summa: number; oila: number }[];
   jamiTalab: number;
 }) {
+  const tr = matnchi();
+
   if (byudjet.length === 0) return null;
 
   const eng = byudjet[0].summa;
 
   return (
     <section className="karta p-4 sm:p-5">
-      <h2 className="text-sm font-bold text-ink">Кредит-субсидия талаби</h2>
+      <h2 className="text-sm font-bold text-ink">{tr('Кредит-субсидия талаби')}</h2>
       <p className="mt-1 text-xs text-ink-faint">
-        Жами <b className="raqam text-ink">{pul(jamiTalab)} сўм</b> — бюджет режаси учун
+        {tr('Жами')} <b className="raqam text-ink">{tr(`${pul(jamiTalab)} сўм`)}</b>{' '}
+        {tr('— бюджет режаси учун')}
       </p>
 
       <div className="mt-4 space-y-1.5">
@@ -251,7 +261,7 @@ export function ByudjetBlogi({
             className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-surface-muted"
           >
             <span className="w-24 shrink-0 truncate text-xs text-ink-muted sm:w-36">
-              {kirillcha(MABLAG_YONALISHI, b.yonalish)}
+              {tr(kirillcha(MABLAG_YONALISHI, b.yonalish))}
             </span>
             <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-muted">
               <div
@@ -263,10 +273,10 @@ export function ByudjetBlogi({
               />
             </div>
             <span className="raqam w-20 shrink-0 text-right text-xs font-semibold text-ink">
-              {pul(b.summa)}
+              {tr(pul(b.summa))}
             </span>
             <span className="raqam hidden w-14 shrink-0 text-right text-xs text-ink-faint sm:block">
-              {b.oila} оила
+              {tr(`${b.oila} оила`)}
             </span>
           </div>
         ))}
@@ -286,12 +296,14 @@ export function KursTalabiBlogi({
   kurslar: { kasb: string; soni: number }[];
   chegara?: number;
 }) {
+  const tr = matnchi();
+
   if (kurslar.length === 0) {
     return (
       <section className="karta p-4 sm:p-5">
-        <h2 className="text-sm font-bold text-ink">Касб-ҳунар курсларига талаб</h2>
+        <h2 className="text-sm font-bold text-ink">{tr('Касб-ҳунар курсларига талаб')}</h2>
         <p className="mt-3 text-sm text-ink-muted">
-          Ҳали бирорта фуқаро аниқ касб кўрсатмаган.
+          {tr('Ҳали бирорта фуқаро аниқ касб кўрсатмаган.')}
         </p>
       </section>
     );
@@ -301,9 +313,9 @@ export function KursTalabiBlogi({
 
   return (
     <section className="karta p-4 sm:p-5">
-      <h2 className="text-sm font-bold text-ink">Касб-ҳунар курсларига талаб</h2>
+      <h2 className="text-sm font-bold text-ink">{tr('Касб-ҳунар курсларига талаб')}</h2>
       <p className="mt-1 text-xs text-ink-faint">
-        {chegara} тадан ошса — гуруҳ тўлади, курс очиш мумкин
+        {tr(`${chegara} тадан ошса — гуруҳ тўлади, курс очиш мумкин`)}
       </p>
 
       <div className="mt-4 space-y-1.5">
@@ -331,7 +343,7 @@ export function KursTalabiBlogi({
               </span>
               {/* Rang yolg'iz ma'no tashimasligi uchun matnli belgi ham bor */}
               <span className="hidden w-16 shrink-0 text-right text-[11px] text-ok sm:block">
-                {yetarli ? 'гуруҳ тўлади' : ''}
+                {yetarli ? tr('гуруҳ тўлади') : ''}
               </span>
             </div>
           );

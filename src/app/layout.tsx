@@ -13,7 +13,7 @@ export const metadata: Metadata = {
    * yo'q - butun sayt login ortida.
    */
   robots: { index: false, follow: false },
-  icons: { icon: '/favicon.svg' },
+  icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/hokimiyat-logo.png' }] },
 };
 
 export const viewport: Viewport = {

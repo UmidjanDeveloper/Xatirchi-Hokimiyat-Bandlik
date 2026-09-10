@@ -1,11 +1,21 @@
 import Link from 'next/link';
+import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
 import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate } from '@/lib/utils';
 
-export const metadata = { title: 'Хонадонлар' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Хонадонлар') };
+}
 
 const SAHIFA_HAJMI = 30;
 
@@ -20,6 +30,8 @@ export default async function XonadonlarSahifasi({
 }: {
   searchParams: { mahalla?: string; q?: string; sahifa?: string };
 }) {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
@@ -74,8 +86,8 @@ export default async function XonadonlarSahifasi({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-bold text-ink">Хонадонлар</h1>
-        <p className="mt-1 text-sm text-ink-muted">{jami} та хатлов</p>
+        <h1 className="sahifa-sarlavha">{tr('Хонадонлар')}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{jami} {tr('та хатлов')}</p>
       </div>
 
       <form className="karta flex flex-wrap gap-2 p-3" method="get">
@@ -83,7 +95,7 @@ export default async function XonadonlarSahifasi({
           type="search"
           name="q"
           defaultValue={searchParams.q ?? ''}
-          placeholder="Оила бошлиғи ёки манзил бўйича қидириш"
+          placeholder={tr("Оила бошлиғи ёки манзил бўйича қидириш")}
           className="min-w-[12rem] flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
         />
         {mahallalar.length > 0 && (
@@ -92,25 +104,25 @@ export default async function XonadonlarSahifasi({
             defaultValue={searchParams.mahalla ?? ''}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
           >
-            <option value="">Барча маҳаллалар</option>
+            <option value="">{tr('Барча маҳаллалар')}</option>
             {mahallalar.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.nomiKirill}
+                {tr(m.nomiKirill)}
               </option>
             ))}
           </select>
         )}
         <button
           type="submit"
-          className="rounded-md bg-accent-solid px-4 py-2 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90"
+          className="tugma-asosiy rounded-md px-4 py-2 text-sm font-semibold"
         >
-          Қидириш
+          {tr('Қидириш')}
         </button>
       </form>
 
       {royxat.length === 0 ? (
         <div className="karta p-8 text-center text-sm text-ink-muted">
-          Шартга мос хонадон топилмади.
+          {tr('Шартга мос хонадон топилмади.')}
         </div>
       ) : (
         <div className="karta divide-y divide-line">
@@ -126,18 +138,18 @@ export default async function XonadonlarSahifasi({
                   <span
                     className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${HOLAT[x.holati].sinf}`}
                   >
-                    {HOLAT[x.holati].matn}
+                    {tr(HOLAT[x.holati].matn)}
                   </span>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-ink-faint">
-                  {x.manzil} · {x.mahalla.nomiKirill} · {x.xodim.fullName}
+                  {x.manzil} · {tr(x.mahalla.nomiKirill)} · {x.xodim.fullName}
                 </p>
               </div>
               <div className="shrink-0 text-right">
                 <p className="raqam text-xs text-ink-muted">
-                  {x.jamiAzo} киши
+                  {x.jamiAzo} {tr('киши')}
                   {x.ishsizlarSoni > 0 && (
-                    <span className="text-warn"> · {x.ishsizlarSoni} ишсиз</span>
+                    <span className="text-warn"> · {x.ishsizlarSoni} {tr('ишсиз')}</span>
                   )}
                 </p>
                 <p className="mt-0.5 text-[11px] text-ink-faint">
@@ -156,7 +168,7 @@ export default async function XonadonlarSahifasi({
               href={`/xonadonlar?sahifa=${sahifa - 1}`}
               className="rounded-md border border-line px-3.5 py-2 text-sm text-ink-muted hover:text-ink"
             >
-              Олдинги
+              {tr('Олдинги')}
             </Link>
           ) : (
             <span />
@@ -169,7 +181,7 @@ export default async function XonadonlarSahifasi({
               href={`/xonadonlar?sahifa=${sahifa + 1}`}
               className="rounded-md border border-line px-3.5 py-2 text-sm text-ink-muted hover:text-ink"
             >
-              Кейинги
+              {tr('Кейинги')}
             </Link>
           ) : (
             <span />

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useId } from 'react';
 import type { Variant } from '@/lib/constants';
 
@@ -50,10 +52,11 @@ function Yorliq({
 }
 
 function Xato({ xato }: { xato?: string }) {
+  const { t: tr } = useAlifbo();
   if (!xato) return null;
   return (
     <p className="text-xs font-medium text-danger" role="alert">
-      {xato}
+      {tr(xato)}
     </p>
   );
 }
@@ -190,6 +193,8 @@ export function PulMaydoni({
   qiymat: number | '' | null;
   ozgardi: (q: number | '') => void;
 }) {
+  const { t: tr } = useAlifbo();
+
   const id = useId();
   const son = typeof qiymat === 'number' ? qiymat : null;
 
@@ -210,11 +215,11 @@ export function PulMaydoni({
           className={`${kiritishSinf} raqam pr-14 ${xato ? 'maydon-xato' : 'border-line'}`}
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint">
-          сўм
+          {tr('сўм')}
         </span>
       </div>
       {son !== null && son > 0 && (
-        <p className="raqam text-xs text-ink-faint">{son.toLocaleString('ru-RU')} сўм</p>
+        <p className="raqam text-xs text-ink-faint">{son.toLocaleString('ru-RU')} {tr('сўм')}</p>
       )}
       <Xato xato={xato} />
     </div>
@@ -335,6 +340,8 @@ export function HaYoqMaydoni({
   qiymat: boolean;
   ozgardi: (q: boolean) => void;
 }) {
+  const { t: tr } = useAlifbo();
+
   const id = useId();
   return (
     <div className="space-y-1.5">
@@ -344,8 +351,8 @@ export function HaYoqMaydoni({
       {izoh && <span className="block text-xs text-ink-faint">{izoh}</span>}
       <div className="flex gap-2" role="group" aria-labelledby={id}>
         {[
-          { q: true, matn: 'Ҳа' },
-          { q: false, matn: 'Йўқ' },
+          { q: true, matn: tr('Ҳа') },
+          { q: false, matn: tr('Йўқ') },
         ].map((v) => (
           <button
             key={String(v.q)}

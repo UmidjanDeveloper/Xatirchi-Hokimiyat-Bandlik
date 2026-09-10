@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X } from 'lucide-react';
@@ -22,6 +24,8 @@ interface Mahalla {
  * tushadi.
  */
 export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
+  const { t: tr } = useAlifbo();
+
   const router = useRouter();
   const [ochiq, setOchiq] = useState(false);
   const [mahallaId, setMahallaId] = useState(mahallalar.length === 1 ? mahallalar[0].id : '');
@@ -37,9 +41,9 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
 
   async function yubor() {
     if (yuborilmoqda) return;
-    if (!mahallaId) return setXato('Маҳаллани танланг');
-    if (korxona.trim().length < 2) return setXato('Корхона номини ёзинг');
-    if (lavozim.trim().length < 2) return setXato('Лавозимни ёзинг');
+    if (!mahallaId) return setXato(tr('Маҳаллани танланг'));
+    if (korxona.trim().length < 2) return setXato(tr('Корхона номини ёзинг'));
+    if (lavozim.trim().length < 2) return setXato(tr('Лавозимни ёзинг'));
 
     setXato(null);
     setYuborilmoqda(true);
@@ -61,7 +65,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
       });
       const natija = await javob.json().catch(() => ({}));
       if (!javob.ok) {
-        setXato(natija.xabar ?? 'Сақлаб бўлмади');
+        setXato(natija.xabar ?? tr('Сақлаб бўлмади'));
         return;
       }
 
@@ -75,7 +79,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
       setOchiq(false);
       router.refresh();
     } catch {
-      setXato('Алоқа йўқ. Қайта уриниб кўринг.');
+      setXato(tr('Алоқа йўқ. Қайта уриниб кўринг.'));
     } finally {
       setYuborilmoqda(false);
     }
@@ -86,10 +90,10 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
       <button
         type="button"
         onClick={() => setOchiq(true)}
-        className="flex items-center gap-1.5 rounded-md bg-accent-solid px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90"
+        className="flex items-center gap-1.5 tugma-asosiy rounded-md px-4 py-2.5 text-sm font-semibold"
       >
         <Plus className="h-4 w-4" />
-        Иш ўрни қўшиш
+        {tr('Иш ўрни қўшиш')}
       </button>
     );
   }
@@ -100,11 +104,11 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
   return (
     <div className="karta space-y-3 p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-ink">Янги бўш иш ўрни</h3>
+        <h3 className="text-sm font-bold text-ink">{tr('Янги бўш иш ўрни')}</h3>
         <button
           type="button"
           onClick={() => setOchiq(false)}
-          aria-label="Ёпиш"
+          aria-label={tr("Ёпиш")}
           className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:text-ink"
         >
           <X className="h-4 w-4" />
@@ -117,7 +121,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
         {mahallalar.length > 1 && (
           <div className="space-y-1.5 sm:col-span-2">
             <label htmlFor="v-mahalla" className="text-sm font-medium text-ink">
-              Маҳалла
+              {tr('Маҳалла')}
             </label>
             <select
               id="v-mahalla"
@@ -125,10 +129,10 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
               onChange={(e) => setMahallaId(e.target.value)}
               className={maydon}
             >
-              <option value="">— Танланг —</option>
+              <option value="">{tr('— Танланг —')}</option>
               {mahallalar.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.nomiKirill}
+                  {tr(m.nomiKirill)}
                 </option>
               ))}
             </select>
@@ -137,7 +141,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
 
         <div className="space-y-1.5">
           <label htmlFor="v-korxona" className="text-sm font-medium text-ink">
-            Корхона номи
+            {tr('Корхона номи')}
           </label>
           <input
             id="v-korxona"
@@ -149,20 +153,20 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
 
         <div className="space-y-1.5">
           <label htmlFor="v-lavozim" className="text-sm font-medium text-ink">
-            Лавозим
+            {tr('Лавозим')}
           </label>
           <input
             id="v-lavozim"
             value={lavozim}
             onChange={(e) => setLavozim(e.target.value)}
-            placeholder="масалан: пайвандчи"
+            placeholder={tr("масалан: пайвандчи")}
             className={maydon}
           />
         </div>
 
         <div className="space-y-1.5">
           <label htmlFor="v-yonalish" className="text-sm font-medium text-ink">
-            Йўналиш
+            {tr('Йўналиш')}
           </label>
           <select
             id="v-yonalish"
@@ -170,7 +174,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
             onChange={(e) => setYonalish(e.target.value)}
             className={maydon}
           >
-            <option value="">— Танланг —</option>
+            <option value="">{tr('— Танланг —')}</option>
             {KASB_YONALISHI.map((y) => (
               <option key={y.qiymat} value={y.qiymat}>
                 {y.kirill}
@@ -181,7 +185,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
 
         <div className="space-y-1.5">
           <label htmlFor="v-orin" className="text-sm font-medium text-ink">
-            Ўринлар сони
+            {tr('Ўринлар сони')}
           </label>
           <input
             id="v-orin"
@@ -196,7 +200,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
 
         <div className="space-y-1.5">
           <label htmlFor="v-maosh" className="text-sm font-medium text-ink">
-            Ойлик маош (сўм)
+            {tr('Ойлик маош (сўм)')}
           </label>
           <input
             id="v-maosh"
@@ -211,7 +215,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
 
         <div className="space-y-1.5">
           <label htmlFor="v-tel" className="text-sm font-medium text-ink">
-            Боғланиш телефони
+            {tr('Боғланиш телефони')}
           </label>
           <input
             id="v-tel"
@@ -225,7 +229,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
 
         <div className="space-y-1.5 sm:col-span-2">
           <label htmlFor="v-talab" className="text-sm font-medium text-ink">
-            Талаблар
+            {tr('Талаблар')}
           </label>
           <textarea
             id="v-talab"
@@ -241,10 +245,10 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
         type="button"
         onClick={yubor}
         disabled={yuborilmoqda}
-        className="flex items-center gap-1.5 rounded-md bg-accent-solid px-5 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="flex items-center gap-1.5 tugma-asosiy rounded-md px-5 py-2.5 text-sm font-semibold"
       >
         {yuborilmoqda ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-        Қўшиш
+        {tr('Қўшиш')}
       </button>
     </div>
   );

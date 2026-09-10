@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
 import { AlertOctagon, CalendarClock, CheckCircle2 } from 'lucide-react';
@@ -13,13 +14,24 @@ import {
   qolganKun,
 } from '@/lib/chora-tadbir';
 
-export const metadata = { title: 'Чора-тадбирлар' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Чора-тадбирлар') };
+}
 
 export default async function ChoraTadbirlarSahifasi({
   searchParams,
 }: {
   searchParams: { tashkilot?: string; holati?: string };
 }) {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
 
@@ -78,30 +90,30 @@ export default async function ChoraTadbirlarSahifasi({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-bold text-ink">Чора-тадбирлар режаси</h1>
+        <h1 className="sahifa-sarlavha">{tr('Чора-тадбирлар режаси')}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Муаммо → ечим → масъул ташкилот → муддат
+          {tr('Муаммо → ечим → масъул ташкилот → муддат')}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <KpiKarta
           ikonka={<CalendarClock className="h-4 w-4" />}
-          nomi="Жами топшириқ"
+          nomi={tr("Жами топшириқ")}
           qiymat={String(jami)}
-          izoh={`${bajarilgan} таси бажарилган`}
+          izoh={tr(`${bajarilgan} таси бажарилган`)}
         />
         <KpiKarta
           ikonka={<CheckCircle2 className="h-4 w-4" />}
-          nomi="Бажарилиш даражаси"
+          nomi={tr("Бажарилиш даражаси")}
           qiymat={`${percent(bajarilgan, jami)}%`}
-          izoh={`${jami - bajarilgan} та очиқ`}
+          izoh={tr(`${jami - bajarilgan} та очиқ`)}
         />
         <KpiKarta
           ikonka={<AlertOctagon className="h-4 w-4" />}
-          nomi="Муддати ўтган"
+          nomi={tr("Муддати ўтган")}
           qiymat={String(kechikkan)}
-          izoh={kechikkan > 0 ? 'Дарҳол чора кўринг' : 'Кечиккани йўқ'}
+          izoh={kechikkan > 0 ? tr('Дарҳол чора кўринг') : tr('Кечиккани йўқ')}
           xavfli={kechikkan > 0}
         />
       </div>
@@ -114,7 +126,7 @@ export default async function ChoraTadbirlarSahifasi({
       {tashkilotlar.length > 0 && (
         <section className="karta p-4">
           <h2 className="mb-3 text-sm font-bold text-ink">
-            Муддати ўтган топшириқлар — масъул ташкилот кесимида
+            {tr('Муддати ўтган топшириқлар — масъул ташкилот кесимида')}
           </h2>
           <div className="space-y-2">
             {tashkilotlar.map((t) => (
@@ -124,7 +136,7 @@ export default async function ChoraTadbirlarSahifasi({
                 className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-muted"
               >
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">
-                  {kirillcha(MASUL_TASHKILOT, t.masulTashkilot)}
+                  {tr(kirillcha(MASUL_TASHKILOT, t.masulTashkilot))}
                 </span>
                 <span className="h-2 rounded-full bg-danger" style={{ width: `${Math.min(60, t._count * 6)}px` }} />
                 <span className="raqam w-8 shrink-0 text-right text-sm font-bold text-danger">
@@ -139,29 +151,29 @@ export default async function ChoraTadbirlarSahifasi({
       {/* ── Filtrlar ── */}
       <div className="flex flex-wrap gap-2">
         <Filtr faol={!searchParams.holati && !searchParams.tashkilot} yol="/chora-tadbirlar">
-          Барчаси
+          {tr('Барчаси')}
         </Filtr>
         <Filtr faol={kechikkanFiltri} yol="/chora-tadbirlar?holati=KECHIKDI">
-          Муддати ўтган
+          {tr('Муддати ўтган')}
         </Filtr>
         <Filtr
           faol={searchParams.holati === 'KUTILMOQDA'}
           yol="/chora-tadbirlar?holati=KUTILMOQDA"
         >
-          Кутилмоқда
+          {tr('Кутилмоқда')}
         </Filtr>
         <Filtr
           faol={searchParams.holati === 'BAJARILDI'}
           yol="/chora-tadbirlar?holati=BAJARILDI"
         >
-          Бажарилди
+          {tr('Бажарилди')}
         </Filtr>
       </div>
 
       {/* ── Ro'yxat ── */}
       {royxat.length === 0 ? (
         <div className="karta p-8 text-center text-sm text-ink-muted">
-          Шартга мос топшириқ топилмади.
+          {tr('Шартга мос топшириқ топилмади.')}
         </div>
       ) : (
         <div className="space-y-2">
@@ -177,7 +189,7 @@ export default async function ChoraTadbirlarSahifasi({
                   <span
                     className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${nishon.sinf}`}
                   >
-                    {nishon.kirill}
+                    {tr(nishon.kirill)}
                   </span>
                 </div>
 
@@ -185,16 +197,16 @@ export default async function ChoraTadbirlarSahifasi({
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-faint">
                   <span className="font-medium text-ink-muted">
-                    {kirillcha(MASUL_TASHKILOT, t.masulTashkilot)}
+                    {tr(kirillcha(MASUL_TASHKILOT, t.masulTashkilot))}
                   </span>
                   <span>·</span>
                   <span className={holat === 'KECHIKDI' ? 'font-semibold text-danger' : ''}>
                     {formatDate(t.muddat).split(',')[0]}
                     {holat === 'KECHIKDI'
-                      ? ` (${Math.abs(kun)} кун кечикди)`
+                      ? tr(` (${Math.abs(kun)} кун кечикди)`)
                       : holat === 'BAJARILDI'
                         ? ''
-                        : ` (${kun} кун қолди)`}
+                        : tr(` (${kun} кун қолди)`)}
                   </span>
 
                   {t.household && (

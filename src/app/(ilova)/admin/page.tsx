@@ -1,10 +1,20 @@
 import { redirect } from 'next/navigation';
+import { matnchi } from '@/lib/alifbo-server';
 import { joriySessiya } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 
-export const metadata = { title: 'Бошқарув' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Бошқарув') };
+}
 
 const AMAL_NOMI: Record<string, string> = {
   KIRISH: 'Тизимга кирди',
@@ -18,6 +28,8 @@ const AMAL_NOMI: Record<string, string> = {
 };
 
 export default async function AdminSahifasi() {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
   if (sessiya.rol !== 'ADMIN') redirect('/');
@@ -60,21 +72,21 @@ export default async function AdminSahifasi() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-bold text-ink">Бошқарув</h1>
+        <h1 className="sahifa-sarlavha">{tr('Бошқарув')}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Ходимлар, логинлар ва аудит журнали
+          {tr('Ходимлар, логинлар ва аудит журнали')}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <Karta nomi="Хонадон" soni={xonadon} />
-        <Karta nomi="Ишсиз фуқаро" soni={ishsiz} />
-        <Karta nomi="Чора-тадбир" soni={topshiriq} />
-        <Karta nomi="Бўш иш ўрни" soni={ishOrni} />
+        <Karta nomi={tr("Хонадон")} soni={xonadon} />
+        <Karta nomi={tr("Ишсиз фуқаро")} soni={ishsiz} />
+        <Karta nomi={tr("Чора-тадбир")} soni={topshiriq} />
+        <Karta nomi={tr("Бўш иш ўрни")} soni={ishOrni} />
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-bold text-ink">Ходимлар ({xodimlar.length})</h2>
+        <h2 className="text-sm font-bold text-ink">{tr('Ходимлар (')}{xodimlar.length})</h2>
         <XodimBoshqaruvi xodimlar={xodimlar} mahallalar={mahallalar} />
       </section>
 
@@ -84,22 +96,22 @@ export default async function AdminSahifasi() {
         borilmasa, ma'lumot tarqalganda javobgarni aniqlab bo'lmaydi.
       */}
       <section className="karta p-4 sm:p-5">
-        <h2 className="text-sm font-bold text-ink">Аудит журнали</h2>
+        <h2 className="text-sm font-bold text-ink">{tr('Аудит журнали')}</h2>
         <p className="mt-1 text-xs text-ink-faint">
-          Ким қачон нимани очгани ва ўзгартиргани — охирги 60 та ёзув
+          {tr('Ким қачон нимани очгани ва ўзгартиргани — охирги 60 та ёзув')}
         </p>
 
         {jurnal.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-muted">Ҳали ёзув йўқ.</p>
+          <p className="mt-4 text-sm text-ink-muted">{tr('Ҳали ёзув йўқ.')}</p>
         ) : (
           <div className="jadval-orash mt-4">
             <table className="w-full min-w-[34rem] text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs text-ink-faint">
-                  <th className="pb-2 pr-3 font-medium">Вақт</th>
-                  <th className="pb-2 pr-3 font-medium">Ходим</th>
-                  <th className="pb-2 pr-3 font-medium">Амал</th>
-                  <th className="pb-2 font-medium">Изоҳ</th>
+                  <th className="pb-2 pr-3 font-medium">{tr('Вақт')}</th>
+                  <th className="pb-2 pr-3 font-medium">{tr('Ходим')}</th>
+                  <th className="pb-2 pr-3 font-medium">{tr('Амал')}</th>
+                  <th className="pb-2 font-medium">{tr('Изоҳ')}</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,13 +1,25 @@
 import { redirect } from 'next/navigation';
+import { matnchi } from '@/lib/alifbo-server';
 import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatPhone } from '@/lib/utils';
 import { KASB_YONALISHI, kirillcha } from '@/lib/constants';
 import { IshOrniFormasi } from '@/components/ish-orni/ish-orni-formasi';
 
-export const metadata = { title: 'Бўш иш ўринлари' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Бўш иш ўринлари') };
+}
 
 export default async function IshOrinlariSahifasi() {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
@@ -33,9 +45,9 @@ export default async function IshOrinlariSahifasi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold text-ink">Бўш иш ўринлари</h1>
+          <h1 className="sahifa-sarlavha">{tr('Бўш иш ўринлари')}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {royxat.length} та эълон · жами {jamiOrin} ўрин
+            {royxat.length} {tr('та эълон · жами')} {jamiOrin} {tr('ўрин')}
           </p>
         </div>
         <IshOrniFormasi mahallalar={mahallalar} />
@@ -44,11 +56,10 @@ export default async function IshOrinlariSahifasi() {
       {royxat.length === 0 ? (
         <div className="karta p-8 text-center">
           <p className="text-sm text-ink-muted">
-            Ҳали бирорта бўш иш ўрни киритилмаган.
+            {tr('Ҳали бирорта бўш иш ўрни киритилмаган.')}
           </p>
           <p className="mx-auto mt-2 max-w-md text-xs text-ink-faint">
-            Хатловнинг X бўлимида маҳалладаги бўш ўринлар сони қайд этилади — уларни
-            шу ерга номма-ном киритсангиз, мослаштириш тахтаси ишлай бошлайди.
+            {tr('Хатловнинг X бўлимида маҳалладаги бўш ўринлар сони қайд этилади — уларни шу ерга номма-ном киритсангиз, мослаштириш тахтаси ишлай бошлайди.')}
           </p>
         </div>
       ) : (
@@ -60,23 +71,23 @@ export default async function IshOrinlariSahifasi() {
 
               <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-faint">
                 <span className="raqam font-medium text-ink-muted">
-                  {v.ornlarSoni} ўрин
+                  {v.ornlarSoni} {tr('ўрин')}
                 </span>
                 {v.maosh && (
                   <>
                     <span>·</span>
                     <span className="raqam">
-                      {(Number(v.maosh) / 1_000_000).toFixed(1)} млн сўм
+                      {(Number(v.maosh) / 1_000_000).toFixed(1)} {tr('млн сўм')}
                     </span>
                   </>
                 )}
                 <span>·</span>
-                <span>{v.mahalla.nomiKirill}</span>
+                <span>{tr(v.mahalla.nomiKirill)}</span>
               </div>
 
               {v.yonalish && (
                 <span className="mt-2.5 inline-block rounded bg-accent-soft px-2 py-1 text-[11px] font-medium text-accent">
-                  {kirillcha(KASB_YONALISHI, v.yonalish)}
+                  {tr(kirillcha(KASB_YONALISHI, v.yonalish))}
                 </span>
               )}
 

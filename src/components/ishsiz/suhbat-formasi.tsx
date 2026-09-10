@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Save } from 'lucide-react';
@@ -72,6 +74,8 @@ export function SuhbatFormasi({
   id: string;
   boshlangich: SuhbatHolati;
 }) {
+  const { t: tr } = useAlifbo();
+
   const router = useRouter();
   const [h, setH] = useState(boshlangich);
   const [xatolar, setXatolar] = useState<Record<string, string>>({});
@@ -95,16 +99,16 @@ export function SuhbatFormasi({
 
     const xt: Record<string, string> = {};
 
-    const ism = ismTekshir(h.fish, 'Ф.И.Ш.');
-    if (!ism.ok) xt.fish = ism.xabar ?? 'Ф.И.Ш. нотўғри';
+    const ism = ismTekshir(h.fish, tr('Ф.И.Ш.'));
+    if (!ism.ok) xt.fish = ism.xabar ?? tr('Ф.И.Ш. нотўғри');
 
     if (h.telefon.trim()) {
       const tel = telefonTekshir(h.telefon);
-      if (!tel.ok) xt.telefon = tel.xabar ?? 'Телефон рақами нотўғри';
+      if (!tel.ok) xt.telefon = tel.xabar ?? tr('Телефон рақами нотўғри');
     }
 
     if (h.nogironlik && !h.nogironlikGuruhi) {
-      xt.nogironlikGuruhi = 'Ногиронлик гуруҳини танланг';
+      xt.nogironlikGuruhi = tr('Ногиронлик гуруҳини танланг');
     }
 
     /*
@@ -115,7 +119,7 @@ export function SuhbatFormasi({
      * bo'lib qoladi.
      */
     if (h.ishLavozimi.trim() && !h.ishJoyi.trim()) {
-      xt.ishJoyi = 'Лавозим ёзилган — иш жойини ҳам кўрсатинг';
+      xt.ishJoyi = tr('Лавозим ёзилган — иш жойини ҳам кўрсатинг');
     }
 
     if (Object.keys(xt).length > 0) {
@@ -157,14 +161,14 @@ export function SuhbatFormasi({
 
       const natija = await javob.json().catch(() => ({}));
       if (!javob.ok) {
-        setServerXatosi(natija.xabar ?? 'Сақлаб бўлмади');
+        setServerXatosi(natija.xabar ?? tr('Сақлаб бўлмади'));
         return;
       }
 
       setSaqlandi(true);
       router.refresh();
     } catch {
-      setServerXatosi('Алоқа йўқ. Қайта уриниб кўринг.');
+      setServerXatosi(tr('Алоқа йўқ. Қайта уриниб кўринг.'));
     } finally {
       setSaqlanmoqda(false);
     }
@@ -172,20 +176,20 @@ export function SuhbatFormasi({
 
   return (
     <div className="space-y-4">
-      {serverXatosi && <div className="quti-xato">{serverXatosi}</div>}
-      {saqlandi && <div className="quti-ok">Сақланди.</div>}
+      {serverXatosi && <div className="quti-xato">{tr(serverXatosi)}</div>}
+      {saqlandi && <div className="quti-ok">{tr('Сақланди.')}</div>}
 
       {/* ── 4. Shaxsiy ma'lumot ── */}
-      <Bolim raqam="4" sarlavha="Ишсиз фуқаро тўғрисида маълумот">
+      <Bolim raqam="4" sarlavha={tr("Ишсиз фуқаро тўғрисида маълумот")}>
         <MatnMaydoni
-          yorliq="Ф.И.Ш."
+          yorliq={tr("Ф.И.Ш.")}
           majburiy
           qiymat={h.fish}
           ozgardi={(q) => yangila('fish', q)}
           xato={xatolar.fish}
         />
         <MatnMaydoni
-          yorliq="Телефон рақами"
+          yorliq={tr("Телефон рақами")}
           turi="tel"
           qiymat={h.telefon}
           ozgardi={(q) => yangila('telefon', q)}
@@ -193,64 +197,64 @@ export function SuhbatFormasi({
         />
 
         <TanlovMaydoni
-          yorliq="Жинси"
+          yorliq={tr("Жинси")}
           variantlar={JINS}
           qiymat={h.jinsi}
           ozgardi={(q) => yangila('jinsi', q ?? 'Erkak')}
         />
         <TanlovMaydoni
-          yorliq="Оилавий ҳолати"
+          yorliq={tr("Оилавий ҳолати")}
           variantlar={OILAVIY_HOLAT}
           qiymat={h.oilaviyHolat}
           ozgardi={(q) => yangila('oilaviyHolat', q)}
         />
 
         <RaqamMaydoni
-          yorliq="Фарзандлари сони"
+          yorliq={tr("Фарзандлари сони")}
           qiymat={h.farzandlarSoni}
           ozgardi={(q) => yangila('farzandlarSoni', q)}
           max={20}
         />
         <MatnMaydoni
-          yorliq="Миллати"
+          yorliq={tr("Миллати")}
           qiymat={h.millati}
           ozgardi={(q) => yangila('millati', q)}
         />
 
         <SanaMaydoni
-          yorliq="Туғилган санаси"
+          yorliq={tr("Туғилган санаси")}
           qiymat={h.tugilganSana}
           ozgardi={(q) => yangila('tugilganSana', q)}
           eng_erta="1940-01-01"
           eng_kech="2010-12-31"
         />
         <TanlovMaydoni
-          yorliq="Маълумоти"
+          yorliq={tr("Маълумоти")}
           variantlar={MALUMOT}
           qiymat={h.malumoti}
           ozgardi={(q) => yangila('malumoti', q)}
         />
 
         <MatnMaydoni
-          yorliq="Мутахассислиги"
+          yorliq={tr("Мутахассислиги")}
           qiymat={h.mutaxassisligi}
           ozgardi={(q) => yangila('mutaxassisligi', q)}
         />
         <MatnMaydoni
-          yorliq="Соғлиғи ҳолати"
+          yorliq={tr("Соғлиғи ҳолати")}
           qiymat={h.sogliqHolati}
           ozgardi={(q) => yangila('sogliqHolati', q)}
         />
 
         <HaYoqMaydoni
-          yorliq="Ногиронлиги"
+          yorliq={tr("Ногиронлиги")}
           qiymat={h.nogironlik}
           ozgardi={(q) => yangila('nogironlik', q)}
         />
 
         {h.nogironlik && (
           <TanlovMaydoni
-            yorliq="Ногиронлик гуруҳи"
+            yorliq={tr("Ногиронлик гуруҳи")}
             majburiy
             variantlar={NOGIRONLIK_GURUHI}
             qiymat={h.nogironlikGuruhi}
@@ -261,7 +265,7 @@ export function SuhbatFormasi({
 
         <ToliqKeng>
           <MatnMaydoni
-            yorliq="Яшаш манзили (рўйхатда турган)"
+            yorliq={tr("Яшаш манзили (рўйхатда турган)")}
             qiymat={h.yashashManzili}
             ozgardi={(q) => yangila('yashashManzili', q)}
           />
@@ -271,49 +275,49 @@ export function SuhbatFormasi({
       {/* ── Mehnat tajribasi va istaklari ── */}
       <Bolim
         raqam="4.10"
-        sarlavha="Иш тажрибаси ва истаклари"
-        izoh="Бу бўлимдаги «қайси касбни ўрганиш истаги» ва «қандай ишда ишлашни хоҳлайди» жавоблари курс очиш ва мослаштириш қарорларига асос бўлади."
+        sarlavha={tr("Иш тажрибаси ва истаклари")}
+        izoh={tr("Бу бўлимдаги «қайси касбни ўрганиш истаги» ва «қандай ишда ишлашни хоҳлайди» жавоблари курс очиш ва мослаштириш қарорларига асос бўлади.")}
       >
         <HaYoqMaydoni
-          yorliq="Касб-ҳунар ёки қайта тайёрлашга эҳтиёжи"
+          yorliq={tr("Касб-ҳунар ёки қайта тайёрлашга эҳтиёжи")}
           qiymat={h.kasbHunarEhtiyoji}
           ozgardi={(q) => yangila('kasbHunarEhtiyoji', q)}
         />
 
         {h.kasbHunarEhtiyoji && (
           <MatnMaydoni
-            yorliq="Қайси касбни ўрганиш истаги"
-            izoh="Аниқ касб ёзинг"
+            yorliq={tr("Қайси касбни ўрганиш истаги")}
+            izoh={tr("Аниқ касб ёзинг")}
             qiymat={h.organmoqchiKasb}
             ozgardi={(q) => yangila('organmoqchiKasb', q)}
-            placeholder="масалан: пайвандчи"
+            placeholder={tr("масалан: пайвандчи")}
           />
         )}
 
         <RaqamMaydoni
-          yorliq="Иш тажрибаси"
+          yorliq={tr("Иш тажрибаси")}
           qiymat={h.ishTajribasiYil}
           ozgardi={(q) => yangila('ishTajribasiYil', q)}
           max={60}
           qadam={0.5}
-          birlik="йил"
+          birlik={tr("йил")}
         />
 
         <MatnMaydoni
-          yorliq="Охирги иш жойи"
+          yorliq={tr("Охирги иш жойи")}
           qiymat={h.oxirgiIshJoyi}
           ozgardi={(q) => yangila('oxirgiIshJoyi', q)}
         />
 
         <SanaMaydoni
-          yorliq="Ишдан бўшаган санаси"
+          yorliq={tr("Ишдан бўшаган санаси")}
           qiymat={h.ishdanBoshaganSana}
           ozgardi={(q) => yangila('ishdanBoshaganSana', q)}
         />
 
         <ToliqKeng>
           <MatnMaydoni
-            yorliq="Аввал қаерда ва қандай лавозимда ишлаган"
+            yorliq={tr("Аввал қаерда ва қандай лавозимда ишлаган")}
             koptator
             qiymat={h.avvalgiIshJoyi}
             ozgardi={(q) => yangila('avvalgiIshJoyi', q)}
@@ -321,27 +325,27 @@ export function SuhbatFormasi({
         </ToliqKeng>
 
         <MatnMaydoni
-          yorliq="Қандай ишда ишлашни хоҳлайди"
-          izoh="Касби ёки йўналиши"
+          yorliq={tr("Қандай ишда ишлашни хоҳлайди")}
+          izoh={tr("Касби ёки йўналиши")}
           qiymat={h.xohlaganIsh}
           ozgardi={(q) => yangila('xohlaganIsh', q)}
         />
 
         <PulMaydoni
-          yorliq="Кутилаётган иш ҳақи"
+          yorliq={tr("Кутилаётган иш ҳақи")}
           qiymat={h.kutilayotganMaosh}
           ozgardi={(q) => yangila('kutilayotganMaosh', q)}
         />
 
         <TanlovMaydoni
-          yorliq="Ишлашга тайёрлиги"
+          yorliq={tr("Ишлашга тайёрлиги")}
           variantlar={ISHGA_TAYYORLIK}
           qiymat={h.ishgaTayyorligi}
           ozgardi={(q) => yangila('ishgaTayyorligi', q)}
         />
 
         <HaYoqMaydoni
-          yorliq="Ҳайдовчилик гувоҳномаси"
+          yorliq={tr("Ҳайдовчилик гувоҳномаси")}
           qiymat={h.haydovchilikGuvohnomasi}
           ozgardi={(q) => yangila('haydovchilikGuvohnomasi', q)}
         />
@@ -349,7 +353,7 @@ export function SuhbatFormasi({
         {h.haydovchilikGuvohnomasi && (
           <ToliqKeng>
             <KopTanlovMaydoni
-              yorliq="Тоифаси"
+              yorliq={tr("Тоифаси")}
               variantlar={HAYDOVCHILIK_TOIFASI}
               qiymatlar={h.haydovchilikToifasi}
               ozgardi={(q) => yangila('haydovchilikToifasi', q)}
@@ -359,8 +363,8 @@ export function SuhbatFormasi({
 
         <ToliqKeng>
           <HaYoqMaydoni
-            yorliq="Имтиёз ёки субсидияга эҳтиёжи"
-            izoh="Асбоб-ускуна, кредит, субсидия, грант ва бошқалар"
+            yorliq={tr("Имтиёз ёки субсидияга эҳтиёжи")}
+            izoh={tr("Асбоб-ускуна, кредит, субсидия, грант ва бошқалар")}
             qiymat={h.imtiyozEhtiyoji}
             ozgardi={(q) => yangila('imtiyozEhtiyoji', q)}
           />
@@ -369,7 +373,7 @@ export function SuhbatFormasi({
         {h.imtiyozEhtiyoji && (
           <ToliqKeng>
             <KopTanlovMaydoni
-              yorliq="Қандай кўмак керак"
+              yorliq={tr("Қандай кўмак керак")}
               variantlar={MOLIYA_TURI}
               qiymatlar={h.imtiyozTuri}
               ozgardi={(q) => yangila('imtiyozTuri', q)}
@@ -381,12 +385,12 @@ export function SuhbatFormasi({
       {/* ── 5. Bandlik takliflari ── */}
       <Bolim
         raqam="5"
-        sarlavha="Бандлигини таъминлаш бўйича таклифлар"
-        izoh="Таклиф белгиланиши билан фуқаронинг ҳолати «Таклиф берилди» га ўтади."
+        sarlavha={tr("Бандлигини таъминлаш бўйича таклифлар")}
+        izoh={tr("Таклиф белгиланиши билан фуқаронинг ҳолати «Таклиф берилди» га ўтади.")}
       >
         <ToliqKeng>
           <KopTanlovMaydoni
-            yorliq="Таклиф этилаётган йўл(лар)"
+            yorliq={tr("Таклиф этилаётган йўл(лар)")}
             variantlar={BANDLIK_TAKLIFI}
             qiymatlar={h.takliflar}
             ozgardi={(q) => yangila('takliflar', q)}
@@ -395,7 +399,7 @@ export function SuhbatFormasi({
 
         <ToliqKeng>
           <MatnMaydoni
-            yorliq="Таклиф изоҳи"
+            yorliq={tr("Таклиф изоҳи")}
             koptator
             qiymat={h.taklifIzohi}
             ozgardi={(q) => yangila('taklifIzohi', q)}
@@ -404,8 +408,8 @@ export function SuhbatFormasi({
 
         <ToliqKeng>
           <MatnMaydoni
-            yorliq="ХУЛОСА"
-            izoh="Фуқаронинг бандлигини таъминлаш учун нима қилиш керак"
+            yorliq={tr("ХУЛОСА")}
+            izoh={tr("Фуқаронинг бандлигини таъминлаш учун нима қилиш керак")}
             koptator
             qiymat={h.xulosa}
             ozgardi={(q) => yangila('xulosa', q)}
@@ -416,27 +420,27 @@ export function SuhbatFormasi({
       {/* ── Natija ── */}
       <Bolim
         raqam="6"
-        sarlavha="Натижа"
-        izoh="Иш жойи ёзилиши билан ҳолат «Жойлаштирилди» га ўтади — бу ҳоким панелидаги асосий кўрсаткич."
+        sarlavha={tr("Натижа")}
+        izoh={tr("Иш жойи ёзилиши билан ҳолат «Жойлаштирилди» га ўтади — бу ҳоким панелидаги асосий кўрсаткич.")}
       >
         <MatnMaydoni
-          yorliq="Иш жойи (корхона номи)"
+          yorliq={tr("Иш жойи (корхона номи)")}
           qiymat={h.ishJoyi}
           ozgardi={(q) => yangila('ishJoyi', q)}
           xato={xatolar.ishJoyi}
         />
         <MatnMaydoni
-          yorliq="Лавозими"
+          yorliq={tr("Лавозими")}
           qiymat={h.ishLavozimi}
           ozgardi={(q) => yangila('ishLavozimi', q)}
         />
         <SanaMaydoni
-          yorliq="Ишга кирган санаси"
+          yorliq={tr("Ишга кирган санаси")}
           qiymat={h.ishgaKirganSana}
           ozgardi={(q) => yangila('ishgaKirganSana', q)}
         />
         <MatnMaydoni
-          yorliq="Рад этган бўлса — сабаби"
+          yorliq={tr("Рад этган бўлса — сабаби")}
           qiymat={h.radSababi}
           ozgardi={(q) => yangila('radSababi', q)}
         />
@@ -447,14 +451,14 @@ export function SuhbatFormasi({
           type="button"
           onClick={yubor}
           disabled={saqlanmoqda}
-          className="flex items-center gap-1.5 rounded-md bg-accent-solid px-5 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="flex items-center gap-1.5 tugma-asosiy rounded-md px-5 py-2.5 text-sm font-semibold"
         >
           {saqlanmoqda ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Сақлаш
+          {tr('Сақлаш')}
         </button>
       </div>
     </div>

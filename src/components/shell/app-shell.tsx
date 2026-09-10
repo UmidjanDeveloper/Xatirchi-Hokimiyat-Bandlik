@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -7,6 +9,9 @@ import * as Ikonkalar from 'lucide-react';
 import { LogOut, Menu, X } from 'lucide-react';
 import type { Rol } from '@prisma/client';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
+import { AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
+import { Gerb } from '@/components/shared/gerb';
+import { SiteFooter } from '@/components/shared/site-footer';
 import { menyuOl, ROL_NOMI } from './navigatsiya';
 import { initials } from '@/lib/utils';
 
@@ -27,6 +32,8 @@ function Ikonka({ nomi, className }: { nomi: string; className?: string }) {
 }
 
 export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
+  const { t: tr } = useAlifbo();
+
   const yol = usePathname();
   const router = useRouter();
   const [ochiq, setOchiq] = useState(false);
@@ -44,12 +51,12 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
   return (
     <div className="min-h-dvh bg-canvas">
       {/* ── Yuqori panel ── */}
-      <header className="sticky top-0 z-30 border-b border-line bg-elev">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
+      <header className="sticky top-0 z-30 border-b border-line bg-elev/95 backdrop-blur supports-[backdrop-filter]:bg-elev/80">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4">
           <button
             type="button"
             onClick={() => setOchiq((o) => !o)}
-            aria-label={ochiq ? 'Менюни ёпиш' : 'Менюни очиш'}
+            aria-label={ochiq ? tr('Менюни ёпиш') : tr('Менюни очиш')}
             aria-expanded={ochiq}
             className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink lg:hidden"
           >
@@ -57,33 +64,19 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
           </button>
 
           <Link href="/" className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-soft">
-              <svg
-                viewBox="0 0 24 24"
-                className="h-[18px] w-[18px]"
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M3 21h18" />
-                <path d="M5 21V7l7-4 7 4v14" />
-                <path d="M9 21v-6h6v6" />
-              </svg>
-            </span>
+            <Gerb olcham={34} className="shrink-0" />
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold leading-tight text-ink">
-                Хатирчи бандлик
+                {tr('Хатирчи бандлик')}
               </span>
               <span className="block truncate text-[11px] leading-tight text-ink-faint">
-                {mahallaNomi ? `${mahallaNomi} МФЙ` : 'Туман ҳокимлиги'}
+                {mahallaNomi ? tr(`${mahallaNomi} МФЙ`) : tr('Туман ҳокимлиги')}
               </span>
             </span>
           </Link>
 
           <div className="ml-auto flex items-center gap-1.5">
+            <AlifboTugmasi />
             <ThemeToggle />
             <div className="hidden items-center gap-2.5 border-l border-line pl-3 sm:flex">
               <span
@@ -97,14 +90,14 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
                   {fullName}
                 </span>
                 <span className="block truncate text-[11px] leading-tight text-ink-faint">
-                  {ROL_NOMI[rol]}
+                  {tr(ROL_NOMI[rol])}
                 </span>
               </span>
             </div>
             <button
               type="button"
               onClick={chiq}
-              aria-label="Тизимдан чиқиш"
+              aria-label={tr("Тизимдан чиқиш")}
               className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-danger-bg hover:text-danger"
             >
               <LogOut className="h-5 w-5" />
@@ -118,7 +111,7 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
         <aside
           className={`${
             ochiq ? 'block' : 'hidden'
-          } fixed inset-x-0 top-14 z-20 border-b border-line bg-elev p-3 lg:sticky lg:top-14 lg:block lg:h-[calc(100dvh-3.5rem)] lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:bg-transparent`}
+          } fixed inset-x-0 top-16 z-20 border-b border-line bg-elev p-3 lg:sticky lg:top-16 lg:block lg:h-[calc(100dvh-4rem)] lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:bg-transparent`}
         >
           <nav className="space-y-0.5">
             {bandlar.map((b) => (
@@ -127,14 +120,14 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
                 href={b.yol}
                 onClick={() => setOchiq(false)}
                 aria-current={faolmi(b.yol) ? 'page' : undefined}
-                className={`flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`relative flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                   faolmi(b.yol)
-                    ? 'bg-accent-soft text-accent'
+                    ? 'bg-accent-soft font-semibold text-accent'
                     : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
                 }`}
               >
                 <Ikonka nomi={b.ikonka} className="h-[18px] w-[18px] shrink-0" />
-                <span className="truncate">{b.nomi}</span>
+                <span className="truncate">{tr(b.nomi)}</span>
               </Link>
             ))}
           </nav>
@@ -146,8 +139,7 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
           */}
           {rol === 'YETTILIK' && mahallaNomi && (
             <p className="mt-4 rounded-md bg-surface-muted px-3 py-2.5 text-[11px] leading-relaxed text-ink-faint">
-              Сиз <span className="font-semibold text-ink-muted">{mahallaNomi}</span> МФЙ
-              га бириктирилгансиз ва фақат шу маҳалла маълумотларини кўрасиз.
+              {tr('Сиз')} <span className="font-semibold text-ink-muted">{mahallaNomi}</span> {tr('МФЙ га бириктирилгансиз ва фақат шу маҳалла маълумотларини кўрасиз.')}
             </p>
           )}
         </aside>
@@ -156,13 +148,16 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
         {ochiq && (
           <button
             type="button"
-            aria-label="Менюни ёпиш"
+            aria-label={tr("Менюни ёпиш")}
             onClick={() => setOchiq(false)}
-            className="fixed inset-0 top-14 z-10 bg-black/20 lg:hidden"
+            className="fixed inset-0 top-16 z-10 bg-black/20 lg:hidden"
           />
         )}
 
-        <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
+          <SiteFooter />
+        </div>
       </div>
     </div>
   );

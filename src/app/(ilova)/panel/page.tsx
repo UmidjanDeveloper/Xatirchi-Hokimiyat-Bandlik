@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import { ArrowRight, Briefcase, House, TrendingUp, Users } from 'lucide-react';
 import { joriySessiya, mahallaFiltri, tahlilKoradi } from '@/lib/auth';
@@ -13,11 +14,22 @@ import {
   Voronka,
 } from '@/components/panel/diagrammalar';
 
-export const metadata = { title: 'Таҳлил панели' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Таҳлил панели') };
+}
 
 const raqam = (n: number) => n.toLocaleString('ru-RU');
 
 export default async function PanelSahifasi() {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
   if (!tahlilKoradi(sessiya.rol)) redirect('/');
@@ -31,9 +43,9 @@ export default async function PanelSahifasi() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-bold text-ink">Таҳлил панели</h1>
+        <h1 className="sahifa-sarlavha">{tr('Таҳлил панели')}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Хатирчи тумани · {raqam(bosh.bazaAholi)} аҳоли · {raqam(bosh.bazaXonadon)} хонадон
+          {tr('Хатирчи тумани ·')} {raqam(bosh.bazaAholi)} {tr('аҳоли ·')} {raqam(bosh.bazaXonadon)} {tr('хонадон')}
         </p>
       </div>
 
@@ -45,11 +57,10 @@ export default async function PanelSahifasi() {
       */}
       {bosh.xatlovXonadon === 0 ? (
         <div className="karta p-8 text-center">
-          <p className="text-sm font-medium text-ink">Ҳали хатлов бошланмаган.</p>
+          <p className="text-sm font-medium text-ink">{tr('Ҳали хатлов бошланмаган.')}</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-            Маҳалла еттилиги аъзолари хонадонларни хатловдан ўтказа бошлагач, бу
-            саҳифада қамров, воронка ва тавсиялар пайдо бўлади. Рўйхатда{' '}
-            {raqam(bosh.bazaIshsiz)} та ишсиз фуқаро бор.
+            {tr('Маҳалла еттилиги аъзолари хонадонларни хатловдан ўтказа бошлагач, бу саҳифада қамров, воронка ва тавсиялар пайдо бўлади. Рўйхатда')}{' '}
+            {raqam(bosh.bazaIshsiz)} {tr('та ишсиз фуқаро бор.')}
           </p>
         </div>
       ) : (
@@ -58,38 +69,37 @@ export default async function PanelSahifasi() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Kpi
               ikonka={<House className="h-4 w-4" />}
-              nomi="Хатловдан ўтган хонадон"
+              nomi={tr("Хатловдан ўтган хонадон")}
               qiymat={raqam(bosh.xatlovXonadon)}
-              izoh={`${raqam(bosh.bazaXonadon)} тадан · ${percent(bosh.xatlovXonadon, bosh.bazaXonadon)}%`}
+              izoh={tr(`${raqam(bosh.bazaXonadon)} тадан · ${percent(bosh.xatlovXonadon, bosh.bazaXonadon)}%`)}
             />
             <Kpi
               ikonka={<Users className="h-4 w-4" />}
-              nomi="Аниқланган ишсиз"
+              nomi={tr("Аниқланган ишсиз")}
               qiymat={raqam(bosh.aniqlangan)}
-              izoh={`Рўйхатда ${raqam(bosh.bazaIshsiz)} та · ${percent(bosh.aniqlangan, bosh.bazaIshsiz)}%`}
+              izoh={tr(`Рўйхатда ${raqam(bosh.bazaIshsiz)} та · ${percent(bosh.aniqlangan, bosh.bazaIshsiz)}%`)}
             />
             <Kpi
               ikonka={<Briefcase className="h-4 w-4" />}
-              nomi="Жойлаштирилган"
+              nomi={tr("Жойлаштирилган")}
               qiymat={raqam(bosh.joylashtirilgan)}
-              izoh={`Аниқланганларнинг ${percent(bosh.joylashtirilgan, bosh.aniqlangan)}%`}
+              izoh={tr(`Аниқланганларнинг ${percent(bosh.joylashtirilgan, bosh.aniqlangan)}%`)}
               yaxshi
             />
             <Kpi
               ikonka={<TrendingUp className="h-4 w-4" />}
-              nomi="Ишсизликка таъсир"
+              nomi={tr("Ишсизликка таъсир")}
               qiymat={`${percent(bosh.joylashtirilgan, bosh.bazaIshsiz)}%`}
-              izoh={`Рўйхатдаги ${raqam(bosh.bazaIshsiz)} тадан`}
+              izoh={tr(`Рўйхатдаги ${raqam(bosh.bazaIshsiz)} тадан`)}
             />
           </div>
 
           {/* ── Tavsiyalar ── */}
           {tavsiyalar.length > 0 && (
             <section className="karta p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-ink">Тавсиялар</h2>
+              <h2 className="text-sm font-bold text-ink">{tr('Тавсиялар')}</h2>
               <p className="mt-1 text-xs text-ink-faint">
-                Диаграммалар «нима бўлаётганини» айтади, бу рўйхат «энди нима қилиш
-                кераклигини»
+                {tr('Диаграммалар «нима бўлаётганини» айтади, бу рўйхат «энди нима қилиш кераклигини»')}
               </p>
 
               <div className="mt-4 space-y-2">
@@ -101,14 +111,14 @@ export default async function PanelSahifasi() {
                         <span
                           className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${k.sinf}`}
                         >
-                          {k.nomi}
+                          {tr(k.nomi)}
                         </span>
                         <span className="min-w-0 text-sm font-medium text-ink">
-                          {tv.sarlavha}
+                          {tr(tv.sarlavha)}
                         </span>
                       </div>
                       <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                        {tv.dalil}
+                        {tr(tv.dalil)}
                       </p>
                     </>
                   );
@@ -141,15 +151,15 @@ export default async function PanelSahifasi() {
             <div className="grid gap-4 lg:grid-cols-2">
               <QamrovReytingi
                 qamrov={t.qamrov}
-                sarlavha="Хатлов қамрови — орқада қолган маҳаллалар"
-                izoh="Рўйхатдаги ишсизлардан нечтаси хатловдан ўтган"
+                sarlavha={tr("Хатлов қамрови — орқада қолган маҳаллалар")}
+                izoh={tr("Рўйхатдаги ишсизлардан нечтаси хатловдан ўтган")}
                 maydon="qamrovFoizi"
                 ortadan
               />
               <QamrovReytingi
                 qamrov={t.qamrov}
-                sarlavha="Жойлаштириш натижаси — энг паст маҳаллалар"
-                izoh="Рўйхатдаги ишсизлардан нечтаси ишга жойлашган"
+                sarlavha={tr("Жойлаштириш натижаси — энг паст маҳаллалар")}
+                izoh={tr("Рўйхатдаги ишсизлардан нечтаси ишга жойлашган")}
                 maydon="natijaFoizi"
                 ortadan
               />
@@ -163,20 +173,20 @@ export default async function PanelSahifasi() {
 
           {/* ── Toifalar ── */}
           <section className="karta p-4 sm:p-5">
-            <h2 className="text-sm font-bold text-ink">Ишсизлар таркиби</h2>
+            <h2 className="text-sm font-bold text-ink">{tr('Ишсизлар таркиби')}</h2>
             <p className="mt-1 text-xs text-ink-faint">
-              Свод жадвалидаги тоифалар — алоҳида эътибор талаб қилади
+              {tr('Свод жадвалидаги тоифалар — алоҳида эътибор талаб қилади')}
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <Toifa nomi="Аёллар дафтари" soni={t.toifalar.ayollarDaftari} />
-              <Toifa nomi="Ижтимоий реестр" soni={t.toifalar.ijtimoiyReestr} />
+              <Toifa nomi={tr("Аёллар дафтари")} soni={t.toifalar.ayollarDaftari} />
+              <Toifa nomi={tr("Ижтимоий реестр")} soni={t.toifalar.ijtimoiyReestr} />
               <Toifa
-                nomi="Миграциядан қайтган"
+                nomi={tr("Миграциядан қайтган")}
                 soni={t.toifalar.migratsiyadanQaytgan}
               />
-              <Toifa nomi="Олий битирувчи" soni={t.toifalar.oliyBitiruvchi} />
+              <Toifa nomi={tr("Олий битирувчи")} soni={t.toifalar.oliyBitiruvchi} />
               <Toifa
-                nomi="Ўрта махсус битирувчи"
+                nomi={tr("Ўрта махсус битирувчи")}
                 soni={t.toifalar.ortaMaxsusBitiruvchi}
               />
             </div>
@@ -185,24 +195,22 @@ export default async function PanelSahifasi() {
           {/* ── To'liq jadval ── */}
           {!filtr.mahallaId && (
             <section className="karta p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-ink">Барча маҳаллалар</h2>
+              <h2 className="text-sm font-bold text-ink">{tr('Барча маҳаллалар')}</h2>
               <p className="mt-1 text-xs text-ink-faint">
-                Диаграммаларда фақат энг паст кўрсаткичлилар кўринади — бу ерда
-                тўлиқ рўйхат. <span className="text-warn">▲</span> белгиси —
-                хатлов рўйхатдагидан кўпроқ ишсиз топган маҳалла.
+                {tr('Диаграммаларда фақат энг паст кўрсаткичлилар кўринади — бу ерда тўлиқ рўйхат.')} <span className="text-warn">▲</span> {tr('белгиси — хатлов рўйхатдагидан кўпроқ ишсиз топган маҳалла.')}
               </p>
 
               <div className="jadval-orash mt-4">
                 <table className="w-full min-w-[38rem] text-sm">
                   <thead>
                     <tr className="border-b border-line text-left text-xs text-ink-faint">
-                      <th className="pb-2 pr-3 font-medium">МФЙ</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Хонадон</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Рўйхатда</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Аниқланган</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Қамров</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Жойлашган</th>
-                      <th className="pb-2 text-right font-medium">Натижа</th>
+                      <th className="pb-2 pr-3 font-medium">{tr('МФЙ')}</th>
+                      <th className="pb-2 pr-3 text-right font-medium">{tr('Хонадон')}</th>
+                      <th className="pb-2 pr-3 text-right font-medium">{tr('Рўйхатда')}</th>
+                      <th className="pb-2 pr-3 text-right font-medium">{tr('Аниқланган')}</th>
+                      <th className="pb-2 pr-3 text-right font-medium">{tr('Қамров')}</th>
+                      <th className="pb-2 pr-3 text-right font-medium">{tr('Жойлашган')}</th>
+                      <th className="pb-2 text-right font-medium">{tr('Натижа')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -211,7 +219,7 @@ export default async function PanelSahifasi() {
                         key={m.id}
                         className="border-b border-line last:border-0 hover:bg-surface-muted"
                       >
-                        <td className="py-2 pr-3 text-ink">{m.nomiKirill}</td>
+                        <td className="py-2 pr-3 text-ink">{tr(m.nomiKirill)}</td>
                         <td className="raqam py-2 pr-3 text-right text-ink-muted">
                           {m.xatlovXonadon}/{m.bazaXonadon}
                         </td>
@@ -233,7 +241,7 @@ export default async function PanelSahifasi() {
                           {m.qamrovFoizi > 100 && (
                             <span
                               className="ml-1 text-warn"
-                              title="Хатлов рўйхатдагидан кўпроқ ишсиз топган"
+                              title={tr("Хатлов рўйхатдагидан кўпроқ ишсиз топган")}
                             >
                               ▲
                             </span>

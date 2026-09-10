@@ -1,11 +1,23 @@
 import { redirect } from 'next/navigation';
+import { matnchi } from '@/lib/alifbo-server';
 import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { XatlovFormasi } from '@/components/xatlov/xatlov-formasi';
 
-export const metadata = { title: 'Янги хатлов' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Янги хатлов') };
+}
 
 export default async function YangiXatlov() {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
 
@@ -19,9 +31,9 @@ export default async function YangiXatlov() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div>
-        <h1 className="text-lg font-bold text-ink">Хонадонни хатловдан ўтказиш</h1>
+        <h1 className="sahifa-sarlavha">{tr('Хонадонни хатловдан ўтказиш')}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Камбағал оилаларни хатловдан ўтказиш сўровномаси — 11 бўлим
+          {tr('Камбағал оилаларни хатловдан ўтказиш сўровномаси — 11 бўлим')}
         </p>
       </div>
 

@@ -1,13 +1,24 @@
 import Link from 'next/link';
+import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import type { IshsizHolati, Prisma } from '@prisma/client';
 import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatPhone, percent } from '@/lib/utils';
 import { MALUMOT, kirillcha } from '@/lib/constants';
-import { HolatNishoni, ISHSIZ_HOLATI, VORONKA } from '@/components/ishsiz/holat-nishoni';
+import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
+import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 
-export const metadata = { title: 'Ишсиз фуқаролар' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Ишсиз фуқаролар') };
+}
 
 const SAHIFA_HAJMI = 30;
 
@@ -16,6 +27,8 @@ export default async function IshsizlarSahifasi({
 }: {
   searchParams: { holati?: string; mahalla?: string; q?: string; sahifa?: string };
 }) {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
 
@@ -86,9 +99,9 @@ export default async function IshsizlarSahifasi({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-bold text-ink">Ишсиз фуқаролар</h1>
+        <h1 className="sahifa-sarlavha">{tr('Ишсиз фуқаролар')}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Жами {jamiFuqaro} та · жойлаштирилган {joylashtirilgan} та (
+          {tr('Жами')} {jamiFuqaro} {tr('та · жойлаштирилган')} {joylashtirilgan} {tr('та (')}
           {percent(joylashtirilgan, jamiFuqaro)}%)
         </p>
       </div>
@@ -106,7 +119,7 @@ export default async function IshsizlarSahifasi({
             <Link
               key={h}
               href={faol ? '/ishsizlar' : `/ishsizlar?holati=${h}`}
-              className={`karta p-3 transition-colors hover:border-line-strong ${
+              className={`karta karta-bosiladigan p-3 ${
                 faol ? 'border-accent' : ''
               }`}
             >
@@ -116,7 +129,7 @@ export default async function IshsizlarSahifasi({
               />
               <p className="raqam mt-2 text-xl font-bold text-ink">{soni}</p>
               <p className="mt-0.5 text-[11px] leading-tight text-ink-faint">
-                {ISHSIZ_HOLATI[h].kirill}
+                {tr(ISHSIZ_HOLATI[h].kirill)}
               </p>
             </Link>
           );
@@ -129,7 +142,7 @@ export default async function IshsizlarSahifasi({
           type="search"
           name="q"
           defaultValue={searchParams.q ?? ''}
-          placeholder="Ф.И.Ш., касб ёки йўналиш бўйича қидириш"
+          placeholder={tr("Ф.И.Ш., касб ёки йўналиш бўйича қидириш")}
           className="min-w-[12rem] flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
         />
 
@@ -139,10 +152,10 @@ export default async function IshsizlarSahifasi({
             defaultValue={searchParams.mahalla ?? ''}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
           >
-            <option value="">Барча маҳаллалар</option>
+            <option value="">{tr('Барча маҳаллалар')}</option>
             {mahallalar.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.nomiKirill}
+                {tr(m.nomiKirill)}
               </option>
             ))}
           </select>
@@ -152,16 +165,16 @@ export default async function IshsizlarSahifasi({
 
         <button
           type="submit"
-          className="rounded-md bg-accent-solid px-4 py-2 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90"
+          className="tugma-asosiy rounded-md px-4 py-2 text-sm font-semibold"
         >
-          Қидириш
+          {tr('Қидириш')}
         </button>
       </form>
 
       {/* ── Ro'yxat ── */}
       {royxat.length === 0 ? (
         <div className="karta p-8 text-center text-sm text-ink-muted">
-          Шартга мос фуқаро топилмади.
+          {tr('Шартга мос фуқаро топилмади.')}
         </div>
       ) : (
         <div className="karta divide-y divide-line">
@@ -177,9 +190,9 @@ export default async function IshsizlarSahifasi({
                   <HolatNishoni holati={p.holati} />
                 </div>
                 <p className="mt-0.5 truncate text-xs text-ink-faint">
-                  {p.mahalla.nomiKirill} · {p.jinsi === 'Erkak' ? 'Эркак' : 'Аёл'}
-                  {p.malumoti ? ` · ${kirillcha(MALUMOT, p.malumoti)}` : ''}
-                  {p.xohlaganIsh ? ` · истаги: ${p.xohlaganIsh}` : ''}
+                  {tr(p.mahalla.nomiKirill)} · {p.jinsi === 'Erkak' ? tr('Эркак') : tr('Аёл')}
+                  {p.malumoti ? ` · ${tr(kirillcha(MALUMOT, p.malumoti))}` : ''}
+                  {p.xohlaganIsh ? tr(` · истаги: ${p.xohlaganIsh}`) : ''}
                 </p>
               </div>
               {p.telefon && (
@@ -215,6 +228,8 @@ function Sahifalash({
   hajm: number;
   searchParams: Record<string, string | undefined>;
 }) {
+  const tr = matnchi();
+
   const oxirgi = Math.ceil(jami / hajm);
   const yol = (n: number) => {
     const p = new URLSearchParams();
@@ -232,7 +247,7 @@ function Sahifalash({
           href={yol(sahifa - 1)}
           className="rounded-md border border-line px-3.5 py-2 text-sm text-ink-muted hover:text-ink"
         >
-          Олдинги
+          {tr('Олдинги')}
         </Link>
       ) : (
         <span />
@@ -247,7 +262,7 @@ function Sahifalash({
           href={yol(sahifa + 1)}
           className="rounded-md border border-line px-3.5 py-2 text-sm text-ink-muted hover:text-ink"
         >
-          Кейинги
+          {tr('Кейинги')}
         </Link>
       ) : (
         <span />

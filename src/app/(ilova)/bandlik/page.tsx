@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import { ArrowRight, GraduationCap, Plane, Target, UserCheck } from 'lucide-react';
 import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
@@ -8,9 +9,20 @@ import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 
-export const metadata = { title: 'Операцион панел' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Операцион панел') };
+}
 
 export default async function BandlikSahifasi() {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
@@ -149,43 +161,42 @@ export default async function BandlikSahifasi() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-bold text-ink">Операцион панел</h1>
+        <h1 className="sahifa-sarlavha">{tr('Операцион панел')}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Кундалик иш: навбат, мослаштириш ва курс талаби
+          {tr('Кундалик иш: навбат, мослаштириш ва курс талаби')}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Kpi
           ikonka={<UserCheck className="h-4 w-4" />}
-          nomi="Суҳбат кутмоқда"
+          nomi={tr("Суҳбат кутмоқда")}
           qiymat={t.voronka[0].soni - t.voronka[1].soni}
           xavfli={t.voronka[0].soni - t.voronka[1].soni > 30}
         />
         <Kpi
           ikonka={<Target className="h-4 w-4" />}
-          nomi="Таклиф кутмоқда"
+          nomi={tr("Таклиф кутмоқда")}
           qiymat={t.voronka[1].soni - t.voronka[2].soni}
         />
         <Kpi
           ikonka={<GraduationCap className="h-4 w-4" />}
-          nomi="Бўш иш ўрни"
+          nomi={tr("Бўш иш ўрни")}
           qiymat={bandOrinlar}
         />
-        <Kpi ikonka={<Plane className="h-4 w-4" />} nomi="Миграция номзоди" qiymat={migratsiya} />
+        <Kpi ikonka={<Plane className="h-4 w-4" />} nomi={tr("Миграция номзоди")} qiymat={migratsiya} />
       </div>
 
       {/* ── Moslashtirish taxtasi ── */}
       <section className="karta p-4 sm:p-5">
-        <h2 className="text-sm font-bold text-ink">Мослаштириш тахтаси</h2>
+        <h2 className="text-sm font-bold text-ink">{tr('Мослаштириш тахтаси')}</h2>
         <p className="mt-1 text-xs text-ink-faint">
-          Бўш иш ўрни ↔ шу касбда ишлашни истаган фуқаролар
+          {tr('Бўш иш ўрни ↔ шу касбда ишлашни истаган фуқаролар')}
         </p>
 
         {moslar.length === 0 ? (
           <p className="mt-4 text-sm text-ink-muted">
-            Ҳозирча мос жуфтлик топилмади. Бўш иш ўринлари рўйхатини тўлдиринг ёки
-            фуқароларнинг иш истагини аниқлаштиринг.
+            {tr('Ҳозирча мос жуфтлик топилмади. Бўш иш ўринлари рўйхатини тўлдиринг ёки фуқароларнинг иш истагини аниқлаштиринг.')}
           </p>
         ) : (
           <div className="mt-4 space-y-2">
@@ -196,16 +207,16 @@ export default async function BandlikSahifasi() {
                     {v.lavozim} — {v.korxonaNomi}
                   </span>
                   <span className="raqam shrink-0 text-xs text-ink-faint">
-                    {v.ornlarSoni} ўрин · {v.mahalla.nomiKirill}
+                    {tr(`${v.ornlarSoni} ўрин · ${v.mahalla.nomiKirill}`)}
                   </span>
                 </div>
 
                 <p className="mt-1 text-[11px] text-ink-faint">
                   {v.ozMahallasi.length > 0
-                    ? `Шу маҳаллада ${v.ozMahallasi.length} та номзод`
-                    : 'Шу маҳаллада номзод йўқ'}
+                    ? tr(`Шу маҳаллада ${v.ozMahallasi.length} та номзод`)
+                    : tr('Шу маҳаллада номзод йўқ')}
                   {v.jamiNomzod > v.ozMahallasi.length &&
-                    ` · бошқа маҳаллаларда яна ${v.jamiNomzod - v.ozMahallasi.length} та`}
+                    tr(` · бошқа маҳаллаларда яна ${v.jamiNomzod - v.ozMahallasi.length} та`)}
                 </p>
 
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -224,7 +235,7 @@ export default async function BandlikSahifasi() {
                         {n.fish}
                         {/* Boshqa mahalladan bo'lsa - qayerdanligi ko'rinsin */}
                         {!yaqin && (
-                          <span className="ml-1 text-ink-faint">· {n.mahalla}</span>
+                          <span className="ml-1 text-ink-faint">· {tr(n.mahalla)}</span>
                         )}
                       </Link>
                     );
@@ -234,7 +245,7 @@ export default async function BandlikSahifasi() {
                       href={`/ishsizlar?q=${encodeURIComponent(v.lavozim)}`}
                       className="px-1 py-1 text-[11px] text-ink-faint hover:text-accent"
                     >
-                      +{v.jamiNomzod - v.korsatiladigan.length} та — барчаси
+                      {tr(`+${v.jamiNomzod - v.korsatiladigan.length} та — барчаси`)}
                     </Link>
                   )}
                 </div>
@@ -247,15 +258,15 @@ export default async function BandlikSahifasi() {
       {/* ── Navbatlar ── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Navbat
-          sarlavha="Суҳбат навбати"
-          izoh="Хатловда аниқланган, ҳали суҳбат бўлмаган фуқаролар"
+          sarlavha={tr("Суҳбат навбати")}
+          izoh={tr("Хатловда аниқланган, ҳали суҳбат бўлмаган фуқаролар")}
           royxat={suhbatsiz}
           jami={t.voronka[0].soni - t.voronka[1].soni}
           yol="/ishsizlar?holati=ANIQLANDI"
         />
         <Navbat
-          sarlavha="Таклиф навбати"
-          izoh="Суҳбатдан ўтган, лекин таклиф берилмаган фуқаролар"
+          sarlavha={tr("Таклиф навбати")}
+          izoh={tr("Суҳбатдан ўтган, лекин таклиф берилмаган фуқаролар")}
           royxat={taklifsiz}
           jami={t.voronka[1].soni - t.voronka[2].soni}
           yol="/ishsizlar?holati=SUHBAT_OTKAZILDI"
@@ -264,14 +275,14 @@ export default async function BandlikSahifasi() {
 
       {/* ── Kurs talabi ── */}
       <section className="karta p-4 sm:p-5">
-        <h2 className="text-sm font-bold text-ink">Курс очиш таклифи</h2>
+        <h2 className="text-sm font-bold text-ink">{tr('Курс очиш таклифи')}</h2>
         <p className="mt-1 text-xs text-ink-faint">
-          15 тадан ошган касблар — гуруҳ тўлади
+          {tr('15 тадан ошган касблар — гуруҳ тўлади')}
         </p>
 
         {t.kursTalabi.filter((k) => k.soni >= 15).length === 0 ? (
           <p className="mt-4 text-sm text-ink-muted">
-            Ҳали бирорта касб бўйича гуруҳ тўладиган талаб йиғилмаган.
+            {tr('Ҳали бирорта касб бўйича гуруҳ тўладиган талаб йиғилмаган.')}
           </p>
         ) : (
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -286,7 +297,7 @@ export default async function BandlikSahifasi() {
                     {k.kasb}
                   </span>
                   <span className="raqam shrink-0 text-sm font-bold text-ok">
-                    {k.soni} та
+                    {tr(`${k.soni} та`)}
                   </span>
                 </div>
               ))}
@@ -341,6 +352,8 @@ function Navbat({
   jami: number;
   yol: string;
 }) {
+  const tr = matnchi();
+
   return (
     <section className="karta p-4 sm:p-5">
       <div className="flex items-baseline justify-between gap-2">
@@ -350,7 +363,7 @@ function Navbat({
       <p className="mt-1 text-xs text-ink-faint">{izoh}</p>
 
       {royxat.length === 0 ? (
-        <p className="quti-ok mt-3">Навбат бўш.</p>
+        <p className="quti-ok mt-3">{tr('Навбат бўш.')}</p>
       ) : (
         <>
           <div className="mt-3 divide-y divide-line">
@@ -363,8 +376,8 @@ function Navbat({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-ink">{p.fish}</p>
                   <p className="truncate text-[11px] text-ink-faint">
-                    {p.mahalla.nomiKirill}
-                    {p.xohlaganIsh ? ` · истаги: ${p.xohlaganIsh}` : ''}
+                    {tr(p.mahalla.nomiKirill)}
+                    {p.xohlaganIsh ? tr(` · истаги: ${p.xohlaganIsh}`) : ''}
                   </p>
                 </div>
                 {p.telefon && (
@@ -382,7 +395,7 @@ function Navbat({
               href={yol}
               className="mt-3 flex items-center justify-center gap-1.5 rounded-md border border-line py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
             >
-              Барчасини кўриш ({jami})
+              {tr(`Барчасини кўриш (${jami})`)}
               <ArrowRight className="h-4 w-4" />
             </Link>
           )}

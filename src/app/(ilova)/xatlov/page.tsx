@@ -1,11 +1,21 @@
 import Link from 'next/link';
+import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import { FileText, HousePlus, TriangleAlert, Users } from 'lucide-react';
 import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate, percent } from '@/lib/utils';
 
-export const metadata = { title: 'Хатловларим' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Хатловларим') };
+}
 
 const HOLAT_NISHONI: Record<string, { matn: string; sinf: string }> = {
   QORALAMA: { matn: 'Қоралама', sinf: 'bg-warn-bg text-warn' },
@@ -14,6 +24,8 @@ const HOLAT_NISHONI: Record<string, { matn: string; sinf: string }> = {
 };
 
 export default async function XatlovlarSahifasi() {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
 
@@ -61,17 +73,17 @@ export default async function XatlovlarSahifasi() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold text-ink">Хатловлар</h1>
+          <h1 className="sahifa-sarlavha">{tr('Хатловлар')}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {mahalla ? `${mahalla.nomiKirill} МФЙ` : 'Барча маҳаллалар'}
+            {mahalla ? tr(`${mahalla.nomiKirill} МФЙ`) : tr('Барча маҳаллалар')}
           </p>
         </div>
         <Link
           href="/xatlov/yangi"
-          className="flex items-center gap-1.5 rounded-md bg-accent-solid px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90"
+          className="flex items-center gap-1.5 tugma-asosiy rounded-md px-4 py-2.5 text-sm font-semibold"
         >
           <HousePlus className="h-4 w-4" />
-          Янги хатлов
+          {tr('Янги хатлов')}
         </Link>
       </div>
 
@@ -84,34 +96,34 @@ export default async function XatlovlarSahifasi() {
         <div className="grid gap-3 sm:grid-cols-3">
           <Karta
             ikonka={<FileText className="h-4 w-4" />}
-            nomi="Хатловдан ўтган хонадон"
+            nomi={tr("Хатловдан ўтган хонадон")}
             qiymat={`${yuborilgan.length} / ${mahalla.xonadon}`}
-            izoh={`${percent(yuborilgan.length, mahalla.xonadon)}% қамров`}
+            izoh={tr(`${percent(yuborilgan.length, mahalla.xonadon)}% қамров`)}
           />
           <Karta
             ikonka={<Users className="h-4 w-4" />}
-            nomi="Аниқланган ишсиз"
+            nomi={tr("Аниқланган ишсиз")}
             qiymat={`${topilganIshsiz} / ${mahalla.ishsiz}`}
-            izoh={`Рўйхатда ${mahalla.ishsiz} та`}
+            izoh={tr(`Рўйхатда ${mahalla.ishsiz} та`)}
           />
           <Karta
             ikonka={<TriangleAlert className="h-4 w-4" />}
-            nomi="Тугалланмаган қоралама"
+            nomi={tr("Тугалланмаган қоралама")}
             qiymat={String(qoralamalar.length)}
-            izoh={qoralamalar.length > 0 ? 'Тугатиб юборинг' : 'Ҳаммаси юборилган'}
+            izoh={qoralamalar.length > 0 ? tr('Тугатиб юборинг') : tr('Ҳаммаси юборилган')}
           />
         </div>
       )}
 
       {xatlovlar.length === 0 ? (
         <div className="karta p-8 text-center">
-          <p className="text-sm text-ink-muted">Ҳали бирорта хатлов киритилмаган.</p>
+          <p className="text-sm text-ink-muted">{tr('Ҳали бирорта хатлов киритилмаган.')}</p>
           <Link
             href="/xatlov/yangi"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-accent-solid px-4 py-2.5 text-sm font-semibold text-accent-contrast"
+            className="mt-4 inline-flex items-center gap-1.5 tugma-asosiy rounded-md px-4 py-2.5 text-sm font-semibold"
           >
             <HousePlus className="h-4 w-4" />
-            Биринчи хатловни бошлаш
+            {tr('Биринчи хатловни бошлаш')}
           </Link>
         </div>
       ) : (
@@ -130,19 +142,19 @@ export default async function XatlovlarSahifasi() {
                     <span
                       className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${nishon.sinf}`}
                     >
-                      {nishon.matn}
+                      {tr(nishon.matn)}
                     </span>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-ink-faint">
-                    {x.manzil} · {x.mahalla.nomiKirill}
+                    {x.manzil} · {tr(x.mahalla.nomiKirill)}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-right">
                   <p className="raqam text-xs text-ink-muted">
-                    {x.jamiAzo} киши
+                    {x.jamiAzo} {tr('киши')}
                     {x.ishsizlarSoni > 0 && (
-                      <span className="text-warn"> · {x.ishsizlarSoni} ишсиз</span>
+                      <span className="text-warn"> · {x.ishsizlarSoni} {tr('ишсиз')}</span>
                     )}
                   </p>
                   <p className="mt-0.5 text-[11px] text-ink-faint">{formatDate(x.updatedAt)}</p>

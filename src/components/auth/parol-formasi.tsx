@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { KeyRound, Loader2 } from 'lucide-react';
@@ -13,6 +15,8 @@ import { KeyRound, Loader2 } from 'lucide-react';
  * bo'ladi, shuning uchun birinchi kirishda almashtirish majburiy.
  */
 export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
+  const { t: tr } = useAlifbo();
+
   const router = useRouter();
   const [eski, setEski] = useState('');
   const [yangi, setYangi] = useState('');
@@ -26,7 +30,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
     if (yuklanmoqda) return;
 
     if (yangi !== takror) {
-      setXato('Янги парол ва унинг такрори бир хил эмас');
+      setXato(tr('Янги парол ва унинг такрори бир хил эмас'));
       return;
     }
 
@@ -42,7 +46,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
       const natija = await javob.json().catch(() => ({}));
 
       if (!javob.ok) {
-        setXato(natija.xabar ?? 'Паролни алмаштириб бўлмади');
+        setXato(natija.xabar ?? tr('Паролни алмаштириб бўлмади'));
         setYuklanmoqda(false);
         return;
       }
@@ -53,7 +57,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
         router.refresh();
       }, 900);
     } catch {
-      setXato('Алоқа йўқ. Қайта уриниб кўринг.');
+      setXato(tr('Алоқа йўқ. Қайта уриниб кўринг.'));
       setYuklanmoqda(false);
     }
   }
@@ -61,7 +65,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
   if (muvaffaq) {
     return (
       <div className="karta p-6">
-        <div className="quti-ok">Парол алмаштирилди. Саҳифага ўтилмоқда...</div>
+        <div className="quti-ok">{tr('Парол алмаштирилди. Саҳифага ўтилмоқда...')}</div>
       </div>
     );
   }
@@ -70,8 +74,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
     <form onSubmit={yubor} className="karta karta-koter space-y-4 p-6">
       {majburiy && (
         <div className="quti-ogoh">
-          Бу сизнинг биринчи киришингиз. Давом этиш учун бошланғич паролни
-          ўзингизникига алмаштиринг.
+          {tr('Бу сизнинг биринчи киришингиз. Давом этиш учун бошланғич паролни ўзингизникига алмаштиринг.')}
         </div>
       )}
 
@@ -82,9 +85,9 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
       )}
 
       {[
-        { id: 'eski', label: 'Жорий парол', val: eski, set: setEski, ac: 'current-password' },
-        { id: 'yangi', label: 'Янги парол', val: yangi, set: setYangi, ac: 'new-password' },
-        { id: 'takror', label: 'Янги паролни такрорланг', val: takror, set: setTakror, ac: 'new-password' },
+        { id: 'eski', label: tr('Жорий парол'), val: eski, set: setEski, ac: 'current-password' },
+        { id: 'yangi', label: tr('Янги парол'), val: yangi, set: setYangi, ac: 'new-password' },
+        { id: 'takror', label: tr('Янги паролни такрорланг'), val: takror, set: setTakror, ac: 'new-password' },
       ].map((m) => (
         <div key={m.id} className="space-y-1.5">
           <label htmlFor={m.id} className="block text-sm font-medium text-ink">
@@ -104,22 +107,21 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
       ))}
 
       <p className="text-xs text-ink-faint">
-        Парол камида 8 та белгидан иборат бўлиши, ҳарф ва рақамни ўз ичига
-        олиши керак.
+        {tr('Парол камида 8 та белгидан иборат бўлиши, ҳарф ва рақамни ўз ичига олиши керак.')}
       </p>
 
       <button
         type="submit"
         disabled={yuklanmoqda || !eski || !yangi || !takror}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-accent-solid px-4 py-3 font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 tugma-asosiy rounded-md px-4 py-3 font-semibold"
       >
         {yuklanmoqda ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" /> Сақланмоқда...
+            <Loader2 className="h-4 w-4 animate-spin" /> {tr('Сақланмоқда...')}
           </>
         ) : (
           <>
-            <KeyRound className="h-4 w-4" /> Паролни алмаштириш
+            <KeyRound className="h-4 w-4" /> {tr('Паролни алмаштириш')}
           </>
         )}
       </button>

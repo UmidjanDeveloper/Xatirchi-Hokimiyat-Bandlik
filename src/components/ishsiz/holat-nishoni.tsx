@@ -1,66 +1,8 @@
+'use client';
+
 import type { IshsizHolati } from '@prisma/client';
-
-/**
- * ============================================================
- *  HAYOT SIKLI BOSQICHLARI
- *
- *  Bu ro'yxat platformaning o'zagi. Hokim "nechta ishsiz bor"
- *  degan raqamni allaqachon biladi (svod jadvalida 3 345). Unga
- *  kerak bo'lgani - shu 3 345 tadan nechtasi qaysi bosqichda
- *  turgani va qayerda tiqilib qolgani.
- *
- *  Ranglar `globals.css` dagi `--step-*` tokenlaridan keladi va
- *  butun ilova bo'ylab bir xil ma'no bildiradi: voronkada ham,
- *  ro'yxatdagi nishonda ham, diagrammada ham.
- * ============================================================
- */
-
-export const ISHSIZ_HOLATI: Record<
-  IshsizHolati,
-  { kirill: string; lotin: string; bosqich: number }
-> = {
-  ANIQLANDI: {
-    kirill: 'Аниқланди',
-    lotin: 'Aniqlandi',
-    bosqich: 1,
-  },
-  SUHBAT_OTKAZILDI: {
-    kirill: 'Суҳбат ўтказилди',
-    lotin: 'Suhbat o‘tkazildi',
-    bosqich: 2,
-  },
-  TAKLIF_BERILDI: {
-    kirill: 'Таклиф берилди',
-    lotin: 'Taklif berildi',
-    bosqich: 3,
-  },
-  JOYLASHTIRILDI: {
-    kirill: 'Жойлаштирилди',
-    lotin: 'Joylashtirildi',
-    bosqich: 4,
-  },
-  TASDIQLANDI: {
-    kirill: 'Тасдиқланди',
-    lotin: 'Tasdiqlandi',
-    bosqich: 5,
-  },
-  RAD_ETDI: {
-    kirill: 'Рад этди',
-    lotin: 'Rad etdi',
-    // Voronkadan tashqarida: bu bosqich emas, chiqish yo'li.
-    // Shuning uchun 0 - hech qaysi bosqich rangini olmaydi.
-    bosqich: 0,
-  },
-};
-
-/** Voronka bosqichlari - RAD_ETDI tashqarida qoladi */
-export const VORONKA: IshsizHolati[] = [
-  'ANIQLANDI',
-  'SUHBAT_OTKAZILDI',
-  'TAKLIF_BERILDI',
-  'JOYLASHTIRILDI',
-  'TASDIQLANDI',
-];
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+import { ISHSIZ_HOLATI } from '@/lib/ishsiz-holati';
 
 /**
  * Holat nishoni: rangli nuqta + matn.
@@ -71,13 +13,8 @@ export const VORONKA: IshsizHolati[] = [
  * muhimrogi - rang hech qachon YOLG'IZ ma'no tashimasligi kerak:
  * rangni ajrata olmaydigan odam ham nishonni o'qiy olsin.
  */
-export function HolatNishoni({
-  holati,
-  lotin = false,
-}: {
-  holati: IshsizHolati;
-  lotin?: boolean;
-}) {
+export function HolatNishoni({ holati }: { holati: IshsizHolati }) {
+  const { t: tr } = useAlifbo();
   const h = ISHSIZ_HOLATI[holati];
   const radEtdi = holati === 'RAD_ETDI';
 
@@ -94,7 +31,7 @@ export function HolatNishoni({
           aria-hidden="true"
         />
       )}
-      {lotin ? h.lotin : h.kirill}
+      {tr(h.kirill)}
     </span>
   );
 }

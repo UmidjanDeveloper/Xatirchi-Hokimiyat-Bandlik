@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X } from 'lucide-react';
@@ -21,6 +23,8 @@ export function ChoraQoshish({
   householdId?: string;
   ishsizId?: string;
 }) {
+  const { t: tr } = useAlifbo();
+
   const router = useRouter();
   const [ochiq, setOchiq] = useState(false);
   const [muammo, setMuammo] = useState('');
@@ -40,9 +44,9 @@ export function ChoraQoshish({
   async function yubor() {
     if (yuborilmoqda) return;
 
-    if (muammo.trim().length < 5) return setXato('Муаммони батафсилроқ ёзинг');
-    if (yechim.trim().length < 5) return setXato('Ечим йўлини батафсилроқ ёзинг');
-    if (!masul) return setXato('Масъул ташкилотни танланг');
+    if (muammo.trim().length < 5) return setXato(tr('Муаммони батафсилроқ ёзинг'));
+    if (yechim.trim().length < 5) return setXato(tr('Ечим йўлини батафсилроқ ёзинг'));
+    if (!masul) return setXato(tr('Масъул ташкилотни танланг'));
 
     setXato(null);
     setYuborilmoqda(true);
@@ -64,7 +68,7 @@ export function ChoraQoshish({
 
       const natija = await javob.json().catch(() => ({}));
       if (!javob.ok) {
-        setXato(natija.xabar ?? 'Сақлаб бўлмади');
+        setXato(natija.xabar ?? tr('Сақлаб бўлмади'));
         return;
       }
 
@@ -75,7 +79,7 @@ export function ChoraQoshish({
       setOchiq(false);
       router.refresh();
     } catch {
-      setXato('Алоқа йўқ. Қайта уриниб кўринг.');
+      setXato(tr('Алоқа йўқ. Қайта уриниб кўринг.'));
     } finally {
       setYuborilmoqda(false);
     }
@@ -89,7 +93,7 @@ export function ChoraQoshish({
         className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-strong px-4 py-3 text-sm font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
       >
         <Plus className="h-4 w-4" />
-        Чора-тадбир қўшиш
+        {tr('Чора-тадбир қўшиш')}
       </button>
     );
   }
@@ -100,11 +104,11 @@ export function ChoraQoshish({
   return (
     <div className="karta space-y-3 p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-ink">Янги чора-тадбир</h3>
+        <h3 className="text-sm font-bold text-ink">{tr('Янги чора-тадбир')}</h3>
         <button
           type="button"
           onClick={() => setOchiq(false)}
-          aria-label="Ёпиш"
+          aria-label={tr("Ёпиш")}
           className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:text-ink"
         >
           <X className="h-4 w-4" />
@@ -115,7 +119,7 @@ export function ChoraQoshish({
 
       <div className="space-y-1.5">
         <label htmlFor="ct-muammo" className="text-sm font-medium text-ink">
-          Аниқланган муаммо
+          {tr('Аниқланган муаммо')}
         </label>
         <textarea
           id="ct-muammo"
@@ -128,7 +132,7 @@ export function ChoraQoshish({
 
       <div className="space-y-1.5">
         <label htmlFor="ct-sabab" className="text-sm font-medium text-ink">
-          Муаммонинг сабаби
+          {tr('Муаммонинг сабаби')}
         </label>
         <textarea
           id="ct-sabab"
@@ -141,7 +145,7 @@ export function ChoraQoshish({
 
       <div className="space-y-1.5">
         <label htmlFor="ct-yechim" className="text-sm font-medium text-ink">
-          Ечим йўли / тавсия
+          {tr('Ечим йўли / тавсия')}
         </label>
         <textarea
           id="ct-yechim"
@@ -155,7 +159,7 @@ export function ChoraQoshish({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <label htmlFor="ct-masul" className="text-sm font-medium text-ink">
-            Масъул ташкилот
+            {tr('Масъул ташкилот')}
           </label>
           <select
             id="ct-masul"
@@ -163,7 +167,7 @@ export function ChoraQoshish({
             onChange={(e) => setMasul(e.target.value)}
             className={maydon}
           >
-            <option value="">— Танланг —</option>
+            <option value="">{tr('— Танланг —')}</option>
             {MASUL_TASHKILOT.map((t) => (
               <option key={t.qiymat} value={t.qiymat}>
                 {t.kirill}
@@ -174,7 +178,7 @@ export function ChoraQoshish({
 
         <div className="space-y-1.5">
           <label htmlFor="ct-muddat" className="text-sm font-medium text-ink">
-            Бажарилиш муддати
+            {tr('Бажарилиш муддати')}
           </label>
           <input
             id="ct-muddat"
@@ -190,10 +194,10 @@ export function ChoraQoshish({
         type="button"
         onClick={yubor}
         disabled={yuborilmoqda}
-        className="flex items-center gap-1.5 rounded-md bg-accent-solid px-5 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="flex items-center gap-1.5 tugma-asosiy rounded-md px-5 py-2.5 text-sm font-semibold"
       >
         {yuborilmoqda ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-        Қўшиш
+        {tr('Қўшиш')}
       </button>
     </div>
   );

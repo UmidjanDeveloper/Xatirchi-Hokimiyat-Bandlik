@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { KeyRound, Loader2, Plus, UserPlus, X } from 'lucide-react';
@@ -42,6 +44,8 @@ export function XodimBoshqaruvi({
   xodimlar: Xodim[];
   mahallalar: Mahalla[];
 }) {
+  const { t: tr } = useAlifbo();
+
   const router = useRouter();
   const [ochiq, setOchiq] = useState(false);
   const [username, setUsername] = useState('');
@@ -76,7 +80,7 @@ export function XodimBoshqaruvi({
       });
       const natija = await javob.json().catch(() => ({}));
       if (!javob.ok) {
-        setXato(natija.xabar ?? 'Сақлаб бўлмади');
+        setXato(natija.xabar ?? tr('Сақлаб бўлмади'));
         return;
       }
 
@@ -90,7 +94,7 @@ export function XodimBoshqaruvi({
       setOchiq(false);
       router.refresh();
     } catch {
-      setXato('Алоқа йўқ. Қайта уриниб кўринг.');
+      setXato(tr('Алоқа йўқ. Қайта уриниб кўринг.'));
     } finally {
       setYuborilmoqda(false);
     }
@@ -127,13 +131,13 @@ export function XodimBoshqaruvi({
       {yaratildi && (
         <div className="quti-ok flex flex-wrap items-center justify-between gap-3">
           <span>
-            <b>{yaratildi.login}</b> учун парол:{' '}
+            <b>{yaratildi.login}</b> {tr('учун парол:')}{' '}
             <code className="raqam rounded bg-surface px-2 py-0.5 font-mono text-sm text-ink">
               {yaratildi.parol}
             </code>
             <br />
             <span className="text-xs">
-              Бу парол бошқа кўрсатилмайди — ходимга ҳозир етказинг.
+              {tr('Бу парол бошқа кўрсатилмайди — ходимга ҳозир етказинг.')}
             </span>
           </span>
           <button
@@ -141,7 +145,7 @@ export function XodimBoshqaruvi({
             onClick={() => setYaratildi(null)}
             className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-muted"
           >
-            Тушунарли
+            {tr('Тушунарли')}
           </button>
         </div>
       )}
@@ -150,19 +154,19 @@ export function XodimBoshqaruvi({
         <button
           type="button"
           onClick={() => setOchiq(true)}
-          className="flex items-center gap-1.5 rounded-md bg-accent-solid px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90"
+          className="flex items-center gap-1.5 tugma-asosiy rounded-md px-4 py-2.5 text-sm font-semibold"
         >
           <UserPlus className="h-4 w-4" />
-          Ходим қўшиш
+          {tr('Ходим қўшиш')}
         </button>
       ) : (
         <div className="karta space-y-3 p-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-ink">Янги ходим</h3>
+            <h3 className="text-sm font-bold text-ink">{tr('Янги ходим')}</h3>
             <button
               type="button"
               onClick={() => setOchiq(false)}
-              aria-label="Ёпиш"
+              aria-label={tr("Ёпиш")}
               className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:text-ink"
             >
               <X className="h-4 w-4" />
@@ -174,7 +178,7 @@ export function XodimBoshqaruvi({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label htmlFor="x-fish" className="text-sm font-medium text-ink">
-                Ф.И.Ш.
+                {tr('Ф.И.Ш.')}
               </label>
               <input
                 id="x-fish"
@@ -186,7 +190,7 @@ export function XodimBoshqaruvi({
 
             <div className="space-y-1.5">
               <label htmlFor="x-login" className="text-sm font-medium text-ink">
-                Логин
+                {tr('Логин')}
               </label>
               <input
                 id="x-login"
@@ -195,17 +199,17 @@ export function XodimBoshqaruvi({
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                placeholder="yettilik_uyshun"
+                placeholder="mfy_uyshun"
                 className={maydon}
               />
               <p className="text-[11px] text-ink-faint">
-                Кичик лотин ҳарф, рақам ва пастки чизиқ
+                {tr('Кичик лотин ҳарф, рақам ва пастки чизиқ')}
               </p>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="x-rol" className="text-sm font-medium text-ink">
-                Роли
+                {tr('Роли')}
               </label>
               <select
                 id="x-rol"
@@ -215,7 +219,7 @@ export function XodimBoshqaruvi({
               >
                 {ROLLAR.map((r) => (
                   <option key={r} value={r}>
-                    {ROL_NOMI[r]}
+                    {tr(ROL_NOMI[r])}
                   </option>
                 ))}
               </select>
@@ -224,7 +228,7 @@ export function XodimBoshqaruvi({
             {rol === 'YETTILIK' && (
               <div className="space-y-1.5">
                 <label htmlFor="x-mahalla" className="text-sm font-medium text-ink">
-                  Маҳалла
+                  {tr('Маҳалла')}
                 </label>
                 <select
                   id="x-mahalla"
@@ -232,22 +236,22 @@ export function XodimBoshqaruvi({
                   onChange={(e) => setMahallaId(e.target.value)}
                   className={maydon}
                 >
-                  <option value="">— Танланг —</option>
+                  <option value="">{tr('— Танланг —')}</option>
                   {mahallalar.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.nomiKirill}
+                      {tr(m.nomiKirill)}
                     </option>
                   ))}
                 </select>
                 <p className="text-[11px] text-ink-faint">
-                  Ходим фақат шу маҳалла маълумотларини кўради
+                  {tr('Ходим фақат шу маҳалла маълумотларини кўради')}
                 </p>
               </div>
             )}
 
             <div className="space-y-1.5">
               <label htmlFor="x-lavozim" className="text-sm font-medium text-ink">
-                Лавозими
+                {tr('Лавозими')}
               </label>
               <input
                 id="x-lavozim"
@@ -259,7 +263,7 @@ export function XodimBoshqaruvi({
 
             <div className="space-y-1.5">
               <label htmlFor="x-tel" className="text-sm font-medium text-ink">
-                Телефон
+                {tr('Телефон')}
               </label>
               <input
                 id="x-tel"
@@ -273,7 +277,7 @@ export function XodimBoshqaruvi({
 
             <div className="space-y-1.5 sm:col-span-2">
               <label htmlFor="x-parol" className="text-sm font-medium text-ink">
-                Бошланғич парол
+                {tr('Бошланғич парол')}
               </label>
               <div className="flex gap-2">
                 <input
@@ -287,11 +291,11 @@ export function XodimBoshqaruvi({
                   onClick={() => setParol(parolYarat())}
                   className="shrink-0 rounded-md border border-line px-3 text-sm text-ink-muted hover:text-ink"
                 >
-                  Янгилаш
+                  {tr('Янгилаш')}
                 </button>
               </div>
               <p className="text-[11px] text-ink-faint">
-                Ходим биринчи киришда ўзиникига алмаштиради
+                {tr('Ходим биринчи киришда ўзиникига алмаштиради')}
               </p>
             </div>
           </div>
@@ -300,14 +304,14 @@ export function XodimBoshqaruvi({
             type="button"
             onClick={yubor}
             disabled={yuborilmoqda}
-            className="flex items-center gap-1.5 rounded-md bg-accent-solid px-5 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex items-center gap-1.5 tugma-asosiy rounded-md px-5 py-2.5 text-sm font-semibold"
           >
             {yuborilmoqda ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Plus className="h-4 w-4" />
             )}
-            Яратиш
+            {tr('Яратиш')}
           </button>
         </div>
       )}
@@ -324,18 +328,18 @@ export function XodimBoshqaruvi({
                 </code>
                 {!x.faol && (
                   <span className="rounded bg-danger-bg px-1.5 py-0.5 text-[11px] font-semibold text-danger">
-                    Фаол эмас
+                    {tr('Фаол эмас')}
                   </span>
                 )}
                 {x.parolAlmashtirilsin && x.faol && (
                   <span className="rounded bg-warn-bg px-1.5 py-0.5 text-[11px] font-semibold text-warn">
-                    Парол алмаштирилмаган
+                    {tr('Парол алмаштирилмаган')}
                   </span>
                 )}
               </div>
               <p className="mt-0.5 truncate text-xs text-ink-faint">
-                {ROL_NOMI[x.rol]}
-                {x.mahalla ? ` · ${x.mahalla.nomiKirill} МФЙ` : ''}
+                {tr(ROL_NOMI[x.rol])}
+                {x.mahalla ? tr(` · ${x.mahalla.nomiKirill} МФЙ`) : ''}
                 {x.phone ? ` · ${formatPhone(x.phone)}` : ''}
               </p>
             </div>
@@ -344,7 +348,7 @@ export function XodimBoshqaruvi({
               <button
                 type="button"
                 onClick={() => parolTikla(x.id, x.username)}
-                title="Паролни тиклаш"
+                title={tr("Паролни тиклаш")}
                 className="flex h-9 w-9 items-center justify-center rounded-md border border-line text-ink-faint transition-colors hover:text-ink"
               >
                 <KeyRound className="h-4 w-4" />
@@ -358,7 +362,7 @@ export function XodimBoshqaruvi({
                     : 'border-ok bg-ok-bg text-ok'
                 }`}
               >
-                {x.faol ? 'Фаолсизлантириш' : 'Фаоллаштириш'}
+                {x.faol ? tr('Фаолсизлантириш') : tr('Фаоллаштириш')}
               </button>
             </div>
           </div>

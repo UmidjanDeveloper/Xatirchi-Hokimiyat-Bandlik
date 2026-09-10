@@ -26,27 +26,34 @@
 @layer base {
   :root {
     /* --- Fon qatlamlari --- */
-    --bg-base: #f4f6fa;
+    --bg-base: #eef2f8;
     --bg-elev: #ffffff;
-    --bg-deep: #e8ecf4;
+    --bg-deep: #e3e9f3;
 
     /* --- Yuzalar --- */
     --surface: #ffffff;
-    --surface-muted: #f8fafc;
+    --surface-muted: #f5f8fc;
     --surface-solid: #ffffff;
-    --border: #d8dfea;
-    --border-strong: #b9c4d6;
+    --border: #dce3ee;
+    --border-strong: #b6c2d6;
 
     /* --- Matn: kunduzi ekranda o'qilishi shart --- */
     --text: #0f1b30;
     --text-muted: #4a5a75;
     --text-faint: #6b7c96;
 
-    /* --- Urg'u: hokimiyat ko'k rangi --- */
-    --accent: #1d4ed8;
-    --accent-solid: #1d4ed8;
-    --accent-soft: #e6edfd;
+    /*
+     * Urg'u ranglari tuman GERBIDAN olingan: ko'k (suv), yashil
+     * (nihol), oltin (quyosh). Shu sababli sayt gerb bilan bir
+     * oilaga o'xshaydi, tasodifiy ranglar to'plamiga emas.
+     */
+    --accent: #1b5fa8;
+    --accent-solid: #1b5fa8;
+    --accent-deep: #164e8a;
+    --accent-soft: #e4eefa;
     --accent-contrast: #ffffff;
+    --gerb-yashil: #2e9b4f;
+    --gerb-oltin: #f5b921;
 
     /* --- Holat ranglari --- */
     --ok: #047857;
@@ -86,9 +93,14 @@
     --r-md: 12px;
     --r-lg: 16px;
 
-    --shadow-sm: 0 1px 2px rgba(15, 27, 48, 0.06);
-    --shadow-md: 0 4px 16px -6px rgba(15, 27, 48, 0.16);
-    --shadow-lg: 0 16px 40px -18px rgba(15, 27, 48, 0.3);
+    /*
+     * Soyalar ikki qatlamli: ingichka chegara chizig'i + yumshoq
+     * tarqalish. Bitta qatlamli soya arzon ko'rinadi, ikkitasi
+     * kartochkaga haqiqiy qog'oz his beradi.
+     */
+    --shadow-sm: 0 1px 2px rgba(20, 35, 60, 0.05), 0 1px 1px rgba(20, 35, 60, 0.03);
+    --shadow-md: 0 2px 4px rgba(20, 35, 60, 0.04), 0 8px 20px -8px rgba(20, 35, 60, 0.14);
+    --shadow-lg: 0 4px 8px rgba(20, 35, 60, 0.05), 0 20px 44px -16px rgba(20, 35, 60, 0.24);
 
     color-scheme: light;
   }
@@ -109,9 +121,12 @@
       --text-muted: #a3b2d0;
       --text-faint: #7d8daf;
 
-      --accent: #60a5fa;
-      --accent-solid: #2563eb;
-      --accent-soft: #17264a;
+      --accent: #6cb0f0;
+      --accent-solid: #1b5fa8;
+      --accent-deep: #144a80;
+      --accent-soft: #15294a;
+      --gerb-yashil: #4cc271;
+      --gerb-oltin: #f5c443;
 
       --ok: #34d399;
       --ok-bg: #0f2f26;
@@ -152,9 +167,12 @@
     --text-muted: #a3b2d0;
     --text-faint: #7d8daf;
 
-    --accent: #60a5fa;
-    --accent-solid: #2563eb;
-    --accent-soft: #17264a;
+    --accent: #6cb0f0;
+    --accent-solid: #1b5fa8;
+    --accent-deep: #144a80;
+    --accent-soft: #15294a;
+    --gerb-yashil: #4cc271;
+    --gerb-oltin: #f5c443;
 
     --ok: #34d399;
     --ok-bg: #0f2f26;
@@ -192,7 +210,15 @@
   }
 
   body {
-    background: var(--bg-base);
+    /*
+     * Fon tekis rang emas, juda yengil gradient. Farq deyarli
+     * sezilmaydi, lekin sahifa "bosilgan qog'oz" emas, "yorug'
+     * xona" taassurotini beradi.
+     */
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(27, 95, 168, 0.05), transparent 60%),
+      var(--bg-base);
+    background-attachment: fixed;
     color: var(--text);
     font-family:
       'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -203,6 +229,18 @@
      */
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /*
+   * Sarlavhalarda harflar biroz zichlashtiriladi.
+   *
+   * Kirill bosh harflar lotinga qaraganda kengroq va ular
+   * yig'ilganda sarlavha "yoyilib" ketadi. Manfiy oraliq buni
+   * to'g'rilaydi va matn yig'iq ko'rinadi.
+   */
+  h1, h2, h3 {
+    letter-spacing: -0.012em;
   }
 
   /*
@@ -248,7 +286,44 @@
   }
 
   .karta-koter {
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Bosiladigan kartochka - sichqoncha ostida biroz ko'tariladi */
+  .karta-bosiladigan {
+    transition:
+      box-shadow 0.18s ease,
+      border-color 0.18s ease,
+      transform 0.18s ease;
+  }
+  .karta-bosiladigan:hover {
+    border-color: var(--border-strong);
     box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+
+  /* Asosiy tugma - tekis rang emas, nozik chuqurlik */
+  .tugma-asosiy {
+    background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+    color: var(--accent-contrast);
+    box-shadow:
+      0 1px 2px rgba(20, 35, 60, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    transition: filter 0.15s ease, box-shadow 0.15s ease;
+  }
+  .tugma-asosiy:hover:not(:disabled) {
+    filter: brightness(1.07);
+    box-shadow:
+      0 3px 8px -2px rgba(20, 35, 60, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+  .tugma-asosiy:active:not(:disabled) {
+    filter: brightness(0.96);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+  .tugma-asosiy:disabled {
+    opacity: 0.45;
+    box-shadow: none;
   }
 
   /* Bo'lim sarlavhasi - anketaning 11 bo'limi uchun */
@@ -275,6 +350,20 @@
     color: var(--accent);
     font-size: 0.8125rem;
     font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  /* Sahifa sarlavhasi - barcha bo'limlarda bir xil */
+  .sahifa-sarlavha {
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text);
+  }
+  @media (min-width: 640px) {
+    .sahifa-sarlavha {
+      font-size: 1.5rem;
+    }
   }
 
   /* Xato va ogohlantirish qutilari */

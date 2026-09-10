@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { matnchi } from '@/lib/alifbo-server';
 import { notFound, redirect } from 'next/navigation';
 import { House, Phone } from 'lucide-react';
 import { joriySessiya, bandlikIshi } from '@/lib/auth';
@@ -6,16 +7,28 @@ import { prisma } from '@/lib/prisma';
 import { jurnal } from '@/lib/api-auth';
 import { formatDate, formatPhone } from '@/lib/utils';
 import { BANDLIK_TAKLIFI, MALUMOT, MASUL_TASHKILOT, kirillcha } from '@/lib/constants';
-import { HolatNishoni, ISHSIZ_HOLATI, VORONKA } from '@/components/ishsiz/holat-nishoni';
+import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
+import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 import { SuhbatFormasi, type SuhbatHolati } from '@/components/ishsiz/suhbat-formasi';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
 
-export const metadata = { title: 'Ишсиз фуқаро' };
+/*
+ * Sahifa sarlavhasi ham alifboga ergashadi.
+ *
+ * `metadata` doimiy bo'lgani uchun cookie'ni o'qiy olmaydi,
+ * shuning uchun `generateMetadata` ishlatiladi - u har so'rovda
+ * qayta hisoblanadi va brauzer yorlig'ida to'g'ri alifbo turadi.
+ */
+export function generateMetadata() {
+  return { title: matnchi()('Ишсиз фуқаро') };
+}
 
 /** `Date` ni `<input type="date">` kutgan `YYYY-MM-DD` ko'rinishiga keltiradi */
 const sana = (d: Date | null): string => (d ? d.toISOString().slice(0, 10) : '');
 
 export default async function IshsizSahifasi({ params }: { params: { id: string } }) {
+  const tr = matnchi();
+
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
 
@@ -89,14 +102,14 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
       <div className="karta p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-ink">{p.fish}</h1>
+            <h1 className="sahifa-sarlavha">{p.fish}</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              {p.mahalla.nomiKirill} МФЙ · {p.jinsi === 'Erkak' ? 'Эркак' : 'Аёл'}
-              {p.malumoti ? ` · ${kirillcha(MALUMOT, p.malumoti)}` : ''}
+              {tr(p.mahalla.nomiKirill)} {tr('МФЙ ·')} {p.jinsi === 'Erkak' ? tr('Эркак') : tr('Аёл')}
+              {p.malumoti ? ` · ${tr(kirillcha(MALUMOT, p.malumoti))}` : ''}
             </p>
             {p.mutaxassis && p.suhbatSanasi && (
               <p className="mt-1 text-xs text-ink-faint">
-                Суҳбатни ўтказди: {p.mutaxassis.fullName} · {formatDate(p.suhbatSanasi)}
+                {tr('Суҳбатни ўтказди:')} {p.mutaxassis.fullName} · {formatDate(p.suhbatSanasi)}
               </p>
             )}
           </div>
@@ -146,8 +159,8 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           </div>
         ) : (
           <div className="quti-xato mt-3">
-            Фуқаро таклифдан бош тортган.
-            {p.radSababi ? ` Сабаби: ${p.radSababi}` : ''}
+            {tr('Фуқаро таклифдан бош тортган.')}
+            {p.radSababi ? tr(` Сабаби: ${p.radSababi}`) : ''}
           </div>
         )}
 
@@ -158,7 +171,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           >
             <House className="h-4 w-4 shrink-0" />
             <span className="min-w-0 truncate">
-              Хонадон: {p.household.oilaBoshligi} · {p.household.manzil}
+              {tr('Хонадон:')} {p.household.oilaBoshligi} · {p.household.manzil}
             </span>
           </Link>
         )}
@@ -170,7 +183,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
                 key={t}
                 className="rounded bg-accent-soft px-2 py-1 text-[11px] font-medium text-accent"
               >
-                {kirillcha(BANDLIK_TAKLIFI, t)}
+                {tr(kirillcha(BANDLIK_TAKLIFI, t))}
               </span>
             ))}
           </div>
@@ -178,7 +191,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
 
         {p.ishJoyi && (
           <div className="quti-ok mt-3">
-            Иш жойи: <b>{p.ishJoyi}</b>
+            {tr('Иш жойи:')} <b>{p.ishJoyi}</b>
             {p.ishLavozimi ? ` — ${p.ishLavozimi}` : ''}
             {p.ishgaKirganSana ? ` (${formatDate(p.ishgaKirganSana)})` : ''}
           </div>
@@ -187,13 +200,13 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
 
       {/* ── Chora-tadbirlar ── */}
       <section className="karta space-y-2 p-4 sm:p-5">
-        <h2 className="mb-1 text-sm font-bold text-ink">Чора-тадбирлар</h2>
+        <h2 className="mb-1 text-sm font-bold text-ink">{tr('Чора-тадбирлар')}</h2>
         {p.topshiriqlar.map((t) => (
           <div key={t.id} className="rounded-md border border-line p-3">
             <p className="text-sm font-medium text-ink">{t.muammo}</p>
             <p className="mt-1 text-xs text-ink-muted">{t.yechim}</p>
             <p className="mt-1.5 text-[11px] text-ink-faint">
-              {kirillcha(MASUL_TASHKILOT, t.masulTashkilot)} · муддат:{' '}
+              {tr(kirillcha(MASUL_TASHKILOT, t.masulTashkilot))} {tr('· муддат:')}{' '}
               {formatDate(t.muddat).split(',')[0]}
             </p>
           </div>
@@ -206,7 +219,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
         <SuhbatFormasi id={p.id} boshlangich={boshlangich} />
       ) : (
         <div className="karta p-4 text-sm text-ink-muted">
-          Суҳбат анкетасини фақат бандлик маркази ходимлари тўлдиради.
+          {tr('Суҳбат анкетасини фақат бандлик маркази ходимлари тўлдиради.')}
         </div>
       )}
     </div>

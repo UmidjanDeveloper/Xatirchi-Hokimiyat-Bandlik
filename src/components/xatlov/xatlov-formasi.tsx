@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -38,6 +40,8 @@ interface Props {
 const QORALAMA_ID = 'joriy-xatlov';
 
 export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
+  const { t: tr } = useAlifbo();
+
   const router = useRouter();
 
   const [id, setId] = useState<string | null>(boshlangich?.id ?? null);
@@ -134,7 +138,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       const natija = await javob.json().catch(() => ({}));
 
       if (!javob.ok) {
-        setServerXatosi(natija.xabar ?? 'Сақлаб бўлмади');
+        setServerXatosi(natija.xabar ?? tr('Сақлаб бўлмади'));
         return;
       }
 
@@ -142,7 +146,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       setOxirgiSaqlash(new Date());
     } catch {
       setServerXatosi(
-        'Алоқа йўқ. Маълумот телефон хотирасида сақланиб турибди — алоқа тикланганда қайта уриниб кўринг.'
+        tr('Алоқа йўқ. Маълумот телефон хотирасида сақланиб турибди — алоқа тикланганда қайта уриниб кўринг.')
       );
     } finally {
       setSaqlanmoqda(false);
@@ -179,7 +183,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           setXatolar(xt);
           setQadam(xatoQadami(xt));
         }
-        setServerXatosi(natija.xabar ?? 'Юбориб бўлмади');
+        setServerXatosi(natija.xabar ?? tr('Юбориб бўлмади'));
         return;
       }
 
@@ -189,7 +193,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       router.refresh();
     } catch {
       setServerXatosi(
-        'Алоқа йўқ. Маълумот телефон хотирасида сақланди — алоқа тикланганда қайта юборинг.'
+        tr('Алоқа йўқ. Маълумот телефон хотирасида сақланди — алоқа тикланганда қайта юборинг.')
       );
     } finally {
       setYuborilmoqda(false);
@@ -205,7 +209,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       <div className="karta p-3 sm:p-4">
         <div className="mb-2.5 flex items-center justify-between gap-3">
           <span className="text-sm font-semibold text-ink">
-            {qadam + 1}-қадам: {QADAMLAR[qadam].nomi}
+            {qadam + 1}-{tr('қадам')}: {tr(QADAMLAR[qadam].nomi)}
           </span>
           <span className="raqam shrink-0 text-xs text-ink-faint">
             {qadam + 1} / {QADAMLAR.length}
@@ -217,14 +221,14 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           aria-valuemin={1}
           aria-valuemax={QADAMLAR.length}
           aria-valuenow={qadam + 1}
-          aria-label="Анкета қадамлари"
+          aria-label={tr("Анкета қадамлари")}
         >
           {QADAMLAR.map((q, i) => (
             <button
               key={q.nomi}
               type="button"
               onClick={() => setQadam(i)}
-              aria-label={`${i + 1}-қадам: ${q.nomi}`}
+              aria-label={tr(`${i + 1}-қадам: ${q.nomi}`)}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
                 i <= qadam ? 'bg-accent' : 'bg-line'
               }`}
@@ -238,8 +242,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
         <div className="quti-ogoh flex items-start gap-2">
           <CloudOff className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            Интернет алоқаси йўқ. Тўлдирганингиз телефон хотирасида сақланмоқда —
-            алоқа тикланганда юборинг.
+            {tr('Интернет алоқаси йўқ. Тўлдирганингиз телефон хотирасида сақланмоқда — алоқа тикланганда юборинг.')}
           </span>
         </div>
       )}
@@ -248,21 +251,20 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
         <div className="quti-xato flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            Телефон хотираси тўлган — қоралама сақланмаяпти. Анкетани тугатиб,
-            дарҳол юборинг, акс ҳолда маълумот йўқолади.
+            {tr('Телефон хотираси тўлган — қоралама сақланмаяпти. Анкетани тугатиб, дарҳол юборинг, акс ҳолда маълумот йўқолади.')}
           </span>
         </div>
       )}
 
-      {serverXatosi && <div className="quti-xato">{serverXatosi}</div>}
+      {serverXatosi && <div className="quti-xato">{tr(serverXatosi)}</div>}
 
       {/* ── Jonli arifmetika ogohlantirishlari ── */}
       {hisobot.xatolar.length > 0 && (
         <div className="quti-xato space-y-1.5">
-          <p className="font-semibold">Рақамларда номувофиқлик:</p>
+          <p className="font-semibold">{tr('Рақамларда номувофиқлик:')}</p>
           <ul className="list-inside list-disc space-y-1">
             {hisobot.xatolar.map((n, i) => (
-              <li key={i}>{n.xabar}</li>
+              <li key={i}>{tr(n.xabar)}</li>
             ))}
           </ul>
         </div>
@@ -270,10 +272,10 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
 
       {hisobot.xatolar.length === 0 && hisobot.ogohlantirishlar.length > 0 && (
         <div className="quti-ogoh space-y-1.5">
-          <p className="font-semibold">Эътибор беринг:</p>
+          <p className="font-semibold">{tr('Эътибор беринг:')}</p>
           <ul className="list-inside list-disc space-y-1">
             {hisobot.ogohlantirishlar.map((n, i) => (
-              <li key={i}>{n.xabar}</li>
+              <li key={i}>{tr(n.xabar)}</li>
             ))}
           </ul>
         </div>
@@ -283,7 +285,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       {qadam === 0 && mahallalar.length > 1 && (
         <div className="karta space-y-1.5 p-4 sm:p-5">
           <label htmlFor="mahalla" className="block text-sm font-medium text-ink">
-            Маҳалла фуқаролар йиғини<span className="ml-0.5 text-danger">*</span>
+            {tr('Маҳалла фуқаролар йиғини')}<span className="ml-0.5 text-danger">*</span>
           </label>
           <select
             id="mahalla"
@@ -293,10 +295,10 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
               xatolar.mahallaId ? 'maydon-xato' : 'border-line'
             }`}
           >
-            <option value="">— Маҳаллани танланг —</option>
+            <option value="">{tr('— Маҳаллани танланг —')}</option>
             {mahallalar.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.nomiKirill}
+                {tr(m.nomiKirill)}
               </option>
             ))}
           </select>
@@ -318,7 +320,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           className="flex items-center gap-1.5 rounded-md border border-line px-3.5 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40"
         >
           <ChevronLeft className="h-4 w-4" />
-          Орқага
+          {tr('Орқага')}
         </button>
 
         <button
@@ -332,13 +334,13 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Қоралама
+          {tr('Қоралама')}
         </button>
 
         {oxirgiSaqlash && (
           <span className="flex items-center gap-1 text-xs text-ok">
             <Check className="h-3.5 w-3.5" />
-            Сақланди
+            {tr('Сақланди')}
           </span>
         )}
 
@@ -348,14 +350,14 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
               type="button"
               onClick={yakuniyYubor}
               disabled={yuborilmoqda || hisobot.xatolar.length > 0}
-              className="flex items-center gap-1.5 rounded-md bg-accent-solid px-5 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="flex items-center gap-1.5 tugma-asosiy rounded-md px-5 py-2.5 text-sm font-semibold"
             >
               {yuborilmoqda ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              Якуний юбориш
+              {tr('Якуний юбориш')}
             </button>
           ) : (
             <button
@@ -363,7 +365,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
               onClick={() => setQadam((q) => Math.min(QADAMLAR.length - 1, q + 1))}
               className="flex items-center gap-1.5 rounded-md bg-accent-solid px-5 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90"
             >
-              Кейинги
+              {tr('Кейинги')}
               <ChevronRight className="h-4 w-4" />
             </button>
           )}

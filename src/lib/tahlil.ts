@@ -1,7 +1,7 @@
 import type { IshsizHolati } from '@prisma/client';
 import { prisma } from './prisma';
 import { kechikkanlarShartI } from './chora-tadbir';
-import { VORONKA } from '@/components/ishsiz/holat-nishoni';
+import { VORONKA } from '@/lib/ishsiz-holati';
 
 /**
  * ============================================================

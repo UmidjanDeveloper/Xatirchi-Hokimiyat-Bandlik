@@ -1,5 +1,7 @@
 'use client';
 
+import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
@@ -18,6 +20,8 @@ import { Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
  *     ko'rmasdan terish qiyin, xodim uch marta xato qilib bloklanadi.
  */
 export function KirishFormasi({ keyin }: { keyin?: string }) {
+  const { t: tr } = useAlifbo();
+
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [parol, setParol] = useState('');
@@ -42,7 +46,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
       const natija = await javob.json().catch(() => ({}));
 
       if (!javob.ok) {
-        setXato(natija.xabar ?? 'Киришда хатолик юз берди');
+        setXato(natija.xabar ?? tr('Киришда хатолик юз берди'));
         setYuklanmoqda(false);
         return;
       }
@@ -55,7 +59,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
       }
       router.refresh();
     } catch {
-      setXato('Алоқа йўқ. Интернетни текшириб, қайта уриниб кўринг.');
+      setXato(tr('Алоқа йўқ. Интернетни текшириб, қайта уриниб кўринг.'));
       setYuklanmoqda(false);
     }
   }
@@ -70,7 +74,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
 
       <div className="space-y-1.5">
         <label htmlFor="username" className="block text-sm font-medium text-ink">
-          Логин
+          {tr('Логин')}
         </label>
         <input
           id="username"
@@ -85,13 +89,13 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
           spellCheck={false}
           disabled={yuklanmoqda}
           className="w-full rounded-md border border-line bg-surface px-3 py-2.5 text-ink outline-none transition-colors focus:border-accent disabled:opacity-60"
-          placeholder="masalan: yettilik_uyshun"
+          placeholder={tr("масалан: mfy_uyshun")}
         />
       </div>
 
       <div className="space-y-1.5">
         <label htmlFor="parol" className="block text-sm font-medium text-ink">
-          Парол
+          {tr('Парол')}
         </label>
         <div className="relative">
           <input
@@ -108,7 +112,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
           <button
             type="button"
             onClick={() => setKorinsin((k) => !k)}
-            aria-label={korinsin ? 'Паролни яшириш' : 'Паролни кўрсатиш'}
+            aria-label={korinsin ? tr('Паролни яшириш') : tr('Паролни кўрсатиш')}
             className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-ink-faint transition-colors hover:text-ink"
           >
             {korinsin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -119,17 +123,17 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
       <button
         type="submit"
         disabled={yuklanmoqda || !username.trim() || !parol}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-accent-solid px-4 py-3 font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 tugma-asosiy rounded-md px-4 py-3 font-semibold"
       >
         {yuklanmoqda ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Текширилмоқда...
+            {tr('Текширилмоқда...')}
           </>
         ) : (
           <>
             <LogIn className="h-4 w-4" />
-            Кириш
+            {tr('Кириш')}
           </>
         )}
       </button>

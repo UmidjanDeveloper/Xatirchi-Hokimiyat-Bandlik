@@ -95,6 +95,12 @@ model Mahalla {
   nomi       String @unique
   nomiKirill String
 
+  /// MFY raisi - tuman hokimligi tasdiqlagan ro'yxatdan.
+  /// Xatlovni shu odam (yoki uning hisobi ostidagi yettilik) kiritadi.
+  raisFish     String
+  raisTelefon  String
+  raisMalumoti String
+
   aholi   Int
   xonadon Int
   oila    Int
