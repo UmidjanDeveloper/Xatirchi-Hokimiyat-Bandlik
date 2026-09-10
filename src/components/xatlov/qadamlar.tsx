@@ -1,0 +1,916 @@
+'use client';
+
+import { Plus, Trash2, Users } from 'lucide-react';
+import {
+  DAROMAD_MANBAI,
+  HA_YOQ,
+  ICHIMLIK_SUVI,
+  ISH_TURI_ISTAGI,
+  JINS,
+  KAMBAGALLIK_SABABI,
+  KASB_YONALISHI,
+  MABLAG_YONALISHI,
+  MALUMOT,
+  MOLIYA_TURI,
+  UY_HOLATI,
+} from '@/lib/constants';
+import {
+  Bolim,
+  HaYoqMaydoni,
+  KopTanlovMaydoni,
+  MatnMaydoni,
+  PulMaydoni,
+  RaqamMaydoni,
+  TanlovMaydoni,
+  ToliqKeng,
+} from './maydonlar';
+import { bosIshsiz, type IshsizQatori, type XatlovHolati } from './holat';
+
+export interface QadamProps {
+  h: XatlovHolati;
+  yangila: <K extends keyof XatlovHolati>(kalit: K, qiymat: XatlovHolati[K]) => void;
+  xatolar: Record<string, string>;
+}
+
+/** Maydon nomiga tegishli xatoni oladi */
+const x = (xatolar: Record<string, string>, maydon: string) => xatolar[maydon];
+
+// ═════════════════════════════════════════════════════════════
+//  1-QADAM: XONADON
+// ═════════════════════════════════════════════════════════════
+
+export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
+  return (
+    <Bolim
+      raqam="1"
+      sarlavha="Хонадон ва оила бошлиғи"
+      izoh="Манзил ва оила бошлиғи такрор хатловни аниқлашда ишлатилади — уларни аниқ ёзинг."
+    >
+      <ToliqKeng>
+        <MatnMaydoni
+          yorliq="Хонадон манзили"
+          izoh="Кўча ва уй рақами"
+          majburiy
+          qiymat={h.manzil}
+          ozgardi={(q) => yangila('manzil', q)}
+          xato={x(xatolar, 'manzil')}
+          placeholder="Навоий кўчаси, 12-уй"
+        />
+      </ToliqKeng>
+
+      <MatnMaydoni
+        yorliq="Оила бошлиғининг Ф.И.Ш."
+        majburiy
+        qiymat={h.oilaBoshligi}
+        ozgardi={(q) => yangila('oilaBoshligi', q)}
+        xato={x(xatolar, 'oilaBoshligi')}
+      />
+
+      <RaqamMaydoni
+        yorliq="Туғилган йили"
+        qiymat={h.tugilganYili}
+        ozgardi={(q) => yangila('tugilganYili', q)}
+        min={1920}
+        max={2015}
+        xato={x(xatolar, 'tugilganYili')}
+      />
+
+      <MatnMaydoni
+        yorliq="Телефон рақами"
+        turi="tel"
+        qiymat={h.telefon}
+        ozgardi={(q) => yangila('telefon', q)}
+        xato={x(xatolar, 'telefon')}
+        placeholder="+998 __ ___ __ __"
+      />
+
+      <div />
+
+      <RaqamMaydoni
+        yorliq="Оиладаги умумий аъзолар сони"
+        majburiy
+        qiymat={h.jamiAzo}
+        ozgardi={(q) => yangila('jamiAzo', q)}
+        max={50}
+        birlik="киши"
+        xato={x(xatolar, 'jamiAzo')}
+      />
+
+      <RaqamMaydoni
+        yorliq="Шу жумладан, болалар сони"
+        izoh="18 ёшгача"
+        qiymat={h.bolalarSoni}
+        ozgardi={(q) => yangila('bolalarSoni', q)}
+        max={30}
+        birlik="киши"
+        xato={x(xatolar, 'bolalarSoni')}
+      />
+    </Bolim>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+//  2-QADAM: I. MEHNAT VA BANDLIK
+// ═════════════════════════════════════════════════════════════
+
+export function QadamMehnat({ h, yangila, xatolar }: QadamProps) {
+  return (
+    <>
+      <Bolim
+        raqam="I"
+        sarlavha="Меҳнат ва бандлик масалалари"
+        izoh="Рақамлар бир-бирига мос келиши шарт: ишлайдиган + ишсиз ≤ меҳнатга лаёқатли."
+      >
+        <RaqamMaydoni
+          yorliq="Меҳнатга лаёқатли фуқаролар сони"
+          izoh="16–60/55 ёшдаги"
+          majburiy
+          qiymat={h.mehnatgaLayoqatli}
+          ozgardi={(q) => yangila('mehnatgaLayoqatli', q)}
+          max={40}
+          birlik="киши"
+          xato={x(xatolar, 'mehnatgaLayoqatli')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Шулардан ишлайдиганлар сони"
+          qiymat={h.ishlaydiganlar}
+          ozgardi={(q) => yangila('ishlaydiganlar', q)}
+          max={40}
+          birlik="киши"
+          xato={x(xatolar, 'ishlaydiganlar')}
+        />
+
+        <RaqamMaydoni
+          yorliq="А) Давлат корхоналарида"
+          qiymat={h.davlatKorxonada}
+          ozgardi={(q) => yangila('davlatKorxonada', q)}
+          max={40}
+          birlik="киши"
+          xato={x(xatolar, 'davlatKorxonada')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Б) Хўжалик юритувчи субъектларда"
+          qiymat={h.xususiySektorda}
+          ozgardi={(q) => yangila('xususiySektorda', q)}
+          max={40}
+          birlik="киши"
+          xato={x(xatolar, 'xususiySektorda')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Шулардан ишсизлар сони"
+          izoh="Ҳар бири учун кейинги қадамда анкета тўлдирилади"
+          majburiy
+          qiymat={h.ishsizlarSoni}
+          ozgardi={(q) => yangila('ishsizlarSoni', q)}
+          max={40}
+          birlik="киши"
+          xato={x(xatolar, 'ishsizlarSoni')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Боғча кутаётган аёллар"
+          izoh="3 ёшгача бола тарбиясидаги, боласини боғчага берса ишлашга тайёр"
+          qiymat={h.bogchaKutayotganAyollar}
+          ozgardi={(q) => yangila('bogchaKutayotganAyollar', q)}
+          max={20}
+          birlik="киши"
+          xato={x(xatolar, 'bogchaKutayotganAyollar')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Қанча вақтдан буён ишсиз"
+          izoh="Энг узоқ муддат"
+          qiymat={h.ishsizlikMuddatiOy}
+          ozgardi={(q) => yangila('ishsizlikMuddatiOy', q)}
+          max={600}
+          birlik="ой"
+          xato={x(xatolar, 'ishsizlikMuddatiOy')}
+        />
+
+        <TanlovMaydoni
+          yorliq="Иш турига бўлган истак"
+          variantlar={ISH_TURI_ISTAGI}
+          qiymat={h.ishTuriIstagi}
+          ozgardi={(q) => yangila('ishTuriIstagi', q)}
+        />
+
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Касб-ҳунар ёки тадбиркорликка ўқишни истайдими?"
+            qiymat={h.kasbHunarIstagi}
+            ozgardi={(q) => yangila('kasbHunarIstagi', q)}
+          />
+        </ToliqKeng>
+
+        {h.kasbHunarIstagi && (
+          <ToliqKeng>
+            <KopTanlovMaydoni
+              yorliq="Қайси йўналишга қизиқади?"
+              variantlar={KASB_YONALISHI}
+              qiymatlar={h.kasbHunarYonalishi}
+              ozgardi={(q) => yangila('kasbHunarYonalishi', q)}
+            />
+          </ToliqKeng>
+        )}
+
+        <ToliqKeng>
+          <MatnMaydoni
+            yorliq="Бандлигини таъминлаш бўйича аниқ таклиф(лар)"
+            koptator
+            qiymat={h.bandlikTakliflari}
+            ozgardi={(q) => yangila('bandlikTakliflari', q)}
+          />
+        </ToliqKeng>
+      </Bolim>
+    </>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+//  3-QADAM: II. TADBIRKORLIK + III. DAROMAD
+// ═════════════════════════════════════════════════════════════
+
+export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
+  return (
+    <>
+      <Bolim
+        raqam="II"
+        sarlavha="Тадбиркорлик ва кредит-субсидияга эҳтиёж"
+        izoh="Бу бўлимдаги маблағ рақами туман бюджет режасига тўғридан-тўғри киради."
+      >
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Тадбиркорлик фаолиятини бошлаш ёки кенгайтириш истаги"
+            qiymat={h.tadbirkorlikIstagi}
+            ozgardi={(q) => yangila('tadbirkorlikIstagi', q)}
+          />
+        </ToliqKeng>
+
+        {h.tadbirkorlikIstagi && (
+          <ToliqKeng>
+            <KopTanlovMaydoni
+              yorliq="Қайси соҳада?"
+              variantlar={MABLAG_YONALISHI}
+              qiymatlar={h.tadbirkorlikSohasi}
+              ozgardi={(q) => yangila('tadbirkorlikSohasi', q)}
+            />
+          </ToliqKeng>
+        )}
+
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Имтиёзли кредит, субсидия ёки ссудага эҳтиёж мавжудми"
+            qiymat={h.moliyaEhtiyoji}
+            ozgardi={(q) => yangila('moliyaEhtiyoji', q)}
+          />
+        </ToliqKeng>
+
+        {h.moliyaEhtiyoji && (
+          <>
+            <ToliqKeng>
+              <KopTanlovMaydoni
+                yorliq="Қандай кўмак керак?"
+                variantlar={MOLIYA_TURI}
+                qiymatlar={h.moliyaTuri}
+                ozgardi={(q) => yangila('moliyaTuri', q)}
+              />
+            </ToliqKeng>
+
+            <PulMaydoni
+              yorliq="Талаб этиладиган маблағ миқдори"
+              majburiy
+              qiymat={h.talabQilinganMablag}
+              ozgardi={(q) => yangila('talabQilinganMablag', q)}
+              xato={x(xatolar, 'talabQilinganMablag')}
+            />
+
+            <div className="sm:col-span-1">
+              <KopTanlovMaydoni
+                yorliq="Маблағни сарфлаш йўналиши"
+                variantlar={MABLAG_YONALISHI}
+                qiymatlar={h.mablagYonalishi}
+                ozgardi={(q) => yangila('mablagYonalishi', q)}
+              />
+            </div>
+          </>
+        )}
+      </Bolim>
+
+      <Bolim raqam="III" sarlavha="Даромад манбалари ва камбағалликка тушиш сабаблари">
+        <PulMaydoni
+          yorliq="Оиланинг ойлик умумий даромади"
+          qiymat={h.oylikDaromad}
+          ozgardi={(q) => yangila('oylikDaromad', q)}
+          xato={x(xatolar, 'oylikDaromad')}
+        />
+
+        <div />
+
+        <ToliqKeng>
+          <KopTanlovMaydoni
+            yorliq="Мавжуд даромад манбалари"
+            variantlar={DAROMAD_MANBAI}
+            qiymatlar={h.daromadManbalari}
+            ozgardi={(q) => yangila('daromadManbalari', q)}
+          />
+        </ToliqKeng>
+
+        <ToliqKeng>
+          <KopTanlovMaydoni
+            yorliq="Камбағаллик қаторига тушишининг асосий сабаб(лар)и"
+            variantlar={KAMBAGALLIK_SABABI}
+            qiymatlar={h.kambagallikSabablari}
+            ozgardi={(q) => yangila('kambagallikSabablari', q)}
+          />
+        </ToliqKeng>
+
+        <ToliqKeng>
+          <MatnMaydoni
+            yorliq="Даромадни кўпайтириш имкониятлари"
+            koptator
+            qiymat={h.daromadImkoniyati}
+            ozgardi={(q) => yangila('daromadImkoniyati', q)}
+          />
+        </ToliqKeng>
+      </Bolim>
+    </>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+//  4-QADAM: IV. BOLALAR + V. SOG'LIQ
+// ═════════════════════════════════════════════════════════════
+
+export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
+  return (
+    <>
+      <Bolim raqam="IV" sarlavha="Болалар таълими ва ривожланиши">
+        <RaqamMaydoni
+          yorliq="Мактабгача ёшдаги болалар сони"
+          qiymat={h.maktabgachaYoshdagi}
+          ozgardi={(q) => yangila('maktabgachaYoshdagi', q)}
+          max={20}
+          birlik="бола"
+          xato={x(xatolar, 'maktabgachaYoshdagi')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Шулардан боғчага қатнайдиганлар"
+          qiymat={h.maktabgachaQamrovda}
+          ozgardi={(q) => yangila('maktabgachaQamrovda', q)}
+          max={20}
+          birlik="бола"
+          xato={x(xatolar, 'maktabgachaQamrovda')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Мактаб ёшидаги болалар сони"
+          qiymat={h.maktabYoshdagi}
+          ozgardi={(q) => yangila('maktabYoshdagi', q)}
+          max={20}
+          birlik="бола"
+          xato={x(xatolar, 'maktabYoshdagi')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Шулардан мактабга қатнайдиганлар"
+          qiymat={h.maktabQamrovda}
+          ozgardi={(q) => yangila('maktabQamrovda', q)}
+          max={20}
+          birlik="бола"
+          xato={x(xatolar, 'maktabQamrovda')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Тўгарак ёки спорт секциясига жалб этилганлар"
+          qiymat={h.togarakQamrovi}
+          ozgardi={(q) => yangila('togarakQamrovi', q)}
+          max={20}
+          birlik="бола"
+          xato={x(xatolar, 'togarakQamrovi')}
+        />
+
+        <MatnMaydoni
+          yorliq="Жалб этилмаган бўлса — сабаби"
+          qiymat={h.togarakSababi}
+          ozgardi={(q) => yangila('togarakSababi', q)}
+        />
+
+        <ToliqKeng>
+          <MatnMaydoni
+            yorliq="Боғчага қамраб олинмаган бўлса — сабаби"
+            qiymat={h.maktabgachaQamrovsizSababi}
+            ozgardi={(q) => yangila('maktabgachaQamrovsizSababi', q)}
+          />
+        </ToliqKeng>
+      </Bolim>
+
+      <Bolim raqam="V" sarlavha="Соғлиқни сақлаш ва тиббий ёрдамга эҳтиёж">
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Оилада узоқ муддатли даволанишга муҳтож аъзо мавжудми"
+            qiymat={h.uzoqDavolanish}
+            ozgardi={(q) => yangila('uzoqDavolanish', q)}
+          />
+        </ToliqKeng>
+
+        {h.uzoqDavolanish && (
+          <ToliqKeng>
+            <MatnMaydoni
+              yorliq="Ким ва қандай ташхис билан"
+              majburiy
+              koptator
+              qiymat={h.uzoqDavolanishIzoh}
+              ozgardi={(q) => yangila('uzoqDavolanishIzoh', q)}
+              xato={x(xatolar, 'uzoqDavolanishIzoh')}
+            />
+          </ToliqKeng>
+        )}
+
+        <MatnMaydoni
+          yorliq="Дори-дармон ёки тиббий буюмларга эҳтиёж"
+          qiymat={h.doriEhtiyoji}
+          ozgardi={(q) => yangila('doriEhtiyoji', q)}
+        />
+
+        <MatnMaydoni
+          yorliq="Профилактик кўрик ёки реабилитацияга эҳтиёж"
+          qiymat={h.tibbiyXizmatEhtiyoji}
+          ozgardi={(q) => yangila('tibbiyXizmatEhtiyoji', q)}
+        />
+
+        <MatnMaydoni
+          yorliq="Охирги тиббий кўрикдан ўтган вақти"
+          qiymat={h.oxirgiTibbiyKorik}
+          ozgardi={(q) => yangila('oxirgiTibbiyKorik', q)}
+          placeholder="масалан: 2026 йил март"
+        />
+      </Bolim>
+    </>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+//  5-QADAM: VI. UY-JOY + VII. IJTIMOIY HIMOYA + VIII. HUJJATLAR
+// ═════════════════════════════════════════════════════════════
+
+export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
+  return (
+    <>
+      <Bolim raqam="VI" sarlavha="Уй-жой ва коммунал шароит">
+        <TanlovMaydoni
+          yorliq="Уй-жойнинг ҳолати"
+          variantlar={UY_HOLATI}
+          qiymat={h.uyHolati}
+          ozgardi={(q) => yangila('uyHolati', q)}
+        />
+
+        <TanlovMaydoni
+          yorliq="Ичимлик суви таъминоти"
+          variantlar={ICHIMLIK_SUVI}
+          qiymat={h.ichimlikSuvi}
+          ozgardi={(q) => yangila('ichimlikSuvi', q)}
+        />
+
+        <HaYoqMaydoni
+          yorliq="Электр энергияси"
+          qiymat={h.elektr}
+          ozgardi={(q) => yangila('elektr', q)}
+        />
+
+        <HaYoqMaydoni
+          yorliq="Табиий газ таъминоти"
+          qiymat={h.gaz}
+          ozgardi={(q) => yangila('gaz', q)}
+        />
+
+        <HaYoqMaydoni
+          yorliq="Суғориш суви таъминоти"
+          qiymat={h.sugorishSuvi}
+          ozgardi={(q) => yangila('sugorishSuvi', q)}
+        />
+
+        <HaYoqMaydoni
+          yorliq="Канализация тизими"
+          qiymat={h.kanalizatsiya}
+          ozgardi={(q) => yangila('kanalizatsiya', q)}
+        />
+
+        <ToliqKeng>
+          <MatnMaydoni
+            yorliq="Мавжуд бошқа муаммолар"
+            koptator
+            qiymat={h.boshqaMuammolar}
+            ozgardi={(q) => yangila('boshqaMuammolar', q)}
+          />
+        </ToliqKeng>
+      </Bolim>
+
+      <Bolim raqam="VII" sarlavha="Ижтимоий ҳимояга муҳтож оила аъзолари">
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Ногиронлиги бўлган шахс(лар) мавжудми"
+            qiymat={h.nogironlikBor}
+            ozgardi={(q) => yangila('nogironlikBor', q)}
+          />
+        </ToliqKeng>
+
+        {h.nogironlikBor && (
+          <ToliqKeng>
+            <MatnMaydoni
+              yorliq="Ким ва қайси гуруҳ"
+              majburiy
+              qiymat={h.nogironlikIzoh}
+              ozgardi={(q) => yangila('nogironlikIzoh', q)}
+              xato={x(xatolar, 'nogironlikIzoh')}
+            />
+          </ToliqKeng>
+        )}
+
+        <HaYoqMaydoni
+          yorliq="Ёлғиз яшовчи кекса(лар) мавжудми"
+          qiymat={h.yolgizKeksa}
+          ozgardi={(q) => yangila('yolgizKeksa', q)}
+        />
+
+        <HaYoqMaydoni
+          yorliq="Парваришга муҳтож шахс(лар) мавжудми"
+          qiymat={h.parvarishgaMuhtoj}
+          ozgardi={(q) => yangila('parvarishgaMuhtoj', q)}
+        />
+
+        {h.parvarishgaMuhtoj && (
+          <ToliqKeng>
+            <MatnMaydoni
+              yorliq="Ким томонидан парвариш қилинмоқда"
+              qiymat={h.parvarishIzoh}
+              ozgardi={(q) => yangila('parvarishIzoh', q)}
+            />
+          </ToliqKeng>
+        )}
+      </Bolim>
+
+      <Bolim raqam="VIII" sarlavha="Ҳужжатлаштириш ва ижтимоий хизматлар">
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Оила аъзоларининг шахсни тасдиқловчи ҳужжатлари тўлиқми"
+            izoh="Паспорт, туғилганлик тўғрисида гувоҳнома ва бошқалар"
+            qiymat={h.hujjatlarToliq}
+            ozgardi={(q) => yangila('hujjatlarToliq', q)}
+          />
+        </ToliqKeng>
+
+        {!h.hujjatlarToliq && (
+          <ToliqKeng>
+            <MatnMaydoni
+              yorliq="Кимнинг қайси ҳужжати йўқ"
+              qiymat={h.hujjatIzoh}
+              ozgardi={(q) => yangila('hujjatIzoh', q)}
+            />
+          </ToliqKeng>
+        )}
+
+        <ToliqKeng>
+          <MatnMaydoni
+            yorliq="Ижтимоий хизматлардан фойдаланишдаги тўсиқлар"
+            koptator
+            qiymat={h.xizmatTosiqlari}
+            ozgardi={(q) => yangila('xizmatTosiqlari', q)}
+          />
+        </ToliqKeng>
+      </Bolim>
+    </>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+//  6-QADAM: IX. TOMORQA + X. TADBIRKORLIK SUBYEKTLARI
+// ═════════════════════════════════════════════════════════════
+
+export function QadamYerVaSubyektlar({ h, yangila, xatolar }: QadamProps) {
+  return (
+    <>
+      <Bolim raqam="IX" sarlavha="Томорқа, ер, чорвачилик ва ҳунармандчилик">
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Томорқа ер майдони мавжудми"
+            qiymat={h.tomorqaBor}
+            ozgardi={(q) => yangila('tomorqaBor', q)}
+          />
+        </ToliqKeng>
+
+        {h.tomorqaBor && (
+          <RaqamMaydoni
+            yorliq="Томорқа майдони"
+            majburiy
+            qiymat={h.tomorqaMaydoni}
+            ozgardi={(q) => yangila('tomorqaMaydoni', q)}
+            max={10000}
+            qadam={0.01}
+            birlik="сотих"
+            xato={x(xatolar, 'tomorqaMaydoni')}
+          />
+        )}
+
+        <MatnMaydoni
+          yorliq="Чорвачилик / паррандачилик"
+          izoh="Мавжуд ёки имконияти"
+          qiymat={h.chorvachilik}
+          ozgardi={(q) => yangila('chorvachilik', q)}
+        />
+
+        <MatnMaydoni
+          yorliq="Ҳунармандчилик ёки уй шароитида ишлаб чиқариш"
+          qiymat={h.hunarmandchilik}
+          ozgardi={(q) => yangila('hunarmandchilik', q)}
+        />
+
+        <ToliqKeng>
+          <KopTanlovMaydoni
+            yorliq="Ушбу йўналишларни ривожлантириш учун зарур кўмак"
+            variantlar={MOLIYA_TURI}
+            qiymatlar={h.zarurKomak}
+            ozgardi={(q) => yangila('zarurKomak', q)}
+          />
+        </ToliqKeng>
+
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Иссиқхонага талаби"
+            qiymat={h.issiqxonaTalabi}
+            ozgardi={(q) => yangila('issiqxonaTalabi', q)}
+          />
+        </ToliqKeng>
+
+        {h.issiqxonaTalabi && (
+          <RaqamMaydoni
+            yorliq="Иссиқхона майдони"
+            qiymat={h.issiqxonaMaydoni}
+            ozgardi={(q) => yangila('issiqxonaMaydoni', q)}
+            max={10000}
+            qadam={0.01}
+            birlik="сотих"
+            xato={x(xatolar, 'issiqxonaMaydoni')}
+          />
+        )}
+
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq="Оила аъзоларида ижара ер мавжудми"
+            qiymat={h.ijaraYer}
+            ozgardi={(q) => yangila('ijaraYer', q)}
+          />
+        </ToliqKeng>
+
+        {h.ijaraYer && (
+          <RaqamMaydoni
+            yorliq="Ижара ер майдони"
+            majburiy
+            qiymat={h.ijaraYerMaydoni}
+            ozgardi={(q) => yangila('ijaraYerMaydoni', q)}
+            max={100000}
+            qadam={0.01}
+            birlik="гектар"
+            xato={x(xatolar, 'ijaraYerMaydoni')}
+          />
+        )}
+      </Bolim>
+
+      <Bolim
+        raqam="X"
+        sarlavha="Маҳалла ҳудудидаги тадбиркорлик субъектлари"
+        izoh="Бўш иш ўринлари бандлик марказининг мослаштириш тахтасига тушади — иложи борича аниқ ёзинг."
+      >
+        <RaqamMaydoni
+          yorliq="Тадбиркорлик субъектлари сони"
+          qiymat={h.tadbirkorSubyektlar}
+          ozgardi={(q) => yangila('tadbirkorSubyektlar', q)}
+          max={500}
+          birlik="та"
+          xato={x(xatolar, 'tadbirkorSubyektlar')}
+        />
+
+        <RaqamMaydoni
+          yorliq="Улардаги бўш иш ўринлари сони"
+          qiymat={h.boshIshOrinlari}
+          ozgardi={(q) => yangila('boshIshOrinlari', q)}
+          max={2000}
+          birlik="ўрин"
+          xato={x(xatolar, 'boshIshOrinlari')}
+        />
+
+        <HaYoqMaydoni
+          yorliq="Субъектларда кредит ёки субсидияга эҳтиёж мавжудми"
+          qiymat={h.subyektMoliyaEhtiyoji}
+          ozgardi={(q) => yangila('subyektMoliyaEhtiyoji', q)}
+        />
+
+        <RaqamMaydoni
+          yorliq="Қўшимча яратиладиган иш ўринлари сони"
+          qiymat={h.yangiIshOrinlari}
+          ozgardi={(q) => yangila('yangiIshOrinlari', q)}
+          max={2000}
+          birlik="ўрин"
+          xato={x(xatolar, 'yangiIshOrinlari')}
+        />
+      </Bolim>
+    </>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+//  7-QADAM: ISHSIZLAR + XI. XULOSA
+// ═════════════════════════════════════════════════════════════
+
+export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
+  const kutilgan = h.ishsizlarSoni === '' ? 0 : h.ishsizlarSoni;
+  const kiritilgan = h.ishsizlar.length;
+
+  function qatorYangila<K extends keyof IshsizQatori>(
+    qatorId: string,
+    kalit: K,
+    qiymat: IshsizQatori[K]
+  ) {
+    yangila(
+      'ishsizlar',
+      h.ishsizlar.map((p) => (p.qatorId === qatorId ? { ...p, [kalit]: qiymat } : p))
+    );
+  }
+
+  return (
+    <>
+      <section className="karta space-y-4 p-4 sm:p-5">
+        <div>
+          <h2 className="bolim-sarlavha">
+            <span className="bolim-raqam">
+              <Users className="h-4 w-4" />
+            </span>
+            <span>Ҳар бир ишсиз фуқаро бўйича маълумот</span>
+          </h2>
+          <p className="mt-2 text-xs text-ink-faint">
+            Бу ерда фақат асосий маълумот ёзилади. Тўлиқ анкетани бандлик маркази
+            мутахассиси суҳбат пайтида тўлдиради.
+          </p>
+        </div>
+
+        {/*
+          Kiritilgan qatorlar soni I bo'limdagi raqam bilan mos kelishi
+          shart. Bu bog'lanish butun platformani ushlab turadi: ishsizlar
+          soni faqat raqam bo'lib qolsa, bandlik markazi kim bilan
+          ishlashini bilmaydi.
+        */}
+        <div
+          className={
+            kutilgan === kiritilgan && kutilgan > 0
+              ? 'quti-ok'
+              : kutilgan === 0 && kiritilgan === 0
+                ? 'rounded-md bg-surface-muted px-3.5 py-3 text-sm text-ink-muted'
+                : 'quti-ogoh'
+          }
+        >
+          I бўлимда <b>{kutilgan}</b> та ишсиз кўрсатилган, бу ерда{' '}
+          <b>{kiritilgan}</b> тасининг маълумоти киритилган.
+          {kutilgan !== kiritilgan && ' Улар тенг бўлиши керак.'}
+        </div>
+
+        {x(xatolar, 'ishsizlar') && <div className="quti-xato">{x(xatolar, 'ishsizlar')}</div>}
+
+        <div className="space-y-4">
+          {h.ishsizlar.map((p, i) => (
+            <div key={p.qatorId} className="rounded-md border border-line bg-surface-muted p-3.5">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-semibold text-ink">{i + 1}-ишсиз фуқаро</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    yangila(
+                      'ishsizlar',
+                      h.ishsizlar.filter((y) => y.qatorId !== p.qatorId)
+                    )
+                  }
+                  aria-label={`${i + 1}-фуқарони рўйхатдан олиб ташлаш`}
+                  className="flex h-9 w-9 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-danger-bg hover:text-danger"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <MatnMaydoni
+                  yorliq="Ф.И.Ш."
+                  majburiy
+                  qiymat={p.fish}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'fish', q)}
+                  xato={x(xatolar, `ishsiz.${i}.fish`)}
+                />
+
+                <MatnMaydoni
+                  yorliq="Телефон рақами"
+                  turi="tel"
+                  qiymat={p.telefon ?? ''}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'telefon', q)}
+                  xato={x(xatolar, `ishsiz.${i}.telefon`)}
+                />
+
+                <TanlovMaydoni
+                  yorliq="Жинси"
+                  majburiy
+                  variantlar={JINS}
+                  qiymat={p.jinsi}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'jinsi', q ?? 'Erkak')}
+                />
+
+                <TanlovMaydoni
+                  yorliq="Маълумоти"
+                  variantlar={MALUMOT}
+                  qiymat={p.malumoti ?? null}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'malumoti', q)}
+                />
+
+                <MatnMaydoni
+                  yorliq="Мавжуд малака / мутахассислиги"
+                  qiymat={p.mutaxassisligi ?? ''}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'mutaxassisligi', q)}
+                />
+
+                <RaqamMaydoni
+                  yorliq="Иш тажрибаси"
+                  qiymat={p.ishTajribasiYil}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'ishTajribasiYil', q)}
+                  max={60}
+                  qadam={0.5}
+                  birlik="йил"
+                />
+
+                <MatnMaydoni
+                  yorliq="Қайси йўналишда ишлашни истайди"
+                  qiymat={p.xohlaganIsh ?? ''}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'xohlaganIsh', q)}
+                />
+
+                <PulMaydoni
+                  yorliq="Қаноатлантирадиган иш ҳақи"
+                  qiymat={p.kutilayotganMaosh}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'kutilayotganMaosh', q)}
+                />
+
+                <div className="sm:col-span-2">
+                  <HaYoqMaydoni
+                    yorliq="Касб-ҳунарга ўқиш истаги борми"
+                    qiymat={p.kasbHunarEhtiyoji ?? false}
+                    ozgardi={(q) => qatorYangila(p.qatorId, 'kasbHunarEhtiyoji', q)}
+                  />
+                </div>
+
+                {p.kasbHunarEhtiyoji && (
+                  <div className="sm:col-span-2">
+                    <MatnMaydoni
+                      yorliq="Қайси касбни ўрганиш истаги бор"
+                      izoh="Аниқ касб ёзинг — курс очиш қарори шунга таянади"
+                      qiymat={p.organmoqchiKasb ?? ''}
+                      ozgardi={(q) => qatorYangila(p.qatorId, 'organmoqchiKasb', q)}
+                      placeholder="масалан: пайвандчи, тикувчи, дастурчи"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => yangila('ishsizlar', [...h.ishsizlar, bosIshsiz()])}
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-strong px-4 py-3 text-sm font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          <Plus className="h-4 w-4" />
+          Ишсиз фуқаро қўшиш
+        </button>
+      </section>
+
+      <Bolim raqam="XI" sarlavha="Хулоса">
+        <ToliqKeng>
+          <MatnMaydoni
+            yorliq="Оиланинг камбағалликдан чиқарилиши бўйича умумий хулоса"
+            koptator
+            qiymat={h.umumiyXulosa}
+            ozgardi={(q) => yangila('umumiyXulosa', q)}
+          />
+        </ToliqKeng>
+      </Bolim>
+    </>
+  );
+}
+
+export const QADAMLAR = [
+  { nomi: 'Хонадон', komponent: QadamXonadon },
+  { nomi: 'Меҳнат ва бандлик', komponent: QadamMehnat },
+  { nomi: 'Тадбиркорлик ва даромад', komponent: QadamTadbirkorlik },
+  { nomi: 'Болалар ва соғлиқ', komponent: QadamBolalarSogliq },
+  { nomi: 'Уй-жой ва ижтимоий ҳимоя', komponent: QadamUyJoy },
+  { nomi: 'Ер ва тадбиркорлик субъектлари', komponent: QadamYerVaSubyektlar },
+  { nomi: 'Ишсизлар ва хулоса', komponent: QadamIshsizlar },
+] as const;

@@ -1,0 +1,302 @@
+import type { IshsizQisqa } from '@/lib/xatlov-sxema';
+
+/**
+ * ============================================================
+ *  FORMA HOLATI
+ *
+ *  Raqamli maydonlar `number | ''` turida saqlanadi.
+ *
+ *  Sababi: `0` va "hali to'ldirilmagan" bir xil narsa emas.
+ *  Agar bo'sh maydonni 0 deb saqlasak, xodim "ishsizlar soni"
+ *  ni umuman ko'rmay o'tib ketganda ham tizim "0 ta ishsiz" deb
+ *  yozib qo'yadi va o'sha xonadon hisobotdan tushib qoladi.
+ *  Bo'sh qoldirilgani ko'rinib turishi kerak.
+ * ============================================================
+ */
+
+export type Raqam = number | '';
+
+export interface IshsizQatori extends Omit<IshsizQisqa, 'kutilayotganMaosh' | 'ishTajribasiYil'> {
+  /** Formadagi vaqtinchalik identifikator - React `key` uchun */
+  qatorId: string;
+  kutilayotganMaosh: Raqam;
+  ishTajribasiYil: Raqam;
+}
+
+export interface XatlovHolati {
+  mahallaId: string;
+  manzil: string;
+  oilaBoshligi: string;
+  tugilganYili: Raqam;
+  telefon: string;
+  jamiAzo: Raqam;
+  bolalarSoni: Raqam;
+
+  // I. Mehnat va bandlik
+  mehnatgaLayoqatli: Raqam;
+  ishlaydiganlar: Raqam;
+  davlatKorxonada: Raqam;
+  xususiySektorda: Raqam;
+  ishsizlarSoni: Raqam;
+  bogchaKutayotganAyollar: Raqam;
+  ishsizlikMuddatiOy: Raqam;
+  ishTuriIstagi: string | null;
+  kasbHunarIstagi: boolean;
+  kasbHunarYonalishi: string[];
+  bandlikTakliflari: string;
+
+  // II. Tadbirkorlik
+  tadbirkorlikIstagi: boolean;
+  tadbirkorlikSohasi: string[];
+  moliyaEhtiyoji: boolean;
+  moliyaTuri: string[];
+  talabQilinganMablag: Raqam;
+  mablagYonalishi: string[];
+
+  // III. Daromad
+  oylikDaromad: Raqam;
+  daromadManbalari: string[];
+  daromadImkoniyati: string;
+  kambagallikSabablari: string[];
+
+  // IV. Bolalar ta'limi
+  maktabgachaYoshdagi: Raqam;
+  maktabgachaQamrovda: Raqam;
+  maktabgachaQamrovsizSababi: string;
+  maktabYoshdagi: Raqam;
+  maktabQamrovda: Raqam;
+  bolalarQiziqishlari: string[];
+  togarakQamrovi: Raqam;
+  togarakSababi: string;
+
+  // V. Sog'liq
+  uzoqDavolanish: boolean;
+  uzoqDavolanishIzoh: string;
+  doriEhtiyoji: string;
+  tibbiyXizmatEhtiyoji: string;
+  oxirgiTibbiyKorik: string;
+
+  // VI. Uy-joy
+  uyHolati: string | null;
+  ichimlikSuvi: string | null;
+  sugorishSuvi: boolean;
+  elektr: boolean;
+  gaz: boolean;
+  kanalizatsiya: boolean;
+  sanitariya: string;
+  boshqaMuammolar: string;
+
+  // VII. Ijtimoiy himoya
+  nogironlikBor: boolean;
+  nogironlikIzoh: string;
+  yolgizKeksa: boolean;
+  parvarishgaMuhtoj: boolean;
+  parvarishIzoh: string;
+  boshqaMuhtojlar: string;
+
+  // VIII. Hujjatlar
+  hujjatlarToliq: boolean;
+  hujjatIzoh: string;
+  xizmatTosiqlari: string;
+
+  // IX. Tomorqa va yer
+  tomorqaBor: boolean;
+  tomorqaMaydoni: Raqam;
+  chorvachilik: string;
+  hunarmandchilik: string;
+  zarurKomak: string[];
+  issiqxonaTalabi: boolean;
+  issiqxonaMaydoni: Raqam;
+  ijaraYer: boolean;
+  ijaraYerMaydoni: Raqam;
+
+  // X. Tadbirkorlik subyektlari
+  tadbirkorSubyektlar: Raqam;
+  boshIshOrinlari: Raqam;
+  subyektMoliyaEhtiyoji: boolean;
+  yangiIshOrinlari: Raqam;
+
+  // XI. Xulosa
+  umumiyXulosa: string;
+
+  ishsizlar: IshsizQatori[];
+}
+
+export function bosHolat(mahallaId = ''): XatlovHolati {
+  return {
+    mahallaId,
+    manzil: '',
+    oilaBoshligi: '',
+    tugilganYili: '',
+    telefon: '',
+    jamiAzo: '',
+    bolalarSoni: '',
+
+    mehnatgaLayoqatli: '',
+    ishlaydiganlar: '',
+    davlatKorxonada: '',
+    xususiySektorda: '',
+    ishsizlarSoni: '',
+    bogchaKutayotganAyollar: '',
+    ishsizlikMuddatiOy: '',
+    ishTuriIstagi: null,
+    kasbHunarIstagi: false,
+    kasbHunarYonalishi: [],
+    bandlikTakliflari: '',
+
+    tadbirkorlikIstagi: false,
+    tadbirkorlikSohasi: [],
+    moliyaEhtiyoji: false,
+    moliyaTuri: [],
+    talabQilinganMablag: '',
+    mablagYonalishi: [],
+
+    oylikDaromad: '',
+    daromadManbalari: [],
+    daromadImkoniyati: '',
+    kambagallikSabablari: [],
+
+    maktabgachaYoshdagi: '',
+    maktabgachaQamrovda: '',
+    maktabgachaQamrovsizSababi: '',
+    maktabYoshdagi: '',
+    maktabQamrovda: '',
+    bolalarQiziqishlari: [],
+    togarakQamrovi: '',
+    togarakSababi: '',
+
+    uzoqDavolanish: false,
+    uzoqDavolanishIzoh: '',
+    doriEhtiyoji: '',
+    tibbiyXizmatEhtiyoji: '',
+    oxirgiTibbiyKorik: '',
+
+    uyHolati: null,
+    ichimlikSuvi: null,
+    sugorishSuvi: false,
+    // Xatirchi tumanida elektr deyarli hamma xonadonda bor, gaz esa
+    // ko'p qishloqda yo'q. Boshlang'ich qiymat shunga qarab qo'yilgan.
+    elektr: true,
+    gaz: false,
+    kanalizatsiya: false,
+    sanitariya: '',
+    boshqaMuammolar: '',
+
+    nogironlikBor: false,
+    nogironlikIzoh: '',
+    yolgizKeksa: false,
+    parvarishgaMuhtoj: false,
+    parvarishIzoh: '',
+    boshqaMuhtojlar: '',
+
+    hujjatlarToliq: true,
+    hujjatIzoh: '',
+    xizmatTosiqlari: '',
+
+    tomorqaBor: false,
+    tomorqaMaydoni: '',
+    chorvachilik: '',
+    hunarmandchilik: '',
+    zarurKomak: [],
+    issiqxonaTalabi: false,
+    issiqxonaMaydoni: '',
+    ijaraYer: false,
+    ijaraYerMaydoni: '',
+
+    tadbirkorSubyektlar: '',
+    boshIshOrinlari: '',
+    subyektMoliyaEhtiyoji: false,
+    yangiIshOrinlari: '',
+
+    umumiyXulosa: '',
+
+    ishsizlar: [],
+  };
+}
+
+export function bosIshsiz(): IshsizQatori {
+  return {
+    qatorId: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    fish: '',
+    telefon: '',
+    jinsi: 'Erkak',
+    tugilganSana: null,
+    malumoti: null,
+    mutaxassisligi: '',
+    ishTajribasiYil: '',
+    xohlaganIsh: '',
+    kutilayotganMaosh: '',
+    kasbHunarEhtiyoji: false,
+    organmoqchiKasb: '',
+  };
+}
+
+/** `number | ''` ni serverga yuboriladigan qiymatga aylantiradi */
+export const r = (x: Raqam): number | null => (x === '' ? null : x);
+
+/** Bo'sh satrni `null` ga aylantiradi */
+export const m = (x: string): string | null => (x.trim() ? x.trim() : null);
+
+/**
+ * Forma holatini API kutgan ko'rinishga o'tkazadi.
+ * Bir joyda turishi muhim: qoralama ham, yakuniy yuborish ham shuni ishlatadi.
+ */
+export function yuborishUchun(h: XatlovHolati) {
+  const { ishsizlar, ...x } = h;
+  return {
+    xonadon: {
+      ...x,
+      tugilganYili: r(x.tugilganYili),
+      jamiAzo: r(x.jamiAzo),
+      bolalarSoni: r(x.bolalarSoni),
+      mehnatgaLayoqatli: r(x.mehnatgaLayoqatli),
+      ishlaydiganlar: r(x.ishlaydiganlar),
+      davlatKorxonada: r(x.davlatKorxonada),
+      xususiySektorda: r(x.xususiySektorda),
+      ishsizlarSoni: r(x.ishsizlarSoni),
+      bogchaKutayotganAyollar: r(x.bogchaKutayotganAyollar),
+      ishsizlikMuddatiOy: r(x.ishsizlikMuddatiOy),
+      talabQilinganMablag: r(x.talabQilinganMablag),
+      oylikDaromad: r(x.oylikDaromad),
+      maktabgachaYoshdagi: r(x.maktabgachaYoshdagi),
+      maktabgachaQamrovda: r(x.maktabgachaQamrovda),
+      maktabYoshdagi: r(x.maktabYoshdagi),
+      maktabQamrovda: r(x.maktabQamrovda),
+      togarakQamrovi: r(x.togarakQamrovi),
+      tomorqaMaydoni: r(x.tomorqaMaydoni),
+      issiqxonaMaydoni: r(x.issiqxonaMaydoni),
+      ijaraYerMaydoni: r(x.ijaraYerMaydoni),
+      tadbirkorSubyektlar: r(x.tadbirkorSubyektlar),
+      boshIshOrinlari: r(x.boshIshOrinlari),
+      yangiIshOrinlari: r(x.yangiIshOrinlari),
+      telefon: m(x.telefon),
+      bandlikTakliflari: m(x.bandlikTakliflari),
+      daromadImkoniyati: m(x.daromadImkoniyati),
+      maktabgachaQamrovsizSababi: m(x.maktabgachaQamrovsizSababi),
+      togarakSababi: m(x.togarakSababi),
+      uzoqDavolanishIzoh: m(x.uzoqDavolanishIzoh),
+      doriEhtiyoji: m(x.doriEhtiyoji),
+      tibbiyXizmatEhtiyoji: m(x.tibbiyXizmatEhtiyoji),
+      oxirgiTibbiyKorik: m(x.oxirgiTibbiyKorik),
+      sanitariya: m(x.sanitariya),
+      boshqaMuammolar: m(x.boshqaMuammolar),
+      nogironlikIzoh: m(x.nogironlikIzoh),
+      parvarishIzoh: m(x.parvarishIzoh),
+      boshqaMuhtojlar: m(x.boshqaMuhtojlar),
+      hujjatIzoh: m(x.hujjatIzoh),
+      xizmatTosiqlari: m(x.xizmatTosiqlari),
+      chorvachilik: m(x.chorvachilik),
+      hunarmandchilik: m(x.hunarmandchilik),
+      umumiyXulosa: m(x.umumiyXulosa),
+    },
+    ishsizlar: ishsizlar.map(({ qatorId: _qatorId, ...p }) => ({
+      ...p,
+      telefon: m(p.telefon ?? ''),
+      mutaxassisligi: m(p.mutaxassisligi ?? ''),
+      xohlaganIsh: m(p.xohlaganIsh ?? ''),
+      organmoqchiKasb: m(p.organmoqchiKasb ?? ''),
+      ishTajribasiYil: r(p.ishTajribasiYil),
+      kutilayotganMaosh: r(p.kutilayotganMaosh),
+    })),
+  };
+}
