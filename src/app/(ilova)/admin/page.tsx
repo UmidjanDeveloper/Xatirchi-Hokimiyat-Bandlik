@@ -1,0 +1,137 @@
+import { redirect } from 'next/navigation';
+import { joriySessiya } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { formatDate } from '@/lib/utils';
+import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
+
+export const metadata = { title: 'Бошқарув' };
+
+const AMAL_NOMI: Record<string, string> = {
+  KIRISH: 'Тизимга кирди',
+  CHIQISH: 'Тизимдан чиқди',
+  KORISH: 'Ёзувни очди',
+  YARATISH: 'Яратди',
+  OZGARTIRISH: 'Ўзгартирди',
+  OCHIRISH: 'Ўчирди',
+  EKSPORT: 'Экспорт қилди',
+  PAROL_ALMASHTIRILDI: 'Паролини алмаштирди',
+};
+
+export default async function AdminSahifasi() {
+  const sessiya = joriySessiya();
+  if (!sessiya) redirect('/kirish');
+  if (sessiya.rol !== 'ADMIN') redirect('/');
+
+  const [xodimlar, mahallalar, jurnal, statistika] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: [{ faol: 'desc' }, { rol: 'asc' }, { fullName: 'asc' }],
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        position: true,
+        phone: true,
+        rol: true,
+        faol: true,
+        parolAlmashtirilsin: true,
+        oxirgiKirish: true,
+        mahalla: { select: { nomiKirill: true } },
+      },
+    }),
+    prisma.mahalla.findMany({
+      orderBy: { nomi: 'asc' },
+      select: { id: true, nomiKirill: true },
+    }),
+    prisma.auditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 60,
+      include: { user: { select: { fullName: true, username: true } } },
+    }),
+    Promise.all([
+      prisma.household.count(),
+      prisma.unemployedPerson.count(),
+      prisma.actionPlan.count(),
+      prisma.vacancy.count({ where: { faol: true } }),
+    ]),
+  ]);
+
+  const [xonadon, ishsiz, topshiriq, ishOrni] = statistika;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-lg font-bold text-ink">Бошқарув</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          Ходимлар, логинлар ва аудит журнали
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Karta nomi="Хонадон" soni={xonadon} />
+        <Karta nomi="Ишсиз фуқаро" soni={ishsiz} />
+        <Karta nomi="Чора-тадбир" soni={topshiriq} />
+        <Karta nomi="Бўш иш ўрни" soni={ishOrni} />
+      </div>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-bold text-ink">Ходимлар ({xodimlar.length})</h2>
+        <XodimBoshqaruvi xodimlar={xodimlar} mahallalar={mahallalar} />
+      </section>
+
+      {/*
+        Audit jurnali. Xatlov ma'lumotlari oila daromadi va sog'liq
+        holatini o'z ichiga oladi - kim ularni ko'rgani yozib
+        borilmasa, ma'lumot tarqalganda javobgarni aniqlab bo'lmaydi.
+      */}
+      <section className="karta p-4 sm:p-5">
+        <h2 className="text-sm font-bold text-ink">Аудит журнали</h2>
+        <p className="mt-1 text-xs text-ink-faint">
+          Ким қачон нимани очгани ва ўзгартиргани — охирги 60 та ёзув
+        </p>
+
+        {jurnal.length === 0 ? (
+          <p className="mt-4 text-sm text-ink-muted">Ҳали ёзув йўқ.</p>
+        ) : (
+          <div className="jadval-orash mt-4">
+            <table className="w-full min-w-[34rem] text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs text-ink-faint">
+                  <th className="pb-2 pr-3 font-medium">Вақт</th>
+                  <th className="pb-2 pr-3 font-medium">Ходим</th>
+                  <th className="pb-2 pr-3 font-medium">Амал</th>
+                  <th className="pb-2 font-medium">Изоҳ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jurnal.map((j) => (
+                  <tr key={j.id} className="border-b border-line last:border-0">
+                    <td className="raqam whitespace-nowrap py-2 pr-3 text-xs text-ink-faint">
+                      {formatDate(j.createdAt)}
+                    </td>
+                    <td className="py-2 pr-3 text-ink">{j.user.fullName}</td>
+                    <td className="py-2 pr-3 text-ink-muted">
+                      {AMAL_NOMI[j.amal] ?? j.amal}
+                    </td>
+                    <td className="py-2 text-xs text-ink-faint">
+                      {j.obyektTuri ? `${j.obyektTuri} ` : ''}
+                      {j.izoh ?? ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Karta({ nomi, soni }: { nomi: string; soni: number }) {
+  return (
+    <div className="karta p-4">
+      <p className="raqam text-2xl font-bold text-ink">{soni.toLocaleString('ru-RU')}</p>
+      <p className="mt-0.5 text-xs text-ink-faint">{nomi}</p>
+    </div>
+  );
+}

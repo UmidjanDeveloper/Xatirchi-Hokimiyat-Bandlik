@@ -42,7 +42,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
       const natija = await javob.json().catch(() => ({}));
 
       if (!javob.ok) {
-        setXato(natija.xabar ?? 'Kirishda xatolik yuz berdi');
+        setXato(natija.xabar ?? 'Киришда хатолик юз берди');
         setYuklanmoqda(false);
         return;
       }
@@ -55,7 +55,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
       }
       router.refresh();
     } catch {
-      setXato('Aloqa yo‘q. Internetni tekshirib, qayta urinib ko‘ring.');
+      setXato('Алоқа йўқ. Интернетни текшириб, қайта уриниб кўринг.');
       setYuklanmoqda(false);
     }
   }
@@ -70,7 +70,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
 
       <div className="space-y-1.5">
         <label htmlFor="username" className="block text-sm font-medium text-ink">
-          Login
+          Логин
         </label>
         <input
           id="username"
@@ -91,7 +91,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
 
       <div className="space-y-1.5">
         <label htmlFor="parol" className="block text-sm font-medium text-ink">
-          Parol
+          Парол
         </label>
         <div className="relative">
           <input
@@ -108,7 +108,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
           <button
             type="button"
             onClick={() => setKorinsin((k) => !k)}
-            aria-label={korinsin ? 'Parolni yashirish' : "Parolni ko'rsatish"}
+            aria-label={korinsin ? 'Паролни яшириш' : 'Паролни кўрсатиш'}
             className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-ink-faint transition-colors hover:text-ink"
           >
             {korinsin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -124,12 +124,12 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
         {yuklanmoqda ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Tekshirilmoqda...
+            Текширилмоқда...
           </>
         ) : (
           <>
             <LogIn className="h-4 w-4" />
-            Kirish
+            Кириш
           </>
         )}
       </button>

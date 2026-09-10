@@ -1,0 +1,390 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { KeyRound, Loader2, Plus, UserPlus, X } from 'lucide-react';
+import type { Rol } from '@prisma/client';
+import { ROL_NOMI } from '@/components/shell/navigatsiya';
+import { formatPhone } from '@/lib/utils';
+
+interface Xodim {
+  id: string;
+  username: string;
+  fullName: string;
+  position: string | null;
+  phone: string | null;
+  rol: Rol;
+  faol: boolean;
+  parolAlmashtirilsin: boolean;
+  oxirgiKirish: Date | null;
+  mahalla: { nomiKirill: string } | null;
+}
+
+interface Mahalla {
+  id: string;
+  nomiKirill: string;
+}
+
+const ROLLAR: Rol[] = ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'];
+
+/**
+ * Xodimlarni boshqarish.
+ *
+ * Parol bu yerda BIR MARTA ko'rsatiladi va boshqa hech qayerda
+ * saqlanmaydi (bazada faqat xeshi turadi). Administrator uni
+ * xodimga yetkazadi, xodim esa birinchi kirishda o'zinikiga
+ * almashtiradi.
+ */
+export function XodimBoshqaruvi({
+  xodimlar,
+  mahallalar,
+}: {
+  xodimlar: Xodim[];
+  mahallalar: Mahalla[];
+}) {
+  const router = useRouter();
+  const [ochiq, setOchiq] = useState(false);
+  const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [position, setPosition] = useState('');
+  const [telefon, setTelefon] = useState('');
+  const [rol, setRol] = useState<Rol>('YETTILIK');
+  const [mahallaId, setMahallaId] = useState('');
+  const [parol, setParol] = useState(() => parolYarat());
+  const [xato, setXato] = useState<string | null>(null);
+  const [yuborilmoqda, setYuborilmoqda] = useState(false);
+  const [yaratildi, setYaratildi] = useState<{ login: string; parol: string } | null>(null);
+
+  async function yubor() {
+    if (yuborilmoqda) return;
+    setXato(null);
+    setYuborilmoqda(true);
+
+    try {
+      const javob = await fetch('/api/admin/xodimlar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username.trim().toLowerCase(),
+          parol,
+          fullName: fullName.trim(),
+          position: position.trim() || null,
+          telefon: telefon.trim() || null,
+          rol,
+          mahallaId: rol === 'YETTILIK' ? mahallaId || null : null,
+        }),
+      });
+      const natija = await javob.json().catch(() => ({}));
+      if (!javob.ok) {
+        setXato(natija.xabar ?? 'Сақлаб бўлмади');
+        return;
+      }
+
+      setYaratildi({ login: username.trim().toLowerCase(), parol });
+      setUsername('');
+      setFullName('');
+      setPosition('');
+      setTelefon('');
+      setMahallaId('');
+      setParol(parolYarat());
+      setOchiq(false);
+      router.refresh();
+    } catch {
+      setXato('Алоқа йўқ. Қайта уриниб кўринг.');
+    } finally {
+      setYuborilmoqda(false);
+    }
+  }
+
+  async function faollikOzgartir(id: string, faol: boolean) {
+    await fetch(`/api/admin/xodimlar/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ faol }),
+    });
+    router.refresh();
+  }
+
+  async function parolTikla(id: string, login: string) {
+    const yangi = parolYarat();
+    const javob = await fetch(`/api/admin/xodimlar/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ yangiParol: yangi }),
+    });
+    if (javob.ok) {
+      setYaratildi({ login, parol: yangi });
+      router.refresh();
+    }
+  }
+
+  const maydon =
+    'w-full rounded-md border border-line bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent';
+
+  return (
+    <div className="space-y-4">
+      {/* Yangi parol - bir marta ko'rsatiladi */}
+      {yaratildi && (
+        <div className="quti-ok flex flex-wrap items-center justify-between gap-3">
+          <span>
+            <b>{yaratildi.login}</b> учун парол:{' '}
+            <code className="raqam rounded bg-surface px-2 py-0.5 font-mono text-sm text-ink">
+              {yaratildi.parol}
+            </code>
+            <br />
+            <span className="text-xs">
+              Бу парол бошқа кўрсатилмайди — ходимга ҳозир етказинг.
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setYaratildi(null)}
+            className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-muted"
+          >
+            Тушунарли
+          </button>
+        </div>
+      )}
+
+      {!ochiq ? (
+        <button
+          type="button"
+          onClick={() => setOchiq(true)}
+          className="flex items-center gap-1.5 rounded-md bg-accent-solid px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90"
+        >
+          <UserPlus className="h-4 w-4" />
+          Ходим қўшиш
+        </button>
+      ) : (
+        <div className="karta space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-ink">Янги ходим</h3>
+            <button
+              type="button"
+              onClick={() => setOchiq(false)}
+              aria-label="Ёпиш"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:text-ink"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {xato && <div className="quti-xato">{xato}</div>}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="x-fish" className="text-sm font-medium text-ink">
+                Ф.И.Ш.
+              </label>
+              <input
+                id="x-fish"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className={maydon}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="x-login" className="text-sm font-medium text-ink">
+                Логин
+              </label>
+              <input
+                id="x-login"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="yettilik_uyshun"
+                className={maydon}
+              />
+              <p className="text-[11px] text-ink-faint">
+                Кичик лотин ҳарф, рақам ва пастки чизиқ
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="x-rol" className="text-sm font-medium text-ink">
+                Роли
+              </label>
+              <select
+                id="x-rol"
+                value={rol}
+                onChange={(e) => setRol(e.target.value as Rol)}
+                className={maydon}
+              >
+                {ROLLAR.map((r) => (
+                  <option key={r} value={r}>
+                    {ROL_NOMI[r]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {rol === 'YETTILIK' && (
+              <div className="space-y-1.5">
+                <label htmlFor="x-mahalla" className="text-sm font-medium text-ink">
+                  Маҳалла
+                </label>
+                <select
+                  id="x-mahalla"
+                  value={mahallaId}
+                  onChange={(e) => setMahallaId(e.target.value)}
+                  className={maydon}
+                >
+                  <option value="">— Танланг —</option>
+                  {mahallalar.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nomiKirill}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-ink-faint">
+                  Ходим фақат шу маҳалла маълумотларини кўради
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label htmlFor="x-lavozim" className="text-sm font-medium text-ink">
+                Лавозими
+              </label>
+              <input
+                id="x-lavozim"
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+                className={maydon}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="x-tel" className="text-sm font-medium text-ink">
+                Телефон
+              </label>
+              <input
+                id="x-tel"
+                type="tel"
+                inputMode="tel"
+                value={telefon}
+                onChange={(e) => setTelefon(e.target.value)}
+                className={maydon}
+              />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label htmlFor="x-parol" className="text-sm font-medium text-ink">
+                Бошланғич парол
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="x-parol"
+                  value={parol}
+                  onChange={(e) => setParol(e.target.value)}
+                  className={`${maydon} font-mono`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setParol(parolYarat())}
+                  className="shrink-0 rounded-md border border-line px-3 text-sm text-ink-muted hover:text-ink"
+                >
+                  Янгилаш
+                </button>
+              </div>
+              <p className="text-[11px] text-ink-faint">
+                Ходим биринчи киришда ўзиникига алмаштиради
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={yubor}
+            disabled={yuborilmoqda}
+            className="flex items-center gap-1.5 rounded-md bg-accent-solid px-5 py-2.5 text-sm font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {yuborilmoqda ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Яратиш
+          </button>
+        </div>
+      )}
+
+      {/* ── Ro'yxat ── */}
+      <div className="karta divide-y divide-line">
+        {xodimlar.map((x) => (
+          <div key={x.id} className="flex flex-wrap items-center gap-3 p-3.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate font-medium text-ink">{x.fullName}</span>
+                <code className="raqam rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">
+                  {x.username}
+                </code>
+                {!x.faol && (
+                  <span className="rounded bg-danger-bg px-1.5 py-0.5 text-[11px] font-semibold text-danger">
+                    Фаол эмас
+                  </span>
+                )}
+                {x.parolAlmashtirilsin && x.faol && (
+                  <span className="rounded bg-warn-bg px-1.5 py-0.5 text-[11px] font-semibold text-warn">
+                    Парол алмаштирилмаган
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 truncate text-xs text-ink-faint">
+                {ROL_NOMI[x.rol]}
+                {x.mahalla ? ` · ${x.mahalla.nomiKirill} МФЙ` : ''}
+                {x.phone ? ` · ${formatPhone(x.phone)}` : ''}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 gap-1.5">
+              <button
+                type="button"
+                onClick={() => parolTikla(x.id, x.username)}
+                title="Паролни тиклаш"
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-line text-ink-faint transition-colors hover:text-ink"
+              >
+                <KeyRound className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => faollikOzgartir(x.id, !x.faol)}
+                className={`rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
+                  x.faol
+                    ? 'border-line text-ink-muted hover:border-danger hover:text-danger'
+                    : 'border-ok bg-ok-bg text-ok'
+                }`}
+              >
+                {x.faol ? 'Фаолсизлантириш' : 'Фаоллаштириш'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * O'qish oson, lekin taxmin qilish qiyin parol.
+ *
+ * Administrator uni og'zaki yoki qog'ozda uzatadi, shuning uchun
+ * chalkashadigan belgilar (0/O, 1/l/I) chiqarib tashlangan - aks
+ * holda xodim "nol edimi, o harfimidi?" deb telefon qiladi.
+ */
+function parolYarat(): string {
+  const harflar = 'abcdefghjkmnpqrstuvwxyz';
+  const bosh = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const raqamlar = '23456789';
+  const t = (s: string) => s[Math.floor(Math.random() * s.length)];
+
+  return (
+    t(bosh) +
+    Array.from({ length: 6 }, () => t(harflar)).join('') +
+    t(raqamlar) +
+    t(raqamlar)
+  );
+}

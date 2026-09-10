@@ -58,12 +58,29 @@
     --info: #0369a1;
     --info-bg: #dceffb;
 
-    /* --- Hayot sikli bosqichlari (voronka ranglari) --- */
-    --step-1: #94a3b8; /* Aniqlandi */
-    --step-2: #0284c7; /* Suhbat o'tkazildi */
-    --step-3: #7c3aed; /* Taklif berildi */
-    --step-4: #059669; /* Joylashtirildi */
-    --step-5: #047857; /* Tasdiqlandi */
+    /*
+     * Hayot sikli bosqichlari - TARTIBLANGAN (ordinal) qator.
+     *
+     * Bu beshta rang "beshta boshqa narsa" emas, BITTA yo'lning
+     * beshta bosqichi. Shuning uchun ular bitta rangning ochiqdan
+     * to'qqa boradigan qatori: bosqich qanchalik oldinda bo'lsa,
+     * rang shunchalik to'q.
+     *
+     * Dastlab har bosqichga alohida rang berilgan edi (kulrang, ko'k,
+     * binafsha va ikkita yashil). Rang tekshiruvi shuni ko'rsatdiki,
+     * oxirgi ikkitasi - "Joylashtirildi" va "Tasdiqlandi" -
+     * bir-biridan ajralmas darajada yaqin edi (DeltaE 9.1, kerakli
+     * chegara 15). Ya'ni panelga qaragan hokim eng muhim ikki
+     * bosqichni farqlay olmasdi.
+     *
+     * Rang hech qachon yolg'iz ma'no tashimaydi: nishonda rangli
+     * nuqta yonida matn ham turadi.
+     */
+    --step-1: #86b6ef;
+    --step-2: #5598e7;
+    --step-3: #2a78d6;
+    --step-4: #1c5cab;
+    --step-5: #104281;
 
     --r-sm: 8px;
     --r-md: 12px;
@@ -105,11 +122,12 @@
       --info: #38bdf8;
       --info-bg: #0c2739;
 
-      --step-1: #64748b;
-      --step-2: #38bdf8;
-      --step-3: #a78bfa;
-      --step-4: #34d399;
-      --step-5: #6ee7b7;
+      /* Qorong'i fonda qator teskari yo'nalishda ochiladi */
+      --step-1: #184f95;
+      --step-2: #256abf;
+      --step-3: #3987e5;
+      --step-4: #6da7ec;
+      --step-5: #b7d3f6;
 
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
       --shadow-md: 0 4px 16px -6px rgba(0, 0, 0, 0.6);
@@ -147,11 +165,12 @@
     --info: #38bdf8;
     --info-bg: #0c2739;
 
-    --step-1: #64748b;
-    --step-2: #38bdf8;
-    --step-3: #a78bfa;
-    --step-4: #34d399;
-    --step-5: #6ee7b7;
+    /* Qorong'i fonda qator teskari yo'nalishda ochiladi */
+    --step-1: #184f95;
+    --step-2: #256abf;
+    --step-3: #3987e5;
+    --step-4: #6da7ec;
+    --step-5: #b7d3f6;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 4px 16px -6px rgba(0, 0, 0, 0.6);

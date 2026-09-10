@@ -134,7 +134,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       const natija = await javob.json().catch(() => ({}));
 
       if (!javob.ok) {
-        setServerXatosi(natija.xabar ?? 'Saqlab bo‘lmadi');
+        setServerXatosi(natija.xabar ?? 'Сақлаб бўлмади');
         return;
       }
 
@@ -142,7 +142,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       setOxirgiSaqlash(new Date());
     } catch {
       setServerXatosi(
-        'Aloqa yo‘q. Ma‘lumot telefon xotirasida saqlanib turibdi — aloqa tiklanganda qayta urinib ko‘ring.'
+        'Алоқа йўқ. Маълумот телефон хотирасида сақланиб турибди — алоқа тикланганда қайта уриниб кўринг.'
       );
     } finally {
       setSaqlanmoqda(false);
@@ -179,7 +179,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           setXatolar(xt);
           setQadam(xatoQadami(xt));
         }
-        setServerXatosi(natija.xabar ?? 'Yuborib bo‘lmadi');
+        setServerXatosi(natija.xabar ?? 'Юбориб бўлмади');
         return;
       }
 
@@ -189,7 +189,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       router.refresh();
     } catch {
       setServerXatosi(
-        'Aloqa yo‘q. Ma‘lumot telefon xotirasida saqlandi — aloqa tiklanganda qayta yuboring.'
+        'Алоқа йўқ. Маълумот телефон хотирасида сақланди — алоқа тикланганда қайта юборинг.'
       );
     } finally {
       setYuborilmoqda(false);

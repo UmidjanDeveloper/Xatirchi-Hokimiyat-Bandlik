@@ -17,37 +17,32 @@ import type { IshsizHolati } from '@prisma/client';
 
 export const ISHSIZ_HOLATI: Record<
   IshsizHolati,
-  { kirill: string; lotin: string; bosqich: number; sinf: string }
+  { kirill: string; lotin: string; bosqich: number }
 > = {
   ANIQLANDI: {
     kirill: 'Аниқланди',
     lotin: 'Aniqlandi',
     bosqich: 1,
-    sinf: 'bg-[color-mix(in_srgb,var(--step-1)_16%,transparent)] text-[var(--step-1)]',
   },
   SUHBAT_OTKAZILDI: {
     kirill: 'Суҳбат ўтказилди',
     lotin: 'Suhbat o‘tkazildi',
     bosqich: 2,
-    sinf: 'bg-[color-mix(in_srgb,var(--step-2)_16%,transparent)] text-[var(--step-2)]',
   },
   TAKLIF_BERILDI: {
     kirill: 'Таклиф берилди',
     lotin: 'Taklif berildi',
     bosqich: 3,
-    sinf: 'bg-[color-mix(in_srgb,var(--step-3)_16%,transparent)] text-[var(--step-3)]',
   },
   JOYLASHTIRILDI: {
     kirill: 'Жойлаштирилди',
     lotin: 'Joylashtirildi',
     bosqich: 4,
-    sinf: 'bg-[color-mix(in_srgb,var(--step-4)_18%,transparent)] text-[var(--step-4)]',
   },
   TASDIQLANDI: {
     kirill: 'Тасдиқланди',
     lotin: 'Tasdiqlandi',
     bosqich: 5,
-    sinf: 'bg-[color-mix(in_srgb,var(--step-5)_18%,transparent)] text-[var(--step-5)]',
   },
   RAD_ETDI: {
     kirill: 'Рад этди',
@@ -55,7 +50,6 @@ export const ISHSIZ_HOLATI: Record<
     // Voronkadan tashqarida: bu bosqich emas, chiqish yo'li.
     // Shuning uchun 0 - hech qaysi bosqich rangini olmaydi.
     bosqich: 0,
-    sinf: 'bg-danger-bg text-danger',
   },
 };
 
@@ -68,6 +62,15 @@ export const VORONKA: IshsizHolati[] = [
   'TASDIQLANDI',
 ];
 
+/**
+ * Holat nishoni: rangli nuqta + matn.
+ *
+ * Matn oddiy siyoh rangida yoziladi, bosqich rangida emas. Ikki
+ * sabab bor. Birinchisi - kontrast: bosqich qatorining ochiq uchi
+ * (#86b6ef) oq fonda matn sifatida o'qilmaydi. Ikkinchisi va
+ * muhimrogi - rang hech qachon YOLG'IZ ma'no tashimasligi kerak:
+ * rangni ajrata olmaydigan odam ham nishonni o'qiy olsin.
+ */
 export function HolatNishoni({
   holati,
   lotin = false,
@@ -76,8 +79,21 @@ export function HolatNishoni({
   lotin?: boolean;
 }) {
   const h = ISHSIZ_HOLATI[holati];
+  const radEtdi = holati === 'RAD_ETDI';
+
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${h.sinf}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px] font-semibold ${
+        radEtdi ? 'bg-danger-bg text-danger' : 'bg-surface-muted text-ink-muted'
+      }`}
+    >
+      {!radEtdi && (
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ background: `var(--step-${h.bosqich})` }}
+          aria-hidden="true"
+        />
+      )}
       {lotin ? h.lotin : h.kirill}
     </span>
   );

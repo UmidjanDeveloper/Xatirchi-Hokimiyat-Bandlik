@@ -103,21 +103,28 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
 
   // ── Xonadon tarkibi ──────────────────────────────────────
 
-  if (jami < 1) {
-    xato('jamiAzo', 'Xonadonda kamida 1 kishi bo‘lishi kerak');
-  }
+  /*
+   * Diqqat: "jamiAzo bo'sh" tekshiruvi BU YERDA EMAS.
+   *
+   * Bu modul faqat raqamlar bir-biriga mos kelishini tekshiradi va
+   * uning natijasi formada JONLI ko'rsatiladi. Majburiy maydon
+   * tekshiruvini ham shu yerga qo'shsak, xodim sahifani ochishi
+   * bilan bo'sh formada qizil xato paydo bo'ladi - go'yo u
+   * allaqachon xato qilgandek. Majburiy maydonlar yuborish
+   * paytida tekshiriladi.
+   */
 
   if (bolalar > jami) {
     xato(
       'bolalarSoni',
-      `Bolalar soni (${bolalar}) xonadondagi umumiy a‘zolar sonidan (${jami}) ko‘p bo‘lishi mumkin emas`
+      `Болалар сони (${bolalar}) хонадондаги умумий аъзолар сонидан (${jami}) кўп бўлиши мумкин эмас`
     );
   }
 
   if (layoqatli > jami) {
     xato(
       'mehnatgaLayoqatli',
-      `Mehnatga layoqatlilar (${layoqatli}) umumiy a‘zolar sonidan (${jami}) ko‘p bo‘lishi mumkin emas`
+      `Меҳнатга лаёқатлилар (${layoqatli}) умумий аъзолар сонидан (${jami}) кўп бўлиши мумкин эмас`
     );
   }
 
@@ -126,7 +133,7 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   if (bolalar + layoqatli > jami) {
     xato(
       'mehnatgaLayoqatli',
-      `Bolalar (${bolalar}) va mehnatga layoqatlilar (${layoqatli}) jami ${bolalar + layoqatli} — bu xonadondagi ${jami} kishidan ko‘p`
+      `Болалар (${bolalar}) ва меҳнатга лаёқатлилар (${layoqatli}) жами ${bolalar + layoqatli} — бу хонадондаги ${jami} кишидан кўп`
     );
   }
 
@@ -135,7 +142,7 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   if (ishlaydi + ishsiz > layoqatli) {
     xato(
       'ishsizlarSoni',
-      `Ishlaydiganlar (${ishlaydi}) va ishsizlar (${ishsiz}) jami ${ishlaydi + ishsiz} — bu mehnatga layoqatlilar sonidan (${layoqatli}) ko‘p`
+      `Ишлайдиганлар (${ishlaydi}) ва ишсизлар (${ishsiz}) жами ${ishlaydi + ishsiz} — бу меҳнатга лаёқатлилар сонидан (${layoqatli}) кўп`
     );
   }
 
@@ -145,19 +152,19 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   if (davlat + xususiy > ishlaydi) {
     xato(
       'xususiySektorda',
-      `Davlat (${davlat}) va xususiy sektorda (${xususiy}) jami ${davlat + xususiy} — bu ishlaydiganlar sonidan (${ishlaydi}) ko‘p`
+      `Давлат (${davlat}) ва хусусий секторда (${xususiy}) жами ${davlat + xususiy} — бу ишлайдиганлар сонидан (${ishlaydi}) кўп`
     );
   } else if (ishlaydi > 0 && davlat + xususiy < ishlaydi) {
     ogoh(
       'xususiySektorda',
-      `${ishlaydi} kishi ishlaydi, lekin faqat ${davlat + xususiy} tasining ish joyi ko‘rsatilgan`
+      `${ishlaydi} киши ишлайди, лекин фақат ${davlat + xususiy} тасининг иш жойи кўрсатилган`
     );
   }
 
   if (n(d.bogchaKutayotganAyollar) > ishsiz) {
     xato(
       'bogchaKutayotganAyollar',
-      `Bog‘cha kutayotgan ayollar (${n(d.bogchaKutayotganAyollar)}) ishsizlar sonidan (${ishsiz}) ko‘p bo‘lishi mumkin emas`
+      `Боғча кутаётган аёллар (${n(d.bogchaKutayotganAyollar)}) ишсизлар сонидан (${ishsiz}) кўп бўлиши мумкин эмас`
     );
   }
 
@@ -169,28 +176,28 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   if (n(d.maktabgachaQamrovda) > maktabgacha) {
     xato(
       'maktabgachaQamrovda',
-      `Bog‘chaga qatnaydiganlar (${n(d.maktabgachaQamrovda)}) maktabgacha yoshdagi bolalar sonidan (${maktabgacha}) ko‘p bo‘lishi mumkin emas`
+      `Боғчага қатнайдиганлар (${n(d.maktabgachaQamrovda)}) мактабгача ёшдаги болалар сонидан (${maktabgacha}) кўп бўлиши мумкин эмас`
     );
   }
 
   if (n(d.maktabQamrovda) > maktabYosh) {
     xato(
       'maktabQamrovda',
-      `Maktabga qatnaydiganlar (${n(d.maktabQamrovda)}) maktab yoshidagi bolalar sonidan (${maktabYosh}) ko‘p bo‘lishi mumkin emas`
+      `Мактабга қатнайдиганлар (${n(d.maktabQamrovda)}) мактаб ёшидаги болалар сонидан (${maktabYosh}) кўп бўлиши мумкин эмас`
     );
   }
 
   if (n(d.togarakQamrovi) > maktabgacha + maktabYosh) {
     xato(
       'togarakQamrovi',
-      `To‘garakka qatnaydiganlar (${n(d.togarakQamrovi)}) xonadondagi bolalar sonidan ko‘p bo‘lishi mumkin emas`
+      `Тўгаракка қатнайдиганлар (${n(d.togarakQamrovi)}) хонадондаги болалар сонидан кўп бўлиши мумкин эмас`
     );
   }
 
   if (maktabgacha + maktabYosh > bolalar) {
     xato(
       'maktabYoshdagi',
-      `Maktabgacha (${maktabgacha}) va maktab yoshidagi (${maktabYosh}) bolalar jami ${maktabgacha + maktabYosh} — bu xonadondagi bolalar sonidan (${bolalar}) ko‘p`
+      `Мактабгача (${maktabgacha}) ва мактаб ёшидаги (${maktabYosh}) болалар жами ${maktabgacha + maktabYosh} — бу хонадондаги болалар сонидан (${bolalar}) кўп`
     );
   }
 
@@ -199,7 +206,7 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   if (maktabYosh > 0 && n(d.maktabQamrovda) < maktabYosh) {
     ogoh(
       'maktabQamrovda',
-      `${maktabYosh - n(d.maktabQamrovda)} ta maktab yoshidagi bola ta’lim bilan qamrab olinmagan — sababini izohda yozing`
+      `${maktabYosh - n(d.maktabQamrovda)} та мактаб ёшидаги бола таълим билан қамраб олинмаган — сабабини изоҳда ёзинг`
     );
   }
 
@@ -208,7 +215,7 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   if (n(d.tadbirkorSubyektlar) === 0 && n(d.boshIshOrinlari) > 0) {
     xato(
       'boshIshOrinlari',
-      'Tadbirkorlik subyektlari yo‘q, lekin bo‘sh ish o‘rinlari ko‘rsatilgan'
+      'Тадбиркорлик субъектлари йўқ, лекин бўш иш ўринлари кўрсатилган'
     );
   }
 
@@ -217,14 +224,14 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   if (d.moliyaEhtiyoji && b(d.talabQilinganMablag) <= 0) {
     xato(
       'talabQilinganMablag',
-      'Moliyaviy ehtiyoj belgilangan — talab qilinadigan mablag‘ miqdorini kiriting'
+      'Молиявий эҳтиёж белгиланган — талаб қилинадиган маблағ миқдорини киритинг'
     );
   }
 
   if (!d.moliyaEhtiyoji && b(d.talabQilinganMablag) > 0) {
     xato(
       'talabQilinganMablag',
-      'Mablag‘ miqdori kiritilgan, lekin moliyaviy ehtiyoj "yo‘q" deb belgilangan'
+      'Маблағ миқдори киритилган, лекин молиявий эҳтиёж «йўқ» деб белгиланган'
     );
   }
 
@@ -232,54 +239,65 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   if (b(d.talabQilinganMablag) > 5_000_000_000) {
     ogoh(
       'talabQilinganMablag',
-      'Talab qilingan mablag‘ 5 mlrd so‘mdan ko‘p — raqamni tekshiring'
+      'Талаб қилинган маблағ 5 млрд сўмдан кўп — рақамни текширинг'
     );
   }
 
   // ── IX bo'lim: yer va tomorqa ────────────────────────────
 
   if (d.tomorqaBor && n(d.tomorqaMaydoni) <= 0) {
-    xato('tomorqaMaydoni', 'Tomorqa bor deb belgilangan — maydonini kiriting');
+    xato('tomorqaMaydoni', 'Томорқа бор деб белгиланган — майдонини киритинг');
   }
   if (!d.tomorqaBor && n(d.tomorqaMaydoni) > 0) {
-    xato('tomorqaMaydoni', 'Tomorqa maydoni kiritilgan, lekin "tomorqa yo‘q" deb belgilangan');
+    xato('tomorqaMaydoni', 'Томорқа майдони киритилган, лекин «томорқа йўқ» деб белгиланган');
   }
   if (d.issiqxonaTalabi && n(d.issiqxonaMaydoni) <= 0) {
-    ogoh('issiqxonaMaydoni', 'Issiqxona talabi bor — rejalashtirilgan maydonni kiriting');
+    ogoh('issiqxonaMaydoni', 'Иссиқхона талаби бор — режалаштирилган майдонни киритинг');
   }
   if (d.ijaraYer && n(d.ijaraYerMaydoni) <= 0) {
-    xato('ijaraYerMaydoni', 'Ijara yer bor deb belgilangan — maydonini kiriting');
+    xato('ijaraYerMaydoni', 'Ижара ер бор деб белгиланган — майдонини киритинг');
   }
 
   // ── V va VII bo'lim: izoh talab qiladigan belgilar ───────
 
   if (d.nogironlikBor && !d.nogironlikIzoh?.trim()) {
-    xato('nogironlikIzoh', 'Nogironligi bo‘lgan shaxs bor — kim ekanini va guruhini yozing');
+    xato('nogironlikIzoh', 'Ногиронлиги бўлган шахс бор — ким эканини ва гуруҳини ёзинг');
   }
   if (d.uzoqDavolanish && !d.uzoqDavolanishIzoh?.trim()) {
-    xato('uzoqDavolanishIzoh', 'Uzoq davolanishga muhtoj a’zo bor — kim ekanini va tashxisni yozing');
+    xato('uzoqDavolanishIzoh', 'Узоқ даволанишга муҳтож аъзо бор — ким эканини ва ташхисни ёзинг');
   }
 
   // ── III bo'lim: daromad ──────────────────────────────────
 
-  // Nol daromad haqiqat bo'lishi mumkin (yangi ko'chib kelgan, hamma
-  // ishsiz), lekin ko'pincha bu "to'ldirishni unutdim" degani.
-  if (b(d.oylikDaromad) === 0) {
-    ogoh('oylikDaromad', 'Oylik daromad kiritilmagan yoki nol — tekshiring');
-  }
+  /*
+   * Daromad ogohlantirishlari faqat XATLOV BOSHLANGANDAN keyin.
+   *
+   * `jami > 0` sharti - forma ochilgan zahoti "daromad kiritilmagan"
+   * deb yozib qo'ymaslik uchun. Xodim hali hech narsa yozmagan
+   * bo'lsa, uni ogohlantirishning ma'nosi yo'q: sariq quti bo'sh
+   * formada turgani xodimni chalkashtiradi va vaqt o'tishi bilan u
+   * ogohlantirishlarga umuman qaramaydigan bo'lib qoladi.
+   */
+  if (jami > 0) {
+    // Nol daromad haqiqat bo'lishi mumkin (yangi ko'chib kelgan, hamma
+    // ishsiz), lekin ko'pincha bu "to'ldirishni unutdim" degani.
+    if (b(d.oylikDaromad) === 0) {
+      ogoh('oylikDaromad', 'Ойлик даромад киритилмаган ёки нол — текширинг');
+    }
 
-  // Ishlaydigan odam bor, lekin daromad nol - qarama-qarshilik.
-  if (ishlaydi > 0 && b(d.oylikDaromad) === 0) {
-    ogoh(
-      'oylikDaromad',
-      `Xonadonda ${ishlaydi} kishi ishlaydi, lekin oylik daromad nol ko‘rsatilgan`
-    );
+    // Ishlaydigan odam bor, lekin daromad nol - qarama-qarshilik.
+    if (ishlaydi > 0 && b(d.oylikDaromad) === 0) {
+      ogoh(
+        'oylikDaromad',
+        `Хонадонда ${ishlaydi} киши ишлайди, лекин ойлик даромад нол кўрсатилган`
+      );
+    }
   }
 
   // ── Katta oila ───────────────────────────────────────────
 
   if (jami > 20) {
-    ogoh('jamiAzo', `Xonadonda ${jami} kishi — raqamni tekshiring`);
+    ogoh('jamiAzo', `Хонадонда ${jami} киши — рақамни текширинг`);
   }
 
   return { xatolar, ogohlantirishlar, ok: xatolar.length === 0 };
@@ -305,14 +323,14 @@ export function yuborishgaTayyormi(
   if (ishsiz > kiritilganIshsizlar) {
     hisobot.xatolar.push({
       maydon: 'ishsizlar',
-      xabar: `Xonadonda ${ishsiz} ta ishsiz ko‘rsatilgan, lekin ${kiritilganIshsizlar} tasining anketasi to‘ldirilgan. Qolgan ${ishsiz - kiritilganIshsizlar} tasini kiriting.`,
+      xabar: `Хонадонда ${ishsiz} та ишсиз кўрсатилган, лекин ${kiritilganIshsizlar} тасининг анкетаси тўлдирилган. Қолган ${ishsiz - kiritilganIshsizlar} тасини киритинг.`,
     });
   }
 
   if (kiritilganIshsizlar > ishsiz) {
     hisobot.xatolar.push({
       maydon: 'ishsizlar',
-      xabar: `${kiritilganIshsizlar} ta ishsiz anketasi to‘ldirilgan, lekin I bo‘limda ${ishsiz} ta deb ko‘rsatilgan. Raqamni to‘g‘rilang.`,
+      xabar: `${kiritilganIshsizlar} та ишсиз анкетаси тўлдирилган, лекин I бўлимда ${ishsiz} та деб кўрсатилган. Рақамни тўғриланг.`,
     });
   }
 

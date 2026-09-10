@@ -17,73 +17,62 @@ export interface MenyuBandi {
   /** Lucide ikonka nomi */
   ikonka: string;
   rollar: Rol[];
-  /** Qisqacha tavsif - bosh sahifadagi kartochkada chiqadi */
-  tavsif?: string;
 }
 
 export const MENYU: MenyuBandi[] = [
   {
     yol: '/xatlov',
-    nomi: 'Xatlovlarim',
+    nomi: 'Хатловларим',
     ikonka: 'ClipboardList',
     rollar: ['YETTILIK'],
-    tavsif: 'O‘zingiz kiritgan xonadonlar va tugallanmagan qoralamalar',
   },
   {
     yol: '/xatlov/yangi',
-    nomi: 'Yangi xatlov',
+    nomi: 'Янги хатлов',
     ikonka: 'HousePlus',
     rollar: ['YETTILIK', 'BANDLIK', 'ADMIN'],
-    tavsif: 'Xonadonni xatlovdan o‘tkazish',
   },
   {
     yol: '/xonadonlar',
-    nomi: 'Xonadonlar',
+    nomi: 'Хонадонлар',
     ikonka: 'Houses',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
-    tavsif: 'Barcha mahallalar bo‘yicha xatlovlar',
   },
   {
     yol: '/ishsizlar',
-    nomi: 'Ishsizlar',
+    nomi: 'Ишсизлар',
     ikonka: 'Users',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
-    tavsif: 'Suhbat, taklif va joylashtirish',
   },
   {
     yol: '/bandlik',
-    nomi: 'Operatsion panel',
+    nomi: 'Операцион панел',
     ikonka: 'Target',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
-    tavsif: 'Navbat, moslashtirish, kurs talabi',
   },
   {
     yol: '/ish-orinlari',
-    nomi: 'Bo‘sh ish o‘rinlari',
+    nomi: 'Бўш иш ўринлари',
     ikonka: 'Briefcase',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
-    tavsif: 'Korxonalardagi bo‘sh o‘rinlar reestri',
   },
   {
     yol: '/chora-tadbirlar',
-    nomi: 'Chora-tadbirlar',
+    nomi: 'Чора-тадбирлар',
     ikonka: 'ListChecks',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'],
-    tavsif: 'Topshiriqlar, mas’ullar va muddatlar',
   },
   {
     yol: '/panel',
-    nomi: 'Tahlil paneli',
+    nomi: 'Таҳлил панели',
     ikonka: 'ChartColumn',
     rollar: ['HOKIM', 'BANDLIK_RAHBAR', 'ADMIN'],
-    tavsif: 'Qamrov, reyting va tavsiyalar',
   },
   {
     yol: '/admin',
-    nomi: 'Boshqaruv',
+    nomi: 'Бошқарув',
     ikonka: 'Settings',
     rollar: ['ADMIN'],
-    tavsif: 'Xodimlar, loginlar va audit jurnali',
   },
 ];
 
@@ -122,11 +111,17 @@ export function yolgaRuxsat(rol: Rol, yol: string): boolean {
   return band ? band.rollar.includes(rol) : false;
 }
 
-/** Rol nomi - o'zbekcha */
+/**
+ * Rol nomlari kirillda - butun ilova bir alifboda.
+ *
+ * Menyu lotinda, sahifa matni kirillda bo'lsa, bitta ekranda ikki
+ * alifbo aralashadi va bu qorishiq ko'rinadi. Manba hujjatlarning
+ * hammasi kirill, shuning uchun asos alifbo ham kirill.
+ */
 export const ROL_NOMI: Record<Rol, string> = {
-  YETTILIK: 'Mahalla yettiligi a’zosi',
-  BANDLIK: 'Bandlik markazi mutaxassisi',
-  BANDLIK_RAHBAR: 'Bandlik markazi rahbari',
-  HOKIM: 'Tuman rahbariyati',
-  ADMIN: 'Administrator',
+  YETTILIK: 'Маҳалла еттилиги аъзоси',
+  BANDLIK: 'Бандлик маркази мутахассиси',
+  BANDLIK_RAHBAR: 'Бандлик маркази раҳбари',
+  HOKIM: 'Туман раҳбарияти',
+  ADMIN: 'Администратор',
 };

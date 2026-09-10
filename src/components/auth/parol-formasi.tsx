@@ -26,7 +26,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
     if (yuklanmoqda) return;
 
     if (yangi !== takror) {
-      setXato('Yangi parol va uning takrori bir xil emas');
+      setXato('Янги парол ва унинг такрори бир хил эмас');
       return;
     }
 
@@ -42,7 +42,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
       const natija = await javob.json().catch(() => ({}));
 
       if (!javob.ok) {
-        setXato(natija.xabar ?? 'Parolni almashtirib bo‘lmadi');
+        setXato(natija.xabar ?? 'Паролни алмаштириб бўлмади');
         setYuklanmoqda(false);
         return;
       }
@@ -53,7 +53,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
         router.refresh();
       }, 900);
     } catch {
-      setXato('Aloqa yo‘q. Qayta urinib ko‘ring.');
+      setXato('Алоқа йўқ. Қайта уриниб кўринг.');
       setYuklanmoqda(false);
     }
   }
@@ -61,7 +61,7 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
   if (muvaffaq) {
     return (
       <div className="karta p-6">
-        <div className="quti-ok">Parol almashtirildi. Sahifaga o&#8216;tilmoqda...</div>
+        <div className="quti-ok">Парол алмаштирилди. Саҳифага ўтилмоқда...</div>
       </div>
     );
   }
@@ -70,8 +70,8 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
     <form onSubmit={yubor} className="karta karta-koter space-y-4 p-6">
       {majburiy && (
         <div className="quti-ogoh">
-          Bu sizning birinchi kirishingiz. Davom etish uchun boshlang&#8216;ich parolni
-          o&#8216;zingiznikiga almashtiring.
+          Бу сизнинг биринчи киришингиз. Давом этиш учун бошланғич паролни
+          ўзингизникига алмаштиринг.
         </div>
       )}
 
@@ -82,9 +82,9 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
       )}
 
       {[
-        { id: 'eski', label: 'Joriy parol', val: eski, set: setEski, ac: 'current-password' },
-        { id: 'yangi', label: 'Yangi parol', val: yangi, set: setYangi, ac: 'new-password' },
-        { id: 'takror', label: 'Yangi parolni takrorlang', val: takror, set: setTakror, ac: 'new-password' },
+        { id: 'eski', label: 'Жорий парол', val: eski, set: setEski, ac: 'current-password' },
+        { id: 'yangi', label: 'Янги парол', val: yangi, set: setYangi, ac: 'new-password' },
+        { id: 'takror', label: 'Янги паролни такрорланг', val: takror, set: setTakror, ac: 'new-password' },
       ].map((m) => (
         <div key={m.id} className="space-y-1.5">
           <label htmlFor={m.id} className="block text-sm font-medium text-ink">
@@ -104,8 +104,8 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
       ))}
 
       <p className="text-xs text-ink-faint">
-        Parol kamida 8 ta belgidan iborat bo&#8216;lishi, harf va raqamni o&#8216;z ichiga
-        olishi kerak.
+        Парол камида 8 та белгидан иборат бўлиши, ҳарф ва рақамни ўз ичига
+        олиши керак.
       </p>
 
       <button
@@ -115,11 +115,11 @@ export function ParolFormasi({ majburiy = false }: { majburiy?: boolean }) {
       >
         {yuklanmoqda ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" /> Saqlanmoqda...
+            <Loader2 className="h-4 w-4 animate-spin" /> Сақланмоқда...
           </>
         ) : (
           <>
-            <KeyRound className="h-4 w-4" /> Parolni almashtirish
+            <KeyRound className="h-4 w-4" /> Паролни алмаштириш
           </>
         )}
       </button>

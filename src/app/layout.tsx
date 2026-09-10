@@ -3,16 +3,17 @@ import { ThemeProvider } from '@/components/shared/theme-provider';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Xatirchi tumani — Bandlik platformasi',
+  title: 'Хатирчи тумани — Бандлик платформаси',
   description:
     "Xatirchi tumani hokimligi. Aholi bandligini ta'minlash va kambag'allikni qisqartirish bo'yicha xatlov va tahlil tizimi.",
-  applicationName: 'Bandlik platformasi',
+  applicationName: 'Бандлик платформаси',
   /*
    * Xatlov ma'lumotlari oila daromadi va sog'liq holatini o'z ichiga
    * oladi. Qidiruv tizimlari indekslashi mumkin bo'lgan hech narsa
    * yo'q - butun sayt login ortida.
    */
   robots: { index: false, follow: false },
+  icons: { icon: '/favicon.svg' },
 };
 
 export const viewport: Viewport = {

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { joriySessiya } from '@/lib/auth';
 import { KirishFormasi } from '@/components/auth/kirish-formasi';
 
-export const metadata = { title: 'Kirish — Xatirchi bandlik platformasi' };
+export const metadata = { title: 'Кириш — Хатирчи бандлик платформаси' };
 
 export default function KirishSahifasi({
   searchParams,
@@ -32,18 +32,18 @@ export default function KirishSahifasi({
               <path d="M9 21v-6h6v6" />
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-ink">Xatirchi tumani hokimligi</h1>
+          <h1 className="text-xl font-bold text-ink">Хатирчи тумани ҳокимлиги</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Bandlik va kambag&#8216;allikni qisqartirish platformasi
+            Бандлик ва камбағалликни қисқартириш платформаси
           </p>
         </div>
 
         <KirishFormasi keyin={searchParams.keyin} />
 
         <p className="mt-6 text-center text-xs text-ink-faint">
-          Tizimga kirish faqat vakolatli xodimlar uchun.
+          Тизимга кириш фақат ваколатли ходимлар учун.
           <br />
-          Login va parolni administrator beradi.
+          Логин ва паролни администратор беради.
         </p>
       </div>
     </main>

@@ -49,7 +49,7 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
           <button
             type="button"
             onClick={() => setOchiq((o) => !o)}
-            aria-label={ochiq ? 'Menyuni yopish' : 'Menyuni ochish'}
+            aria-label={ochiq ? 'Менюни ёпиш' : 'Менюни очиш'}
             aria-expanded={ochiq}
             className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink lg:hidden"
           >
@@ -75,10 +75,10 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
             </span>
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold leading-tight text-ink">
-                Xatirchi bandlik
+                Хатирчи бандлик
               </span>
               <span className="block truncate text-[11px] leading-tight text-ink-faint">
-                {mahallaNomi ? `${mahallaNomi} MFY` : 'Tuman hokimligi'}
+                {mahallaNomi ? `${mahallaNomi} МФЙ` : 'Туман ҳокимлиги'}
               </span>
             </span>
           </Link>
@@ -104,7 +104,7 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
             <button
               type="button"
               onClick={chiq}
-              aria-label="Tizimdan chiqish"
+              aria-label="Тизимдан чиқиш"
               className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-danger-bg hover:text-danger"
             >
               <LogOut className="h-5 w-5" />
@@ -146,8 +146,8 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
           */}
           {rol === 'YETTILIK' && mahallaNomi && (
             <p className="mt-4 rounded-md bg-surface-muted px-3 py-2.5 text-[11px] leading-relaxed text-ink-faint">
-              Siz <span className="font-semibold text-ink-muted">{mahallaNomi}</span> MFY
-              ga biriktirilgansiz va faqat shu mahalla ma&#8216;lumotlarini ko&#8216;rasiz.
+              Сиз <span className="font-semibold text-ink-muted">{mahallaNomi}</span> МФЙ
+              га бириктирилгансиз ва фақат шу маҳалла маълумотларини кўрасиз.
             </p>
           )}
         </aside>
@@ -156,7 +156,7 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
         {ochiq && (
           <button
             type="button"
-            aria-label="Menyuni yopish"
+            aria-label="Менюни ёпиш"
             onClick={() => setOchiq(false)}
             className="fixed inset-0 top-14 z-10 bg-black/20 lg:hidden"
           />

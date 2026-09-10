@@ -72,13 +72,13 @@ export function ismTekshir(qiymat: string, maydon = 'Ism'): TekshiruvNatijasi {
   const ism = qiymat.trim();
 
   if (ism.length < 2) {
-    return { ok: false, xabar: `${maydon} kamida 2 ta harfdan iborat bo'lishi kerak` };
+    return { ok: false, xabar: `${maydon} камида 2 та ҳарфдан иборат бўлиши керак` };
   }
   if (ism.length > 50) {
-    return { ok: false, xabar: `${maydon} 50 ta belgidan oshmasligi kerak` };
+    return { ok: false, xabar: `${maydon} 50 та белгидан ошмаслиги керак` };
   }
   if (!ISM_BELGILARI.test(ism)) {
-    return { ok: false, xabar: `${maydon}da faqat harflar bo'lishi kerak` };
+    return { ok: false, xabar: `${maydon}да фақат ҳарфлар бўлиши керак` };
   }
 
   // Apostrof va defisni olib tashlaymiz — ular tovush emas
@@ -103,14 +103,14 @@ export function ismTekshir(qiymat: string, maydon = 'Ism'): TekshiruvNatijasi {
     } else {
       undoshKetma += 1;
       if (undoshKetma >= 4) {
-        return { ok: false, xabar: `${maydon}ni to'g'ri yozing — tasodifiy harflar qabul qilinmaydi` };
+        return { ok: false, xabar: `${maydon}ни тўғри ёзинг — тасодифий ҳарфлар қабул қилинмайди` };
       }
     }
 
     if (i > 0 && harf === harflar[i - 1]) {
       takror += 1;
       if (takror >= 3) {
-        return { ok: false, xabar: `${maydon}ni to'g'ri yozing — tasodifiy harflar qabul qilinmaydi` };
+        return { ok: false, xabar: `${maydon}ни тўғри ёзинг — тасодифий ҳарфлар қабул қилинмайди` };
       }
     } else {
       takror = 1;
@@ -118,7 +118,7 @@ export function ismTekshir(qiymat: string, maydon = 'Ism'): TekshiruvNatijasi {
   }
 
   if (unliSoni === 0 || unliSoni / harflar.length < 0.2) {
-    return { ok: false, xabar: `${maydon}ni to'g'ri yozing — tasodifiy harflar qabul qilinmaydi` };
+    return { ok: false, xabar: `${maydon}ни тўғри ёзинг — тасодифий ҳарфлар қабул қилинмайди` };
   }
 
   return { ok: true };
@@ -210,136 +210,8 @@ const MAKTAB_SOZLARI = [
   'shkola',
 ];
 
-/**
- * Joy nomini (mahalla yoki maktab) tekshiradi.
- *
- * Ro'yxatdan tanlanmagan nom bazaga to'g'ridan-to'g'ri tushadi,
- * ya'ni "sdfsdfds" deb yozilgan mahalla hisobotda haqiqiy mahalla
- * bilan bir qatorda turadi. Shuning uchun qo'lda yozilgan nom ham
- * ism kabi tekshiriladi.
- *
- * Ismdan ikkita farqi bor:
- *   - RAQAM va nuqta ruxsat etiladi ("71-sonli...", "88-IDUM");
- *   - qisqartmalar uchun undosh ketma-ketligi biroz erkinroq
- *     ("Yangi MFY", "IDUM" kabi nomlar haqiqiy).
- */
-export function joyNomiTekshir(
-  qiymat: string,
-  maydon = 'Nom',
-  maksimal = 120
-): TekshiruvNatijasi {
-  const nom = qiymat.trim();
 
-  if (nom.length < 2) {
-    return { ok: false, xabar: `${maydon}ni to'liq yozing` };
-  }
-  if (nom.length > maksimal) {
-    return { ok: false, xabar: `${maydon} juda uzun` };
-  }
 
-  // Faqat harflar qismini tekshiramiz — raqam va belgilar tegilmaydi
-  const xom = nom.toLowerCase().replace(/[^a-zà-ÿа-яё]/g, '');
-
-  if (xom.length < 3) {
-    return {
-      ok: false,
-      xabar: `${maydon}ni to'liq yozing — faqat raqam yetarli emas`,
-    };
-  }
-
-  if (takroriyBolak(xom) || davriyMatn(xom)) {
-    return { ok: false, xabar: `${maydon} noto'g'ri — ro'yxatdan tanlang` };
-  }
-
-  /*
-   * Bir necha harfni aylantirib yozish: "sadasdasdasd" da bor-yo'g'i
-   * uchta harf ("s", "a", "d") ishlatilgan. Haqiqiy nomda oltita
-   * harfdan uzun so'z shuncha kam harfdan tuzilmaydi — katalogdagi
-   * 164 ta nomning eng "kambag'ali" ham beshta turli harfdan iborat.
-   */
-  if (xom.length >= 6 && new Set(xom).size <= 3) {
-    return { ok: false, xabar: `${maydon} noto'g'ri — ro'yxatdan tanlang` };
-  }
-
-  const harflar = tovushlarGaKeltir(xom);
-
-  let undoshKetma = 0;
-  let unliSoni = 0;
-  let takror = 1;
-
-  for (let i = 0; i < harflar.length; i++) {
-    const harf = harflar[i];
-
-    if (UNLILAR.has(harf)) {
-      unliSoni += 1;
-      undoshKetma = 0;
-    } else {
-      undoshKetma += 1;
-      // Qisqartmalar uchun beshtagacha yo'l qo'yamiz ("MFY", "IDUM")
-      if (undoshKetma >= 5) {
-        return { ok: false, xabar: `${maydon} noto'g'ri — ro'yxatdan tanlang` };
-      }
-    }
-
-    if (i > 0 && harf === harflar[i - 1]) {
-      takror += 1;
-      if (takror >= 3) {
-        return { ok: false, xabar: `${maydon} noto'g'ri — ro'yxatdan tanlang` };
-      }
-    } else {
-      takror = 1;
-    }
-  }
-
-  if (unliSoni / harflar.length < 0.2) {
-    return { ok: false, xabar: `${maydon} noto'g'ri — ro'yxatdan tanlang` };
-  }
-
-  return { ok: true };
-}
-
-/**
- * Maktab nomini tekshiradi.
- *
- * Maktab uchun mahalladan qat'iyroq qoida qo'llasa bo'ladi: tumandagi
- * barcha 94 ta maktab katalogda turibdi va ularning har birida yo
- * raqam ("71-sonli..."), yo "maktab" so'zi bor. Demak qo'lda yozilgan
- * nomda ikkalasidan biri ham bo'lmasa, bu maktab nomi emas.
- *
- * Aynan shu qoida "sadasdasdasd" kabi yozuvlarni to'xtatadi: harflar
- * tartibi haqiqiy so'zga o'xshab tursa ham, unda na raqam, na
- * muassasa nomi bor.
- */
-export function maktabNomiTekshir(
-  qiymat: string,
-  maydon = 'Maktab',
-  maksimal = 250
-): TekshiruvNatijasi {
-  const asosiy = joyNomiTekshir(qiymat, maydon, maksimal);
-  if (!asosiy.ok) return asosiy;
-
-  const nom = qiymat.toLowerCase();
-  if (/[0-9]/.test(nom)) return { ok: true };
-
-  // Apostrof va belgilarni olib tashlaymiz: "ta'lim" -> "talim"
-  const sozlar = nom.replace(/[^a-zà-ÿа-яё]/g, '');
-  if (MAKTAB_SOZLARI.some((so) => sozlar.includes(so))) return { ok: true };
-
-  return {
-    ok: false,
-    xabar: `${maydon} nomida raqam bo'lishi kerak — masalan «71-maktab»`,
-  };
-}
-
-/** Ismning birinchi harfini katta qiladi: "aziza" -> "Aziza" */
-export function ismniChiroyliQil(qiymat: string): string {
-  return qiymat
-    .trim()
-    .replace(/\s+/g, ' ')
-    .split(' ')
-    .map((so) => (so ? so[0].toLocaleUpperCase('uz') + so.slice(1) : so))
-    .join(' ');
-}
 
 /* ------------------------------------------------------------------ */
 /* TELEFON                                                             */
@@ -379,12 +251,6 @@ export function milliyRaqam(qiymat: string): string {
   return d.slice(0, 9);
 }
 
-/** Ko'rinish uchun: "901234567" -> "90 123 45 67" */
-export function raqamniChiroyliQil(qiymat: string): string {
-  const d = milliyRaqam(qiymat);
-  const bo = [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)];
-  return bo.filter(Boolean).join(' ');
-}
 
 /**
  * Telefon raqamini tekshiradi.
@@ -399,20 +265,20 @@ export function telefonTekshir(qiymat: string, maydon = 'Telefon raqami'): Teksh
   const d = milliyRaqam(qiymat);
 
   if (d.length === 0) {
-    return { ok: false, xabar: `${maydon}ni kiriting` };
+    return { ok: false, xabar: `${maydon}ни киритинг` };
   }
   if (d.length !== 9) {
-    return { ok: false, xabar: `${maydon} 9 ta raqamdan iborat bo'lishi kerak` };
+    return { ok: false, xabar: `${maydon} 9 та рақамдан иборат бўлиши керак` };
   }
   if (!KODLAR.has(d.slice(0, 2))) {
-    return { ok: false, xabar: `Bunday operator kodi yo'q. Masalan: 90, 91, 93, 94, 97, 99` };
+    return { ok: false, xabar: `Бундай оператор коди йўқ. Масалан: 90, 91, 93, 94, 97, 99` };
   }
 
   const qolgan = d.slice(2);
 
   // Hamma raqam bir xil: 901111111
   if (new Set(qolgan).size === 1) {
-    return { ok: false, xabar: `${maydon} to'g'ri emas — haqiqiy raqamni kiriting` };
+    return { ok: false, xabar: `${maydon} тўғри эмас — ҳақиқий рақамни киритинг` };
   }
 
   // Ketma-ket o'sish yoki kamayish: 901234567, 909876543
@@ -424,7 +290,7 @@ export function telefonTekshir(qiymat: string, maydon = 'Telefon raqami'): Teksh
     if (farq !== -1) kamayish = false;
   }
   if (osish || kamayish) {
-    return { ok: false, xabar: `${maydon} to'g'ri emas — haqiqiy raqamni kiriting` };
+    return { ok: false, xabar: `${maydon} тўғри эмас — ҳақиқий рақамни киритинг` };
   }
 
   return { ok: true };
