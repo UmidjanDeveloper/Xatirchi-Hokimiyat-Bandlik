@@ -402,3 +402,49 @@ export function Bolim({
 export function ToliqKeng({ children }: { children: React.ReactNode }) {
   return <div className="sm:col-span-2">{children}</div>;
 }
+
+// ─────────────────────────────────────────────────────────────
+//  SANA
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Sana maydoni.
+ *
+ * `<input type="date">` ishlatiladi - telefonda tizimning o'z
+ * kalendari ochiladi va xodim qo'lda "12.03.1987" deb terishga
+ * urinmaydi. Qiymat ichkarida har doim `YYYY-MM-DD`, ya'ni
+ * kun/oy tartibi qaysi mamlakatda ochilishidan qat'i nazar
+ * bir xil saqlanadi.
+ */
+export function SanaMaydoni({
+  yorliq,
+  izoh,
+  xato,
+  majburiy,
+  qiymat,
+  ozgardi,
+  eng_erta,
+  eng_kech,
+}: AsosMaydon & {
+  qiymat: string;
+  ozgardi: (q: string) => void;
+  eng_erta?: string;
+  eng_kech?: string;
+}) {
+  const id = useId();
+  return (
+    <div className="space-y-1.5">
+      <Yorliq htmlFor={id} yorliq={yorliq} izoh={izoh} majburiy={majburiy} />
+      <input
+        id={id}
+        type="date"
+        value={qiymat}
+        min={eng_erta}
+        max={eng_kech}
+        onChange={(e) => ozgardi(e.target.value)}
+        className={`${kiritishSinf} ${xato ? 'maydon-xato' : 'border-line'}`}
+      />
+      <Xato xato={xato} />
+    </div>
+  );
+}

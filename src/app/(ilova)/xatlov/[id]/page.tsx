@@ -13,11 +13,13 @@ import {
   KASB_YONALISHI,
   MABLAG_YONALISHI,
   MALUMOT,
+  MASUL_TASHKILOT,
   MOLIYA_TURI,
   UY_HOLATI,
   kirillcha,
 } from '@/lib/constants';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
+import { ChoraQoshish } from '@/components/chora/chora-qoshish';
 
 export const metadata = { title: 'Хонадон хатлови' };
 
@@ -276,21 +278,22 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
       </Bolim>
 
       {/* ── Chora-tadbirlar ── */}
-      {x.topshiriqlar.length > 0 && (
-        <Bolim raqam="XI" sarlavha="Чора-тадбирлар режаси">
-          <div className="sm:col-span-2 space-y-2">
-            {x.topshiriqlar.map((t) => (
-              <div key={t.id} className="rounded-md border border-line p-3">
-                <p className="text-sm font-medium text-ink">{t.muammo}</p>
-                <p className="mt-1 text-xs text-ink-muted">{t.yechim}</p>
-                <p className="mt-1.5 text-[11px] text-ink-faint">
-                  {t.masulTashkilot} · муддат: {formatDate(t.muddat)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Bolim>
-      )}
+      <Bolim raqam="XI" sarlavha="Чора-тадбирлар режаси">
+        <div className="space-y-2 sm:col-span-2">
+          {x.topshiriqlar.map((t) => (
+            <div key={t.id} className="rounded-md border border-line p-3">
+              <p className="text-sm font-medium text-ink">{t.muammo}</p>
+              <p className="mt-1 text-xs text-ink-muted">{t.yechim}</p>
+              <p className="mt-1.5 text-[11px] text-ink-faint">
+                {kirillcha(MASUL_TASHKILOT, t.masulTashkilot)} · муддат:{' '}
+                {formatDate(t.muddat).split(',')[0]}
+              </p>
+            </div>
+          ))}
+
+          {tahrirlashMumkin && <ChoraQoshish householdId={x.id} />}
+        </div>
+      </Bolim>
 
       {x.umumiyXulosa && (
         <section className="karta p-4 sm:p-5">
