@@ -283,8 +283,8 @@ openssl rand -base64 24
 ### 3. Bazani tayyorlash
 
 ```bash
-npm run db:push    # jadvallarni yaratadi
-npm run db:seed    # 70 ta MFY + birinchi administrator
+npm run db:deploy  # migratsiyalarni qo'llaydi — jadvallar va himoya
+npm run db:seed    # 70 ta MFY, 70 ta rais hisobi, administrator
 ```
 
 `db:seed` quyidagini yozib chiqadi:
@@ -292,8 +292,19 @@ npm run db:seed    # 70 ta MFY + birinchi administrator
 ```
   Mahallalar: 70 ta yangi, 0 ta yangilandi
   Baza: 200 836 aholi, 3345 ishsiz
+  MFY raislari: 70 ta yangi hisob, 0 ta allaqachon bor
   Administrator yaratildi: admin
 ```
+
+`db:seed` ni qayta ishlatish xavfsiz: u bor narsani buzmaydi,
+faqat yetishmayotganini qo'shadi.
+
+> **`db:push` emas, `db:deploy`.** `db:push` sxemani "tezda" bazaga
+> uradi va nima o'zgarganini hech qayerda yozib qo'ymaydi — ishlab
+> chiqish paytida qulay, lekin haqiqiy bazada xavfli. `db:deploy`
+> esa `prisma/migrations/` dagi SQL fayllarni tartib bilan qo'llaydi
+> va qaysi biri o'tganini bazaning o'zida belgilab qo'yadi. Shuning
+> uchun serverda faqat `db:deploy` ishlatiladi.
 
 ### 4. Ishga tushirish
 
@@ -317,23 +328,77 @@ uni og'zaki uzatishi mumkin.
 
 ## Supabase va Vercel
 
-### Supabase
+Hozircha baza **Supabase** da (sinov va qurish uchun), ilova esa
+**Vercel** da turadi. Ikkalasining bepul rejasi bu hajm uchun yetadi.
 
-1. [supabase.com](https://supabase.com) da yangi loyiha yarating
-2. **Project Settings → Database → Connection string** dan ikkita
-   manzilni oling:
-   - `DATABASE_URL` — **Transaction pooler** (6543-port), oxiriga
-     `?pgbouncer=true&connection_limit=1` qo'shing
-   - `DIRECT_URL` — to'g'ridan-to'g'ri ulanish (5432-port)
-3. `npm run db:push && npm run db:seed`
+### 1-qadam. Supabase loyihasi
 
-### Vercel
+1. [supabase.com](https://supabase.com) → **New project**
+2. **Region**: `Central EU (Frankfurt)` — O'zbekistonga eng yaqin
+   variantlardan biri
+3. **Database Password** ni yarating va **saqlab qo'ying** — u
+   ulanish manzilining ichiga kiradi va keyin qayta ko'rsatilmaydi
 
-1. Kodni GitHub'ga yuboring
-2. [vercel.com](https://vercel.com) da **Import Project**
-3. **Environment Variables** ga `.env` dagi barcha qiymatlarni
-   ko'chiring
-4. **Deploy**
+### 2-qadam. Ikkita ulanish manzili
+
+**Project Settings → Database → Connection string** bo'limida ikkita
+manzil bor va ular **ikkalasi ham** kerak:
+
+| O'zgaruvchi | Port | Nima uchun |
+|---|---|---|
+| `DATABASE_URL` | **6543** (Transaction pooler) | Ilova shu orqali ishlaydi |
+| `DIRECT_URL` | **5432** (Direct connection) | Migratsiya shu orqali qo'llanadi |
+
+```bash
+DATABASE_URL="postgresql://postgres.xxxx:PAROL@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+DIRECT_URL="postgresql://postgres.xxxx:PAROL@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+```
+
+> **Nega ikkitasi.** Vercel'da har so'rov alohida nusxada ishlaydi va
+> o'ziga ulanish ochadi. To'g'ridan-to'g'ri ulansa, bir necha o'nlab
+> foydalanuvchi baza chegarasini to'ldirib qo'yadi va sayt
+> "too many connections" bilan yiqiladi. Pooler (6543) ulanishlarni
+> qayta ishlatib turadi. Lekin pooler migratsiya uchun yaramaydi —
+> `CREATE TABLE` kabi buyruqlar bitta uzluksiz ulanishni talab
+> qiladi. Shuning uchun migratsiya `DIRECT_URL` (5432) dan boradi.
+
+### 3-qadam. Bazani to'ldirish
+
+```bash
+npm run db:deploy   # jadvallar + Supabase himoyasi
+npm run db:seed     # 70 MFY, raislar, administrator
+npm run tekshir     # hammasi joyidami?
+```
+
+`npm run tekshir` shunday javob berishi kerak:
+
+```
+  ✓  DATABASE_URL           Supabase pooler
+  ✓  Migratsiya             2 ta qo'llangan
+  ✓  RLS himoyasi           barcha jadvallarda yoqilgan
+  ✓  Anonim kirish          yopilgan
+  ✓  Mahallalar             70 ta
+  ✓  MFY raislari           70 ta hisob
+
+  Hammasi joyida — joylashtirishga tayyor.
+```
+
+### 4-qadam. Vercel
+
+1. [vercel.com](https://vercel.com) → **Import Project** → shu repo
+2. **Environment Variables** ga `.env` dagi **barcha** qiymatlarni
+   ko'chiring (`DATABASE_URL`, `DIRECT_URL`, `SESSION_SECRET`,
+   `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_FISH`,
+   `NEXT_PUBLIC_APP_URL`)
+3. **Deploy**
+
+Vercel `vercel-build` buyrug'ini topadi va migratsiyani o'zi
+qo'llaydi — keyingi safar sxema o'zgarsa, qo'lda hech narsa qilish
+kerak emas.
+
+`db:seed` esa **ataylab** avtomatik ishlamaydi: agar administrator
+biror MFY hisobini o'chirgan yoki bloklagan bo'lsa, har
+joylashtirishda u qaytadan paydo bo'lib qolardi.
 
 > **Eslatma.** Tezlik chegarasi (rate limit) xotirada saqlanadi.
 > Vercel'da har funksiya nusxasi o'z xotirasiga ega, shuning uchun
@@ -358,6 +423,32 @@ oladi. Shuning uchun:
   tekshiriladi: xodim ishdan bo'shatilgan bo'lsa, cookie yaroqli
   bo'lsa ham kira olmaydi
 - **Qidiruv tizimlari indekslamaydi** (`robots: noindex`)
+- **Supabase avtomatik API'si yopilgan** — pastda batafsil
+
+### Supabase avtomatik API'si
+
+Supabase har bir loyihaga so'ralmagan holda REST API qo'shadi: u
+`public` sxemasidagi jadvallarni tashqariga ochadi va loyihaning
+ochiq "anon key" i bilan o'qishga ruxsat beradi. Bu odatda qulaylik,
+lekin bu yerda **jiddiy xavf** — jadvallarda fuqarolarning F.I.Sh.,
+tug'ilgan sanasi, manzili, telefoni, daromadi va sog'lig'i turadi.
+
+Ilova bu API'dan umuman foydalanmaydi — u bazaga Prisma orqali
+to'g'ridan-to'g'ri ulanadi. Shuning uchun
+`20260910130000_supabase_himoyasi` migratsiyasi uni **ikki qavat**
+yopadi:
+
+1. `anon` va `authenticated` rollaridan barcha ruxsatlar olinadi —
+   ular jadvalni umuman ko'rmaydi (kelajakda yaratiladigan jadvallar
+   ham shunday bo'ladi);
+2. har jadvalga RLS yoqiladi, lekin birorta siyosat yozilmaydi — bu
+   "hech kimga hech narsa" degani.
+
+Ilova ulanadigan `postgres` roli RLS'dan o'tib ketadi, shuning uchun
+tizim odatdagidek ishlayveradi.
+
+`npm run tekshir` har ikkala qavatni tekshiradi va biri ochilib
+qolsa `✗` bilan ko'rsatadi.
 
 ### Hosting to'g'risida
 
@@ -373,7 +464,13 @@ serverga ko'chirish rejalashtirilgan.
 prisma/
   schema.prisma            # 7 ta model: Mahalla, User, Household,
                            # UnemployedPerson, ActionPlan, Vacancy, AuditLog
-  seed.ts                  # 70 MFY + birinchi administrator
+  seed.ts                  # 70 MFY + raislar + birinchi administrator
+  migrations/
+    ..._boshlangich/       # Jadvallar, indekslar, bog'lanishlar
+    ..._supabase_himoyasi/ # RLS + anonim kirishni yopish
+
+scripts/
+  tekshir.ts               # Joylashtirishdan oldingi tekshiruv
 
 src/lib/
   alifbo.ts                # Kirill -> lotin o'girish dvigateli
@@ -413,9 +510,12 @@ src/app/(ilova)/
 | `npm run build` | Ishga tushirish uchun yig'ish |
 | `npm run typecheck` | TypeScript tekshiruvi |
 | `npm run lint` | Kod uslubi tekshiruvi |
-| `npm run db:push` | Sxemani bazaga qo'llash |
-| `npm run db:seed` | 70 MFY va administratorni yaratish |
+| `npm run tekshir` | **Joylashtirishdan oldingi tekshiruv** |
+| `npm run db:deploy` | Migratsiyalarni bazaga qo'llash (server) |
+| `npm run db:migrate` | Yangi migratsiya yaratish (ishlab chiqish) |
+| `npm run db:seed` | 70 MFY, raislar va administratorni yaratish |
 | `npm run db:studio` | Bazani brauzerda ko'rish |
+| `npm run db:push` | Sxemani migratsiyasiz urish (faqat mahalliy sinov) |
 
 ---
 

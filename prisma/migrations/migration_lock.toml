@@ -1,0 +1,2 @@
+# Bu fayl Prisma tomonidan yaratiladi va git'da saqlanishi kerak.
+provider = "postgresql"
