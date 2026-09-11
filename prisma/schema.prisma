@@ -67,14 +67,7 @@ model User {
   /// yozuvlari saqlanib qoladi (o'chirish tarixni buzardi).
   faol Boolean @default(true)
 
-  /// ISHLATILMAYDI. Ilgari birinchi kirishda parolni majburiy
-  /// almashtirish uchun xizmat qilardi. Endi parolni faqat
-  /// administrator tayinlaydi, xodim o'zi almashtira olmaydi -
-  /// shuning uchun bayroq hech qachon o'zgarmaydi.
-  ///
-  /// Ustun ataylab olib tashlanmadi: uni tushirish ishlab turgan
-  /// bazada migratsiya talab qiladi, foydasi esa yo'q. Agar
-  /// kelajakda parol almashtirish qaytarilsa, tayyor turadi.
+  /// Parolni birinchi kirishda almashtirish talab qilinadimi
   parolAlmashtirilsin Boolean @default(true)
 
   oxirgiKirish DateTime?

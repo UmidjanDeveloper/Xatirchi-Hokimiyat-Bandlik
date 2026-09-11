@@ -234,6 +234,14 @@ async function malumotniTekshir(prisma: PrismaClient) {
 
   yoz(rais === 70 ? 'OK' : 'OGOH', 'MFY raislari', `${rais} ta hisob`);
 
+  /* Parol almashtirmaganlar - birinchi kirishdan keyin 0 bo'lishi kerak emas, bu norma */
+  const almashtirmagan = await prisma.user.count({
+    where: { parolAlmashtirilsin: true },
+  });
+  if (almashtirmagan > 0) {
+    yoz('OK', 'Boshlang‘ich parollar', `${almashtirmagan} ta hisob hali almashtirmagan`);
+  }
+
   yoz('OK', 'Xatlov', `${xonadon} ta xonadon kiritilgan`);
 }
 

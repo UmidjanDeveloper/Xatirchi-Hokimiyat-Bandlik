@@ -18,6 +18,7 @@ interface Xodim {
   phone: string | null;
   rol: Rol;
   faol: boolean;
+  parolAlmashtirilsin: boolean;
   oxirgiKirish: Date | null;
   mahalla: { nomiKirill: string } | null;
 }
@@ -329,6 +330,11 @@ export function XodimBoshqaruvi({
                 {!x.faol && (
                   <span className="rounded bg-danger-bg px-1.5 py-0.5 text-[11px] font-semibold text-danger">
                     {tr('Фаол эмас')}
+                  </span>
+                )}
+                {x.parolAlmashtirilsin && x.faol && (
+                  <span className="rounded bg-warn-bg px-1.5 py-0.5 text-[11px] font-semibold text-warn">
+                    {tr('Парол алмаштирилмаган')}
                   </span>
                 )}
               </div>

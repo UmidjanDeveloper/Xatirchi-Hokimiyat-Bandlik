@@ -51,7 +51,12 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
         return;
       }
 
-      router.replace(keyin && keyin.startsWith('/') ? keyin : '/');
+      // Boshlang'ich parol hali almashtirilmagan bo'lsa - avval o'sha
+      if (natija.parolAlmashtirilsin) {
+        router.replace('/parol-almashtirish');
+      } else {
+        router.replace(keyin && keyin.startsWith('/') ? keyin : '/');
+      }
       router.refresh();
     } catch {
       setXato(tr('Алоқа йўқ. Интернетни текшириб, қайта уриниб кўринг.'));

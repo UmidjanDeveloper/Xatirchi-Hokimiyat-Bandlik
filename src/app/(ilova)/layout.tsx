@@ -22,12 +22,16 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
       fullName: true,
       rol: true,
       faol: true,
+      parolAlmashtirilsin: true,
       mahalla: { select: { nomiKirill: true } },
     },
   });
 
   // Xodim ishdan bo'shatilgan bo'lsa, cookie hali yaroqli bo'lsa ham kirmaydi
   if (!user || !user.faol) redirect('/kirish');
+
+  // Boshlang'ich parol almashtirilmaguncha boshqa sahifalar ochilmaydi
+  if (user.parolAlmashtirilsin) redirect('/parol-almashtirish');
 
   const alifbo = alifboServer();
 

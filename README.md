@@ -117,20 +117,11 @@ qildi» degan javob turishi kerak.
 **Har fuqaroga login kerak emas.** Mahalla darajasida bitta hisob
 bo'ladi — **MFY raisi**. Tuman hokimligi tasdiqlagan ro'yxatdagi 70
 ta rais tizimga avtomatik kiritilgan: login `mfy_<mahalla nomi>`
-(masalan `mfy_chechakota`), parolni esa administrator tayinlaydi.
+(masalan `mfy_chechakota`), boshlang'ich parolni administrator
+beradi va u birinchi kirishda majburiy almashtiriladi.
 
-**Parolni faqat administrator almashtiradi.** Xodim o'z parolini
-o'zgartira olmaydi — bunday sahifa yo'q. Parol yo'qolsa yoki
-oshkor bo'lsa, administrator boshqaruv panelidan yangisini
-tayinlaydi.
-
-> **Buning narxi bor.** Administrator har bir xodimning amaldagi
-> parolini doim biladi. Ya'ni audit jurnalidagi "kim kiritdi"
-> savoliga kafolat bilan javob berib bo'lmaydi: yozuvni rais ham,
-> administrator ham kiritgan bo'lishi mumkin. Bu ataylab tanlangan
-> yechim — tuman sharoitida parolni unutgan raisga qayta-qayta
-> yordam berishdan ko'ra, boshqaruvni bir joyda saqlash afzal
-> ko'rildi.
+Parol yo'qolsa, administrator boshqaruv panelidan yangisini
+tayinlaydi — eski parolni bilish shart emas.
 
 Yettilikning qolgan a'zolariga alohida hisob berish ham mumkin edi,
 lekin bu 490 ta login degani va ularni boshqarish hokimiyat
@@ -349,11 +340,9 @@ tayinlash mumkin.
 npm run dev        # http://localhost:3000
 ```
 
-`.env` dagi login va parol bilan kiring.
-
-> Boshlang'ich administrator paroli muhit o'zgaruvchilarida ochiq
-> turadi. Tizimga kirgach, boshqaruv panelidan o'zingizga yangi
-> parol tayinlab, `ADMIN_PASSWORD` ni muhitdan olib tashlang.
+`.env` dagi login va parol bilan kiring. **Birinchi kirishda parolni
+almashtirish majburiy** — boshlang'ich parol serverning muhit
+o'zgaruvchilarida ochiq turadi.
 
 ### 5. Xodimlarni qo'shish
 

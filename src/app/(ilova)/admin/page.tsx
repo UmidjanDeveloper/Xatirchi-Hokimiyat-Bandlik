@@ -45,6 +45,7 @@ export default async function AdminSahifasi() {
         phone: true,
         rol: true,
         faol: true,
+        parolAlmashtirilsin: true,
         oxirgiKirish: true,
         mahalla: { select: { nomiKirill: true } },
       },
