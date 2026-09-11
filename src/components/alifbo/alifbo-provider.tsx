@@ -94,7 +94,7 @@ export function AlifboTugmasi({ className }: { className?: string }) {
     >
       {(
         [
-          { kod: 'lot' as const, nomi: 'Lat' },
+          { kod: 'lot' as const, nomi: 'Lot' },
           { kod: 'kir' as const, nomi: 'Кир' },
         ]
       ).map((v) => (

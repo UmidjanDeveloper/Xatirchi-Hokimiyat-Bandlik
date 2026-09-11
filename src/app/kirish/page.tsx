@@ -3,6 +3,7 @@ import { joriySessiya } from '@/lib/auth';
 import { KirishFormasi } from '@/components/auth/kirish-formasi';
 import { AlifboProvider, AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
 import { Gerb } from '@/components/shared/gerb';
+import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { SiteFooter } from '@/components/shared/site-footer';
 import { alifboServer, matnchi } from '@/lib/alifbo-server';
 
@@ -52,12 +53,18 @@ export default function KirishSahifasi({
                 {tr('Хатирчи тумани ҳокимлиги')}
               </h1>
               <p className="mx-auto mt-2 max-w-[22rem] text-sm leading-relaxed text-ink-muted">
-                {tr('Аҳоли бандлигини таъминлаш ва камбағалликни қисқартириш платформаси')}
+                {tr('Камбағаллик ва ишсизликдан фаровонлик сари')}
               </p>
             </div>
 
-            <div className="mb-4 flex justify-center">
+            {/*
+              Alifbo va tema tanlovi yonma-yon turadi: ikkalasi ham
+              "sayt qanday ko'rinadi" degan savolga javob beradi,
+              shuning uchun ularni ajratishning ma'nosi yo'q.
+            */}
+            <div className="mb-4 flex items-center justify-center gap-2">
               <AlifboTugmasi />
+              <ThemeToggle />
             </div>
 
             <KirishFormasi keyin={searchParams.keyin} />

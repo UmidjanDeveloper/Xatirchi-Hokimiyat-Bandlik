@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { ThemeProvider } from '@/components/shared/theme-provider';
+import { ThemeProvider, themeInitScript } from '@/components/shared/theme-provider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -30,6 +30,21 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uz" suppressHydrationWarning>
+      <head>
+        {/*
+          Tema React ishga tushishidan OLDIN qo'llanadi.
+
+          Aks holda sahifa bir lahza standart temada chizilib, keyin
+          foydalanuvchi tanlagan temaga "sakraydi". Bu ayniqsa sekin
+          internetda bilinadi - tuman sharoitida esa internet doim
+          sekin.
+
+          Skript kichik va bloklovchi: u tugamaguncha brauzer
+          chizishni boshlamaydi, shuning uchun sakrash umuman
+          ko'rinmaydi.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
       </body>

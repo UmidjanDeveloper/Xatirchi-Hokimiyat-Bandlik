@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { ParolFormasi } from '@/components/auth/parol-formasi';
 import { AlifboProvider, AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
 import { Gerb } from '@/components/shared/gerb';
+import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { SiteFooter } from '@/components/shared/site-footer';
 
 /*
@@ -59,8 +60,9 @@ export default async function ParolSahifasi() {
               )}
             </div>
 
-            <div className="mb-4 flex justify-center">
+            <div className="mb-4 flex items-center justify-center gap-2">
               <AlifboTugmasi />
+              <ThemeToggle />
             </div>
 
             <ParolFormasi majburiy={user?.parolAlmashtirilsin ?? false} />
