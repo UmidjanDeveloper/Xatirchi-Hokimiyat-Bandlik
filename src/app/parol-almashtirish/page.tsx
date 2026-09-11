@@ -42,12 +42,12 @@ export default async function ParolSahifasi() {
    */
   return (
     <AlifboProvider boshlangich={alifbo}>
-      <div className="flex min-h-dvh flex-col bg-canvas">
-        <main className="flex flex-1 items-center justify-center px-4 py-10">
-          <div className="w-full max-w-[26rem]">
-            <div className="mb-6 text-center">
+      <div className="login-scene flex min-h-dvh flex-col bg-canvas">
+        <main className="login-main flex flex-1 items-center justify-center px-4 py-10">
+          <div className="login-frame w-full max-w-[26rem]">
+            <div className="login-brand mb-6 text-center">
               <div className="mx-auto mb-4 flex items-center justify-center">
-                <span className="flex h-[72px] w-[72px] items-center justify-center rounded-full border border-line bg-surface shadow-sm">
+                <span className="login-emblem flex h-[72px] w-[72px] items-center justify-center rounded-full border border-line bg-surface shadow-sm">
                   <Gerb olcham={50} />
                 </span>
               </div>
@@ -59,7 +59,7 @@ export default async function ParolSahifasi() {
               )}
             </div>
 
-            <div className="mb-4 flex items-center justify-center gap-2">
+            <div className="login-preferences mb-4 flex items-center justify-center gap-2">
               <AlifboTugmasi />
               <ThemeToggle />
             </div>

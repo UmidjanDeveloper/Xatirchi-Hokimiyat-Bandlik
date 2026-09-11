@@ -31,17 +31,17 @@ export default function KirishSahifasi({
 
   return (
     <AlifboProvider boshlangich={alifbo}>
-      <div className="flex min-h-dvh flex-col bg-canvas">
-        <main className="flex flex-1 items-center justify-center px-4 py-10">
-          <div className="w-full max-w-[26rem]">
+      <div className="login-scene flex min-h-dvh flex-col bg-canvas">
+        <main className="login-main flex flex-1 items-center justify-center px-4 py-10">
+          <div className="login-frame w-full max-w-[26rem]">
             {/* ── Rasmiy sarlavha ── */}
-            <div className="mb-7 text-center">
+            <div className="login-brand mb-7 text-center">
               <div className="mx-auto mb-4 flex items-center justify-center">
                 {/*
                   Gerb atrofidagi halqa - u fon bilan qo'shilib ketmasin
                   va rasmiy belgi ekani ko'rinib tursin.
                 */}
-                <span className="flex h-[86px] w-[86px] items-center justify-center rounded-full border border-line bg-surface shadow-sm">
+                <span className="login-emblem flex h-[86px] w-[86px] items-center justify-center rounded-full border border-line bg-surface shadow-sm">
                   <Gerb olcham={62} />
                 </span>
               </div>
@@ -62,14 +62,14 @@ export default function KirishSahifasi({
               "sayt qanday ko'rinadi" degan savolga javob beradi,
               shuning uchun ularni ajratishning ma'nosi yo'q.
             */}
-            <div className="mb-4 flex items-center justify-center gap-2">
+            <div className="login-preferences mb-4 flex items-center justify-center gap-2">
               <AlifboTugmasi />
               <ThemeToggle />
             </div>
 
             <KirishFormasi keyin={searchParams.keyin} />
 
-            <p className="mt-6 text-center text-xs leading-relaxed text-ink-faint">
+            <p className="login-note mt-6 text-center text-xs leading-relaxed text-ink-faint">
               {tr('Тизимга кириш фақат ваколатли ходимлар учун.')}
               <br />
               {tr('Логин ва паролни администратор беради.')}

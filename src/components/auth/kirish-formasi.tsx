@@ -65,7 +65,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
   }
 
   return (
-    <form onSubmit={yubor} className="karta karta-koter space-y-4 p-6">
+    <form onSubmit={yubor} className="login-form karta karta-koter space-y-4 p-6">
       {xato && (
         <div className="quti-xato" role="alert">
           {xato}

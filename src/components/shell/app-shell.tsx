@@ -48,9 +48,9 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
     yol === bandYoli || (bandYoli !== '/' && yol.startsWith(`${bandYoli}/`));
 
   return (
-    <div className="min-h-dvh bg-canvas">
+    <div className="app-workspace min-h-dvh bg-canvas">
       {/* ── Yuqori panel ── */}
-      <header className="sticky top-0 z-30 border-b border-line bg-elev/95 backdrop-blur supports-[backdrop-filter]:bg-elev/80">
+      <header className="workspace-header sticky top-0 z-30 border-b border-line bg-elev/95 backdrop-blur supports-[backdrop-filter]:bg-elev/80">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4">
           <button
             type="button"
@@ -108,7 +108,7 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
       <div className="mx-auto flex max-w-7xl">
         {/* ── Yon menyu ── */}
         <aside
-          className={`${
+          className={`workspace-sidebar ${
             ochiq ? 'block' : 'hidden'
           } fixed inset-x-0 top-16 z-20 border-b border-line bg-elev p-3 lg:sticky lg:top-16 lg:block lg:h-[calc(100dvh-4rem)] lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:bg-transparent`}
         >
@@ -154,7 +154,7 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
         )}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
+          <main className="workspace-main min-w-0 flex-1 p-4 lg:p-6">{children}</main>
         </div>
       </div>
     </div>

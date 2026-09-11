@@ -329,7 +329,7 @@ function Kpi({
   xavfli?: boolean;
 }) {
   return (
-    <div className={`karta p-4 ${xavfli ? 'border-warn' : ''}`}>
+    <div className={`metric-card karta p-4 ${xavfli ? 'border-warn' : ''}`}>
       <div className={`flex items-center gap-2 ${xavfli ? 'text-warn' : 'text-ink-faint'}`}>
         {ikonka}
         <span className="text-xs font-medium">{nomi}</span>

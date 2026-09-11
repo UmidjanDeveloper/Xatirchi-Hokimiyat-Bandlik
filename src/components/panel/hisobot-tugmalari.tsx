@@ -189,7 +189,7 @@ export function HisobotTugmalari({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 sm:flex sm:flex-col sm:items-end">
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -226,7 +226,7 @@ export function HisobotTugmalari({
         </p>
       )}
 
-      <p className="text-[11px] leading-relaxed text-ink-faint">
+      <p className="max-w-[22rem] text-[11px] leading-relaxed text-ink-faint sm:text-right">
         {tr('Ҳисобот ҳозирги алифбода тайёрланади. Кириллда керак бўлса — юқоридаги тугмадан алифбони алмаштириб, қайтадан босинг.')}
       </p>
     </div>

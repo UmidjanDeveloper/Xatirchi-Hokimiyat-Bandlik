@@ -1,6 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { ThemeProvider, themeInitScript } from '@/components/shared/theme-provider';
 import './globals.css';
+/*
+  Ko'rinish qatlami globals'dan KEYIN keladi - u tokenlarni emas,
+  joylashuv va soyani belgilaydi, ya'ni oxirgi so'z unga tegishli.
+*/
+import './hightech.css';
 
 export const metadata: Metadata = {
   title: 'Хатирчи тумани — Бандлик платформаси',

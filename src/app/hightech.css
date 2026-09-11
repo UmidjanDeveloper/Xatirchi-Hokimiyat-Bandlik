@@ -1,0 +1,293 @@
+/*
+ * ============================================================
+ *  KO'RINISH QATLAMI
+ *
+ *  Bu fayl faqat KO'RINISHNI o'zgartiradi. Rang tokenlari,
+ *  tema tanlovi va holat ranglari `globals.css` da qoladi va
+ *  bu yerda qayta yozilmaydi - aks holda qorong'i tema yoki
+ *  rang ko'rmaydigan foydalanuvchi uchun tekshirilgan
+ *  palitralar buzilardi.
+ *
+ *  Shuning uchun quyida hech qanday `--ink`, `--ok`, `--danger`
+ *  yoki diagramma rangi yo'q: faqat joylashuv, soya, burchak va
+ *  harakat.
+ *
+ *  ── Sinf ilgaklari ──
+ *
+ *  Uslublar `login-*` va `workspace-*` sinflariga bog'lanadi.
+ *  Ular markupga qo'lda qo'yilgan: Tailwind sinflari yonida
+ *  turadi va ularni almashtirmaydi. Ya'ni bu fayl o'chirilsa,
+ *  sayt ishlashda davom etadi - shunchaki soddaroq ko'rinadi.
+ * ============================================================
+ */
+
+:root {
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --accent-2: #087e68;
+  --accent-3: #087fa0;
+  --tech-grid: rgba(39, 102, 151, .065);
+  --tech-glow: rgba(17, 151, 171, .12);
+}
+
+.login-scene, .app-workspace {
+  background:
+    radial-gradient(ellipse at 5% 0%, var(--tech-glow), transparent 45%),
+    radial-gradient(ellipse at 100% 30%, rgba(65, 109, 205, .09), transparent 45%),
+    var(--bg-base);
+}
+
+.login-scene { position: relative; isolation: isolate; }
+.login-scene::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: linear-gradient(var(--tech-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--tech-grid) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(#000, transparent 90%);
+}
+.login-main { padding: clamp(28px, 6vh, 76px) 24px; }
+.login-frame {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 460px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: 0 32px 100px -40px rgba(9, 35, 68, .35), inset 0 1px rgba(255, 255, 255, .15);
+}
+.login-brand { margin-bottom: 24px; }
+.login-emblem {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 8px var(--surface-muted), 0 0 0 9px var(--border), 0 18px 38px -18px var(--accent);
+}
+.login-emblem img { width: 82px; height: 82px; object-fit: contain; }
+.login-brand h1 { margin-top: 10px; font-size: clamp(24px, 3vw, 36px); line-height: 1.2; letter-spacing: -.035em; text-wrap: balance; }
+.login-brand > p:last-child { margin-top: 14px; text-wrap: balance; }
+.login-preferences { gap: 10px; margin-bottom: 24px; }
+.login-form.karta { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.login-form > div + div { margin-top: 22px; }
+.login-form label { margin-bottom: 8px; font-weight: 600; }
+.login-form input { min-height: 54px; background: var(--surface-muted); padding-left: 16px; }
+.login-form > button { min-height: 54px; margin-top: 28px; }
+.login-note { line-height: 1.8; }
+.login-scene footer { margin-top: 0; border-color: transparent; padding-top: 12px; padding-bottom: 24px; }
+
+.karta {
+  box-shadow: 0 2px 3px rgba(10, 30, 55, .025), 0 12px 32px -24px rgba(10, 30, 55, .28);
+}
+.tugma-asosiy {
+  background: linear-gradient(115deg, var(--accent-solid), #087f99);
+  box-shadow: 0 6px 16px -8px rgba(9, 112, 159, .65), inset 0 1px rgba(255,255,255,.2);
+}
+:where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+:where(input:not([type='checkbox']):not([type='radio']), select, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--accent-soft);
+}
+.workspace-header {
+  background: var(--bg-elev);
+  background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+  box-shadow: 0 4px 24px -16px rgba(8, 32, 56, .35);
+}
+.workspace-header > div { max-width: 1536px; }
+.app-workspace > div { max-width: 1536px; }
+.workspace-sidebar { background: var(--bg-elev); }
+.workspace-sidebar nav { display: flex; flex-direction: column; gap: 7px; }
+.workspace-sidebar nav a { min-height: 46px; border: 1px solid transparent; transition: background .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.workspace-sidebar nav a[aria-current='page'] {
+  background: var(--accent-soft);
+  border-color: var(--border-strong);
+  box-shadow: inset 3px 0 var(--accent);
+}
+.workspace-sidebar nav a[aria-current='page'] svg { filter: drop-shadow(0 2px 5px var(--tech-glow)); }
+.workspace-main { padding-top: 28px; padding-bottom: 48px; }
+.sahifa-sarlavha { font-size: clamp(24px, 2.5vw, 30px); letter-spacing: -.03em; }
+.workspace-main table { border-collapse: separate; border-spacing: 0; }
+.workspace-main thead { background: var(--surface-muted); }
+.workspace-main th { padding-top: 13px; padding-bottom: 13px; }
+.workspace-main th:first-child, .workspace-main td:first-child { padding-left: 14px; }
+.workspace-main th:last-child, .workspace-main td:last-child { padding-right: 14px; }
+.workspace-main td { border-bottom: 1px solid var(--border); }
+.workspace-main tbody tr:last-child td { border-bottom: 0; }
+.workspace-main tbody tr { transition: background .15s ease; }
+.workspace-main tbody tr:hover { background: var(--surface-muted); }
+.metric-card { position: relative; padding: 22px; overflow: hidden; }
+.metric-card::before {
+  content: ''; position: absolute; top: 0; left: 20px; right: 20px; height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+.metric-card > div > svg { width: 20px; height: 20px; color: var(--accent); }
+.metric-card > .raqam { margin-top: 20px; font-size: 32px; letter-spacing: -.04em; }
+.metric-card > p:last-child { margin-top: 8px; }
+.bolim-sarlavha { padding-bottom: 16px; }
+.bolim-raqam { min-width: 32px; height: 32px; }
+
+@media (min-width: 1024px) {
+  .login-frame {
+    max-width: 1000px;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 80px;
+    padding: 56px;
+    background: linear-gradient(110deg, var(--surface-muted) 0%, var(--surface) 60%);
+  }
+  .login-frame::after {
+    content: ''; position: absolute; top: 56px; bottom: 56px; left: 51%; width: 1px;
+    background: linear-gradient(transparent, var(--border-strong), transparent);
+    pointer-events: none;
+  }
+  .login-brand { grid-column: 1; grid-row: 1 / 4; align-self: center; margin: 0; padding: 28px 0; }
+  .login-brand > div { margin-bottom: 36px; }
+  .login-emblem { width: 148px; height: 148px; }
+  .login-emblem img { width: 108px; height: 108px; }
+  .login-preferences { grid-column: 2; justify-content: flex-end; }
+  .login-form { grid-column: 2; }
+  .login-note { grid-column: 2; }
+  .workspace-sidebar { margin: 20px 0 20px 16px; padding: 16px 12px; border: 1px solid var(--border); border-radius: 20px; top: 84px; height: calc(100dvh - 104px); overflow-y: auto; }
+  .workspace-main { padding: 28px 32px 56px; }
+}
+@media (max-width: 479px) {
+  .login-main { padding: 20px 14px; }
+  .login-frame { padding: 26px 20px; border-radius: 24px; }
+  .workspace-header > div { gap: 6px; padding-left: 8px; padding-right: 8px; }
+}
+@media print {
+  .login-scene, .app-workspace, .login-frame { background: white; box-shadow: none; }
+  .login-scene::before, .login-frame::after, .metric-card::before { display: none; }
+  .karta, .workspace-header { box-shadow: none; }
+}
+
+/* ============================================================
+ *  ZAMONAVIY QO'SHIMCHALAR
+ *
+ *  Har biri MAQSADLI: yo o'qishni osonlashtiradi, yo tizim
+ *  javob berayotganini bildiradi. Bezak uchun qo'shilgan
+ *  harakat bu yerda yo'q - mahalla xodimining telefoni arzon
+ *  va eski, har bir ortiqcha animatsiya uni sekinlashtiradi.
+ * ============================================================ */
+
+/* ── Kartalar yumshoq paydo bo'ladi ──
+ *
+ * Sahifa bir zumda "otilib" chiqmasligi kerak: ko'z qayerga
+ * qarashni ulgurmaydi. 18 ms li siljish bilan kartalar ketma-ket
+ * chiqadi va nigoh yuqoridan pastga tabiiy tushadi.
+ *
+ * Faqat ILK yuklanishda. Qayta chizilganda takrorlanmaydi,
+ * chunki `animation` bir marta ishlaydi.
+ */
+@keyframes kartaPaydo {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.workspace-main > * {
+  animation: kartaPaydo .34s cubic-bezier(.22, 1, .36, 1) backwards;
+}
+.workspace-main > *:nth-child(1) { animation-delay: 0ms; }
+.workspace-main > *:nth-child(2) { animation-delay: 40ms; }
+.workspace-main > *:nth-child(3) { animation-delay: 80ms; }
+.workspace-main > *:nth-child(4) { animation-delay: 120ms; }
+.workspace-main > *:nth-child(n + 5) { animation-delay: 150ms; }
+
+/* ── Raqamlar bir xil kenglikda ──
+ *
+ * KPI raqami yangilanganda `1 111` dan `2 222` ga o'tishda
+ * kenglik o'zgarmasin: aks holda karta "sakraydi".
+ */
+.metric-card > .raqam,
+.workspace-main td:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Jadval sarlavhasi aylantirganda ko'rinib turadi ──
+ *
+ * 70 ta mahallani pastga aylantirganda "bu ustun nima edi?"
+ * degan savol tug'ilmasin.
+ */
+.workspace-main thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-muted);
+}
+
+/* ── Bosiladigan qator qo'l ostida javob beradi ──
+ *
+ * Sichqoncha yo'q qurilmada (telefon) `:hover` ishlamaydi,
+ * shuning uchun `:active` ham qo'shilgan.
+ */
+.karta-bosiladigan { transition: transform .16s ease, box-shadow .16s ease; }
+.karta-bosiladigan:hover { transform: translateY(-1px); }
+.karta-bosiladigan:active { transform: translateY(0); }
+
+/* ── Tanlangan matn hokimiyat rangida ── */
+::selection { background: var(--accent-soft); color: var(--ink); }
+
+/* ── Aylantirish chizig'i ingichka va bosiq ──
+ *
+ * Standart keng kulrang chiziq yon menyuni qo'pol ko'rsatadi.
+ */
+.workspace-sidebar,
+.jadval-orash,
+.workspace-main [style*='overflow'] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* ── Diagramma maslahat oynasi yumshoq chiqadi ── */
+.recharts-tooltip-wrapper { transition: transform .12s ease; }
+
+/* ── Fokus halqasi klaviatura uchun ──
+ *
+ * Sichqoncha bilan bosganda halqa chiqmaydi (`:focus-visible`),
+ * lekin Tab bilan yurgan odam qayerda turganini aniq ko'radi.
+ * Hokimiyatda klaviatura bilan ishlash odati kuchli.
+ */
+:where(a, button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ── HARAKATNI KAMAYTIRISH SO'ROVIGA HURMAT ──
+ *
+ * Foydalanuvchi tizimda "harakatni kamaytir" ni yoqqan bo'lsa
+ * (bosh aylanishi, migren, vestibulyar sezgirlik), animatsiya
+ * zarar keltiradi. `data-fx="lite"` esa zaif qurilmada
+ * ThemeProvider tomonidan qo'yiladi.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .workspace-main > *,
+  .karta-bosiladigan,
+  .recharts-tooltip-wrapper {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+[data-fx='lite'] .workspace-main > * {
+  animation: none;
+}
+
+/* ── Chop etish: qog'ozda ortiqcha narsa qolmasin ── */
+@media print {
+  .workspace-sidebar,
+  .workspace-header { display: none !important; }
+  .workspace-main { padding: 0 !important; }
+  .workspace-main > * { animation: none !important; }
+  .workspace-main thead th { position: static; }
+}

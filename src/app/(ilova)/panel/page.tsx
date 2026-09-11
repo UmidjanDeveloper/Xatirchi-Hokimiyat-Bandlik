@@ -255,7 +255,7 @@ function Kpi({
   yaxshi?: boolean;
 }) {
   return (
-    <div className="karta p-4">
+    <div className="metric-card karta p-4">
       <div className="flex items-center gap-2 text-ink-faint">
         {ikonka}
         <span className="text-xs font-medium">{nomi}</span>
