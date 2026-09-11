@@ -10,9 +10,14 @@ import {
   ByudjetBlogi,
   KechikkanlarBlogi,
   KursTalabiBlogi,
-  QamrovReytingi,
   Voronka,
 } from '@/components/panel/diagrammalar';
+import {
+  DinamikaChizigi,
+  MahallalarJadvali,
+  MahallaUstunlari,
+  ToifaDoirasi,
+} from '@/components/panel/grafiklar';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -142,28 +147,50 @@ export default async function PanelSahifasi() {
             </section>
           )}
 
+          {/* ── Oylik dinamika ── */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="karta p-4 sm:p-5">
+              <h2 className="text-sm font-bold text-ink">{tr('Хатлов динамикаси')}</h2>
+              <p className="mt-1 text-xs text-ink-faint">
+                {tr('Ойма-ой тўпланиб борадиган хонадон сони')}
+              </p>
+              <div className="mt-4">
+                <DinamikaChizigi dinamika={t.dinamika} tur="xatlov" />
+              </div>
+            </section>
+
+            <section className="karta p-4 sm:p-5">
+              <h2 className="text-sm font-bold text-ink">{tr('Ишсизлар билан иш динамикаси')}</h2>
+              <p className="mt-1 text-xs text-ink-faint">
+                {tr('Аниқланган ва ишга жойлашган фуқаролар — тўпланиб борадиган сон')}
+              </p>
+              <div className="mt-4">
+                <DinamikaChizigi dinamika={t.dinamika} tur="ishsiz" />
+              </div>
+            </section>
+          </div>
+
           <div className="grid gap-4 lg:grid-cols-2">
             <Voronka bosqichlar={t.voronka} bazaIshsiz={bosh.bazaIshsiz} />
             <KechikkanlarBlogi kechikkanlar={t.kechikkanlar} />
           </div>
 
+          {/*
+            Ilgari bu yerda ikkita qisqa ro'yxat turardi. Ular
+            o'rnini bitta ustunli diagramma egalladi: ko'rsatkichni
+            ham, yo'nalishni ham tanlash mumkin, ya'ni o'sha ikki
+            ro'yxat ham, yana ikkitasi ham shu yerdan chiqadi.
+          */}
           {!filtr.mahallaId && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <QamrovReytingi
-                qamrov={t.qamrov}
-                sarlavha={tr("Хатлов қамрови — орқада қолган маҳаллалар")}
-                izoh={tr("Рўйхатдаги ишсизлардан нечтаси хатловдан ўтган")}
-                maydon="qamrovFoizi"
-                ortadan
-              />
-              <QamrovReytingi
-                qamrov={t.qamrov}
-                sarlavha={tr("Жойлаштириш натижаси — энг паст маҳаллалар")}
-                izoh={tr("Рўйхатдаги ишсизлардан нечтаси ишга жойлашган")}
-                maydon="natijaFoizi"
-                ortadan
-              />
-            </div>
+            <section className="karta p-4 sm:p-5">
+              <h2 className="text-sm font-bold text-ink">{tr('Маҳаллалар кесимида')}</h2>
+              <p className="mt-1 text-xs text-ink-faint">
+                {tr('Кўрсаткични танланг — 70 та МФЙ дан энг юқори ёки энг паст 10 таси чиқади')}
+              </p>
+              <div className="mt-4">
+                <MahallaUstunlari qamrov={t.qamrov} />
+              </div>
+            </section>
           )}
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -177,18 +204,8 @@ export default async function PanelSahifasi() {
             <p className="mt-1 text-xs text-ink-faint">
               {tr('Свод жадвалидаги тоифалар — алоҳида эътибор талаб қилади')}
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <Toifa nomi={tr("Аёллар дафтари")} soni={t.toifalar.ayollarDaftari} />
-              <Toifa nomi={tr("Ижтимоий реестр")} soni={t.toifalar.ijtimoiyReestr} />
-              <Toifa
-                nomi={tr("Миграциядан қайтган")}
-                soni={t.toifalar.migratsiyadanQaytgan}
-              />
-              <Toifa nomi={tr("Олий битирувчи")} soni={t.toifalar.oliyBitiruvchi} />
-              <Toifa
-                nomi={tr("Ўрта махсус битирувчи")}
-                soni={t.toifalar.ortaMaxsusBitiruvchi}
-              />
+            <div className="mt-4 sm:max-w-md">
+              <ToifaDoirasi toifalar={t.toifalar} />
             </div>
           </section>
 
@@ -196,67 +213,13 @@ export default async function PanelSahifasi() {
           {!filtr.mahallaId && (
             <section className="karta p-4 sm:p-5">
               <h2 className="text-sm font-bold text-ink">{tr('Барча маҳаллалар')}</h2>
-              <p className="mt-1 text-xs text-ink-faint">
-                {tr('Диаграммаларда фақат энг паст кўрсаткичлилар кўринади — бу ерда тўлиқ рўйхат.')} <span className="text-warn">▲</span> {tr('белгиси — хатлов рўйхатдагидан кўпроқ ишсиз топган маҳалла.')}
+              <p className="mt-1 text-xs leading-relaxed text-ink-faint">
+                {tr('Диаграммалар тенденцияни кўрсатади, жадвал эса аниқ рақамни беради. Устун номини босиб саралаш мумкин.')}{' '}
+                <span className="text-warn">&#9650;</span>{' '}
+                {tr('белгиси — хатлов рўйхатдагидан кўпроқ ишсиз топган маҳалла.')}
               </p>
-
-              <div className="jadval-orash mt-4">
-                <table className="w-full min-w-[38rem] text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-left text-xs text-ink-faint">
-                      <th className="pb-2 pr-3 font-medium">{tr('МФЙ')}</th>
-                      <th className="pb-2 pr-3 text-right font-medium">{tr('Хонадон')}</th>
-                      <th className="pb-2 pr-3 text-right font-medium">{tr('Рўйхатда')}</th>
-                      <th className="pb-2 pr-3 text-right font-medium">{tr('Аниқланган')}</th>
-                      <th className="pb-2 pr-3 text-right font-medium">{tr('Қамров')}</th>
-                      <th className="pb-2 pr-3 text-right font-medium">{tr('Жойлашган')}</th>
-                      <th className="pb-2 text-right font-medium">{tr('Натижа')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {t.qamrov.map((m) => (
-                      <tr
-                        key={m.id}
-                        className="border-b border-line last:border-0 hover:bg-surface-muted"
-                      >
-                        <td className="py-2 pr-3 text-ink">{tr(m.nomiKirill)}</td>
-                        <td className="raqam py-2 pr-3 text-right text-ink-muted">
-                          {m.xatlovXonadon}/{m.bazaXonadon}
-                        </td>
-                        <td className="raqam py-2 pr-3 text-right text-ink-muted">
-                          {m.bazaIshsiz}
-                        </td>
-                        <td className="raqam py-2 pr-3 text-right text-ink">
-                          {m.aniqlangan}
-                        </td>
-                        <td className="raqam py-2 pr-3 text-right font-medium text-ink">
-                          {m.qamrovFoizi}%
-                          {/*
-                            Qamrov 100% dan oshsa - xatlov reyestrdagidan
-                            KO'PROQ ishsizni topgan. Bu xato emas, muhim
-                            xabar: svod jadvalidagi raqam kam ko'rsatgan.
-                            Belgisiz qoldirilsa, "qamrov 220%" degan
-                            ma'nosiz ko'rsatkichga o'xshab qolardi.
-                          */}
-                          {m.qamrovFoizi > 100 && (
-                            <span
-                              className="ml-1 text-warn"
-                              title={tr("Хатлов рўйхатдагидан кўпроқ ишсиз топган")}
-                            >
-                              ▲
-                            </span>
-                          )}
-                        </td>
-                        <td className="raqam py-2 pr-3 text-right text-ink">
-                          {m.joylashtirilgan}
-                        </td>
-                        <td className="raqam py-2 text-right font-medium text-ink">
-                          {m.natijaFoizi}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-4">
+                <MahallalarJadvali qamrov={t.qamrov} />
               </div>
             </section>
           )}
@@ -293,11 +256,3 @@ function Kpi({
   );
 }
 
-function Toifa({ nomi, soni }: { nomi: string; soni: number }) {
-  return (
-    <div className="rounded-md border border-line p-3">
-      <p className="raqam text-xl font-bold text-ink">{raqam(soni)}</p>
-      <p className="mt-0.5 text-[11px] leading-tight text-ink-faint">{nomi}</p>
-    </div>
-  );
-}

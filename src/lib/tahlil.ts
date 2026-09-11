@@ -41,6 +41,24 @@ export interface MahallaQamrovi {
   bazaXonadon: number;
 }
 
+/**
+ * Bir oylik nuqta - chiziqli grafik shundan chiziladi.
+ *
+ * Raqamlar TO'PLANIB boradi (kumulyativ): "shu oy oxiriga qadar
+ * jami shuncha". Oylik oqim emas, aynan to'planish kerak - hokim
+ * uchun asosiy savol "qamrov qay darajada o'sdi", "bu oy nechta
+ * qo'shildi" emas.
+ */
+export interface OylikNuqta {
+  /** Saralash uchun: '2026-09' */
+  oy: string;
+  /** Ko'rsatish uchun: 'Сен 26' */
+  yorliq: string;
+  xatlovXonadon: number;
+  aniqlangan: number;
+  joylashtirilgan: number;
+}
+
 export interface TahlilNatijasi {
   jami: {
     bazaIshsiz: number;
@@ -53,6 +71,8 @@ export interface TahlilNatijasi {
   };
   voronka: VoronkaBosqichi[];
   qamrov: MahallaQamrovi[];
+  /** Oxirgi 12 oy - chiziqli grafik uchun */
+  dinamika: OylikNuqta[];
   kechikkanlar: { tashkilot: string; soni: number }[];
   byudjet: { yonalish: string; summa: number; oila: number }[];
   jamiTalab: number;
@@ -70,12 +90,76 @@ export interface TahlilNatijasi {
 const f = (qism: number, butun: number): number =>
   butun > 0 ? Math.round((qism / butun) * 1000) / 10 : 0;
 
+/*
+ * Oy nomlarining qisqartmasi. Manba matn kirillda - lotini
+ * `lotinga()` orqali o'zi hosil bo'ladi, shuning uchun bu yerda
+ * bitta ro'yxat yetadi.
+ */
+const OY_NOMI = [
+  'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+  'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек',
+];
+
+/** `2026-09` ko'rinishidagi kalit */
+function oyKaliti(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Oxirgi 12 oyning to'plangan raqamlari.
+ *
+ * Sanalar kodda guruhlanadi, SQL'da emas. Ma'lumot hajmi tuman
+ * darajasida - bir necha ming yozuv - shuning uchun farqi
+ * sezilmaydi, lekin kod baza turiga bog'lanib qolmaydi va
+ * vaqt mintaqasi bilan bog'liq nozikliklar bitta joyda qoladi.
+ */
+function dinamikaHisobla(
+  xatlovSanalari: Date[],
+  aniqlanganSanalari: Date[],
+  joylashganSanalari: Date[]
+): OylikNuqta[] {
+  const hozir = new Date();
+
+  // Oxirgi 12 oyning kalitlari, eskisidan yangisiga
+  const oylar: { oy: string; yorliq: string; chegara: Date }[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(hozir.getFullYear(), hozir.getMonth() - i, 1);
+    // Oy OXIRI - shu sanagacha bo'lgan hamma narsa sanaladi
+    const chegara = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    oylar.push({
+      oy: oyKaliti(d),
+      yorliq: `${OY_NOMI[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`,
+      chegara,
+    });
+  }
+
+  const sana = (list: Date[], chegara: Date) =>
+    list.reduce((s, d) => (d < chegara ? s + 1 : s), 0);
+
+  return oylar.map((o) => ({
+    oy: o.oy,
+    yorliq: o.yorliq,
+    xatlovXonadon: sana(xatlovSanalari, o.chegara),
+    aniqlangan: sana(aniqlanganSanalari, o.chegara),
+    joylashtirilgan: sana(joylashganSanalari, o.chegara),
+  }));
+}
+
 export async function tahlilOl(mahallaId?: string): Promise<TahlilNatijasi> {
   const hozir = new Date();
   const mahallaFiltri = mahallaId ? { mahallaId } : {};
 
-  const [mahallalar, bosqichlar, xonadonlar, kechikkanlar, moliya, kurslar] =
-    await Promise.all([
+  const [
+    mahallalar,
+    bosqichlar,
+    xonadonlar,
+    kechikkanlar,
+    moliya,
+    kurslar,
+    xatlovSanalari,
+    aniqlanganSanalari,
+    joylashganSanalari,
+  ] = await Promise.all([
       prisma.mahalla.findMany({
         where: mahallaId ? { id: mahallaId } : undefined,
         orderBy: { nomi: 'asc' },
@@ -130,6 +214,33 @@ export async function tahlilOl(mahallaId?: string): Promise<TahlilNatijasi> {
       prisma.unemployedPerson.findMany({
         where: { ...mahallaFiltri, kasbHunarEhtiyoji: true, organmoqchiKasb: { not: null } },
         select: { organmoqchiKasb: true },
+      }),
+
+      /*
+       * Chiziqli grafik uchun sanalar.
+       *
+       * Faqat bitta ustun olinadi - butun yozuv emas. Tuman
+       * hajmida bu bir necha ming sana, ya'ni yuz kilobayt ham
+       * emas, lekin oylik guruhlash uchun yetarli.
+       */
+      prisma.household.findMany({
+        where: { ...mahallaFiltri, holati: { not: 'QORALAMA' } },
+        select: { createdAt: true },
+      }),
+
+      prisma.unemployedPerson.findMany({
+        where: mahallaFiltri,
+        select: { createdAt: true },
+      }),
+
+      /*
+       * Joylashtirilganlar uchun YOZUV yaratilgan sana emas, ishga
+       * kirgan sana olinadi: anketa keyinroq to'ldirilishi mumkin,
+       * grafik esa haqiqiy voqea sanasini ko'rsatishi kerak.
+       */
+      prisma.unemployedPerson.findMany({
+        where: { ...mahallaFiltri, ishgaKirganSana: { not: null } },
+        select: { ishgaKirganSana: true },
       }),
     ]);
 
@@ -244,6 +355,11 @@ export async function tahlilOl(mahallaId?: string): Promise<TahlilNatijasi> {
     },
     voronka,
     qamrov,
+    dinamika: dinamikaHisobla(
+      xatlovSanalari.map((x) => x.createdAt),
+      aniqlanganSanalari.map((x) => x.createdAt),
+      joylashganSanalari.map((x) => x.ishgaKirganSana as Date)
+    ),
     kechikkanlar: kechikkanlar
       .map((k) => ({ tashkilot: k.masulTashkilot, soni: k._count }))
       .sort((a, b) => b.soni - a.soni),
