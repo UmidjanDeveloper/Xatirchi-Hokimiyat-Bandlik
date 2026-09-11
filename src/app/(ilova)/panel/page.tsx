@@ -18,6 +18,7 @@ import {
   MahallaUstunlari,
   ToifaDoirasi,
 } from '@/components/panel/grafiklar';
+import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -47,11 +48,22 @@ export default async function PanelSahifasi() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="sahifa-sarlavha">{tr('Таҳлил панели')}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {tr('Хатирчи тумани ·')} {raqam(bosh.bazaAholi)} {tr('аҳоли ·')} {raqam(bosh.bazaXonadon)} {tr('хонадон')}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="sahifa-sarlavha">{tr('Таҳлил панели')}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            {tr('Хатирчи тумани ·')} {raqam(bosh.bazaAholi)} {tr('аҳоли ·')} {raqam(bosh.bazaXonadon)} {tr('хонадон')}
+          </p>
+        </div>
+
+        {/*
+          Hisobot tugmalari sarlavha yonida - hokim sahifani
+          pastgacha aylantirmasdan topadi. Xatlov boshlanmagan
+          bo'lsa ko'rsatilmaydi: bo'sh hisobotning ma'nosi yo'q.
+        */}
+        {bosh.xatlovXonadon > 0 && (
+          <HisobotTugmalari tahlil={t} kim={sessiya.fullName} />
+        )}
       </div>
 
       {/*

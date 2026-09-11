@@ -53,7 +53,11 @@ export const config = {
      * Statik fayllar va rasmlardan tashqari hamma narsa.
      * `manifest.json`, `sw.js` va `favicon` ham tashqarida - ular
      * login sahifasida ham kerak bo'ladi.
+     *
+     * `shrift/` - PDF hisoboti uchun shriftlar. Ular maxfiy emas
+     * va qo'riqchidan o'tkazilsa, ortiqcha yo'naltirish sodir
+     * bo'lib, jsPDF shrift o'rniga HTML sahifani oladi.
      */
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|shrift/|.*\\.(?:png|jpg|jpeg|svg|webp|ico|ttf|woff|woff2)$).*)',
   ],
 };

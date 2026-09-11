@@ -53,17 +53,26 @@ export interface ChartSpec {
   legend?: boolean;
 }
 
-/** Brend palitrasi — sayt bilan bir xil ranglar */
+/**
+ * Palitra - saytdagi yorug' tema bilan BIR XIL.
+ *
+ * Excel varag'i doim oq, shuning uchun qorong'i tema ranglari
+ * bu yerda ishlatilmaydi. Qiymatlar `chart-theme.ts` dan olingan
+ * va o'sha yerda `validate_palette.js` bilan tekshirilgan:
+ * rang ko'rmaydigan foydalanuvchi uchun ham bo'laklar ajraladi.
+ *
+ * `#` belgisisiz - OOXML formati shunday talab qiladi.
+ */
 export const CHART_COLORS = [
-  '2148E0', // ko'k
-  '10B981', // yashil
-  'F59E0B', // sariq
-  'EC4899', // pushti
-  '8B5CF6', // binafsha
-  '06B6D4', // moviy
-  'F97316', // to'q sariq
-  'EF4444', // qizil
+  '2563EB', // ko'k
+  'B45309', // jigarrang-sariq
+  '0D9488', // ko'kimtir-yashil
+  '7E22CE', // binafsha
+  'BE123C', // qizg'ish
 ];
+
+/** Ketma-ket shkala - miqdor uchun (och -> to'q) */
+export const CHART_RAMP = ['86B6EF', '5598E7', '2A78D6', '1C5CAB', '104281'];
 
 /** XML matniga xavfsiz qo'shish uchun belgilarni almashtiradi */
 function esc(text: string): string {

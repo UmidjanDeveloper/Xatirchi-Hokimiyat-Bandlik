@@ -5,6 +5,7 @@ import { ArrowRight, GraduationCap, Plane, Target, UserCheck } from 'lucide-reac
 import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { tahlilOl } from '@/lib/tahlil';
+import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
@@ -160,11 +161,19 @@ export default async function BandlikSahifasi() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="sahifa-sarlavha">{tr('Операцион панел')}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {tr('Кундалик иш: навбат, мослаштириш ва курс талаби')}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="sahifa-sarlavha">{tr('Операцион панел')}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            {tr('Кундалик иш: навбат, мослаштириш ва курс талаби')}
+          </p>
+        </div>
+
+        {/*
+          Rahbar hisobotni shu yerdan oladi va hokimga ko'rsatadi -
+          aynan shu ish oqimi uchun tugma sahifa boshida turadi.
+        */}
+        <HisobotTugmalari tahlil={t} kim={sessiya.fullName} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
