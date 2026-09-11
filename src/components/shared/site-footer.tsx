@@ -4,12 +4,17 @@ import { Gerb } from './gerb';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 
 /**
- * Sahifa poyi.
+ * Sahifa poyi - FAQAT kirish sahifasida.
  *
  * Muallif nomi nozik, lekin ko'rinadigan joyda turadi - ikki
  * tomondan ingichka chiziq bilan ajratilgan. Bu kelajakegasi.uz
  * dagi bilan bir xil naqsh: hokimiyat sayti rasmiy ko'rinishini
  * yo'qotmasligi, lekin ishni kim qilgani ham bilinishi kerak.
+ *
+ * Tizimga kirgandan keyin poy ko'rinmaydi. Ish sahifalari - xatlov
+ * anketasi, ishsizlar ro'yxati, hokim paneli - xodimning ish
+ * qurolidir; u yerda har ekranning tagida muallif nomi turishi
+ * ortiqcha. Vizitka kirish eshigida qoladi.
  */
 export function SiteFooter() {
   const { t: tr } = useAlifbo();
@@ -27,7 +32,7 @@ export function SiteFooter() {
           {tr('Бандлик ва камбағалликни қисқартириш платформаси')}
         </p>
 
-        <p className="flex items-center gap-2 text-[11px] text-ink-faint">
+        <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-ink-faint">
           <span
             aria-hidden="true"
             className="h-px w-8"
@@ -37,6 +42,8 @@ export function SiteFooter() {
           />
           Made by{' '}
           <span className="font-semibold text-ink-muted">Umidjon Zoxiddinovich</span>
+          {' · '}
+          <span className="font-semibold text-ink-muted">Xomidov Fayozbek</span>
           <span
             aria-hidden="true"
             className="h-px w-8"

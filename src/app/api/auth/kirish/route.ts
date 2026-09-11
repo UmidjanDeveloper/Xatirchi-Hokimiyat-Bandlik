@@ -62,7 +62,6 @@ export async function POST(request: Request) {
       rol: true,
       mahallaId: true,
       faol: true,
-      parolAlmashtirilsin: true,
     },
   });
 
@@ -118,6 +117,5 @@ export async function POST(request: Request) {
     ok: true,
     rol: user.rol,
     fullName: user.fullName,
-    parolAlmashtirilsin: user.parolAlmashtirilsin,
   });
 }

@@ -11,7 +11,6 @@ import type { Rol } from '@prisma/client';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
 import { Gerb } from '@/components/shared/gerb';
-import { SiteFooter } from '@/components/shared/site-footer';
 import { menyuOl, ROL_NOMI } from './navigatsiya';
 import { initials } from '@/lib/utils';
 
@@ -156,7 +155,6 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
-          <SiteFooter />
         </div>
       </div>
     </div>

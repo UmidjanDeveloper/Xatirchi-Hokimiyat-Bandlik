@@ -78,7 +78,6 @@ async function adminYarat() {
       // Birinchi kirishda parolni almashtirish talab qilinadi:
       // .env dagi parol repoda emas, lekin serverning muhit
       // o'zgaruvchilarida ochiq turadi.
-      parolAlmashtirilsin: true,
     },
   });
 
@@ -146,7 +145,6 @@ async function raislarYarat() {
         phone: m.raisTelefon,
         rol: 'YETTILIK',
         mahallaId: mahalla.id,
-        parolAlmashtirilsin: true,
       },
     });
     yangi++;

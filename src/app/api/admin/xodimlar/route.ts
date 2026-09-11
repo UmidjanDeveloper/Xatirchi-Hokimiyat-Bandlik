@@ -71,7 +71,6 @@ export async function POST(request: Request) {
         rol: d.rol,
         mahallaId: d.rol === 'YETTILIK' ? d.mahallaId : null,
         // Administrator bergan parolni xodim birinchi kirishda almashtiradi
-        parolAlmashtirilsin: true,
       },
     });
 

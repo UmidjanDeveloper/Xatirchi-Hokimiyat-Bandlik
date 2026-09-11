@@ -44,7 +44,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     data: {
       ...(d.faol !== undefined ? { faol: d.faol } : {}),
       ...(d.yangiParol
-        ? { passwordHash: parolXeshla(d.yangiParol), parolAlmashtirilsin: true }
+        ? { passwordHash: parolXeshla(d.yangiParol) }
         : {}),
     },
     select: { username: true },

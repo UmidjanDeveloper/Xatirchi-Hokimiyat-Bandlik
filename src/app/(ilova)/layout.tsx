@@ -22,16 +22,12 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
       fullName: true,
       rol: true,
       faol: true,
-      parolAlmashtirilsin: true,
-      mahalla: { select: { nomi: true, nomiKirill: true } },
+      mahalla: { select: { nomiKirill: true } },
     },
   });
 
   // Xodim ishdan bo'shatilgan bo'lsa, cookie hali yaroqli bo'lsa ham kirmaydi
   if (!user || !user.faol) redirect('/kirish');
-
-  // Boshlang'ich parol almashtirilmaguncha boshqa sahifalar ochilmaydi
-  if (user.parolAlmashtirilsin) redirect('/parol-almashtirish');
 
   const alifbo = alifboServer();
 
@@ -40,7 +36,18 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
       <AppShell
         fullName={user.fullName}
         rol={user.rol}
-        mahallaNomi={alifbo === 'lot' ? user.mahalla?.nomi : user.mahalla?.nomiKirill}
+        /*
+          Qobiq HAM kirill nomini oladi va uni o'zi o'giradi.
+          Ilgari lotin uchun `nomi` ustuni ishlatilardi va natijada
+          bitta ekranda ikki xil yozuv chiqardi: sarlavhada
+          "Chechak ota MFY", sahifada esa "Chechakota MFY".
+
+          Sabab - tasdiqlangan ro'yxatning o'zida lotin va kirill
+          nomlari har doim ham mos kelmaydi (70 tadan 16 tasi).
+          Endi butun interfeys bitta manbadan - kirill nomidan -
+          o'giriladi, shuning uchun hamma joyda bir xil yoziladi.
+        */
+        mahallaNomi={user.mahalla?.nomiKirill}
       >
         {children}
       </AppShell>
