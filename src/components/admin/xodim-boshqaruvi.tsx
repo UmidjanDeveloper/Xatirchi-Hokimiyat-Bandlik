@@ -200,7 +200,7 @@ export function XodimBoshqaruvi({
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                placeholder="mfy_uyshun"
+                placeholder="mfy_chechakota"
                 className={maydon}
               />
               <p className="text-[11px] text-ink-faint">

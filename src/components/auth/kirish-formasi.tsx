@@ -89,7 +89,7 @@ export function KirishFormasi({ keyin }: { keyin?: string }) {
           spellCheck={false}
           disabled={yuklanmoqda}
           className="w-full rounded-md border border-line bg-surface px-3 py-2.5 text-ink outline-none transition-colors focus:border-accent disabled:opacity-60"
-          placeholder={tr("масалан: mfy_uyshun")}
+          placeholder={tr("масалан: mfy_chechakota")}
         />
       </div>
 
