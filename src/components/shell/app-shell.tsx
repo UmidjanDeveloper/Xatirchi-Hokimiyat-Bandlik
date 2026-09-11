@@ -82,11 +82,11 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent"
                 aria-hidden="true"
               >
-                {initials(fullName)}
+                {initials(tr(fullName))}
               </span>
               <span className="max-w-[11rem]">
                 <span className="block truncate text-xs font-semibold leading-tight text-ink">
-                  {fullName}
+                  {tr(fullName)}
                 </span>
                 <span className="block truncate text-[11px] leading-tight text-ink-faint">
                   {tr(ROL_NOMI[rol])}

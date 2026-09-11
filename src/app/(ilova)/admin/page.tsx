@@ -120,7 +120,7 @@ export default async function AdminSahifasi() {
                     <td className="raqam whitespace-nowrap py-2 pr-3 text-xs text-ink-faint">
                       {formatDate(j.createdAt)}
                     </td>
-                    <td className="py-2 pr-3 text-ink">{j.user.fullName}</td>
+                    <td className="py-2 pr-3 text-ink">{tr(j.user.fullName)}</td>
                     <td className="py-2 pr-3 text-ink-muted">
                       {AMAL_NOMI[j.amal] ?? j.amal}
                     </td>

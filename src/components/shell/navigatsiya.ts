@@ -69,6 +69,17 @@ export const MENYU: MenyuBandi[] = [
     rollar: ['HOKIM', 'BANDLIK_RAHBAR', 'ADMIN'],
   },
   {
+    /*
+     * Bandlik rahbari uchun - faqat mahalla hisoblari.
+     * Administrator ham ko'radi, lekin unga to'liq `/admin`
+     * paneli bor, shuning uchun bu yerda foydasi kam.
+     */
+    yol: '/mahalla-xodimlari',
+    nomi: 'Маҳалла ходимлари',
+    ikonka: 'UsersRound',
+    rollar: ['BANDLIK_RAHBAR'],
+  },
+  {
     yol: '/admin',
     nomi: 'Бошқарув',
     ikonka: 'Settings',

@@ -41,9 +41,20 @@ const ROLLAR: Rol[] = ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'
 export function XodimBoshqaruvi({
   xodimlar,
   mahallalar,
+  faqatYettilik = false,
 }: {
   xodimlar: Xodim[];
   mahallalar: Mahalla[];
+  /**
+   * Cheklangan rejim - bandlik markazi rahbari uchun.
+   *
+   * Rol tanlash yashiriladi va faqat YETTILIK qoladi. Bu
+   * QULAYLIK uchun, himoya uchun emas: haqiqiy to'siq serverda
+   * turadi (`/api/admin/xodimlar` ichidagi tekshiruv). Brauzerdagi
+   * kod har doim o'zgartirilishi mumkin, shuning uchun unga
+   * tayanib bo'lmaydi.
+   */
+  faqatYettilik?: boolean;
 }) {
   const { t: tr } = useAlifbo();
 
@@ -217,8 +228,9 @@ export function XodimBoshqaruvi({
                 value={rol}
                 onChange={(e) => setRol(e.target.value as Rol)}
                 className={maydon}
+                disabled={faqatYettilik}
               >
-                {ROLLAR.map((r) => (
+                {(faqatYettilik ? (['YETTILIK'] as const) : ROLLAR).map((r) => (
                   <option key={r} value={r}>
                     {tr(ROL_NOMI[r])}
                   </option>
@@ -323,7 +335,14 @@ export function XodimBoshqaruvi({
           <div key={x.id} className="flex flex-wrap items-center gap-3 p-3.5">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate font-medium text-ink">{x.fullName}</span>
+                {/*
+                  Ism ham alifboga ergashadi. Bazada u kirillda
+                  saqlanadi (hujjatlar shunday), lotin ko'rinishi
+                  o'girish orqali hosil bo'ladi - xuddi mahalla
+                  nomlari kabi. Busiz bitta qatorda lotin lavozim
+                  va kirill ism yonma-yon turardi.
+                */}
+                <span className="truncate font-medium text-ink">{tr(x.fullName)}</span>
                 <code className="raqam rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">
                   {x.username}
                 </code>

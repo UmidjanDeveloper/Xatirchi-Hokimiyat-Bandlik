@@ -36,7 +36,12 @@ const Yangi = z
   });
 
 export async function POST(request: Request) {
-  const q = await talabQil(['ADMIN']);
+  /*
+   * Bandlik markazi rahbari ham xodim qo'sha oladi, lekin FAQAT
+   * mahalla yettiligi a'zosini. Tekshiruv quyida, sxema o'qilgandan
+   * keyin turadi.
+   */
+  const q = await talabQil(['ADMIN', 'BANDLIK_RAHBAR']);
   if (q instanceof NextResponse) return q;
 
   const natija = Yangi.safeParse(await request.json().catch(() => null));
@@ -51,6 +56,23 @@ export async function POST(request: Request) {
   }
 
   const d = natija.data;
+
+  /*
+   * HUQUQ OSHIRISHNING OLDINI OLISH.
+   *
+   * Bandlik rahbariga xodim qo'shish huquqi berildi, lekin u
+   * o'ziga yoki boshqasiga ADMIN roli bera olmasligi kerak - aks
+   * holda bir bosishda butun tizim ustidan nazorat qo'lga o'tardi.
+   *
+   * Tekshiruv sxemada emas, shu yerda turadi: sxema kim
+   * so'rayotganini bilmaydi, faqat ma'lumot shaklini biladi.
+   */
+  if (q.sessiya.rol !== 'ADMIN' && d.rol !== 'YETTILIK') {
+    return NextResponse.json(
+      { xabar: 'Сиз фақат маҳалла еттилиги аъзосини қўша оласиз' },
+      { status: 403 }
+    );
+  }
 
   const ism = ismTekshir(d.fullName, 'Ф.И.Ш.');
   if (!ism.ok) return NextResponse.json({ xabar: ism.xabar }, { status: 400 });
