@@ -96,10 +96,16 @@ export default async function XatlovlarSahifasi() {
             ва марказ раҳбарида бор эди — ходим эса ўз ишини
             йиғилишда кўрсатиш учун қўлда жадвал тузарди.
 
-            Хатлов бошланмаган бўлса кўрсатилмайди: бўш
-            ҳисоботнинг маъноси йўқ.
+            Тугмалар ҲАР ДОИМ кўринади. Хатлов бошланмаган
+            бўлса босилмайди, лекин ёнида нима кутилаётгани
+            ёзилади — акс ҳолда ходим бундай имконият борлигини
+            умуман билмай қоларди.
           */}
-          {yuborilgan.length > 0 && <HisobotTugmalari qamrov={{ nomi: '' }} ozMahallasi />}
+          <HisobotTugmalari
+            qamrov={{ nomi: '' }}
+            ozMahallasi
+            malumotBormi={yuborilgan.length > 0}
+          />
         </div>
       </div>
 

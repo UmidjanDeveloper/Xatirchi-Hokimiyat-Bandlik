@@ -60,6 +60,7 @@ export function HisobotTugmalari({
    * ишончни оширади.
    */
   ozMahallasi = false,
+  malumotBormi = true,
 }: {
   qamrov: HisobotQamrovi;
   /**
@@ -71,6 +72,22 @@ export function HisobotTugmalari({
    */
   mahallalar?: { id: string; nomiKirill: string }[];
   ozMahallasi?: boolean;
+  /**
+   * Ҳисобот учун маълумот борми.
+   *
+   * `false` бўлса тугмалар КЎРИНАДИ, лекин босилмайди ва ёнида
+   * нима кутилаётгани ёзилади.
+   *
+   * Илгари улар умуман яшириларди — «бўш ҳисоботнинг маъноси
+   * йўқ» деб. Натижада хатлов бошламаган ходим ҳисобот олиш
+   * имкони борлигини УМУМАН билмасди: тугма йўқ, изоҳ ҳам йўқ.
+   * Кейин маълумот пайдо бўлганда ҳам уни тасодифан топиши
+   * керак эди.
+   *
+   * Ўчирилган тугма эса иккита ишни бажаради: имконият
+   * борлигини кўрсатади ва у қачон ишлашини айтади.
+   */
+  malumotBormi?: boolean;
 }) {
   const { t: tr, alifbo } = useAlifbo();
   const [ishlayapti, setIshlayapti] = useState<'pdf' | 'excel' | null>(null);
@@ -181,7 +198,12 @@ export function HisobotTugmalari({
           </select>
         )}
 
-        <button type="button" onClick={() => ol('pdf')} disabled={ishlayapti !== null} className={tugma}>
+        <button
+          type="button"
+          onClick={() => ol('pdf')}
+          disabled={ishlayapti !== null || !malumotBormi}
+          className={tugma}
+        >
           {ishlayapti === 'pdf' ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
@@ -190,7 +212,12 @@ export function HisobotTugmalari({
           {tr('PDF ҳисобот')}
         </button>
 
-        <button type="button" onClick={() => ol('excel')} disabled={ishlayapti !== null} className={tugma}>
+        <button
+          type="button"
+          onClick={() => ol('excel')}
+          disabled={ishlayapti !== null || !malumotBormi}
+          className={tugma}
+        >
           {ishlayapti === 'excel' ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
@@ -213,11 +240,17 @@ export function HisobotTugmalari({
         </p>
       )}
 
-      <p className="max-w-[24rem] text-[11px] leading-relaxed text-ink-faint sm:text-right">
-        {ozMahallasi
-          ? tr('Ҳисобот фақат сизнинг маҳаллангиз бўйича тузилади: хатлов, фуқаролар, чора-тадбирлар ва хулоса. Диаграммалар иккала файлда ҳам бор.')
-          : `${tr(joriyNomi)} ${tr('бўйича. Хулоса ва тавсиялар, диаграммалар ва барча бўлимлар иккала файлда ҳам бор.')}`}
-      </p>
+      {!malumotBormi ? (
+        <p className="max-w-[24rem] text-[11px] leading-relaxed text-warn sm:text-right">
+          {tr('Ҳисобот учун камида битта ЮБОРИЛГАН хатлов керак. Биринчи хонадонни киритиб юборганингиздан сўнг тугмалар ишлай бошлайди.')}
+        </p>
+      ) : (
+        <p className="max-w-[24rem] text-[11px] leading-relaxed text-ink-faint sm:text-right">
+          {ozMahallasi
+            ? tr('Ҳисобот фақат сизнинг маҳаллангиз бўйича тузилади: хатлов, фуқаролар, чора-тадбирлар ва хулоса. Диаграммалар иккала файлда ҳам бор.')
+            : `${tr(joriyNomi)} ${tr('бўйича. Хулоса ва тавсиялар, диаграммалар ва барча бўлимлар иккала файлда ҳам бор.')}`}
+        </p>
+      )}
 
       <p className="max-w-[24rem] text-[11px] leading-relaxed text-ink-faint sm:text-right">
         {tr('Ҳужжат ҳозирги алифбода тайёрланади. Кириллда керак бўлса — юқоридаги тугмадан алифбони алмаштириб, қайтадан босинг.')}
