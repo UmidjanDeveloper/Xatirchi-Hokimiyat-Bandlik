@@ -327,7 +327,18 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
  */
 export function yuborishgaTayyormi(
   d: XatlovRaqamlari,
-  kiritilganIshsizlar: number
+  kiritilganIshsizlar: number,
+  /**
+   * Розилик ва имзо — ЯКУНИЙ юборишда мажбурий.
+   *
+   * Қоралама сақлашда текширилмайди: ходим анкетани бир неча
+   * марта келиб тўлдириши мумкин, имзо эса энг охирида,
+   * фуқаронинг ўзи олдида қўйилади.
+   *
+   * Ихтиёрий параметр: эски чақирувлар (масалан алоҳида
+   * синовлар) ўзгармасин.
+   */
+  tasdiq?: { rozilikBerdi: boolean; imzoYoli: string }
 ): TekshiruvHisoboti {
   const hisobot = xatlovTekshir(d);
   const ishsiz = n(d.ishsizlarSoni);
@@ -344,6 +355,31 @@ export function yuborishgaTayyormi(
       maydon: 'ishsizlar',
       xabar: `${kiritilganIshsizlar} та ишсиз анкетаси тўлдирилган, лекин I бўлимда ${ishsiz} та деб кўрсатилган. Рақамни тўғриланг.`,
     });
+  }
+
+  if (tasdiq) {
+    if (!tasdiq.rozilikBerdi) {
+      hisobot.xatolar.push({
+        maydon: 'rozilikBerdi',
+        xabar:
+          'Фуқаро маълумотлари йиғилишига розилик бермаган. XII бўлимдаги белгини фуқаронинг ўзи олдида белгиланг.',
+      });
+    }
+
+    /*
+     * Имзо УЗУНЛИГИ ҳам текширилади.
+     *
+     * Экранга тасодифан битта нуқта тегиб кетса, `imzoYoli` бўш
+     * бўлмайди — лекин бу имзо эмас. 40 белги ҳам жуда кам:
+     * бир-икки ҳарфли имзо ҳам ундан узун бўлади.
+     */
+    if (tasdiq.imzoYoli.trim().length < 40) {
+      hisobot.xatolar.push({
+        maydon: 'imzoYoli',
+        xabar:
+          'Имзо қўйилмаган ёки тўлиқ эмас. XII бўлимдаги майдонга фуқаро ЎЗ имзосини чизиши керак.',
+      });
+    }
   }
 
   hisobot.ok = hisobot.xatolar.length === 0;

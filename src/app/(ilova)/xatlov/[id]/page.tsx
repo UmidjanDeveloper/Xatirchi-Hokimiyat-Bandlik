@@ -21,6 +21,7 @@ import {
 } from '@/lib/constants';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
+import { ImzoKorinishi } from '@/components/xatlov/imzo-maydoni';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -310,6 +311,42 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
         <section className="karta p-4 sm:p-5">
           <h2 className="mb-2 text-sm font-bold text-ink">{tr('Умумий хулоса')}</h2>
           <p className="whitespace-pre-wrap text-sm text-ink-muted">{x.umumiyXulosa}</p>
+        </section>
+      )}
+
+      {/*
+        ── Розилик ва имзо ──
+
+        Фақат ЮБОРИЛГАН анкетада кўринади: қоралама ҳали
+        имзоланмаган ва бўш майдонни кўрсатишнинг маъноси йўқ.
+
+        Имзо кўрсатилади, чунки кейинчалик «фуқаро рози
+        бўлганмиди» деган савол чиқиши мумкин — жавоб шу ерда
+        туради, санаси билан.
+      */}
+      {x.holati !== 'QORALAMA' && (
+        <section className="karta p-4 sm:p-5">
+          <h2 className="mb-3 text-sm font-bold text-ink">{tr('Розилик ва имзо')}</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <p className="text-xs text-ink-faint">{tr('Маълумот йиғилишига розилик')}</p>
+              <p
+                className={`text-sm font-medium ${x.rozilikBerdi ? 'text-ok' : 'text-danger'}`}
+              >
+                {x.rozilikBerdi ? tr('Берилган') : tr('Берилмаган')}
+              </p>
+              {x.imzoVaqti && (
+                <p className="text-[11px] text-ink-faint">
+                  {tr('Имзоланган:')} {formatDate(x.imzoVaqti)}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-xs text-ink-faint">{tr('Фуқаронинг имзоси')}</p>
+              <ImzoKorinishi yol={x.imzoYoli} />
+            </div>
+          </div>
         </section>
       )}
     </div>

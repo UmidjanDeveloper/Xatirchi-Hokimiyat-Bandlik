@@ -472,7 +472,10 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
   });
 
   // Arifmetika va ishsizlar soni bog'lanishi
-  const hisobot = yuborishgaTayyormi(sonlar(h), h.ishsizlar.length);
+  const hisobot = yuborishgaTayyormi(sonlar(h), h.ishsizlar.length, {
+    rozilikBerdi: h.rozilikBerdi,
+    imzoYoli: h.imzoYoli,
+  });
   for (const n of hisobot.xatolar) {
     if (!xt[n.maydon]) xt[n.maydon] = n.xabar;
   }

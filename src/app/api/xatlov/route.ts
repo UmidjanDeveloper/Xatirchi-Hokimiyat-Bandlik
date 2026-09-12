@@ -135,9 +135,18 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── Yakuniy yuborishda arifmetika tekshiruvi ──
+  /*
+   * ── Якуний юборишда арифметика, розилик ва имзо текшируви ──
+   *
+   * Худди шу текширув браузерда ҳам бажарилади, аммо у ФАҚАТ
+   * қулайлик учун: сўровни браузердан четлаб ўтиб юбориш мумкин,
+   * шунинг учун ҳақиқий тўсиқ шу ерда.
+   */
   if (turi === 'yakuniy') {
-    const hisobot = yuborishgaTayyormi(xonadon, ishsizlar.length);
+    const hisobot = yuborishgaTayyormi(xonadon, ishsizlar.length, {
+      rozilikBerdi: xonadon.rozilikBerdi ?? false,
+      imzoYoli: xonadon.imzoYoli ?? '',
+    });
     if (!hisobot.ok) {
       return NextResponse.json(
         { xabar: 'Ma‘lumotlarda nomuvofiqlik bor', xatolar: hisobot.xatolar },
@@ -154,6 +163,18 @@ export async function POST(request: Request) {
     takrorKaliti: kalit,
     holati: turi === 'yakuniy' ? ('YUBORILGAN' as const) : ('QORALAMA' as const),
     xodimId: q.sessiya.userId,
+
+    /*
+     * Имзо ВАҚТИ серверда белгиланади, браузердан олинмайди.
+     *
+     * Сабаби оддий: имзо қўйилган вақт кейинчалик далил бўлиши
+     * мумкин, браузердаги соат эса нотўғри бўлиши ёки атайлаб
+     * ўзгартирилиши мумкин.
+     *
+     * Фақат имзо БОР бўлганда ёзилади — қоралама сақлашда имзо
+     * ҳали йўқ.
+     */
+    ...(xonadon.imzoYoli ? { imzoVaqti: new Date() } : {}),
   };
 
   try {

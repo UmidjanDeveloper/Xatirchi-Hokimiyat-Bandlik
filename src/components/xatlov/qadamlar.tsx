@@ -21,6 +21,7 @@ import {
   UY_HOLATI,
 } from '@/lib/constants';
 import {
+  BelgiMaydoni,
   Bolim,
   HaYoqMaydoni,
   KopTanlovMaydoni,
@@ -32,6 +33,7 @@ import {
   YoshOgohlantirishi,
 } from './maydonlar';
 import { ShaxsRoyxati } from './shaxs-royxati';
+import { ImzoMaydoni } from './imzo-maydoni';
 import { bosIshsiz, type IshsizQatori, type XatlovHolati } from './holat';
 
 export interface QadamProps {
@@ -993,6 +995,43 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
             qiymat={h.umumiyXulosa}
             ozgardi={(q) => yangila('umumiyXulosa', q)}
           />
+        </ToliqKeng>
+      </Bolim>
+
+      {/*
+        ── РОЗИЛИК ВА ИМЗО ──
+
+        Анкетанинг ЭНГ ОХИРИДА туради ва бу тасодифий эмас:
+        фуқаро нимага рози бўлаётганини билиши учун аввал
+        саволларни кўриши керак. Бошида қўйилса, у ҳали нима
+        сўралишини билмай туриб рози бўларди.
+
+        Роzилик ва имзосиз ЯКУНИЙ ЮБОРИШ тугмаси очилмайди.
+        Қоралама сақлашга эса шарт эмас — ходим анкетани бир
+        неча марта келиб тўлдириши мумкин ва имзо охирида,
+        фуқаронинг ўзи олдида қўйилади.
+      */}
+      <Bolim raqam="XII" sarlavha={tr("Розилик ва имзо")}>
+        <ToliqKeng>
+          <div className="space-y-4">
+            <div className="quti-ogoh text-xs leading-relaxed">
+              {tr('Бу бўлим фуқаронинг ўзи олдида тўлдирилади. Матнни ўқиб беринг ва имзони фуқаронинг ЎЗИ қўйсин.')}
+            </div>
+
+            <BelgiMaydoni
+              yorliq={tr('Фуқаро маълумотлари йиғилишига ва улар камбағалликни қисқартириш дастури доирасида ишлатилишига розилик берди')}
+              izoh={tr('Маълумотлар фақат давлат органлари томонидан, шу дастур доирасида ишлатилади. Учинчи шахсларга берилмайди.')}
+              qiymat={h.rozilikBerdi}
+              ozgardi={(q) => yangila('rozilikBerdi', q)}
+              xato={x(xatolar, 'rozilikBerdi')}
+            />
+
+            <ImzoMaydoni
+              qiymat={h.imzoYoli}
+              ozgardi={(q) => yangila('imzoYoli', q)}
+              xato={x(xatolar, 'imzoYoli')}
+            />
+          </div>
         </ToliqKeng>
       </Bolim>
     </>

@@ -379,6 +379,67 @@ export function HaYoqMaydoni({
   );
 }
 
+/**
+ * Белги майдони — рози бўлишни билдирадиган катакча.
+ *
+ * `HaYoqMaydoni` ҳам ишлатиш мумкин эди, аммо розилик учун
+ * ярамайди. «Ҳа/Йўқ» — бу САВОЛГА ЖАВОБ; розилик эса шахснинг
+ * ҚАРОРИ ва у АТАЙЛАБ белгиланиши керак. Иккита тугмадан
+ * биттасини босиш тасодифан ҳам бўлиб кетади, бўш катакчани
+ * белгилаш эса аниқ ҳаракат.
+ *
+ * Матннинг ўзи ҳам босилади (`<label>` ичида): планшетда кичик
+ * катакчани бармоқ билан аниқ босиш қийин.
+ */
+export function BelgiMaydoni({
+  yorliq,
+  izoh,
+  xato,
+  qiymat,
+  ozgardi,
+}: AsosMaydon & {
+  qiymat: boolean;
+  ozgardi: (q: boolean) => void;
+}) {
+  const id = useId();
+
+  return (
+    <div className="space-y-1.5">
+      <label
+        htmlFor={id}
+        className={`flex cursor-pointer items-start gap-3 rounded-md border p-3.5 transition-colors ${
+          xato
+            ? 'border-danger bg-danger-bg'
+            : qiymat
+              ? 'border-ok bg-ok-bg'
+              : 'border-line bg-surface hover:border-line-strong'
+        }`}
+      >
+        <input
+          id={id}
+          type="checkbox"
+          checked={qiymat}
+          onChange={(e) => ozgardi(e.target.checked)}
+          aria-describedby={izoh ? `${id}-izoh` : undefined}
+          className="mt-0.5 h-4.5 w-4.5 shrink-0 accent-[var(--ok)]"
+          style={{ width: '1.1rem', height: '1.1rem' }}
+        />
+        <span className="min-w-0">
+          <span className="block text-sm font-medium leading-relaxed text-ink">
+            {yorliq}
+          </span>
+          {izoh && (
+            <span id={`${id}-izoh`} className="mt-1 block text-xs leading-relaxed text-ink-muted">
+              {izoh}
+            </span>
+          )}
+        </span>
+      </label>
+      <Xato xato={xato} />
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 //  BO'LIM
 // ─────────────────────────────────────────────────────────────
