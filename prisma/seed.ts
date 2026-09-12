@@ -99,25 +99,30 @@ async function adminYarat() {
  * turadi, ya'ni javobgarligi rasmiy - xatlov uning hisobi ostida
  * kiritiladi.
  *
+ * Hisoblar HOKIM YORDAMCHILARIGA ochiladi, MFY raislariga emas:
+ * rais saylanadigan jamoat vakili, hokim yordamchisi esa xatlov
+ * uchun tayinlangan mansabdor va amalda dasturni u ishlatadi.
+ *
  * Boshlang'ich parol TASODIFIY yaratiladi.
  *
  * Avval u telefon raqamidan hosil qilinardi - og'zaki yetkazishga
  * qulay edi. Lekin bu xavfli: login mahalla nomidan tuziladi
- * (`mfy_uyshun`), mahalla nomlari ochiq, rais esa mansabdor shaxs
+ * (`mfy_uyshun`), mahalla nomlari ochiq, mas'ul esa mansabdor shaxs
  * va uning telefoni ko'pincha ma'lum. Ya'ni bitta telefon raqamini
  * bilgan odam o'sha mahalladagi barcha xonadonlarning shaxsiy
  * ma'lumotini ochib ko'rardi. Majburiy parol almashtirish ham
- * yordam bermaydi: rais birinchi marta kirgunicha oyna ochiq
+ * yordam bermaydi: xodim birinchi marta kirgunicha oyna ochiq
  * turadi.
  *
  * Endi parollar `mfy-parollar.txt` fayliga yoziladi. Fayl
  * `.gitignore` da - git'ga tushmaydi. Administrator uni tarqatib
  * bo'lgach O'CHIRIB TASHLASHI kerak.
  */
-async function raislarYarat() {
+async function masullarYarat() {
   let yangi = 0;
   let mavjud = 0;
-  const royxat: { mahalla: string; rais: string; username: string; parol: string }[] = [];
+  let vakant = 0;
+  const royxat: { mahalla: string; masul: string; username: string; parol: string }[] = [];
 
   for (const m of MAHALLALAR_BAZASI) {
     const mahalla = await prisma.mahalla.findUnique({
@@ -139,7 +144,7 @@ async function raislarYarat() {
     }
 
     const parol = parolYarat();
-    royxat.push({ mahalla: m.nomiKirill, rais: m.raisFish, username, parol });
+    royxat.push({ mahalla: m.nomiKirill, masul: m.masulFish ?? 'ВАКАНТ', username, parol });
 
     await prisma.user.create({
       data: {
@@ -148,18 +153,36 @@ async function raislarYarat() {
         // Shifrlangan nusxa - administrator panelda ko'ra olishi uchun
         berilganParol: shifrla(parol),
         parolBerilganVaqt: new Date(),
-        fullName: m.raisFish,
-        position: 'МФЙ раиси',
-        phone: m.raisTelefon,
+        /*
+         * Лавозим бўш бўлса (рўйхатда «Вакант») ҳисоб ЯРАТИЛАДИ,
+         * лекин ФАОЛСИЗ ҳолда. Нега шунақа:
+         *
+         *   - Ҳисобни умуман яратмаслик — маҳалла рўйхатда
+         *     кўринмай қолади ва администратор уни эсдан
+         *     чиқаради.
+         *   - Фаол ҳолда яратиш — тайинланмаган лавозим учун
+         *     ишлайдиган парол қолдириш дегани.
+         *
+         * Одам тайинланганда администратор исмни ёзади, парол
+         * тайинлайди ва фаоллаштиради.
+         */
+        fullName: m.masulFish ?? `${m.nomiKirill} — тайинланмаган`,
+        position: m.masulLavozimi,
+        phone: m.masulTelefon,
         rol: 'YETTILIK',
         mahallaId: mahalla.id,
+        faol: m.masulFish !== null,
         parolAlmashtirilsin: true,
       },
     });
     yangi++;
+    if (m.masulFish === null) vakant++;
   }
 
-  console.log(`  MFY raislari: ${yangi} ta yangi hisob, ${mavjud} ta allaqachon bor`);
+  console.log(
+    `  Hokim yordamchilari: ${yangi} ta yangi hisob, ${mavjud} ta allaqachon bor` +
+      (vakant ? `, ${vakant} ta vakant (faolsiz)` : '')
+  );
 
   if (royxat.length === 0) return;
 
@@ -175,17 +198,20 @@ async function raislarYarat() {
   writeFileSync(
     fayl,
     [
-      'XATIRCHI TUMANI - MFY RAISLARI UCHUN BOSHLANG\u2018ICH PAROLLAR',
+      'XATIRCHI TUMANI - HOKIM YORDAMCHILARI UCHUN BOSHLANG\u2018ICH PAROLLAR',
       `Yaratilgan: ${new Date().toLocaleString('uz-UZ')}`,
       '',
-      'DIQQAT: bu fayl maxfiy. Parollarni raislarga yetkazgach',
-      'faylni O\u2018CHIRIB TASHLANG. Har bir rais birinchi kirishda',
-      'parolni almashtirishga majbur.',
+      'DIQQAT: bu fayl maxfiy. Parollarni yetkazgach faylni',
+      'O\u2018CHIRIB TASHLANG. Har bir xodim birinchi kirishda parolni',
+      'almashtirishga majbur.',
+      '',
+      'VAKANT deb belgilangan hisoblar FAOLSIZ - odam tayinlanganda',
+      'administrator panelidan ismni yozib, faollashtirish kerak.',
       '',
       royxat
         .map(
           (r) =>
-            `${r.username.padEnd(eni)}  ${r.parol}   ${r.mahalla} \u2014 ${r.rais}`
+            `${r.username.padEnd(eni)}  ${r.parol}   ${r.mahalla} \u2014 ${r.masul}`
         )
         .join('\n'),
       '',
@@ -200,7 +226,7 @@ async function raislarYarat() {
 async function main() {
   console.log('\nXatirchi bandlik platformasi - boshlang‘ich to‘ldirish\n');
   await mahallalarniYukla();
-  await raislarYarat();
+  await masullarYarat();
   await adminYarat();
   console.log('\nTayyor.\n');
 }

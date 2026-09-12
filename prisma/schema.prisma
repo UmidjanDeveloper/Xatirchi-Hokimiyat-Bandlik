@@ -113,11 +113,25 @@ model Mahalla {
   nomi       String @unique
   nomiKirill String
 
-  /// MFY raisi - tuman hokimligi tasdiqlagan ro'yxatdan.
-  /// Xatlovni shu odam (yoki uning hisobi ostidagi yettilik) kiritadi.
-  raisFish     String
-  raisTelefon  String
-  raisMalumoti String
+  /// Mahallada xatlov uchun MAS'UL shaxs - hokim yordamchisi.
+  ///
+  /// Ilgari bu maydonlar MFY RAISINI saqlardi va nomi ham shunday
+  /// edi (`raisFish`). Amalda esa xatlovni rais emas, hokim
+  /// yordamchisi kiritadi: rais saylanadigan jamoat vakili, hokim
+  /// yordamchisi esa shu ish uchun tayinlangan mansabdor.
+  ///
+  /// Nomi ataylab o'zgartirildi: "rais" deb qolsa, keyin kod
+  /// o'qigan odam bu maydonda MFY raisi turgan deb o'ylardi va
+  /// uning telefoniga qo'ng'iroq qilardi.
+  /// Lavozim BO'SH bo'lishi mumkin (rasmiy ro'yxatda "Вакант"),
+  /// shuning uchun null qabul qiladi. Bo'sh qiymatni "—" yoki
+  /// bo'sh satr bilan to'ldirish mumkin edi, lekin unda "hali
+  /// tayinlanmagan" va "kiritilmagan" holatlari qo'shilib ketardi.
+  masulFish     String?
+  masulTelefon  String?
+  /// 'Ҳоким ёрдамчиси' - lavozim nomi o'zgarishi mumkin, shuning
+  /// uchun qat'iy emas, matn sifatida saqlanadi
+  masulLavozimi String
 
   aholi   Int
   xonadon Int
