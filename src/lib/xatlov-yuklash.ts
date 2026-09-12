@@ -33,6 +33,9 @@ export async function xatlovniYukla(
 
     manzil: x.manzil,
     oilaBoshligi: x.oilaBoshligi,
+    oilaBoshligiTugilganSana: x.oilaBoshligiTugilganSana
+      ? x.oilaBoshligiTugilganSana.toLocaleDateString('en-CA')
+      : '',
     tugilganYili: s(x.tugilganYili),
     telefon: t(x.telefon),
     jamiAzo: s(x.jamiAzo),
@@ -118,7 +121,18 @@ export async function xatlovniYukla(
       fish: i.fish,
       telefon: t(i.telefon),
       jinsi: i.jinsi,
-      tugilganSana: i.tugilganSana,
+      /*
+       * `Date` -> `YYYY-MM-DD` matn.
+       *
+       * `<input type="date">` faqat shu shaklni qabul qiladi.
+       * `toISOString()` UTC ga o'giradi va mahalliy vaqt zonasida
+       * sana bir kunga surilib ketishi mumkin, shuning uchun
+       * `en-CA` ishlatiladi - u aynan `YYYY-MM-DD` beradi va
+       * mahalliy kunni saqlaydi.
+       */
+      tugilganSana: i.tugilganSana
+        ? i.tugilganSana.toLocaleDateString('en-CA')
+        : '',
       malumoti: i.malumoti,
       mutaxassisligi: t(i.mutaxassisligi),
       ishTajribasiYil: s(i.ishTajribasiYil),

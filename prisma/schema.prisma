@@ -198,6 +198,18 @@ model Household {
   /// har xil (55/60), shuning uchun yosh tekshiruvi busiz
   /// ishlamaydi.
   oilaBoshligiJinsi String?
+  /// Oila boshlig'ining tug'ilgan SANASI.
+  ///
+  /// Ilgari faqat `tugilganYili` (yil) so'ralardi, ishsiz fuqaroda
+  /// esa to'liq sana - bir tushuncha ikki shaklda edi. Xodim oila
+  /// boshlig'ini ishsizlar ro'yxatiga ham qo'shganda sanani
+  /// qaytadan terishi kerak bo'lardi.
+  ///
+  /// `tugilganYili` TUSHIRILMADI: ishlab turgan bazadagi
+  /// yozuvlarda faqat yil bor va uni yo'qotish ma'lumot yo'qotish
+  /// bo'lardi. Yangi anketalarda ikkisi ham to'ldiriladi (yil
+  /// sanadan olinadi), eskilarida esa yil o'z holida qoladi.
+  oilaBoshligiTugilganSana DateTime?
   tugilganYili      Int?
   telefon           String?
 

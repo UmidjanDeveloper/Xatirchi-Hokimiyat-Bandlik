@@ -16,11 +16,21 @@ import type { IshsizQisqa } from '@/lib/xatlov-sxema';
 
 export type Raqam = number | '';
 
-export interface IshsizQatori extends Omit<IshsizQisqa, 'kutilayotganMaosh' | 'ishTajribasiYil'> {
+export interface IshsizQatori
+  extends Omit<IshsizQisqa, 'kutilayotganMaosh' | 'ishTajribasiYil' | 'tugilganSana'> {
   /** Formadagi vaqtinchalik identifikator - React `key` uchun */
   qatorId: string;
   kutilayotganMaosh: Raqam;
   ishTajribasiYil: Raqam;
+  /**
+   * Tug'ilgan sana `YYYY-MM-DD` ko'rinishidagi MATN.
+   *
+   * `<input type="date">` aynan shu shaklni talab qiladi va
+   * `Date` obyekti bilan ishlamaydi. Serverga yuborishdan oldin
+   * bo'sh satr `null` ga aylantiriladi - sxema esa uni o'zi
+   * `Date` ga o'giradi (`z.coerce.date()`).
+   */
+  tugilganSana: string;
 }
 
 export interface XatlovHolati {
@@ -28,6 +38,14 @@ export interface XatlovHolati {
   manzil: string;
   oilaBoshligi: string;
   oilaBoshligiJinsi: string | null;
+  /**
+   * Oila boshlig'ining tug'ilgan sanasi - `YYYY-MM-DD` matn.
+   *
+   * `tugilganYili` (yil) shundan OLINADI va alohida terilmaydi:
+   * bir tushunchani ikki joyda so'rash - keyin ular bir-biriga
+   * mos kelmasligining eng oson yo'li.
+   */
+  oilaBoshligiTugilganSana: string;
   tugilganYili: Raqam;
   telefon: string;
   jamiAzo: Raqam;
@@ -159,6 +177,7 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     manzil: '',
     oilaBoshligi: '',
     oilaBoshligiJinsi: null,
+    oilaBoshligiTugilganSana: '',
     tugilganYili: '',
     telefon: '',
     jamiAzo: '',
@@ -256,7 +275,7 @@ export function bosIshsiz(): IshsizQatori {
     fish: '',
     telefon: '',
     jinsi: 'Erkak',
-    tugilganSana: null,
+    tugilganSana: '',
     malumoti: null,
     mutaxassisligi: '',
     ishTajribasiYil: '',
@@ -320,6 +339,8 @@ export function yuborishUchun(h: XatlovHolati) {
       xizmatTosiqlari: m(x.xizmatTosiqlari),
       hunarmandchilik: m(x.hunarmandchilik),
       umumiyXulosa: m(x.umumiyXulosa),
+      // Bo'sh sana `null` - sxema uni `Date` ga o'giradi
+      oilaBoshligiTugilganSana: x.oilaBoshligiTugilganSana || null,
       imzoYoli: m(x.imzoYoli),
 
       /*
@@ -343,6 +364,8 @@ export function yuborishUchun(h: XatlovHolati) {
       organmoqchiKasb: m(p.organmoqchiKasb ?? ''),
       ishTajribasiYil: r(p.ishTajribasiYil),
       kutilayotganMaosh: r(p.kutilayotganMaosh),
+      // Bo'sh sana `null` - sxema uni `Date` ga o'giradi
+      tugilganSana: p.tugilganSana || null,
     })),
   };
 }

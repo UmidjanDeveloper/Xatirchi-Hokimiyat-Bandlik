@@ -247,6 +247,8 @@ export function TanlovMaydoni({
   qiymat: string | null;
   ozgardi: (q: string | null) => void;
 }) {
+  const { t: tr } = useAlifbo();
+
   const id = useId();
   return (
     <div className="space-y-1.5">
@@ -267,7 +269,7 @@ export function TanlovMaydoni({
                   : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink'
               }`}
             >
-              {v.kirill}
+              {tr(v.kirill)}
             </button>
           );
         })}
@@ -291,6 +293,8 @@ export function KopTanlovMaydoni({
   qiymatlar: string[];
   ozgardi: (q: string[]) => void;
 }) {
+  const { t: tr } = useAlifbo();
+
   const id = useId();
   return (
     <div className="space-y-1.5">
@@ -316,7 +320,7 @@ export function KopTanlovMaydoni({
                   : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink'
               }`}
             >
-              {v.kirill}
+              {tr(v.kirill)}
             </button>
           );
         })}

@@ -2,7 +2,7 @@
 
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 
-import { Plus, Trash2, Users } from 'lucide-react';
+import { Plus, Trash2, UserPlus, Users } from 'lucide-react';
 import {
   CHORVA_TURI,
   DAROMAD_MANBAI,
@@ -28,6 +28,7 @@ import {
   MatnMaydoni,
   PulMaydoni,
   RaqamMaydoni,
+  SanaMaydoni,
   TanlovMaydoni,
   ToliqKeng,
   YoshOgohlantirishi,
@@ -91,14 +92,29 @@ export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
         xato={x(xatolar, 'oilaBoshligiJinsi')}
       />
 
-      <RaqamMaydoni
-        yorliq={tr("Туғилган йили")}
+      {/*
+        ТУҒИЛГАН САНА — тўлиқ сана, фақат йил эмас.
+
+        Илгари бу ерда йил, ишсиз фуқарода эса тўлиқ сана
+        сўраларди — бир тушунча икки шаклда. Ходим оила бошлиғини
+        ишсизлар рўйхатига ҳам қўшганда санани қайтадан териши
+        керак бўларди.
+
+        `tugilganYili` алоҳида терилмайди: у санадан ОЛИНАДИ.
+        Бир тушунчани икки жойда сўраш — улар бир-бирига мос
+        келмаслигининг энг осон йўли.
+      */}
+      <SanaMaydoni
+        yorliq={tr("Туғилган санаси")}
         majburiy
-        qiymat={h.tugilganYili}
-        ozgardi={(q) => yangila('tugilganYili', q)}
-        min={1920}
-        max={new Date().getFullYear()}
-        xato={x(xatolar, 'tugilganYili')}
+        qiymat={h.oilaBoshligiTugilganSana}
+        ozgardi={(q) => {
+          yangila('oilaBoshligiTugilganSana', q);
+          yangila('tugilganYili', q ? Number(q.slice(0, 4)) : '');
+        }}
+        eng_erta="1920-01-01"
+        eng_kech={new Date().toLocaleDateString('en-CA')}
+        xato={x(xatolar, 'oilaBoshligiTugilganSana') ?? x(xatolar, 'tugilganYili')}
       />
 
       {/*
@@ -666,10 +682,15 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
 }
 
 // ═════════════════════════════════════════════════════════════
-//  6-QADAM: IX. TOMORQA + X. TADBIRKORLIK SUBYEKTLARI
+//  6-QADAM: IX. TOMORQA, CHORVA VA HUNARMANDCHILIK
+//
+//  Ilgari bu qadamda X bo'lim ham bor edi - "mahalla hududidagi
+//  tadbirkorlik subyektlari". U olib tashlandi (bo'sh ish o'rinlari
+//  alohida reestrda yuritiladi), shuning uchun qadam nomi ham
+//  o'zgartirildi.
 // ═════════════════════════════════════════════════════════════
 
-export function QadamYerVaSubyektlar({ h, yangila, xatolar }: QadamProps) {
+export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
   const { t: tr } = useAlifbo();
 
   return (
@@ -919,6 +940,46 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   ozgardi={(q) => qatorYangila(p.qatorId, 'jinsi', q ?? 'Erkak')}
                 />
 
+                {/*
+                  ТУҒИЛГАН САНА — мажбурий.
+
+                  Илгари бу майдон УМУМАН сўралмасди, ҳолбуки
+                  базада устун бор эди. Натижада иккита нарса
+                  ишламай турарди: ҳисоботдаги ёш гуруҳлари бўш
+                  чиқарди, ва ёш текшируви (16 ёшгача, аёл 55,
+                  эркак 60) фақат оила бошлиғига қўлланарди —
+                  ишсизларга эса қўлланмасди.
+
+                  Энг эрта сана 1920 йил: ундан олдин туғилган
+                  одам бўлиши мумкин эмас ва бу теришдаги хатони
+                  тутади.
+                */}
+                <SanaMaydoni
+                  yorliq={tr("Туғилган санаси")}
+                  majburiy
+                  qiymat={p.tugilganSana}
+                  ozgardi={(q) => qatorYangila(p.qatorId, 'tugilganSana', q)}
+                  eng_erta="1920-01-01"
+                  eng_kech={new Date().toLocaleDateString('en-CA')}
+                  xato={x(xatolar, `ishsiz.${i}.tugilganSana`)}
+                />
+
+                {/*
+                  Ёш баҳоси ходим АНКЕТАНИ ТЎЛДИРАЁТГАНДА
+                  кўринади, юборгандан кейин эмас. Бу ТЎСИҚ эмас:
+                  нафақа ёшидаги одам ҳам рўйхатга олинади,
+                  шунчаки бандлик маркази унга иш топиб бера
+                  олмайди ва бошқа чора керак бўлади.
+                */}
+                <div className="sm:col-span-2">
+                  <YoshOgohlantirishi
+                    tugilganYili={
+                      p.tugilganSana ? Number(p.tugilganSana.slice(0, 4)) : ''
+                    }
+                    jinsi={p.jinsi}
+                  />
+                </div>
+
                 <TanlovMaydoni
                   yorliq={tr("Маълумоти")}
                   variantlar={MALUMOT}
@@ -977,14 +1038,53 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => yangila('ishsizlar', [...h.ishsizlar, bosIshsiz()])}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-strong px-4 py-3 text-sm font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
-        >
-          <Plus className="h-4 w-4" />
-          {tr('Ишсиз фуқаро қўшиш')}
-        </button>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => yangila('ishsizlar', [...h.ishsizlar, bosIshsiz()])}
+            className="flex items-center justify-center gap-2 rounded-md border border-dashed border-line-strong px-4 py-3 text-sm font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
+          >
+            <Plus className="h-4 w-4" />
+            {tr('Ишсиз фуқаро қўшиш')}
+          </button>
+
+          {/*
+            ── ОИЛА БОШЛИҒИ ҲАМ ИШСИЗ ──
+
+            Оила бошлиғининг исми, жинси, телефони ва туғилган
+            санаси 1-қадамда аллақачон терилган. Агар у ҳам ишсиз
+            бўлса, ходим шу маълумотни ҚАЙТАДАН теришга мажбур
+            эди — зanжир айнан шу ерда узиларди.
+
+            Тугма фақат маълумот бор ва у рўйхатда ЙЎҚ бўлганда
+            кўринади: акс ҳолда ходим уни икки марта босиб,
+            рўйхатда бир одам икки марта пайдо бўларди.
+          */}
+          {h.oilaBoshligi.trim().length >= 2 &&
+            !h.ishsizlar.some(
+              (p) => nomKaliti(p.fish) === nomKaliti(h.oilaBoshligi)
+            ) && (
+              <button
+                type="button"
+                onClick={() =>
+                  yangila('ishsizlar', [
+                    ...h.ishsizlar,
+                    {
+                      ...bosIshsiz(),
+                      fish: h.oilaBoshligi.trim(),
+                      jinsi: h.oilaBoshligiJinsi ?? 'Erkak',
+                      telefon: h.telefon,
+                      tugilganSana: h.oilaBoshligiTugilganSana,
+                    },
+                  ])
+                }
+                className="flex items-center justify-center gap-2 rounded-md border border-dashed border-accent/60 px-4 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/5"
+              >
+                <UserPlus className="h-4 w-4" />
+                {tr('Оила бошлиғи ҳам ишсиз')}
+              </button>
+            )}
+        </div>
       </section>
 
       <Bolim raqam="XI" sarlavha={tr("Хулоса")}>
@@ -1038,12 +1138,26 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
   );
 }
 
+/**
+ * Исм бўйича таққослаш калити.
+ *
+ * Апостроф ва қўшимча бўшлиқлар олиб ташланади: «Ўрақулов
+ * Умиджон» ва «Ўрақулов  Умиджон» бир хил одам.
+ */
+function nomKaliti(ism: string): string {
+  return ism
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02BB\u02BC`\u00B4\u2032']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export const QADAMLAR = [
   { nomi: 'Хонадон', komponent: QadamXonadon },
   { nomi: 'Меҳнат ва бандлик', komponent: QadamMehnat },
   { nomi: 'Тадбиркорлик ва даромад', komponent: QadamTadbirkorlik },
   { nomi: 'Болалар ва соғлиқ', komponent: QadamBolalarSogliq },
   { nomi: 'Уй-жой ва ижтимоий ҳимоя', komponent: QadamUyJoy },
-  { nomi: 'Ер ва тадбиркорлик субъектлари', komponent: QadamYerVaSubyektlar },
+  { nomi: 'Ер, чорва ва ҳунармандчилик', komponent: QadamYerChorva },
   { nomi: 'Ишсизлар ва хулоса', komponent: QadamIshsizlar },
 ] as const;

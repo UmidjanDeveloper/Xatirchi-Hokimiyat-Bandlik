@@ -117,6 +117,16 @@ export const XonadonSxemasi = z.object({
    * Faqat `bolalarSoni` 0 ni qabul qiladi: bolasiz oila bor va
    * uni "to'ldirilmagan" deb hisoblash xato bo'lardi.
    */
+  /*
+   * Oila boshlig'ining tug'ilgan sanasi. Yangi anketalarda
+   * MAJBURIY; eski yozuvlarda faqat `tugilganYili` bor, shuning
+   * uchun `nullish` - ularni tahrirlash mumkin bo'lib qolsin.
+   */
+  oilaBoshligiTugilganSana: z.coerce
+    .date()
+    .min(new Date('1920-01-01'), { message: 'Туғилган сана 1920 йилдан кейин бўлиши керак' })
+    .max(new Date(), { message: 'Туғилган сана келажакда бўлиши мумкин эмас' })
+    .nullish(),
   tugilganYili: z.coerce.number().int().min(1920).max(2026),
   oilaBoshligiJinsi: z.enum(qiymatlar(JINS)),
   telefon: z.string().min(7).max(20),
@@ -291,7 +301,21 @@ export const IshsizQisqaSxemasi = z.object({
   fish: z.string().min(3).max(100),
   telefon: matn(20),
   jinsi: z.enum(qiymatlar(JINS)),
-  tugilganSana: z.coerce.date().nullish(),
+  /*
+   * Tug'ilgan sana MAJBURIY.
+   *
+   * Ilgari `nullish` edi va formada umuman so'ralmasdi. Natijada
+   * ikkita narsa ishlamay turardi: hisobotdagi yosh guruhlari
+   * bo'sh chiqardi, va yosh tekshiruvi (16 yoshgacha, ayol 55,
+   * erkak 60) faqat oila boshlig'iga qo'llanardi.
+   *
+   * Chegaralar teruvdagi xatoni tutadi: 1920 dan oldin tug'ilgan
+   * odam bo'lishi mumkin emas, kelajakdagi sana ham.
+   */
+  tugilganSana: z.coerce
+    .date()
+    .min(new Date('1920-01-01'), { message: 'Туғилган сана 1920 йилдан кейин бўлиши керак' })
+    .max(new Date(), { message: 'Туғилган сана келажакда бўлиши мумкин эмас' }),
   malumoti: tanlov(MALUMOT),
   mutaxassisligi: matn(200),
   ishTajribasiYil: z.coerce.number().min(0).max(60).nullish(),
