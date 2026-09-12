@@ -380,13 +380,60 @@ function sheetPathFor(workbookXml: string, relsXml: string, sheetName: string): 
  * @param sheetName diagrammalar joylashadigan varaq nomi
  * @param specs     diagrammalar ro'yxati
  */
+/** Bir varaqqa tushadigan diagrammalar to'plami */
+export interface ChartGuruhi {
+  sheetName: string;
+  specs: ChartSpec[];
+  look?: SheetLook;
+}
+
+/**
+ * Bitta varaqqa diagramma joylaydi.
+ *
+ * `injectChartsMulti` ustidagi yupqa qobiq - eski chaqiruvlar
+ * o'zgarmasin uchun qoldirilgan.
+ */
 export async function injectCharts(
   workbook: ArrayBuffer | Uint8Array,
   sheetName: string,
   specs: ChartSpec[],
   look: SheetLook = {}
 ): Promise<ArrayBuffer | Uint8Array> {
-  if (specs.length === 0) return workbook;
+  return injectChartsMulti(workbook, [{ sheetName, specs, look }]);
+}
+
+/**
+ * Bir necha varaqqa diagramma joylaydi.
+ *
+ * Nega kerak: hisobot endi ko'p bo'limli va har bo'lim o'z
+ * varag'ida turadi. Diagrammalarni bitta "Grafiklar" varag'iga
+ * to'plash mumkin edi, lekin unda o'quvchi jadvalni bir varaqda,
+ * uning diagrammasini boshqasida ko'rardi - ikkisini yonma-yon
+ * qo'yish uchun esa aynan shu buzilgan bo'lardi.
+ *
+ * `injectCharts` ni ketma-ket ikki marta chaqirib bo'lmaydi:
+ * chart va drawing fayllari qat'iy nom bilan yoziladi
+ * (`chart1.xml`, `drawing1.xml`) va ikkinchi chaqiruv birinchisini
+ * o'chirib tashlardi. Shuning uchun raqamlar shu yerda, hamma
+ * guruh bo'ylab DAVOM ETADI.
+ */
+export async function injectChartsMulti(
+  workbook: ArrayBuffer | Uint8Array,
+  guruhlar: ChartGuruhi[],
+  umumiyLook: SheetLook = {},
+  /**
+   * Diagrammasi YO'Q, lekin ko'rinishi sozlanishi kerak bo'lgan
+   * varaqlar: muqova, xulosa, mundarija.
+   *
+   * Nega alohida ro'yxat: `guruhlar` dagi bo'sh to'plam chetlab
+   * o'tiladi (diagrammasiz chizma yozish ma'nosiz va Excel uni
+   * xato deb hisoblaydi), shuning uchun ularni o'sha ro'yxatga
+   * qo'shib bo'lmaydi.
+   */
+  korinishGuruhlari: { sheetName: string; look: SheetLook }[] = []
+): Promise<ArrayBuffer | Uint8Array> {
+  const ishlaydigan = guruhlar.filter((g) => g.specs.length > 0);
+  if (ishlaydigan.length === 0 && korinishGuruhlari.length === 0) return workbook;
 
   const { default: JSZip } = await import('jszip');
   const zip = await JSZip.loadAsync(workbook);
@@ -395,36 +442,100 @@ export async function injectCharts(
   const workbookRels = await zip.file('xl/_rels/workbook.xml.rels')?.async('string');
   if (!workbookXml || !workbookRels) return workbook;
 
-  const sheetPath = sheetPathFor(workbookXml, workbookRels, sheetName);
-  if (!sheetPath) return workbook;
+  /*
+   * Katak uslublari butun kitobga bir marta qo'shiladi.
+   * `LOOK_INDEX` dagi raqamlar (1..5) aynan shu to'plamga
+   * ishora qiladi, shuning uchun ikkinchi marta qo'shish
+   * mumkin emas.
+   */
+  const uslubKerak =
+    ishlaydigan.some((g) => (g.look ?? umumiyLook).cells) ||
+    korinishGuruhlari.some((g) => g.look.cells);
+  if (uslubKerak) {
+    const stylesXml = await zip.file('xl/styles.xml')?.async('string');
+    if (stylesXml) zip.file('xl/styles.xml', extendStyles(stylesXml));
+  }
 
-  const sheetXml = await zip.file(sheetPath)?.async('string');
-  if (!sheetXml) return workbook;
+  /** Barcha guruhlar bo'ylab uzluksiz raqam */
+  let chartRaqami = 0;
+  let drawingRaqami = 0;
+  const contentOverrides: string[] = [];
 
-  // ── Diagramma fayllari ──
-  specs.forEach((spec, i) => {
-    zip.file(`xl/charts/chart${i + 1}.xml`, buildChartXml(spec, i));
-  });
+  for (const guruh of ishlaydigan) {
+    const sheetPath = sheetPathFor(workbookXml, workbookRels, guruh.sheetName);
+    if (!sheetPath) continue;
 
-  // ── Chizma va uning bog'lanishlari ──
-  zip.file('xl/drawings/drawing1.xml', buildDrawingXml(specs));
-  zip.file(
-    'xl/drawings/_rels/drawing1.xml.rels',
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-      specs
-        .map(
-          (_, i) =>
-            `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${i + 1}.xml"/>`
-        )
-        .join('') +
-      '</Relationships>'
-  );
+    const sheetXml = await zip.file(sheetPath)?.async('string');
+    if (!sheetXml) continue;
 
-  // ── Varaqni chizma bilan bog'laymiz ──
+    const look = { ...umumiyLook, ...(guruh.look ?? {}) };
+    const specs = guruh.specs;
+
+    /* Bu varaqdagi diagrammalarning global raqamlari */
+    const raqamlar = specs.map(() => ++chartRaqami);
+    const drawing = ++drawingRaqami;
+
+    specs.forEach((spec, i) => {
+      zip.file(`xl/charts/chart${raqamlar[i]}.xml`, buildChartXml(spec, i));
+      contentOverrides.push(
+        `<Override PartName="/xl/charts/chart${raqamlar[i]}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`
+      );
+    });
+
+    zip.file(`xl/drawings/drawing${drawing}.xml`, buildDrawingXml(specs));
+    contentOverrides.push(
+      `<Override PartName="/xl/drawings/drawing${drawing}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`
+    );
+
+    zip.file(
+      `xl/drawings/_rels/drawing${drawing}.xml.rels`,
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        specs
+          .map(
+            (_, i) =>
+              `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${raqamlar[i]}.xml"/>`
+          )
+          .join('') +
+        '</Relationships>'
+    );
+
+    await varaqniBogla(zip, sheetPath, sheetXml, drawing, look);
+  }
+
+  /* ── Diagrammasiz varaqlar: faqat ko'rinish ── */
+  for (const guruh of korinishGuruhlari) {
+    const sheetPath = sheetPathFor(workbookXml, workbookRels, guruh.sheetName);
+    if (!sheetPath) continue;
+    const sheetXml = await zip.file(sheetPath)?.async('string');
+    if (!sheetXml) continue;
+    await varaqKorinishi(zip, sheetPath, sheetXml, guruh.look);
+  }
+
+  // ── Yangi qismlarning turlarini e'lon qilamiz ──
+  const typesXml = await zip.file('[Content_Types].xml')?.async('string');
+  if (typesXml && contentOverrides.length) {
+    zip.file(
+      '[Content_Types].xml',
+      typesXml.replace('</Types>', `${contentOverrides.join('')}</Types>`)
+    );
+  }
+
+  return zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
+}
+
+/** Varaqni chizma bilan bog'laydi va ko'rinishini sozlaydi */
+async function varaqniBogla(
+  zip: Awaited<ReturnType<typeof import('jszip')['loadAsync']>>,
+  sheetPath: string,
+  sheetXml: string,
+  drawing: number,
+  look: SheetLook
+): Promise<void> {
   const sheetFile = sheetPath.split('/').pop() as string;
   const sheetRelsPath = `xl/worksheets/_rels/${sheetFile}.rels`;
   const existingRels = await zip.file(sheetRelsPath)?.async('string');
+  const target = `../drawings/drawing${drawing}.xml`;
 
   /*
    * Varaqda allaqachon bog'lanish bo'lishi mumkin (masalan havolalar),
@@ -438,7 +549,7 @@ export async function injectCharts(
       sheetRelsPath,
       existingRels.replace(
         '</Relationships>',
-        `<Relationship Id="${drawingRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`
+        `<Relationship Id="${drawingRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="${target}"/></Relationships>`
       )
     );
   } else {
@@ -446,7 +557,7 @@ export async function injectCharts(
       sheetRelsPath,
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-        `<Relationship Id="${drawingRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>` +
+        `<Relationship Id="${drawingRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="${target}"/>` +
         '</Relationships>'
     );
   }
@@ -454,37 +565,36 @@ export async function injectCharts(
   // `<drawing/>` varaqning eng oxirgi elementi bo'lishi kerak
   zip.file(sheetPath, sheetXml.replace('</worksheet>', `<drawing r:id="${drawingRid}"/></worksheet>`));
 
-  // ── Varaq ko'rinishi: to'r chiziqlari va katak uslublari ──
-  if (look.hideGridLines || look.cells || look.printFit) {
-    let patched = (await zip.file(sheetPath)?.async('string')) ?? '';
+  const bilanChizma = (await zip.file(sheetPath)?.async('string')) ?? '';
+  await varaqKorinishi(zip, sheetPath, bilanChizma, look);
+}
 
-    if (look.hideGridLines) {
-      patched = patched.replace('<sheetView ', '<sheetView showGridLines="0" ');
-    }
-    if (look.printFit) {
-      patched = applyPrintSetup(patched);
-    }
-    if (look.cells) {
-      patched = applyCellLooks(patched, look.cells);
-      const stylesXml = await zip.file('xl/styles.xml')?.async('string');
-      if (stylesXml) zip.file('xl/styles.xml', extendStyles(stylesXml));
-    }
-    zip.file(sheetPath, patched);
+/**
+ * Varaq ko'rinishini sozlaydi: to'r chiziqlari, bosish va katak
+ * uslublari. Diagrammadan mustaqil - muqova varag'iga ham
+ * qo'llanadi.
+ *
+ * Uslub ta'riflari `injectChartsMulti` da BIR MARTA qo'shiladi:
+ * `LOOK_INDEX` dagi qat'iy raqamlar (1..5) aynan o'sha to'plamga
+ * ishora qiladi, ikkinchi marta qo'shilsa raqamlar chalkashardi.
+ */
+async function varaqKorinishi(
+  zip: Awaited<ReturnType<typeof import('jszip')['loadAsync']>>,
+  sheetPath: string,
+  sheetXml: string,
+  look: SheetLook
+): Promise<void> {
+  if (!look.hideGridLines && !look.cells && !look.printFit) return;
+
+  let patched = sheetXml;
+  if (look.hideGridLines) {
+    patched = patched.replace('<sheetView ', '<sheetView showGridLines="0" ');
   }
-
-  // ── Yangi qismlarning turlarini e'lon qilamiz ──
-  const typesXml = await zip.file('[Content_Types].xml')?.async('string');
-  if (typesXml) {
-    const overrides =
-      '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' +
-      specs
-        .map(
-          (_, i) =>
-            `<Override PartName="/xl/charts/chart${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`
-        )
-        .join('');
-    zip.file('[Content_Types].xml', typesXml.replace('</Types>', `${overrides}</Types>`));
+  if (look.printFit) {
+    patched = applyPrintSetup(patched);
   }
-
-  return zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
+  if (look.cells) {
+    patched = applyCellLooks(patched, look.cells);
+  }
+  zip.file(sheetPath, patched);
 }

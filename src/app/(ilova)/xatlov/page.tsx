@@ -5,6 +5,8 @@ import { FileText, HousePlus, TriangleAlert, Users } from 'lucide-react';
 import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate, percent } from '@/lib/utils';
+import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
+import { AiXulosa } from '@/components/panel/ai-xulosa';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -78,13 +80,27 @@ export default async function XatlovlarSahifasi() {
             {mahalla ? tr(`${mahalla.nomiKirill} МФЙ`) : tr('Барча маҳаллалар')}
           </p>
         </div>
-        <Link
-          href="/xatlov/yangi"
-          className="flex items-center gap-1.5 tugma-asosiy rounded-md px-4 py-2.5 text-sm font-semibold"
-        >
-          <HousePlus className="h-4 w-4" />
-          {tr('Янги хатлов')}
-        </Link>
+        <div className="flex flex-wrap items-start gap-3">
+          <Link
+            href="/xatlov/yangi"
+            className="flex items-center gap-1.5 tugma-asosiy rounded-md px-4 py-2.5 text-sm font-semibold"
+          >
+            <HousePlus className="h-4 w-4" />
+            {tr('Янги хатлов')}
+          </Link>
+
+          {/*
+            Маҳалла ходими ЎЗ маҳалласи бўйича профессионал
+            ҳисобот олади: хатлов, фуқаролар, чора-тадбирлар,
+            диаграммалар ва хулоса. Илгари ҳисобот фақат ҳоким
+            ва марказ раҳбарида бор эди — ходим эса ўз ишини
+            йиғилишда кўрсатиш учун қўлда жадвал тузарди.
+
+            Хатлов бошланмаган бўлса кўрсатилмайди: бўш
+            ҳисоботнинг маъноси йўқ.
+          */}
+          {yuborilgan.length > 0 && <HisobotTugmalari qamrov={{ nomi: '' }} ozMahallasi />}
+        </div>
       </div>
 
       {/*
@@ -113,6 +129,19 @@ export default async function XatlovlarSahifasi() {
             izoh={qoralamalar.length > 0 ? tr('Тугатиб юборинг') : tr('Ҳаммаси юборилган')}
           />
         </div>
+      )}
+
+      {/*
+        Маҳалла ходимига ҳам хулоса кўринади — ЎЗ маҳалласи
+        бўйича. Илгари таҳлил фақат ҳоким ва марказда эди, ходим
+        эса ўз ишининг натижасини кўрмасди: анкета тўлдириб
+        юборарди ва шу билан тугарди.
+
+        Хатлов бошланмаган бўлса кўрсатилмайди: бўш маълумотдан
+        хулоса чиқмайди.
+      */}
+      {mahalla && yuborilgan.length > 0 && (
+        <AiXulosa qamrovNomi={`${mahalla.nomiKirill} МФЙ`} />
       )}
 
       {xatlovlar.length === 0 ? (

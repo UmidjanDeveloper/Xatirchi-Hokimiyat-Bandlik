@@ -1,202 +1,187 @@
 'use client';
 
 import { useState } from 'react';
-import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, FileText, Loader2, Sparkles } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { lotinga } from '@/lib/alifbo';
-import type { TahlilNatijasi } from '@/lib/tahlil';
-import { ISHSIZ_HOLATI } from '@/lib/ishsiz-holati';
+import type { Hisobot } from '@/lib/hisobot/turlar';
 
 /**
  * ============================================================
- *  HISOBOT TUGMALARI
+ *  ҲИСОБОТ ТУГМАЛАРИ
  *
- *  PDF - yig'ilishga olib boriladi, o'qiladi, imzolanadi.
- *  Excel - ustida ishlanadi: viloyatga yuboriladi, boshqa
- *  jadvalga ko'chiriladi, o'z hisob-kitobi qilinadi.
+ *  PDF — йиғилишга олиб борилади, ўқилади, имзоланади.
+ *  Excel — устида ишланади: вилоятга юборилади, бошқа жадвалга
+ *  кўчирилади, ўз ҳисоб-китоби қилинади.
  *
- *  Ikkalasi ham TANLANGAN ALIFBODA chiqadi. Hujjat kirillda
- *  kerak bo'lsa, saytni kirillga o'tkazib bosiladi - bu
- *  hokimiyat yozishmasida muhim, chunki rasmiy hujjatlar hali
- *  ko'pincha kirillda yuritiladi.
+ *  ── Нега иккита сўров эмас, битта ──
  *
- *  Og'ir kutubxonalar (jspdf ~250 KB, xlsx ~400 KB) faqat tugma
- *  bosilganda yuklanadi. Statik import qilinsa, hisobot
- *  olmaydigan xodim ham ularni har kirganda yuklab olardi.
+ *  Ҳисобот маълумоти сервердан БИР МАРТА олинади ва иккала файл
+ *  шундан ясалади. Акс ҳолда PDF да бир рақам, Excel да бошқа
+ *  рақам чиқиши мумкин эди: орада бир ходим анкета юборса,
+ *  иккинчи сўров бошқа жавоб қайтарарди.
+ *
+ *  ── Алифбо ──
+ *
+ *  Файл ТАНЛАНГАН АЛИФБОДА чиқади. Ҳужжат кириллда керак бўлса,
+ *  сайтни кириллга ўтказиб босилади — ҳокимият ёзишмасида бу
+ *  муҳим, чунки расмий ҳужжатлар ҳали кўпинча кириллда
+ *  юритилади.
+ *
+ *  ── Оғир кутубхоналар ──
+ *
+ *  jspdf ~250 КБ, xlsx ~400 КБ. Улар фақат тугма босилганда
+ *  юкланади. Статик импорт қилинса, ҳисобот олмайдиган ходим
+ *  ҳам уларни ҳар кирганда юклаб оларди.
  * ============================================================
  */
+
+export interface HisobotQamrovi {
+  /** Маҳалла id — бўш бўлса бутун туман */
+  mahallaId?: string | null;
+  /**
+   * Тугма ёнида кўринадиган ҳудуд номи — КИРИЛЛДА.
+   *
+   * Ўгириш шу компонентда бўлади, серверда эмас: фойдаланувчи
+   * саҳифада туриб алифбони алмаштирса, сервер юборган матн эски
+   * алифбода қотиб қоларди.
+   */
+  nomi: string;
+}
+
 export function HisobotTugmalari({
-  tahlil,
-  kim,
+  qamrov,
+  mahallalar,
+  /**
+   * Маҳалла ходими учун — сарлавҳа ва изоҳ бошқача ёзилади.
+   *
+   * Ходимга «бутун туман» тушунчаси керак эмас: у ўз
+   * маҳалласининг ҳисоботини олади ва шу ҳақда аниқ ёзилиши
+   * ишончни оширади.
+   */
+  ozMahallasi = false,
 }: {
-  tahlil: TahlilNatijasi;
-  /** Hisobot poyida ko'rinadi: kim tayyorlagani */
-  kim: string;
+  qamrov: HisobotQamrovi;
+  /**
+   * Маҳаллалар рўйхати — берилса, ҳудуд танлаш имкони очилади.
+   *
+   * Ҳокимга бу керак: умумий сурат туман бўйича, аммо йиғилишда
+   * «Чечакота МФЙ да нима гап» деган савол чиқади ва унга
+   * алоҳида ҳисобот билан жавоб бериш керак бўлади.
+   */
+  mahallalar?: { id: string; nomiKirill: string }[];
+  ozMahallasi?: boolean;
 }) {
   const { t: tr, alifbo } = useAlifbo();
   const [ishlayapti, setIshlayapti] = useState<'pdf' | 'excel' | null>(null);
   const [xato, setXato] = useState<string | null>(null);
+  const [holat, setHolat] = useState<string | null>(null);
 
-  const bosh = tahlil.jami;
+  /** Танланган ҳудуд — бўш сатр «бутун туман» дегани */
+  const [tanlangan, setTanlangan] = useState<string>(qamrov.mahallaId ?? '');
+
   const sana = new Date().toISOString().slice(0, 10);
   const qoshimcha = alifbo === 'lot' ? '' : '-kirill';
+  const joriyMahalla = tanlangan || null;
+  const joriyNomi = joriyMahalla
+    ? (mahallalar?.find((m) => m.id === joriyMahalla)?.nomiKirill ?? qamrov.nomi)
+    : qamrov.nomi;
 
-  /** Matnni joriy alifboga o'giradi (server matni doim kirillda) */
-  const a = (s: string) => (alifbo === 'lot' ? lotinga(s) : s);
+  /**
+   * Файл номи ҲИСОБОТНИНГ ЎЗИДАН олинади.
+   *
+   * Илгари у мижоз томонда тахмин қилинарди ва маҳалла ходимида
+   * янглишарди: сервер ҳисоботни ходимнинг маҳалласига чеклаган
+   * бўлса ҳам, файл номи «tuman-hisobot» бўлиб қоларди. Ҳудудни
+   * сервер ҳал қилади — демак ном ҳам ундан келиши керак.
+   *
+   * Ном ФАҚАТ лотин ҳарфларида бўлади, ҳисобот кириллда бўлса
+   * ҳам. Сабаби амалий: файл электрон почта, Windows папкаси ва
+   * Telegram орқали юрганда кирилл ном баъзи тизимларда бузилади
+   * ёки умуман тушиб қолади. Браузер ҳам кирилл номли юкламани
+   * «download» деб сақлаб қўяди — бир марта шу бўлган.
+   */
+  function faylNomi(m: Hisobot, kengaytma: string): string {
+    const hudud = lotinga(m.qamrovNomi)
+      .toLowerCase()
+      .replace(/[’‘ʻʼ`]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40);
+    return `hisobot-${hudud || 'hudud'}-${sana}${qoshimcha}.${kengaytma}`;
+  }
 
-  const foiz = (qism: number, butun: number) =>
-    butun > 0 ? Math.round((qism / butun) * 1000) / 10 : 0;
+  /** Сервердан ҳисобот маълумотини олади */
+  async function malumotOl(): Promise<Hisobot> {
+    const javob = await fetch('/api/hisobot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mahallaId: joriyMahalla,
+        lotin: alifbo === 'lot',
+        ai: true,
+      }),
+    });
+    const d = await javob.json().catch(() => ({}));
+    if (!javob.ok) throw new Error(d.xabar ?? tr('Ҳисобот маълумоти олинмади'));
+    return d as Hisobot;
+  }
 
-  const kpi = [
-    {
-      nomi: a('Хатловдан ўтган хонадон'),
-      qiymat: bosh.xatlovXonadon.toLocaleString('ru-RU'),
-      izoh: `${bosh.bazaXonadon.toLocaleString('ru-RU')} ${a('тадан')} · ${foiz(bosh.xatlovXonadon, bosh.bazaXonadon)}%`,
-    },
-    {
-      nomi: a('Аниқланган ишсиз'),
-      qiymat: bosh.aniqlangan.toLocaleString('ru-RU'),
-      izoh: `${a('рўйхатда')} ${bosh.bazaIshsiz.toLocaleString('ru-RU')} ${a('та')}`,
-    },
-    {
-      nomi: a('Ишга жойлаштирилган'),
-      qiymat: bosh.joylashtirilgan.toLocaleString('ru-RU'),
-      izoh: `${a('аниқланганларнинг')} ${foiz(bosh.joylashtirilgan, bosh.aniqlangan)}%`,
-    },
-    {
-      nomi: a('Таклифдан бош тортган'),
-      qiymat: bosh.radEtgan.toLocaleString('ru-RU'),
-      izoh: a('алоҳида ишлаш талаб қилинади'),
-    },
-  ];
-
-  const mahallaQatorlari = tahlil.qamrov.map((m) => ({
-    nomi: a(m.nomiKirill),
-    bazaXonadon: m.bazaXonadon,
-    xatlovXonadon: m.xatlovXonadon,
-    qamrovFoizi: m.qamrovFoizi,
-    bazaIshsiz: m.bazaIshsiz,
-    aniqlangan: m.aniqlangan,
-    joylashtirilgan: m.joylashtirilgan,
-    natijaFoizi: m.natijaFoizi,
-  }));
-
-  const voronkaQatorlari = tahlil.voronka.map((v) => ({
-    bosqich: a(ISHSIZ_HOLATI[v.holati]?.kirill ?? v.holati),
-    soni: v.soni,
-    foiz: v.foiz,
-  }));
-
-  const toifaQatorlari = [
-    { nomi: a('Аёллар дафтари'), soni: tahlil.toifalar.ayollarDaftari },
-    { nomi: a('Ижтимоий реестр'), soni: tahlil.toifalar.ijtimoiyReestr },
-    { nomi: a('Миграциядан қайтган'), soni: tahlil.toifalar.migratsiyadanQaytgan },
-    { nomi: a('Олий битирувчи'), soni: tahlil.toifalar.oliyBitiruvchi },
-    { nomi: a('Ўрта махсус битирувчи'), soni: tahlil.toifalar.ortaMaxsusBitiruvchi },
-  ].filter((x) => x.soni > 0);
-
-  async function pdfOl() {
+  async function ol(turi: 'pdf' | 'excel') {
+    if (ishlayapti) return;
     setXato(null);
-    setIshlayapti('pdf');
+    setIshlayapti(turi);
     try {
-      const { pdfYasa } = await import('@/lib/hisobot-pdf');
-      await pdfYasa(
-        {
-          sarlavha: a('Аҳоли бандлиги — таҳлилий ҳисобот'),
-          ostSarlavha: a('Хатирчи тумани ҳокимлиги · Навоий вилояти'),
-          tayyorlagan: a(kim),
-          kpi,
-          jadvallar: [
-            {
-              sarlavha: a('Ишсизлар билан иш — босқичлар'),
-              izoh: a('Ҳар босқичда нечта фуқаро турибди ва бу рўйхатдаги ишсизларнинг неча фоизи'),
-              ustunlar: [
-                { sarlavha: a('Босқич') },
-                { sarlavha: a('Сони'), raqamli: true, eni: 24 },
-                { sarlavha: a('Улуши, %'), raqamli: true, eni: 24 },
-              ],
-              qatorlar: voronkaQatorlari.map((v) => [v.bosqich, v.soni, `${v.foiz}%`]),
-            },
-            ...(toifaQatorlari.length
-              ? [
-                  {
-                    sarlavha: a('Ишсизлар таркиби'),
-                    izoh: a('Тоифалар кесишади — бир киши бир нечта тоифага кириши мумкин'),
-                    ustunlar: [
-                      { sarlavha: a('Тоифа') },
-                      { sarlavha: a('Сони'), raqamli: true, eni: 28 },
-                    ],
-                    qatorlar: toifaQatorlari.map((x) => [x.nomi, x.soni.toLocaleString('ru-RU')]),
-                  },
-                ]
-              : []),
-            {
-              sarlavha: a('Маҳаллалар кесимида'),
-              izoh: a('Қамров — рўйхатдаги ишсизлардан нечтаси хатловдан ўтгани. Натижа — нечтаси ишга жойлашгани.'),
-              ustunlar: [
-                { sarlavha: a('МФЙ') },
-                { sarlavha: a('Хонадон'), raqamli: true },
-                { sarlavha: a('Хатлов'), raqamli: true },
-                { sarlavha: a('Қамров'), raqamli: true },
-                { sarlavha: a('Ишсиз'), raqamli: true },
-                { sarlavha: a('Аниқл.'), raqamli: true },
-                { sarlavha: a('Жойл.'), raqamli: true },
-                { sarlavha: a('Натижа'), raqamli: true },
-              ],
-              qatorlar: mahallaQatorlari.map((m) => [
-                m.nomi, m.bazaXonadon, m.xatlovXonadon, `${m.qamrovFoizi}%`,
-                m.bazaIshsiz, m.aniqlangan, m.joylashtirilgan, `${m.natijaFoizi}%`,
-              ]),
-            },
-          ],
-        },
-        `bandlik-hisobot-${sana}${qoshimcha}.pdf`
-      );
+      setHolat(tr('Маълумот йиғилмоқда ва хулоса тайёрланмоқда…'));
+      const m = await malumotOl();
+
+      setHolat(turi === 'pdf' ? tr('PDF чизилмоқда…') : tr('Excel тузилмоқда…'));
+
+      if (turi === 'pdf') {
+        const { pdfYasa } = await import('@/lib/hisobot/pdf');
+        await pdfYasa(m, faylNomi(m, 'pdf'));
+      } else {
+        const { excelYasa } = await import('@/lib/hisobot/excel');
+        await excelYasa(m, faylNomi(m, 'xlsx'));
+      }
     } catch (e) {
       setXato(e instanceof Error ? e.message : tr('Ҳисобот тайёрланмади'));
     } finally {
       setIshlayapti(null);
+      setHolat(null);
     }
   }
 
-  async function excelOl() {
-    setXato(null);
-    setIshlayapti('excel');
-    try {
-      const { excelYasa } = await import('@/lib/hisobot-excel');
-      await excelYasa(
-        {
-          lotin: alifbo === 'lot',
-          sarlavha: a('Аҳоли бандлиги — таҳлилий ҳисобот'),
-          ostSarlavha: a('Хатирчи тумани ҳокимлиги · Навоий вилояти'),
-          kpi: kpi.map((k) => ({ nomi: k.nomi, qiymat: k.qiymat })),
-          voronka: voronkaQatorlari,
-          mahallalar: mahallaQatorlari,
-          toifalar: toifaQatorlari,
-          dinamika: tahlil.dinamika.map((d) => ({
-            yorliq: a(d.yorliq),
-            aniqlangan: d.aniqlangan,
-            joylashtirilgan: d.joylashtirilgan,
-          })),
-        },
-        `bandlik-hisobot-${sana}${qoshimcha}.xlsx`
-      );
-    } catch (e) {
-      setXato(e instanceof Error ? e.message : tr('Ҳисобот тайёрланмади'));
-    } finally {
-      setIshlayapti(null);
-    }
-  }
+  const tugma =
+    'flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2.5 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:opacity-60';
 
   return (
     <div className="space-y-2 sm:flex sm:flex-col sm:items-end">
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={pdfOl}
-          disabled={ishlayapti !== null}
-          className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
-        >
+      <div className="flex flex-wrap items-center gap-2">
+        {/*
+          Ҳудуд танлаш тугмалар ЁНИДА турибди, алоҳида блокда
+          эмас: танлаб, дарҳол босилади. Иккита қадам орасига
+          нарса қўйилса, фойдаланувчи нима танлаганини
+          эсдан чиқаради.
+        */}
+        {mahallalar && mahallalar.length > 1 && (
+          <select
+            value={tanlangan}
+            onChange={(e) => setTanlangan(e.target.value)}
+            aria-label={tr('Ҳисобот ҳудуди')}
+            disabled={ishlayapti !== null}
+            className="rounded-md border border-line bg-surface px-3 py-2.5 text-xs font-medium text-ink outline-none transition-colors focus:border-accent disabled:opacity-60"
+          >
+            <option value="">{tr('Бутун туман')}</option>
+            {mahallalar.map((m) => (
+              <option key={m.id} value={m.id}>
+                {tr(`${m.nomiKirill} МФЙ`)}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <button type="button" onClick={() => ol('pdf')} disabled={ishlayapti !== null} className={tugma}>
           {ishlayapti === 'pdf' ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
@@ -205,12 +190,7 @@ export function HisobotTugmalari({
           {tr('PDF ҳисобот')}
         </button>
 
-        <button
-          type="button"
-          onClick={excelOl}
-          disabled={ishlayapti !== null}
-          className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
-        >
+        <button type="button" onClick={() => ol('excel')} disabled={ishlayapti !== null} className={tugma}>
           {ishlayapti === 'excel' ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
@@ -220,14 +200,27 @@ export function HisobotTugmalari({
         </button>
       </div>
 
+      {holat && (
+        <p className="flex items-center gap-1.5 text-[11px] text-ink-muted" role="status">
+          <Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />
+          {holat}
+        </p>
+      )}
+
       {xato && (
         <p className="text-xs text-danger" role="alert">
           {xato}
         </p>
       )}
 
-      <p className="max-w-[22rem] text-[11px] leading-relaxed text-ink-faint sm:text-right">
-        {tr('Ҳисобот ҳозирги алифбода тайёрланади. Кириллда керак бўлса — юқоридаги тугмадан алифбони алмаштириб, қайтадан босинг.')}
+      <p className="max-w-[24rem] text-[11px] leading-relaxed text-ink-faint sm:text-right">
+        {ozMahallasi
+          ? tr('Ҳисобот фақат сизнинг маҳаллангиз бўйича тузилади: хатлов, фуқаролар, чора-тадбирлар ва хулоса. Диаграммалар иккала файлда ҳам бор.')
+          : `${tr(joriyNomi)} ${tr('бўйича. Хулоса ва тавсиялар, диаграммалар ва барча бўлимлар иккала файлда ҳам бор.')}`}
+      </p>
+
+      <p className="max-w-[24rem] text-[11px] leading-relaxed text-ink-faint sm:text-right">
+        {tr('Ҳужжат ҳозирги алифбода тайёрланади. Кириллда керак бўлса — юқоридаги тугмадан алифбони алмаштириб, қайтадан босинг.')}
       </p>
     </div>
   );

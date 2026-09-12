@@ -6,6 +6,7 @@ import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { tahlilOl } from '@/lib/tahlil';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
+import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
@@ -30,7 +31,7 @@ export default async function BandlikSahifasi() {
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [suhbatsiz, taklifsiz, ishOrinlari, istaklar, migratsiya, t] = await Promise.all([
+  const [suhbatsiz, taklifsiz, ishOrinlari, istaklar, migratsiya, t, mahallalar] = await Promise.all([
     // 1. Suhbat kutayotganlar - eng birinchi navbat
     prisma.unemployedPerson.findMany({
       where: { ...filtr, holati: 'ANIQLANDI' },
@@ -97,6 +98,17 @@ export default async function BandlikSahifasi() {
     }),
 
     tahlilOl(filtr.mahallaId),
+
+    /*
+     * Маҳаллалар рўйхати ҳисобот тугмалари учун: раҳбар туман
+     * бўйича ҳам, битта МФЙ бўйича ҳам ҳисобот олади.
+     */
+    filtr.mahallaId
+      ? Promise.resolve([] as { id: string; nomiKirill: string }[])
+      : prisma.mahalla.findMany({
+          orderBy: { nomi: 'asc' },
+          select: { id: true, nomiKirill: true },
+        }),
   ]);
 
   /*
@@ -173,8 +185,16 @@ export default async function BandlikSahifasi() {
           Rahbar hisobotni shu yerdan oladi va hokimga ko'rsatadi -
           aynan shu ish oqimi uchun tugma sahifa boshida turadi.
         */}
-        <HisobotTugmalari tahlil={t} kim={sessiya.fullName} />
+        <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
       </div>
+
+      {/*
+        Раҳбарга ҳам ўша хулоса кўринади. Ҳоким билан бир хил
+        матн бўлиши АТАЙЛАБ: йиғилишда иккиси бир хил суратдан
+        гаплашиши керак, акс ҳолда «менда бошқача ёзилган» деган
+        баҳс чиқади.
+      */}
+      <AiXulosa qamrovNomi="Хатирчи тумани" />
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Kpi

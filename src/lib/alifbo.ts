@@ -54,9 +54,23 @@ function kirillmi(ch: string): boolean {
 }
 
 /** Natijaning bosh harfini asl harfga qarab moslaydi */
-function moslash(asl: string, natija: string): string {
+/**
+ * Lotin natijasini asl harfning bosh/kichikligiga moslaydi.
+ *
+ * Bir kirill harfi ikki lotin harfiga aylanganda (`Я` -> `ya`)
+ * savol tug'iladi: `Ya` mi, `YA` mi? Javob so'zga bog'liq:
+ *
+ *   "Ялпи"     -> "Yalpi"    (faqat birinchi harf bosh)
+ *   "ЯЛПИ"     -> "YALPI"    (butun so'z bosh harflarda)
+ *
+ * `hammasiBosh` shu farqni chaqiruvchidan olib keladi - u
+ * qo'shni harflarni ko'rib turadi. Busiz "ТАВСИЯЛАР" degan
+ * sarlavha "TAVSIYaLAR" bo'lib chiqardi: so'z o'rtasida kichik
+ * harf paydo bo'lardi va hujjat qo'pol ko'rinardi.
+ */
+function moslash(asl: string, natija: string, hammasiBosh = false): string {
   if (asl === asl.toLowerCase()) return natija;
-  // "Ё" -> "Yo", "ЁЛҒИЗ" -> "YOLG'IZ": keyingi harf ham bosh bo'lsa hammasi bosh
+  if (hammasiBosh) return natija.toUpperCase();
   return natija.charAt(0).toUpperCase() + natija.slice(1);
 }
 
@@ -77,6 +91,25 @@ export function lotinga(matn: string): string {
     const kichik = ch.toLowerCase();
     const oldingi = i > 0 ? matn[i - 1].toLowerCase() : '';
     const soznBoshi = i === 0 || !kirillmi(matn[i - 1]);
+
+    /*
+     * So'z BUTUNLAY bosh harflardami?
+     *
+     * Qo'shni kirill harfiga qaraymiz: biri ham bosh bo'lsa,
+     * demak bu bosh harfli so'z ("ТАВСИЯЛАР"), va ikki harfli
+     * lotin muqobili ham butunlay bosh bo'lishi kerak.
+     *
+     * Yolg'iz harf ("Я.") bu shartni qanoatlantirmaydi va
+     * "Ya" bo'lib qoladi - to'g'risi shu, chunki u odatda
+     * ism-familiyaning qisqartmasi.
+     */
+    const qoshni = (j: number) => {
+      const c = matn[j];
+      return c && kirillmi(c) ? c : '';
+    };
+    const boshHarfmi = (c: string) => !!c && c === c.toUpperCase() && c !== c.toLowerCase();
+    const hammasiBosh =
+      boshHarfmi(ch) && (boshHarfmi(qoshni(i - 1)) || boshHarfmi(qoshni(i + 1)));
 
     if (TUSHIB_QOLADI.has(kichik)) continue;
 
@@ -106,17 +139,17 @@ export function lotinga(matn: string): string {
       // Ayirish/yumshatish belgisi "e" ni "ye" ga aylantiradi:
       // "субъект" -> "subyekt"
       const ye = soznBoshi || UNLI.has(oldingi) || oldingi === 'ъ' || oldingi === 'ь';
-      natija += moslash(ch, ye ? 'ye' : 'e');
+      natija += moslash(ch, ye ? 'ye' : 'e', hammasiBosh);
       continue;
     }
 
-    if (kichik === 'ё') { natija += moslash(ch, 'yo'); continue; }
-    if (kichik === 'ю') { natija += moslash(ch, 'yu'); continue; }
-    if (kichik === 'я') { natija += moslash(ch, 'ya'); continue; }
+    if (kichik === 'ё') { natija += moslash(ch, 'yo', hammasiBosh); continue; }
+    if (kichik === 'ю') { natija += moslash(ch, 'yu', hammasiBosh); continue; }
+    if (kichik === 'я') { natija += moslash(ch, 'ya', hammasiBosh); continue; }
 
     const lotin = HARF[kichik];
     if (lotin !== undefined) {
-      natija += moslash(ch, lotin);
+      natija += moslash(ch, lotin, hammasiBosh);
       continue;
     }
 

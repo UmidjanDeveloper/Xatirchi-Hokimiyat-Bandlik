@@ -3,6 +3,7 @@ import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import { ArrowRight, Briefcase, House, TrendingUp, Users } from 'lucide-react';
 import { joriySessiya, mahallaFiltri, tahlilKoradi } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { tahlilOl } from '@/lib/tahlil';
 import { DARAJA_KORINISHI, tavsiyalarniHisobla } from '@/lib/tavsiyalar';
 import { percent } from '@/lib/utils';
@@ -19,6 +20,7 @@ import {
   ToifaDoirasi,
 } from '@/components/panel/grafiklar';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
+import { AiXulosa } from '@/components/panel/ai-xulosa';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -41,7 +43,22 @@ export default async function PanelSahifasi() {
   if (!tahlilKoradi(sessiya.rol)) redirect('/');
 
   const filtr = mahallaFiltri(sessiya);
-  const t = await tahlilOl(filtr.mahallaId);
+
+  /*
+   * Маҳаллалар рўйхати ҳисобот тугмалари учун: ҳоким умумий
+   * суратни туман бўйича кўради, аммо йиғилишда битта МФЙ
+   * ҳақида савол чиқса, шу рўйхатдан танлаб алоҳида ҳисобот
+   * олади.
+   */
+  const [t, mahallalar] = await Promise.all([
+    tahlilOl(filtr.mahallaId),
+    filtr.mahallaId
+      ? Promise.resolve([])
+      : prisma.mahalla.findMany({
+          orderBy: { nomi: 'asc' },
+          select: { id: true, nomiKirill: true },
+        }),
+  ]);
   const tavsiyalar = tavsiyalarniHisobla(t);
 
   const bosh = t.jami;
@@ -62,7 +79,7 @@ export default async function PanelSahifasi() {
           bo'lsa ko'rsatilmaydi: bo'sh hisobotning ma'nosi yo'q.
         */}
         {bosh.xatlovXonadon > 0 && (
-          <HisobotTugmalari tahlil={t} kim={sessiya.fullName} />
+          <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
         )}
       </div>
 
@@ -111,12 +128,27 @@ export default async function PanelSahifasi() {
             />
           </div>
 
-          {/* ── Tavsiyalar ── */}
+          {/*
+            ── Таҳлил хулосаси ──
+
+            Мижоз томонда юкланади: AI сўрови 10-20 секунд кетади
+            ва панел шу вақтда очилмай турмаслиги керак.
+
+            Қуйидаги «Тавсиялар» рўйхатидан фарқи бор ва иккиси
+            бир-бирини такрорламайди: бу блок ҲОЛАТНИ гап билан
+            тушунтиради ва қоида кўрмайдиган боғланишларни топади,
+            қуйидагиси эса аниқ чегараларга таянади ва ҳар бир
+            тавсияда БОСИЛАДИГАН ҲАВОЛА беради — ходим дарҳол
+            керакли рўйхатга ўтади.
+          */}
+          <AiXulosa qamrovNomi="Хатирчи тумани" />
+
+          {/* ── Тавсиялар — чегаралар бўйича, ҳаволалар билан ── */}
           {tavsiyalar.length > 0 && (
             <section className="karta p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-ink">{tr('Тавсиялар')}</h2>
+              <h2 className="text-sm font-bold text-ink">{tr('Аниқ чегаралар бўйича тавсиялар')}</h2>
               <p className="mt-1 text-xs text-ink-faint">
-                {tr('Диаграммалар «нима бўлаётганини» айтади, бу рўйхат «энди нима қилиш кераклигини»')}
+                {tr('Ҳар бир тавсия керакли рўйхатга олиб ўтади — устига босинг')}
               </p>
 
               <div className="mt-4 space-y-2">

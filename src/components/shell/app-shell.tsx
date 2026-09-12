@@ -138,7 +138,7 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
           */}
           {rol === 'YETTILIK' && mahallaNomi && (
             <p className="mt-4 rounded-md bg-surface-muted px-3 py-2.5 text-[11px] leading-relaxed text-ink-faint">
-              {tr('Сиз')} <span className="font-semibold text-ink-muted">{mahallaNomi}</span> {tr('МФЙ га бириктирилгансиз ва фақат шу маҳалла маълумотларини кўрасиз.')}
+              {tr('Сиз')} <span className="font-semibold text-ink-muted">{tr(mahallaNomi)}</span> {tr('МФЙ га бириктирилгансиз ва фақат шу маҳалла маълумотларини кўрасиз.')}
             </p>
           )}
         </aside>
