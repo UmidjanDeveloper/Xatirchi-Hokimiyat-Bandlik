@@ -87,8 +87,27 @@ export function XodimRoyxati({
   const [ishlayapti, setIshlayapti] = useState<string | null>(null);
   const [xato, setXato] = useState<string | null>(null);
 
-  /** Ochib ko'rsatilgan parollar: xodim id -> parol */
-  const [parollar, setParollar] = useState<Record<string, string | null>>({});
+  /**
+   * Ochib ko'rsatilgan parollar: xodim id -> natija.
+   *
+   * `parol` bo'sh bo'lsa `sabab` nega bo'shligini aytadi -
+   * foydalanuvchiga "ko'rinmadi" deb qo'yish yetarli emas, u
+   * keyin nima qilishini bilishi kerak.
+   */
+  const [parollar, setParollar] = useState<
+    Record<string, { parol: string | null; sabab?: string }>
+  >({});
+
+  /**
+   * Yangi parol tayinlanganda xodim uni birinchi kirishda
+   * almashtirishga majbur qilinsinmi?
+   *
+   * Odatda YO'Q. Majburlasak, xodim o'ziga parol o'ylab qo'yadi
+   * va tayinlangan nusxa eskiradi - shundan keyin rahbar unga
+   * "parolingiz nima edi" degan savolga javob bera olmaydi.
+   * Bayroq hisob boshqa odamga o'tayotganda yoqiladi.
+   */
+  const [majburlash, setMajburlash] = useState(false);
 
   const royxat = useMemo(() => {
     const s = kalit(sorov);
@@ -140,7 +159,7 @@ export function XodimRoyxati({
         setXato(d.xabar ?? tr('Паролни кўриб бўлмади'));
         return;
       }
-      setParollar((p) => ({ ...p, [id]: d.parol ?? null }));
+      setParollar((p) => ({ ...p, [id]: { parol: d.parol ?? null, sabab: d.sabab } }));
     } finally {
       setIshlayapti(null);
     }
@@ -148,8 +167,8 @@ export function XodimRoyxati({
 
   async function yangiParol(id: string) {
     const p = parolYarat();
-    const natija = await sorovYubor(id, { yangiParol: p });
-    if (natija) setParollar((q) => ({ ...q, [id]: p }));
+    const natija = await sorovYubor(id, { yangiParol: p, almashtirilsin: majburlash });
+    if (natija) setParollar((q) => ({ ...q, [id]: { parol: p } }));
   }
 
   return (
@@ -170,11 +189,34 @@ export function XodimRoyxati({
         />
       </div>
 
-      <p className="text-xs text-ink-faint">
-        {sorov
-          ? `${royxat.length} ${tr('та топилди')} · ${xodimlar.length} ${tr('тадан')}`
-          : `${xodimlar.length} ${tr('та ҳисоб')}`}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-ink-faint">
+          {sorov
+            ? `${royxat.length} ${tr('та топилди')} · ${xodimlar.length} ${tr('тадан')}`
+            : `${xodimlar.length} ${tr('та ҳисоб')}`}
+        </p>
+
+        {/*
+          Majburlash bayrog'i ro'yxat ustida turadi, har bir
+          qatorda emas: u kamdan-kam o'zgaradi va 70 ta qatorda
+          takrorlansa faqat shovqin bo'lardi.
+        */}
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-muted">
+          <input
+            type="checkbox"
+            checked={majburlash}
+            onChange={(e) => setMajburlash(e.target.checked)}
+            className="h-3.5 w-3.5 accent-[var(--accent)]"
+          />
+          {tr('Ходим биринчи киришда паролни алмаштирсин')}
+        </label>
+      </div>
+
+      {majburlash && (
+        <p className="text-[11px] text-warn">
+          {tr('Шундай қилсангиз, ходим ўз паролини қўяди ва у бу ерда кўринмай қолади.')}
+        </p>
+      )}
 
       {xato && (
         <div className="quti-xato" role="alert">
@@ -233,7 +275,8 @@ export function XodimRoyxati({
                 {/* Ochilgan parol shu yerda ko'rinadi */}
                 {x.id in parollar && (
                   <ParolQatori
-                    parol={parollar[x.id]}
+                    parol={parollar[x.id].parol}
+                    sabab={parollar[x.id].sabab}
                     yop={() =>
                       setParollar((p) => {
                         const { [x.id]: _olindi, ...qolgan } = p;
@@ -303,16 +346,45 @@ export function XodimRoyxati({
 
 /* ── Ochilgan parol ───────────────────────────────────────── */
 
-function ParolQatori({ parol, yop }: { parol: string | null; yop: () => void }) {
+/**
+ * Parol ko'rinmasa, NEGA ko'rinmaganini aytish shart.
+ *
+ * "Kо'rinmadi" degan yozuv foydalanuvchini boshi berk ko'chaga
+ * olib boradi: u qayta-qayta bosaveradi. Har bir sabab boshqa
+ * ish talab qiladi, matn ham shuni aytadi.
+ */
+const SABAB_MATNI: Record<string, string> = {
+  xodim_ozgartirgan:
+    'Ходим паролни ўзи алмаштирган — янгиси фақат унда. Унутган бўлса, қуйидаги «Янгилаш» тугмаси билан янги парол тайинланг.',
+  saqlanmagan:
+    'Бу ҳисобга ҳали парол тайинланмаган. «Янгилаш» тугмасини босинг.',
+  ochib_bolmadi:
+    'Сақланган нусхани очиб бўлмади (SESSION_SECRET ўзгарган бўлиши мумкин). Янги парол тайинланг.',
+};
+
+function ParolQatori({
+  parol,
+  sabab,
+  yop,
+}: {
+  parol: string | null;
+  sabab?: string;
+  yop: () => void;
+}) {
   const { t: tr } = useAlifbo();
   const [korinsin, setKorinsin] = useState(true);
 
   if (!parol) {
     return (
-      <p className="mt-2 flex items-center gap-2 text-xs text-ink-faint">
-        <EyeOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        {tr('Парол кўринмайди — ходим уни ўзи алмаштирган ёки сақланмаган. Янги парол тайинланг.')}
-        <button type="button" onClick={yop} aria-label={tr('Ёпиш')} className="ml-auto">
+      <p className="mt-2 flex items-start gap-2 text-xs text-ink-faint">
+        <EyeOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span>
+          {tr(
+            (sabab && SABAB_MATNI[sabab]) ??
+              'Парол кўринмайди. Янги парол тайинланг.'
+          )}
+        </span>
+        <button type="button" onClick={yop} aria-label={tr('Ёпиш')} className="ml-auto shrink-0">
           <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </p>

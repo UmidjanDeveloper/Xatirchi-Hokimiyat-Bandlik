@@ -31,6 +31,21 @@ const Tahrir = z.object({
   // Holat va parol
   faol: z.boolean().optional(),
   yangiParol: z.string().min(8).max(200).optional(),
+
+  /*
+   * Xodim birinchi kirishda parolni almashtirishga majbur
+   * qilinsinmi?
+   *
+   * Odatiy javob - YO'Q, va buning sababi bor. Tuman sharoitida
+   * parolni eng ko'p unutadigan odam 70 ta MFY raisi. Agar har
+   * biri o'ziga parol o'ylab qo'ysa, rahbar ularga yordam bera
+   * olmaydi: tayinlangan nusxa eskiradi va ro'yxatda parol
+   * o'rniga "ходим ўзгартирган" yozuvi qoladi.
+   *
+   * Shuning uchun majburlash ATAYLAB yoqiladi - masalan hisob
+   * boshqa odamga o'tayotganda.
+   */
+  almashtirilsin: z.boolean().optional(),
 });
 
 /** Nishon hisobga tegishi mumkinmi - bir joyda hal qilinadi */
@@ -116,7 +131,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             // Shifrlangan nusxa - administrator keyinroq ko'rishi uchun
             berilganParol: shifrla(d.yangiParol),
             parolBerilganVaqt: new Date(),
-            parolAlmashtirilsin: true,
+            parolAlmashtirilsin: d.almashtirilsin === true,
           }
         : {}),
     },
@@ -156,23 +171,27 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   const u = await prisma.user.findUnique({
     where: { id: params.id },
-    select: { berilganParol: true, parolAlmashtirilsin: true, parolBerilganVaqt: true },
+    select: { berilganParol: true, parolBerilganVaqt: true },
   });
 
+  /*
+   * Nusxa yo'q. Ikki sabab bo'lishi mumkin va ular bir xil emas:
+   *
+   *   parolBerilganVaqt BOR  - parol tayinlangan edi, keyin xodim
+   *                            uni O'ZI almashtirdi va nusxa
+   *                            o'chirildi (`/api/auth/parol`).
+   *   parolBerilganVaqt YO'Q - bu hisobga hech qachon parol
+   *                            tayinlanmagan (eski hisoblar).
+   *
+   * Farqi muhim: birinchi holatda parol bor, shunchaki bizda yo'q;
+   * ikkinchisida tayinlash kerak. Ro'yxat shunga qarab boshqacha
+   * yozuv ko'rsatadi.
+   */
   if (!u?.berilganParol) {
     return NextResponse.json({
       parol: null,
-      sabab: 'saqlanmagan',
+      sabab: u?.parolBerilganVaqt ? 'xodim_ozgartirgan' : 'saqlanmagan',
     });
-  }
-
-  /*
-   * Xodim o'z parolini almashtirgan bo'lsa, saqlangani ESKIRGAN.
-   * Uni ko'rsatish yolg'on bo'lardi: administrator o'sha parol
-   * bilan kirmoqchi bo'lib, kira olmasdi va sababini tushunmasdi.
-   */
-  if (!u.parolAlmashtirilsin) {
-    return NextResponse.json({ parol: null, sabab: 'xodim_ozgartirgan' });
   }
 
   const ochilgan = shifrniOch(u.berilganParol);

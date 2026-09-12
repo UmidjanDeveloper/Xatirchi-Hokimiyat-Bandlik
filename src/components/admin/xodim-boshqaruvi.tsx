@@ -4,10 +4,9 @@ import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { KeyRound, Loader2, Plus, UserPlus, X } from 'lucide-react';
+import { Loader2, Plus, UserPlus, X } from 'lucide-react';
 import type { Rol } from '@prisma/client';
 import { ROL_NOMI } from '@/components/shell/navigatsiya';
-import { formatPhone } from '@/lib/utils';
 import { parolYarat } from '@/lib/parol-yarat';
 import { XodimRoyxati, type Mahalla, type Xodim } from './xodim-royxati';
 
@@ -19,12 +18,17 @@ import { XodimRoyxati, type Mahalla, type Xodim } from './xodim-royxati';
 const ROLLAR: Rol[] = ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'];
 
 /**
- * Xodimlarni boshqarish.
+ * Xodimlarni boshqarish: yangi hisob ochish va ro'yxat.
  *
- * Parol bu yerda BIR MARTA ko'rsatiladi va boshqa hech qayerda
- * saqlanmaydi (bazada faqat xeshi turadi). Administrator uni
- * xodimga yetkazadi, xodim esa birinchi kirishda o'zinikiga
- * almashtiradi.
+ * Ro'yxatning o'zi - qidiruv, tahrir va parol - `XodimRoyxati`
+ * ichida. Bu komponent faqat "Xodim qo'shish" shaklini va yangi
+ * yaratilgan hisobning parolini ko'rsatadi.
+ *
+ * Parol bazada IKKI holatda turadi: kirish uchun scrypt xeshi va
+ * ko'rsatish uchun shifrlangan nusxa. Shuning uchun bu yerdagi
+ * parolni keyin ham ro'yxatdan qayta ochib ko'rish mumkin - ammo
+ * xodim uni o'zi almashtirgan bo'lsa, nusxa eskiradi va ro'yxat
+ * parol o'rniga shu haqda ogohlantiradi.
  */
 export function XodimBoshqaruvi({
   xodimlar,
@@ -100,28 +104,6 @@ export function XodimBoshqaruvi({
     }
   }
 
-  async function faollikOzgartir(id: string, faol: boolean) {
-    await fetch(`/api/admin/xodimlar/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ faol }),
-    });
-    router.refresh();
-  }
-
-  async function parolTikla(id: string, login: string) {
-    const yangi = parolYarat();
-    const javob = await fetch(`/api/admin/xodimlar/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ yangiParol: yangi }),
-    });
-    if (javob.ok) {
-      setYaratildi({ login, parol: yangi });
-      router.refresh();
-    }
-  }
-
   const maydon =
     'w-full rounded-md border border-line bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent';
 
@@ -137,7 +119,7 @@ export function XodimBoshqaruvi({
             </code>
             <br />
             <span className="text-xs">
-              {tr('Бу парол бошқа кўрсатилмайди — ходимга ҳозир етказинг.')}
+              {tr('Ходимга етказинг. Кейинчалик рўйхатдан ҳам кўриш мумкин.')}
             </span>
           </span>
           <button

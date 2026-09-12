@@ -43,9 +43,29 @@ export async function POST(request: Request) {
     );
   }
 
+  /*
+   * Xodim o'ziga parol o'ylab qo'ydi - demak administrator
+   * tayinlagan nusxa ESKIRDI. Uni o'chirib tashlaymiz.
+   *
+   * Nega shunday: ro'yxatdagi "паролни кўриш" tugmasi shu
+   * nusxani ochadi. Agar eskisini qoldirsak, administrator uni
+   * ko'rib, xodimga aytib, ikkalasi ham nega kira olmayotganini
+   * tushunmay qolardi.
+   *
+   * Xodim o'ylagan parol ATAYLAB saqlanmaydi: uni faqat xodimning
+   * o'zi bilishi kerak. Unutsa - administrator yangisini tayinlaydi.
+   *
+   * `parolBerilganVaqt` qoladi: u "bir vaqtlar tayinlangan edi"
+   * degan belgi va ro'yxat shunga qarab "ходим ўзгартирган" deb
+   * yozadi, "тайинланмаган" deb emas.
+   */
   await prisma.user.update({
     where: { id: q.sessiya.userId },
-    data: { passwordHash: parolXeshla(yangi), parolAlmashtirilsin: false },
+    data: {
+      passwordHash: parolXeshla(yangi),
+      parolAlmashtirilsin: false,
+      berilganParol: null,
+    },
   });
   await jurnal(q.sessiya.userId, 'PAROL_ALMASHTIRILDI');
 
