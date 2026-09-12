@@ -273,7 +273,7 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
       <Bolim raqam="IX" sarlavha={tr("Ер, чорва ва тадбиркорлик субъектлари")}>
         <Qator
           nomi={tr("Томорқа")}
-          qiymat={x.tomorqaBor ? tr(`${x.tomorqaMaydoni ?? 0} сотих`) : tr('Йўқ')}
+          qiymat={x.tomorqaBor ? tr(`${x.ekinMaydoni ?? 0} сотих экин майдони`) : tr('Йўқ')}
         />
         <Qator
           nomi={tr("Ижара ер")}
@@ -283,11 +283,9 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
           nomi={tr("Иссиқхона талаби")}
           qiymat={x.issiqxonaTalabi ? tr(`Ҳа (${x.issiqxonaMaydoni ?? 0} сотих)`) : tr('Йўқ')}
         />
-        <Qator nomi={tr("Чорвачилик")} qiymat={q(x.chorvachilik)} />
+        <Qator nomi={tr("Чорвачилик")} qiymat={x.chorvaBor ? tr((x.chorvaTurlari ?? []).join(", ")) : tr("Йўқ")} />
+        <Qator nomi={tr("Ҳунармандчилик")} qiymat={x.hunarmandBor ? tr([...(x.hunarTurlari ?? []), x.hunarmandchilik].filter(Boolean).join(", ")) : tr("Йўқ")} />
         <Qator nomi={tr("Ҳунармандчилик")} qiymat={q(x.hunarmandchilik)} />
-        <Qator nomi={tr("Тадбиркорлик субъектлари")} qiymat={q(x.tadbirkorSubyektlar)} />
-        <Qator nomi={tr("Бўш иш ўринлари")} qiymat={q(x.boshIshOrinlari)} />
-        <Qator nomi={tr("Қўшимча иш ўринлари режаси")} qiymat={q(x.yangiIshOrinlari)} />
       </Bolim>
 
       {/* ── Chora-tadbirlar ── */}

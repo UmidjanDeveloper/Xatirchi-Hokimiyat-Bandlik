@@ -1,5 +1,8 @@
 'use client';
 
+import { CircleCheck, TriangleAlert } from 'lucide-react';
+
+import { yoshniBaho } from '@/lib/bandlik-yoshi';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 
 import { useId } from 'react';
@@ -452,6 +455,48 @@ export function SanaMaydoni({
         className={`${kiritishSinf} ${xato ? 'maydon-xato' : 'border-line'}`}
       />
       <Xato xato={xato} />
+    </div>
+  );
+}
+
+/* ── YOSH OGOHLANTIRISHI ─────────────────────────────────────── */
+
+/**
+ * Tug'ilgan yil va jinsga qarab bandlik imkoniyatini aytadi.
+ *
+ * Xodim anketani to'ldirayotgan paytda ko'radi - yuborgandan
+ * keyin emas. Bu TO'SIQ emas: nafaqa yoshidagi odam ham oila
+ * a'zosi va uning ma'lumoti kerak, shunchaki bandlik markazi
+ * unga ish topib bera olmaydi.
+ */
+export function YoshOgohlantirishi({
+  tugilganYili,
+  jinsi,
+}: {
+  tugilganYili: number | '' | null;
+  jinsi: string | null;
+}) {
+  const { t: tr } = useAlifbo();
+  const baho = yoshniBaho(tugilganYili === '' ? null : tugilganYili, jinsi);
+
+  if (!baho) return null;
+
+  // Mehnatga layoqatli - bu odatiy holat, ortiqcha xabar bermaymiz
+  if (baho.holati === 'layoqatli') {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-ink-faint">
+        <CircleCheck className="h-3.5 w-3.5 shrink-0 text-ok" aria-hidden="true" />
+        {tr(baho.xabar)}
+      </p>
+    );
+  }
+
+  return (
+    <div className="quti-ogoh" role="status">
+      <p className="flex items-start gap-2">
+        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <span>{tr(baho.xabar)}</span>
+      </p>
     </div>
   );
 }

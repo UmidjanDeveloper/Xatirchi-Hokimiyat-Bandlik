@@ -56,14 +56,16 @@ export interface XatlovRaqamlari {
   maktabQamrovda?: number | null;
   togarakQamrovi?: number | null;
 
-  tadbirkorSubyektlar?: number | null;
-  boshIshOrinlari?: number | null;
-  yangiIshOrinlari?: number | null;
 
   moliyaEhtiyoji?: boolean | null;
   talabQilinganMablag?: number | bigint | null;
   tomorqaBor?: boolean | null;
-  tomorqaMaydoni?: number | null;
+  chorvaBor?: boolean | null;
+  chorvaTurlari?: string[] | null;
+  hunarmandBor?: boolean | null;
+  hunarTurlari?: string[] | null;
+  hunarmandchilik?: string | null;
+  ekinMaydoni?: number | null;
   issiqxonaTalabi?: boolean | null;
   issiqxonaMaydoni?: number | null;
   ijaraYer?: boolean | null;
@@ -212,12 +214,6 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
 
   // ── X bo'lim: tadbirkorlik subyektlari ───────────────────
 
-  if (n(d.tadbirkorSubyektlar) === 0 && n(d.boshIshOrinlari) > 0) {
-    xato(
-      'boshIshOrinlari',
-      'Тадбиркорлик субъектлари йўқ, лекин бўш иш ўринлари кўрсатилган'
-    );
-  }
 
   // ── II bo'lim: moliya ────────────────────────────────────
 
@@ -245,11 +241,27 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
 
   // ── IX bo'lim: yer va tomorqa ────────────────────────────
 
-  if (d.tomorqaBor && n(d.tomorqaMaydoni) <= 0) {
-    xato('tomorqaMaydoni', 'Томорқа бор деб белгиланган — майдонини киритинг');
+  /*
+   * Chorva yoki hunarmandchilik "bor" deb belgilangan bo'lsa,
+   * turi ham tanlanishi kerak - aks holda yozuvdan foyda yo'q:
+   * "chorvasi bor" degan raqamni rejaga qo'sha olmaymiz, lekin
+   * "12 ta yirik shoxli" degan ma'lumot bilan ish ko'rish mumkin.
+   */
+  if (d.chorvaBor && !(d.chorvaTurlari ?? []).length) {
+    xato('chorvaTurlari', 'Чорвачилик бор деб белгиланган — турини танланг');
   }
-  if (!d.tomorqaBor && n(d.tomorqaMaydoni) > 0) {
-    xato('tomorqaMaydoni', 'Томорқа майдони киритилган, лекин «томорқа йўқ» деб белгиланган');
+  if (d.hunarmandBor && !(d.hunarTurlari ?? []).length) {
+    xato('hunarTurlari', 'Ҳунармандчилик бор деб белгиланган — йўналишини танланг');
+  }
+  if ((d.hunarTurlari ?? []).includes('Boshqa') && !d.hunarmandchilik?.trim()) {
+    xato('hunarmandchilik', '«Бошқа» танланган — қайси ҳунар эканини ёзинг');
+  }
+
+  if (d.tomorqaBor && n(d.ekinMaydoni) <= 0) {
+    xato('ekinMaydoni', 'Ер бор деб белгиланган — экин экиладиган майдонни киритинг');
+  }
+  if (!d.tomorqaBor && n(d.ekinMaydoni) > 0) {
+    xato('ekinMaydoni', 'Экин майдони киритилган, лекин «ер йўқ» деб белгиланган');
   }
   if (d.issiqxonaTalabi && n(d.issiqxonaMaydoni) <= 0) {
     ogoh('issiqxonaMaydoni', 'Иссиқхона талаби бор — режалаштирилган майдонни киритинг');

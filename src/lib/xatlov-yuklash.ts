@@ -98,8 +98,11 @@ export async function xatlovniYukla(
     xizmatTosiqlari: t(x.xizmatTosiqlari),
 
     tomorqaBor: x.tomorqaBor,
-    tomorqaMaydoni: s(x.tomorqaMaydoni),
-    chorvachilik: t(x.chorvachilik),
+    ekinMaydoni: s(x.ekinMaydoni),
+    chorvaBor: x.chorvaBor,
+    chorvaTurlari: x.chorvaTurlari ?? [],
+    hunarmandBor: x.hunarmandBor,
+    hunarTurlari: x.hunarTurlari ?? [],
     hunarmandchilik: t(x.hunarmandchilik),
     zarurKomak: x.zarurKomak,
     issiqxonaTalabi: x.issiqxonaTalabi,
@@ -107,10 +110,6 @@ export async function xatlovniYukla(
     ijaraYer: x.ijaraYer,
     ijaraYerMaydoni: s(x.ijaraYerMaydoni),
 
-    tadbirkorSubyektlar: s(x.tadbirkorSubyektlar),
-    boshIshOrinlari: s(x.boshIshOrinlari),
-    subyektMoliyaEhtiyoji: x.subyektMoliyaEhtiyoji,
-    yangiIshOrinlari: s(x.yangiIshOrinlari),
 
     umumiyXulosa: t(x.umumiyXulosa),
 

@@ -27,6 +27,7 @@ export interface XatlovHolati {
   mahallaId: string;
   manzil: string;
   oilaBoshligi: string;
+  oilaBoshligiJinsi: string | null;
   tugilganYili: Raqam;
   telefon: string;
   jamiAzo: Raqam;
@@ -82,6 +83,7 @@ export interface XatlovHolati {
   sugorishSuvi: boolean;
   elektr: boolean;
   gaz: boolean;
+  gazTuri: string | null;
   kanalizatsiya: boolean;
   sanitariya: string;
   boshqaMuammolar: string;
@@ -89,9 +91,11 @@ export interface XatlovHolati {
   // VII. Ijtimoiy himoya
   nogironlikBor: boolean;
   nogironlikIzoh: string;
+  nogironShaxslar: ShaxsQatori[];
   yolgizKeksa: boolean;
   parvarishgaMuhtoj: boolean;
   parvarishIzoh: string;
+  parvarishShaxslar: ShaxsQatori[];
   boshqaMuhtojlar: string;
 
   // VIII. Hujjatlar
@@ -99,10 +103,13 @@ export interface XatlovHolati {
   hujjatIzoh: string;
   xizmatTosiqlari: string;
 
-  // IX. Tomorqa va yer
+  // IX. Yer, chorva va hunarmandchilik
   tomorqaBor: boolean;
-  tomorqaMaydoni: Raqam;
-  chorvachilik: string;
+  ekinMaydoni: Raqam;
+  chorvaBor: boolean;
+  chorvaTurlari: string[];
+  hunarmandBor: boolean;
+  hunarTurlari: string[];
   hunarmandchilik: string;
   zarurKomak: string[];
   issiqxonaTalabi: boolean;
@@ -110,16 +117,40 @@ export interface XatlovHolati {
   ijaraYer: boolean;
   ijaraYerMaydoni: Raqam;
 
-  // X. Tadbirkorlik subyektlari
-  tadbirkorSubyektlar: Raqam;
-  boshIshOrinlari: Raqam;
-  subyektMoliyaEhtiyoji: boolean;
-  yangiIshOrinlari: Raqam;
-
-  // XI. Xulosa
+  // X. Xulosa
   umumiyXulosa: string;
 
+  // Rozilik va imzo
+  rozilikBerdi: boolean;
+  imzoYoli: string;
+
   ishsizlar: IshsizQatori[];
+}
+
+/**
+ * Formadagi bitta shaxs qatori.
+ *
+ * `qatorId` faqat brauzerda yashaydi: React ro'yxatni qayta
+ * chizganda qaysi maydon qaysi qatorga tegishli ekanini bilishi
+ * kerak. Indeks bilan ishlatsa, o'rtadan bitta qator o'chirilganda
+ * qolganlarining qiymati aralashib ketadi.
+ */
+export interface ShaxsQatori {
+  qatorId: string;
+  fish: string;
+  orni: string | null;
+  orniIzoh: string;
+  guruhi: string | null;
+}
+
+export function bosShaxs(): ShaxsQatori {
+  return {
+    qatorId: Math.random().toString(36).slice(2, 10),
+    fish: '',
+    orni: null,
+    orniIzoh: '',
+    guruhi: null,
+  };
 }
 
 export function bosHolat(mahallaId = ''): XatlovHolati {
@@ -127,6 +158,7 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     mahallaId,
     manzil: '',
     oilaBoshligi: '',
+    oilaBoshligiJinsi: null,
     tugilganYili: '',
     telefon: '',
     jamiAzo: '',
@@ -178,15 +210,18 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     // ko'p qishloqda yo'q. Boshlang'ich qiymat shunga qarab qo'yilgan.
     elektr: true,
     gaz: false,
+    gazTuri: null,
     kanalizatsiya: false,
     sanitariya: '',
     boshqaMuammolar: '',
 
     nogironlikBor: false,
     nogironlikIzoh: '',
+    nogironShaxslar: [],
     yolgizKeksa: false,
     parvarishgaMuhtoj: false,
     parvarishIzoh: '',
+    parvarishShaxslar: [],
     boshqaMuhtojlar: '',
 
     hujjatlarToliq: true,
@@ -194,8 +229,11 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     xizmatTosiqlari: '',
 
     tomorqaBor: false,
-    tomorqaMaydoni: '',
-    chorvachilik: '',
+    ekinMaydoni: '',
+    chorvaBor: false,
+    chorvaTurlari: [],
+    hunarmandBor: false,
+    hunarTurlari: [],
     hunarmandchilik: '',
     zarurKomak: [],
     issiqxonaTalabi: false,
@@ -203,12 +241,10 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     ijaraYer: false,
     ijaraYerMaydoni: '',
 
-    tadbirkorSubyektlar: '',
-    boshIshOrinlari: '',
-    subyektMoliyaEhtiyoji: false,
-    yangiIshOrinlari: '',
-
     umumiyXulosa: '',
+
+    rozilikBerdi: false,
+    imzoYoli: '',
 
     ishsizlar: [],
   };
@@ -263,13 +299,10 @@ export function yuborishUchun(h: XatlovHolati) {
       maktabYoshdagi: r(x.maktabYoshdagi),
       maktabQamrovda: r(x.maktabQamrovda),
       togarakQamrovi: r(x.togarakQamrovi),
-      tomorqaMaydoni: r(x.tomorqaMaydoni),
+      ekinMaydoni: r(x.ekinMaydoni),
       issiqxonaMaydoni: r(x.issiqxonaMaydoni),
       ijaraYerMaydoni: r(x.ijaraYerMaydoni),
-      tadbirkorSubyektlar: r(x.tadbirkorSubyektlar),
-      boshIshOrinlari: r(x.boshIshOrinlari),
-      yangiIshOrinlari: r(x.yangiIshOrinlari),
-      telefon: m(x.telefon),
+      telefon: x.telefon.trim(),
       bandlikTakliflari: m(x.bandlikTakliflari),
       daromadImkoniyati: m(x.daromadImkoniyati),
       maktabgachaQamrovsizSababi: m(x.maktabgachaQamrovsizSababi),
@@ -285,9 +318,22 @@ export function yuborishUchun(h: XatlovHolati) {
       boshqaMuhtojlar: m(x.boshqaMuhtojlar),
       hujjatIzoh: m(x.hujjatIzoh),
       xizmatTosiqlari: m(x.xizmatTosiqlari),
-      chorvachilik: m(x.chorvachilik),
       hunarmandchilik: m(x.hunarmandchilik),
       umumiyXulosa: m(x.umumiyXulosa),
+      imzoYoli: m(x.imzoYoli),
+
+      /*
+       * Shaxs qatorlaridan `qatorId` olib tashlanadi - u faqat
+       * brauzerda React uchun kerak edi, bazada o'rni yo'q.
+       * Bo'sh qolgan qatorlar ham tushirib qoldiriladi: xodim
+       * "qo'shish" ni bosib, keyin to'ldirmasligi mumkin.
+       */
+      nogironShaxslar: x.nogironShaxslar
+        .filter((p) => p.fish.trim() && p.orni)
+        .map(({ qatorId: _q, ...p }) => ({ ...p, orniIzoh: m(p.orniIzoh) })),
+      parvarishShaxslar: x.parvarishShaxslar
+        .filter((p) => p.fish.trim() && p.orni)
+        .map(({ qatorId: _q, ...p }) => ({ ...p, orniIzoh: m(p.orniIzoh), guruhi: null })),
     },
     ishsizlar: ishsizlar.map(({ qatorId: _qatorId, ...p }) => ({
       ...p,

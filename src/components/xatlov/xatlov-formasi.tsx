@@ -404,14 +404,14 @@ function sonlar(h: XatlovHolati): XatlovRaqamlari {
     maktabQamrovda: s(h.maktabQamrovda),
     togarakQamrovi: s(h.togarakQamrovi),
 
-    tadbirkorSubyektlar: s(h.tadbirkorSubyektlar),
-    boshIshOrinlari: s(h.boshIshOrinlari),
-    yangiIshOrinlari: s(h.yangiIshOrinlari),
-
     moliyaEhtiyoji: h.moliyaEhtiyoji,
     talabQilinganMablag: s(h.talabQilinganMablag),
     tomorqaBor: h.tomorqaBor,
-    tomorqaMaydoni: s(h.tomorqaMaydoni),
+    ekinMaydoni: s(h.ekinMaydoni),
+    chorvaBor: h.chorvaBor,
+    chorvaTurlari: h.chorvaTurlari,
+    hunarmandBor: h.hunarmandBor,
+    hunarTurlari: h.hunarTurlari,
     issiqxonaTalabi: h.issiqxonaTalabi,
     issiqxonaMaydoni: s(h.issiqxonaMaydoni),
     ijaraYer: h.ijaraYer,
@@ -487,7 +487,7 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
  */
 function xatoQadami(xatolar: Record<string, string>): number {
   const qadamMaydonlari: string[][] = [
-    ['mahallaId', 'manzil', 'oilaBoshligi', 'tugilganYili', 'telefon', 'jamiAzo', 'bolalarSoni'],
+    ['mahallaId', 'manzil', 'oilaBoshligi', 'oilaBoshligiJinsi', 'tugilganYili', 'telefon', 'jamiAzo', 'bolalarSoni'],
     [
       'mehnatgaLayoqatli',
       'ishlaydiganlar',
@@ -506,8 +506,8 @@ function xatoQadami(xatolar: Record<string, string>): number {
       'togarakQamrovi',
       'uzoqDavolanishIzoh',
     ],
-    ['nogironlikIzoh'],
-    ['tomorqaMaydoni', 'issiqxonaMaydoni', 'ijaraYerMaydoni', 'boshIshOrinlari'],
+    ['nogironlikIzoh', 'nogironShaxslar', 'parvarishShaxslar'],
+    ['ekinMaydoni', 'chorvaTurlari', 'hunarTurlari', 'hunarmandchilik', 'issiqxonaMaydoni', 'ijaraYerMaydoni'],
     ['ishsizlar'],
   ];
 

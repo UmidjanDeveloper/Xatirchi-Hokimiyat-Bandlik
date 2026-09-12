@@ -4,8 +4,11 @@ import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 
 import { Plus, Trash2, Users } from 'lucide-react';
 import {
+  CHORVA_TURI,
   DAROMAD_MANBAI,
+  GAZ_TURI,
   HA_YOQ,
+  HUNAR_TURI,
   ICHIMLIK_SUVI,
   ISH_TURI_ISTAGI,
   JINS,
@@ -14,6 +17,7 @@ import {
   MABLAG_YONALISHI,
   MALUMOT,
   MOLIYA_TURI,
+  OILADAGI_ORNI,
   UY_HOLATI,
 } from '@/lib/constants';
 import {
@@ -25,7 +29,9 @@ import {
   RaqamMaydoni,
   TanlovMaydoni,
   ToliqKeng,
+  YoshOgohlantirishi,
 } from './maydonlar';
+import { ShaxsRoyxati } from './shaxs-royxati';
 import { bosIshsiz, type IshsizQatori, type XatlovHolati } from './holat';
 
 export interface QadamProps {
@@ -70,25 +76,50 @@ export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
         xato={x(xatolar, 'oilaBoshligi')}
       />
 
+      {/*
+        Jinsi MAJBURIY: nafaqa yoshi ayol va erkak uchun har xil
+        (55 va 60), ya'ni busiz yosh tekshiruvi ishlamaydi.
+      */}
+      <TanlovMaydoni
+        yorliq={tr("Жинси")}
+        majburiy
+        variantlar={JINS}
+        qiymat={h.oilaBoshligiJinsi}
+        ozgardi={(q) => yangila('oilaBoshligiJinsi', q)}
+        xato={x(xatolar, 'oilaBoshligiJinsi')}
+      />
+
       <RaqamMaydoni
         yorliq={tr("Туғилган йили")}
+        majburiy
         qiymat={h.tugilganYili}
         ozgardi={(q) => yangila('tugilganYili', q)}
         min={1920}
-        max={2015}
+        max={new Date().getFullYear()}
         xato={x(xatolar, 'tugilganYili')}
       />
 
+      {/*
+        Telefon ham majburiy. Usiz bandlik markazi fuqaroga
+        qo'ng'iroq qila olmaydi - ya'ni butun xatlov behuda ketadi.
+      */}
       <MatnMaydoni
         yorliq={tr("Телефон рақами")}
         turi="tel"
+        majburiy
         qiymat={h.telefon}
         ozgardi={(q) => yangila('telefon', q)}
         xato={x(xatolar, 'telefon')}
         placeholder="+998 __ ___ __ __"
       />
 
-      <div />
+      {/* Yosh va jinsga qarab bandlik imkoniyati haqida ogohlantirish */}
+      <ToliqKeng>
+        <YoshOgohlantirishi
+          tugilganYili={h.tugilganYili}
+          jinsi={h.oilaBoshligiJinsi}
+        />
+      </ToliqKeng>
 
       <RaqamMaydoni
         yorliq={tr("Оиладаги умумий аъзолар сони")}
@@ -100,9 +131,14 @@ export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
         xato={x(xatolar, 'jamiAzo')}
       />
 
+      {/*
+        Yagona ixtiyoriy raqam: bolasiz oila bor va uni
+        "to'ldirilmagan" deb hisoblash xato bo'lardi. 0 to'g'ri
+        javob, hokim panelida u "yo'q" deb ko'rsatiladi.
+      */}
       <RaqamMaydoni
         yorliq={tr("Шу жумладан, болалар сони")}
-        izoh={tr("18 ёшгача")}
+        izoh={tr("18 ёшгача — болалар бўлмаса 0 ёзинг")}
         qiymat={h.bolalarSoni}
         ozgardi={(q) => yangila('bolalarSoni', q)}
         max={30}
@@ -494,10 +530,27 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
         />
 
         <HaYoqMaydoni
-          yorliq={tr("Табиий газ таъминоти")}
+          yorliq={tr("Газ таъминоти")}
           qiymat={h.gaz}
           ozgardi={(q) => yangila('gaz', q)}
         />
+
+        {/*
+          Gaz turi muhim: markazlashgan quvur bor joyda muammo
+          bosim yoki qarzdorlik bo'ladi, balon bilan yashaydigan
+          oilada esa har oy pul topish. Chora-tadbir ham shunga
+          qarab boshqacha bo'ladi.
+        */}
+        {h.gaz && (
+          <TanlovMaydoni
+            yorliq={tr("Газ тури")}
+            majburiy
+            variantlar={GAZ_TURI}
+            qiymat={h.gazTuri}
+            ozgardi={(q) => yangila('gazTuri', q)}
+            xato={x(xatolar, 'gazTuri')}
+          />
+        )}
 
         <HaYoqMaydoni
           yorliq={tr("Суғориш суви таъминоти")}
@@ -532,12 +585,12 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
 
         {h.nogironlikBor && (
           <ToliqKeng>
-            <MatnMaydoni
-              yorliq={tr("Ким ва қайси гуруҳ")}
-              majburiy
-              qiymat={h.nogironlikIzoh}
-              ozgardi={(q) => yangila('nogironlikIzoh', q)}
-              xato={x(xatolar, 'nogironlikIzoh')}
+            <ShaxsRoyxati
+              yorliq={tr("Ногиронлиги бўлган шахслар")}
+              izoh={tr("Ҳар бири учун Ф.И.Ш. ва оиладаги ўрни — чора-тадбир кимга тегишли экани аниқ бўлиши учун")}
+              qatorlar={h.nogironShaxslar}
+              ozgardi={(q) => yangila('nogironShaxslar', q)}
+              guruhSora
             />
           </ToliqKeng>
         )}
@@ -555,13 +608,25 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
         />
 
         {h.parvarishgaMuhtoj && (
-          <ToliqKeng>
-            <MatnMaydoni
-              yorliq={tr("Ким томонидан парвариш қилинмоқда")}
-              qiymat={h.parvarishIzoh}
-              ozgardi={(q) => yangila('parvarishIzoh', q)}
-            />
-          </ToliqKeng>
+          <>
+            <ToliqKeng>
+              <ShaxsRoyxati
+                yorliq={tr("Парваришга муҳтож шахслар")}
+                izoh={tr("Ҳар бири учун Ф.И.Ш. ва оиладаги ўрни")}
+                qatorlar={h.parvarishShaxslar}
+                ozgardi={(q) => yangila('parvarishShaxslar', q)}
+              />
+            </ToliqKeng>
+
+            <ToliqKeng>
+              <MatnMaydoni
+                yorliq={tr("Ким томонидан парвариш қилинмоқда")}
+                izoh={tr("Парваришчи оила аъзоси бўлса, у иш билан банд бўла олмайди — бу ҳам бандлик масаласи")}
+                qiymat={h.parvarishIzoh}
+                ozgardi={(q) => yangila('parvarishIzoh', q)}
+              />
+            </ToliqKeng>
+          </>
         )}
       </Bolim>
 
@@ -618,29 +683,81 @@ export function QadamYerVaSubyektlar({ h, yangila, xatolar }: QadamProps) {
 
         {h.tomorqaBor && (
           <RaqamMaydoni
-            yorliq={tr("Томорқа майдони")}
+            yorliq={tr("Экин экиладиган майдон")}
+            izoh={tr("Уй турган жойни ҳисобламанг — фақат экин экса бўладиган қисми")}
             majburiy
-            qiymat={h.tomorqaMaydoni}
-            ozgardi={(q) => yangila('tomorqaMaydoni', q)}
+            qiymat={h.ekinMaydoni}
+            ozgardi={(q) => yangila('ekinMaydoni', q)}
             max={10000}
             qadam={0.01}
             birlik={tr("сотих")}
-            xato={x(xatolar, 'tomorqaMaydoni')}
+            xato={x(xatolar, 'ekinMaydoni')}
           />
         )}
 
-        <MatnMaydoni
-          yorliq={tr("Чорвачилик / паррандачилик")}
-          izoh={tr("Мавжуд ёки имконияти")}
-          qiymat={h.chorvachilik}
-          ozgardi={(q) => yangila('chorvachilik', q)}
-        />
+        {/*
+          Chorvachilik alohida savol bo'ldi. Ilgari erkin matn edi
+          va "bor", "2 ta sigir", "yo'q" kabi turli javoblar
+          tushardi - ularni sanab bo'lmasdi.
+        */}
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq={tr("Чорвачилик ёки паррандачилик мавжудми")}
+            qiymat={h.chorvaBor}
+            ozgardi={(q) => yangila('chorvaBor', q)}
+          />
+        </ToliqKeng>
 
-        <MatnMaydoni
-          yorliq={tr("Ҳунармандчилик ёки уй шароитида ишлаб чиқариш")}
-          qiymat={h.hunarmandchilik}
-          ozgardi={(q) => yangila('hunarmandchilik', q)}
-        />
+        {h.chorvaBor && (
+          <ToliqKeng>
+            <KopTanlovMaydoni
+              yorliq={tr("Қайси турлари")}
+              izoh={tr("Бир нечтасини белгилаш мумкин")}
+              variantlar={CHORVA_TURI}
+              qiymatlar={h.chorvaTurlari}
+              ozgardi={(q) => yangila('chorvaTurlari', q)}
+              xato={x(xatolar, 'chorvaTurlari')}
+            />
+          </ToliqKeng>
+        )}
+
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq={tr("Ҳунармандчилик ёки уй шароитида ишлаб чиқариш борми")}
+            qiymat={h.hunarmandBor}
+            ozgardi={(q) => yangila('hunarmandBor', q)}
+          />
+        </ToliqKeng>
+
+        {h.hunarmandBor && (
+          <ToliqKeng>
+            <KopTanlovMaydoni
+              yorliq={tr("Қайси йўналиш")}
+              izoh={tr("Рўйхатдан белгиланг — ёзиш шарт эмас")}
+              variantlar={HUNAR_TURI}
+              qiymatlar={h.hunarTurlari}
+              ozgardi={(q) => yangila('hunarTurlari', q)}
+              xato={x(xatolar, 'hunarTurlari')}
+            />
+          </ToliqKeng>
+        )}
+
+        {/*
+          Matn maydoni FAQAT "Boshqa" belgilanganda ochiladi.
+          Aks holda xodim ro'yxatdan tanlagan narsani yana qo'lda
+          yozishga urinardi va ma'lumot ikki joyda ikki xil bo'lardi.
+        */}
+        {h.hunarmandBor && h.hunarTurlari.includes('Boshqa') && (
+          <ToliqKeng>
+            <MatnMaydoni
+              yorliq={tr("«Бошқа» — қайси ҳунар")}
+              majburiy
+              qiymat={h.hunarmandchilik}
+              ozgardi={(q) => yangila('hunarmandchilik', q)}
+              xato={x(xatolar, 'hunarmandchilik')}
+            />
+          </ToliqKeng>
+        )}
 
         <ToliqKeng>
           <KopTanlovMaydoni
@@ -693,44 +810,6 @@ export function QadamYerVaSubyektlar({ h, yangila, xatolar }: QadamProps) {
         )}
       </Bolim>
 
-      <Bolim
-        raqam="X"
-        sarlavha={tr("Маҳалла ҳудудидаги тадбиркорлик субъектлари")}
-        izoh={tr("Бўш иш ўринлари бандлик марказининг мослаштириш тахтасига тушади — иложи борича аниқ ёзинг.")}
-      >
-        <RaqamMaydoni
-          yorliq={tr("Тадбиркорлик субъектлари сони")}
-          qiymat={h.tadbirkorSubyektlar}
-          ozgardi={(q) => yangila('tadbirkorSubyektlar', q)}
-          max={500}
-          birlik={tr("та")}
-          xato={x(xatolar, 'tadbirkorSubyektlar')}
-        />
-
-        <RaqamMaydoni
-          yorliq={tr("Улардаги бўш иш ўринлари сони")}
-          qiymat={h.boshIshOrinlari}
-          ozgardi={(q) => yangila('boshIshOrinlari', q)}
-          max={2000}
-          birlik={tr("ўрин")}
-          xato={x(xatolar, 'boshIshOrinlari')}
-        />
-
-        <HaYoqMaydoni
-          yorliq={tr("Субъектларда кредит ёки субсидияга эҳтиёж мавжудми")}
-          qiymat={h.subyektMoliyaEhtiyoji}
-          ozgardi={(q) => yangila('subyektMoliyaEhtiyoji', q)}
-        />
-
-        <RaqamMaydoni
-          yorliq={tr("Қўшимча яратиладиган иш ўринлари сони")}
-          qiymat={h.yangiIshOrinlari}
-          ozgardi={(q) => yangila('yangiIshOrinlari', q)}
-          max={2000}
-          birlik={tr("ўрин")}
-          xato={x(xatolar, 'yangiIshOrinlari')}
-        />
-      </Bolim>
     </>
   );
 }

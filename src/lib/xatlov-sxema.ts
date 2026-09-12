@@ -19,7 +19,10 @@
 
 import { z } from 'zod';
 import {
+  CHORVA_TURI,
   DAROMAD_MANBAI,
+  GAZ_TURI,
+  HUNAR_TURI,
   HAYDOVCHILIK_TOIFASI,
   ICHIMLIK_SUVI,
   ISHGA_TAYYORLIK,
@@ -31,6 +34,7 @@ import {
   MALUMOT,
   MOLIYA_TURI,
   NOGIRONLIK_GURUHI,
+  OILADAGI_ORNI,
   OILAVIY_HOLAT,
   BANDLIK_TAKLIFI,
   UY_HOLATI,
@@ -63,6 +67,33 @@ const tanlov = (variantlar: { qiymat: string }[]) =>
 const koptanlov = (variantlar: { qiymat: string }[]) =>
   z.array(z.enum(qiymatlar(variantlar as never))).max(20).default([]);
 
+/**
+ * Oila a'zosi - nogironligi bor yoki parvarishga muhtoj shaxs.
+ *
+ * Ilgari bu bitta erkin matn maydoni edi ("Ким ва қайси гуруҳ")
+ * va xodimlar har xil yozardi: "o'g'lim 2-guruh", "Aliyev A.,
+ * nogiron". Keyin ularni sanab ham, guruhlab ham bo'lmasdi.
+ *
+ * Endi har bir shaxs alohida yozuv: kim va oiladagi o'rni.
+ */
+export const ShaxsSxemasi = z.object({
+  fish: z.string().min(3).max(100),
+  orni: z.enum(qiymatlar(OILADAGI_ORNI)),
+  /** Faqat "Boshqa" tanlanganda to'ldiriladi */
+  orniIzoh: z
+    .string()
+    .max(100)
+    .nullish()
+    .transform((x) => {
+      const t = x?.trim();
+      return t ? t : null;
+    }),
+  /** Nogironlik guruhi - parvarish shaxslarida bo'sh qoladi */
+  guruhi: z.enum(qiymatlar(NOGIRONLIK_GURUHI)).nullish(),
+});
+
+export type Shaxs = z.input<typeof ShaxsSxemasi>;
+
 /** So'mdagi mablag' - 100 mlrd gacha */
 const summa = z.coerce.number().int().min(0).max(100_000_000_000).nullish();
 
@@ -74,11 +105,24 @@ export const XonadonSxemasi = z.object({
   mahallaId: z.string().cuid(),
   manzil: z.string().min(3).max(200),
   oilaBoshligi: z.string().min(2).max(100),
-  tugilganYili: z.coerce.number().int().min(1920).max(2015).nullish(),
-  telefon: matn(20),
 
-  jamiAzo: son(50),
-  bolalarSoni: son(30),
+  /*
+   * Quyidagi uchtasi MAJBURIY bo'ldi.
+   *
+   * Ilgari ular ixtiyoriy edi va natijada yarim to'ldirilgan
+   * anketalar tushardi: tug'ilgan yili yo'q - nafaqa yoshini
+   * hisoblab bo'lmaydi; telefon yo'q - bandlik markazi fuqaroga
+   * qo'ng'iroq qila olmaydi, ya'ni butun xatlov behuda ketadi.
+   *
+   * Faqat `bolalarSoni` 0 ni qabul qiladi: bolasiz oila bor va
+   * uni "to'ldirilmagan" deb hisoblash xato bo'lardi.
+   */
+  tugilganYili: z.coerce.number().int().min(1920).max(2026),
+  oilaBoshligiJinsi: z.enum(qiymatlar(JINS)),
+  telefon: z.string().min(7).max(20),
+
+  jamiAzo: z.coerce.number().int().min(1).max(50),
+  bolalarSoni: z.coerce.number().int().min(0).max(30).default(0),
 
   // I. Mehnat va bandlik
   mehnatgaLayoqatli: son(40),
@@ -130,6 +174,7 @@ export const XonadonSxemasi = z.object({
   sugorishSuvi: z.boolean().default(false),
   elektr: z.boolean().default(true),
   gaz: z.boolean().default(false),
+  gazTuri: tanlov(GAZ_TURI),
   kanalizatsiya: z.boolean().default(false),
   sanitariya: matn(500),
   boshqaMuammolar: matn(1000),
@@ -137,9 +182,11 @@ export const XonadonSxemasi = z.object({
   // VII. Ijtimoiy himoya
   nogironlikBor: z.boolean().default(false),
   nogironlikIzoh: matn(500),
+  nogironShaxslar: z.array(ShaxsSxemasi).max(15).default([]),
   yolgizKeksa: z.boolean().default(false),
   parvarishgaMuhtoj: z.boolean().default(false),
   parvarishIzoh: matn(500),
+  parvarishShaxslar: z.array(ShaxsSxemasi).max(15).default([]),
   boshqaMuhtojlar: matn(500),
 
   // VIII. Hujjatlashtirish
@@ -149,8 +196,11 @@ export const XonadonSxemasi = z.object({
 
   // IX. Tomorqa, yer, chorva
   tomorqaBor: z.boolean().default(false),
-  tomorqaMaydoni: olchov,
-  chorvachilik: matn(500),
+  ekinMaydoni: olchov,
+  chorvaBor: z.boolean().default(false),
+  chorvaTurlari: koptanlov(CHORVA_TURI),
+  hunarmandBor: z.boolean().default(false),
+  hunarTurlari: koptanlov(HUNAR_TURI),
   hunarmandchilik: matn(500),
   zarurKomak: koptanlov(MOLIYA_TURI),
   issiqxonaTalabi: z.boolean().default(false),
@@ -158,14 +208,12 @@ export const XonadonSxemasi = z.object({
   ijaraYer: z.boolean().default(false),
   ijaraYerMaydoni: olchov,
 
-  // X. Mahalladagi tadbirkorlik subyektlari
-  tadbirkorSubyektlar: son(500),
-  boshIshOrinlari: son(2000),
-  subyektMoliyaEhtiyoji: z.boolean().default(false),
-  yangiIshOrinlari: son(2000),
-
-  // XI. Xulosa
+  // X. Xulosa
   umumiyXulosa: matn(2000),
+
+  // Rozilik va imzo
+  rozilikBerdi: z.boolean().default(false),
+  imzoYoli: z.string().max(20000).nullish(),
 });
 
 export type XonadonKirishi = z.input<typeof XonadonSxemasi>;

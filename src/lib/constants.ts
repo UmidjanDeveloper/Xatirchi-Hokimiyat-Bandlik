@@ -274,3 +274,74 @@ export function kirillcha(variantlar: Variant[], qiymat?: string | null): string
 export function qiymatlar(variantlar: Variant[]): [string, ...string[]] {
   return variantlar.map((x) => x.qiymat) as [string, ...string[]];
 }
+
+// ─────────────────────────────────────────────────────────────
+//  ANKETA QAYTA QURILGANDAN KEYINGI VARIANTLAR
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Gaz ta'minoti turi.
+ *
+ * Farqi muhim: markazlashgan quvur bor joyda muammo bosim yoki
+ * qarzdorlik bo'ladi, balon bilan yashaydigan oilada esa har oy
+ * pul topish. Chora-tadbir ham shunga qarab boshqacha.
+ */
+export const GAZ_TURI = v(
+  ['Tabiiy gaz', 'Табиий газ'],
+  ['Propan (ballon)', 'Пропан (баллон)']
+);
+
+/**
+ * Oiladagi o'rni - nogironligi bor yoki parvarishga muhtoj
+ * shaxsni belgilashda.
+ *
+ * "Boshqa" oxirida turadi va tanlanganda matn maydoni ochiladi:
+ * qaynona, nabira, jiyan kabi holatlar ro'yxatga sig'maydi.
+ */
+export const OILADAGI_ORNI = v(
+  ['Ota', 'Ота'],
+  ['Ona', 'Она'],
+  ['Farzand', 'Фарзанд'],
+  ['Turmush o‘rtog‘i', 'Турмуш ўртоғи'],
+  ['Aka', 'Ака'],
+  ['Uka', 'Ука'],
+  ['Opa', 'Опа'],
+  ['Singil', 'Сингил'],
+  ['Bobo / buvi', 'Бобо / буви'],
+  ['Nabira', 'Набира'],
+  ['Boshqa', 'Бошқа']
+);
+
+/** Chorva turlari - bir nechtasini belgilash mumkin */
+export const CHORVA_TURI = v(
+  ['Yirik shoxli', 'Йирик шохли'],
+  ['Mayda shoxli', 'Майда шохли'],
+  ['Parranda', 'Парранда']
+);
+
+/**
+ * Hunarmandchilik yo'nalishlari.
+ *
+ * Ilgari bu erkin matn edi va xodim har xil yozardi: "tikuvchilik",
+ * "tikish", "kiyim tikadi" - keyin ularni guruhlab bo'lmasdi.
+ * Endi bir bosish yetadi; ro'yxatda yo'q hunar uchun "Boshqa"
+ * tanlanadi va faqat o'shanda matn maydoni ochiladi.
+ *
+ * Ro'yxat tuman sharoitidagi eng keng tarqalgan yo'nalishlardan
+ * tuzilgan.
+ */
+export const HUNAR_TURI = v(
+  ['Tikuvchilik', 'Тикувчилик'],
+  ['Kashtachilik', 'Каштачилик'],
+  ['Duradgorlik', 'Дурадгорлик'],
+  ['Temirchilik / payvandlash', 'Темирчилик / пайвандлаш'],
+  ['Qurilish-ta’mirlash', 'Қурилиш-таъмирлаш'],
+  ['Non va qandolat', 'Нон ва қандолат'],
+  ['Sartaroshlik / go‘zallik', 'Сартарошлик / гўзаллик'],
+  ['Poyabzal ta’miri', 'Пойабзал таъмири'],
+  ['Gilam va to‘qimachilik', 'Гилам ва тўқимачилик'],
+  ['Sut mahsulotlari', 'Сут маҳсулотлари'],
+  ['Asalarichilik', 'Асаларичилик'],
+  ['Kulolchilik', 'Кулолчилик'],
+  ['Boshqa', 'Бошқа']
+);

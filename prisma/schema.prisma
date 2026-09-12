@@ -152,8 +152,8 @@ model Household {
   id     String       @id @default(cuid())
   holati XatlovHolati @default(QORALAMA)
 
-  viloyat  String @default("Navoiy")
-  tuman    String @default("Xatirchi")
+  viloyat   String  @default("Navoiy")
+  tuman     String  @default("Xatirchi")
   mahallaId String
   mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
 
@@ -161,80 +161,95 @@ model Household {
   manzil String
 
   // ── Oila boshlig'i ──
-  oilaBoshligi String
-  tugilganYili Int?
-  telefon      String?
+  oilaBoshligi      String
+  /// Oila boshlig'i jinsi. Nafaqa yoshi ayol va erkak uchun
+  /// har xil (55/60), shuning uchun yosh tekshiruvi busiz
+  /// ishlamaydi.
+  oilaBoshligiJinsi String?
+  tugilganYili      Int?
+  telefon           String?
 
-  jamiAzo      Int
-  bolalarSoni  Int @default(0)
+  jamiAzo     Int
+  bolalarSoni Int @default(0)
 
   // ── I. MEHNAT VA BANDLIK ──
-  mehnatgaLayoqatli Int @default(0)
-  ishlaydiganlar    Int @default(0)
+  mehnatgaLayoqatli       Int  @default(0)
+  ishlaydiganlar          Int  @default(0)
   /// Davlat korxonalarida band
-  davlatKorxonada   Int @default(0)
+  davlatKorxonada         Int  @default(0)
   /// Xo'jalik yurituvchi subyektlarda band
-  xususiySektorda   Int @default(0)
-  ishsizlarSoni     Int @default(0)
+  xususiySektorda         Int  @default(0)
+  ishsizlarSoni           Int  @default(0)
   /// 3 yoshgacha bola tarbiyasidagi, bog'cha bo'lsa ishlashga tayyor ayollar
-  bogchaKutayotganAyollar Int @default(0)
+  bogchaKutayotganAyollar Int  @default(0)
   /// Qancha vaqtdan buyon ishsiz (oyda) - eng uzun muddat
-  ishsizlikMuddatiOy Int?
+  ishsizlikMuddatiOy      Int?
 
-  ishTuriIstagi         String?
-  kasbHunarIstagi       Boolean @default(false)
-  kasbHunarYonalishi    String[]
-  bandlikTakliflari     String?
+  ishTuriIstagi      String?
+  kasbHunarIstagi    Boolean  @default(false)
+  kasbHunarYonalishi String[]
+  bandlikTakliflari  String?
 
   // ── II. TADBIRKORLIK VA KREDIT-SUBSIDIYA ──
-  tadbirkorlikIstagi Boolean  @default(false)
-  tadbirkorlikSohasi String[]
-  moliyaEhtiyoji     Boolean  @default(false)
-  moliyaTuri         String[]
+  tadbirkorlikIstagi  Boolean  @default(false)
+  tadbirkorlikSohasi  String[]
+  moliyaEhtiyoji      Boolean  @default(false)
+  moliyaTuri          String[]
   /// So'mda. Byudjet rejasiga to'g'ridan-to'g'ri kiradigan raqam.
   talabQilinganMablag BigInt?
-  mablagYonalishi    String[]
+  mablagYonalishi     String[]
 
   // ── III. DAROMAD ──
-  oylikDaromad     BigInt?
-  daromadManbalari String[]
-  daromadImkoniyati String?
+  oylikDaromad         BigInt?
+  daromadManbalari     String[]
+  daromadImkoniyati    String?
   kambagallikSabablari String[]
 
   // ── IV. BOLALAR TA'LIMI ──
-  maktabgachaYoshdagi   Int      @default(0)
-  maktabgachaQamrovda   Int      @default(0)
+  maktabgachaYoshdagi        Int      @default(0)
+  maktabgachaQamrovda        Int      @default(0)
   maktabgachaQamrovsizSababi String?
-  maktabYoshdagi        Int      @default(0)
-  maktabQamrovda        Int      @default(0)
-  bolalarQiziqishlari   String[]
-  togarakQamrovi        Int      @default(0)
-  togarakSababi         String?
+  maktabYoshdagi             Int      @default(0)
+  maktabQamrovda             Int      @default(0)
+  bolalarQiziqishlari        String[]
+  togarakQamrovi             Int      @default(0)
+  togarakSababi              String?
 
   // ── V. SOG'LIQ ──
-  uzoqDavolanish        Boolean @default(false)
-  uzoqDavolanishIzoh    String?
-  doriEhtiyoji          String?
-  tibbiyXizmatEhtiyoji  String?
-  oxirgiTibbiyKorik     String?
+  uzoqDavolanish       Boolean @default(false)
+  uzoqDavolanishIzoh   String?
+  doriEhtiyoji         String?
+  tibbiyXizmatEhtiyoji String?
+  oxirgiTibbiyKorik    String?
 
   // ── VI. UY-JOY VA KOMMUNAL ──
-  uyHolati       String?
-  ichimlikSuvi   String?
-  sugorishSuvi   Boolean @default(false)
-  elektr         Boolean @default(true)
-  gaz            Boolean @default(false)
-  kanalizatsiya  Boolean @default(false)
-  sanitariya     String?
+  uyHolati        String?
+  ichimlikSuvi    String?
+  sugorishSuvi    Boolean @default(false)
+  elektr          Boolean @default(true)
+  gaz             Boolean @default(false)
+  /// 'Табиий газ' yoki 'Пропан (баллон)'. Farqi muhim: markazlashgan
+  /// quvur bor joyda muammo boshqa, balon bilan yashaydigan oilada
+  /// boshqa - chora-tadbir ham har xil bo'ladi.
+  gazTuri         String?
+  kanalizatsiya   Boolean @default(false)
+  sanitariya      String?
   boshqaMuammolar String?
 
   // ── VII. IJTIMOIY HIMOYA ──
-  nogironlikBor      Boolean @default(false)
-  nogironlikIzoh     String?
-  yolgizKeksa        Boolean @default(false)
-  parvarishgaMuhtoj  Boolean @default(false)
-  parvarishIzoh      String?
-  boshqaMuhtojlar    String?
+  nogironlikBor     Boolean @default(false)
+  nogironlikIzoh    String?
+  /// Nogironligi bor shaxslar: har biri uchun F.I.Sh. va oiladagi
+  /// o'rni. JSON massiv sifatida saqlanadi - alohida jadval
+  /// yaratish bu hajm uchun ortiqcha, lekin matn maydonida
+  /// saqlash ham noto'g'ri: keyin ularni sanab bo'lmaydi.
+  nogironShaxslar   Json?
+  yolgizKeksa       Boolean @default(false)
+  parvarishgaMuhtoj Boolean @default(false)
+  parvarishIzoh     String?
+  /// Parvarishga muhtoj shaxslar - nogironlik bilan bir xil shakl
+  parvarishShaxslar Json?
+  boshqaMuhtojlar   String?
 
   // ── VIII. HUJJATLASHTIRISH ──
   hujjatlarToliq  Boolean @default(true)
@@ -242,25 +257,57 @@ model Household {
   xizmatTosiqlari String?
 
   // ── IX. TOMORQA, YER, CHORVA, HUNARMANDCHILIK ──
-  tomorqaBor      Boolean @default(false)
-  /// Sotixda
-  tomorqaMaydoni  Float?
-  chorvachilik    String?
-  hunarmandchilik String?
-  zarurKomak      String[]
-  issiqxonaTalabi Boolean @default(false)
+  tomorqaBor     Boolean @default(false)
+  /// ESKI MAYDON - endi to'ldirilmaydi, `ekinMaydoni` ishlatiladi.
+  /// Tushirilmadi: ishlab turgan bazada migratsiya talab qiladi va
+  /// eski xatlovlardagi qiymat yo'qolardi.
+  tomorqaMaydoni Float?
+  /// EKIN ekiladigan maydon.
+  ///
+  /// Ilgari "tomorqa maydoni" so'ralardi, lekin tomorqaning ustida
+  /// uy ham turadi - o'sha yerdan foydalanib bo'lmaydi. Rejalashtirish
+  /// uchun ekin ekish mumkin bo'lgan qism kerak.
+  ekinMaydoni    Float?
+
+  /// Chorvachilik alohida savol bo'ldi: ilgari erkin matn edi va
+  /// "bor", "yo'q", "2 ta sigir" kabi turli javoblar tushardi -
+  /// ularni sanab bo'lmasdi.
+  chorvaBor     Boolean  @default(false)
+  /// 'Йирик шохли', 'Майда шохли', 'Парранда' - bir nechtasi
+  chorvaTurlari String[]
+  chorvachilik  String?
+
+  hunarmandBor     Boolean  @default(false)
+  /// Tayyor variantlar ro'yxatidan tanlanadi
+  hunarTurlari     String[]
+  /// Faqat "Бошқа" belgilanganda to'ldiriladi
+  hunarmandchilik  String?
+  zarurKomak       String[]
+  issiqxonaTalabi  Boolean  @default(false)
   issiqxonaMaydoni Float?
-  ijaraYer        Boolean @default(false)
-  ijaraYerMaydoni Float?
+  ijaraYer         Boolean  @default(false)
+  ijaraYerMaydoni  Float?
 
-  // ── X. MAHALLADAGI TADBIRKORLIK SUBYEKTLARI ──
-  tadbirkorSubyektlar Int @default(0)
-  boshIshOrinlari     Int @default(0)
-  subyektMoliyaEhtiyoji Boolean @default(false)
-  yangiIshOrinlari    Int @default(0)
-
-  // ── XI. XULOSA ──
+  // ── X. XULOSA ──
   umumiyXulosa String?
+
+  /// AI tayyorlagan tavsiya. Xonadon ma'lumoti ISMSIZ yuboriladi:
+  /// F.I.Sh., manzil va telefon chiqarib tashlanadi, faqat holat
+  /// qoladi. Shuning uchun bu matnda ham shaxs nomi bo'lmaydi.
+  aiXulosa      String?
+  aiXulosaVaqti DateTime?
+  /// Qaysi usul ishlatilgani: 'ai' yoki 'qoida'
+  aiManbasi     String?
+
+  // ── ROZILIK VA IMZO ──
+  /// Fuqaro ma'lumot yig'ilishiga rozi bo'lgani. Busiz yakuniy
+  /// yuborish tugmasi ochilmaydi.
+  rozilikBerdi Boolean   @default(false)
+  /// Ekranda chizilgan imzo - SVG yo'l ma'lumoti sifatida.
+  /// Rasm emas: yo'l bir necha kilobayt, PNG esa o'nlab. 40 ming
+  /// xonadonda bu farq gigabaytlarga chiqadi.
+  imzoYoli     String?
+  imzoVaqti    DateTime?
 
   // ── Xizmat maydonlari ──
   xatlovSanasi DateTime @default(now())
@@ -319,40 +366,40 @@ model UnemployedPerson {
   mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
 
   // ── 3-4. Shaxsiy ma'lumot ──
-  fish        String
-  telefon     String?
-  jinsi       String
-  oilaviyHolat String?
-  farzandlarSoni Int?
-  millati     String?
-  tugilganSana DateTime?
-  malumoti    String?
-  mutaxassisligi String?
-  sogliqHolati String?
-  nogironlik  Boolean @default(false)
+  fish             String
+  telefon          String?
+  jinsi            String
+  oilaviyHolat     String?
+  farzandlarSoni   Int?
+  millati          String?
+  tugilganSana     DateTime?
+  malumoti         String?
+  mutaxassisligi   String?
+  sogliqHolati     String?
+  nogironlik       Boolean   @default(false)
   nogironlikGuruhi String?
-  yashashManzili String?
+  yashashManzili   String?
 
   // ── 4.10-4.18 ──
-  kasbHunarEhtiyoji Boolean @default(false)
-  organmoqchiKasb   String?
-  ishTajribasiYil   Float?
-  avvalgiIshJoyi    String?
-  oxirgiIshJoyi     String?
-  ishdanBoshaganSana DateTime?
-  xohlaganIsh       String?
-  kutilayotganMaosh BigInt?
-  ishgaTayyorligi   String?
-  haydovchilikGuvohnomasi Boolean @default(false)
-  haydovchilikToifasi String[]
-  imtiyozEhtiyoji   Boolean @default(false)
-  imtiyozTuri       String[]
+  kasbHunarEhtiyoji       Boolean   @default(false)
+  organmoqchiKasb         String?
+  ishTajribasiYil         Float?
+  avvalgiIshJoyi          String?
+  oxirgiIshJoyi           String?
+  ishdanBoshaganSana      DateTime?
+  xohlaganIsh             String?
+  kutilayotganMaosh       BigInt?
+  ishgaTayyorligi         String?
+  haydovchilikGuvohnomasi Boolean   @default(false)
+  haydovchilikToifasi     String[]
+  imtiyozEhtiyoji         Boolean   @default(false)
+  imtiyozTuri             String[]
 
   // ── 5. Bandlikni ta'minlash bo'yicha takliflar ──
-  takliflar       String[]
-  taklifIzohi     String?
+  takliflar   String[]
+  taklifIzohi String?
   /// XULOSA bo'limi
-  xulosa          String?
+  xulosa      String?
 
   // ── Natija ──
   /// Qayerga joylashtirildi
