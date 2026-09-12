@@ -20,6 +20,14 @@ import { parolYarat } from '@/lib/parol-yarat';
 import { formatPhone } from '@/lib/utils';
 
 /**
+ * Rollar ro'yxati - tanlash tartibi shu yerda.
+ *
+ * Eng kichik huquqdan eng kattasiga qarab: tasodifan yuqorisini
+ * bosib yuborish ehtimoli kamayadi.
+ */
+export const ROLLAR: Rol[] = ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'];
+
+/**
  * ============================================================
  *  XODIMLAR RO'YXATI
  *
@@ -450,6 +458,16 @@ function TahrirQatori({
   const [telefon, setTelefon] = useState(xodim.phone ?? '');
   const [mahallaId, setMahallaId] = useState<string>('');
 
+  /*
+   * Login va rol faqat administratorda ochiladi. Bandlik
+   * rahbarida bu maydonlar ko'rinmaydi ham - server baribir rad
+   * etadi, lekin ko'rsatib turib "ruxsat yo'q" deyishdan
+   * ko'rsatmaslik yaxshi.
+   */
+  const [username, setUsername] = useState(xodim.username);
+  const [rol, setRol] = useState<Rol>(xodim.rol);
+  const rolOzgardi = rol !== xodim.rol;
+
   const maydon =
     'w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent';
 
@@ -472,6 +490,36 @@ function TahrirQatori({
             autoFocus
           />
         </label>
+
+        {toliqHuquq && (
+          <label className="space-y-1.5">
+            <span className="text-xs font-medium text-ink">{tr('Логин')}</span>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase())}
+              className={`${maydon} font-mono`}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <span className="block text-[11px] text-ink-faint">
+              {tr('Кичик лотин ҳарф, рақам ва пастки чизиқ')}
+            </span>
+          </label>
+        )}
+
+        {toliqHuquq && (
+          <label className="space-y-1.5">
+            <span className="text-xs font-medium text-ink">{tr('Роли')}</span>
+            <select value={rol} onChange={(e) => setRol(e.target.value as Rol)} className={maydon}>
+              {ROLLAR.map((r) => (
+                <option key={r} value={r}>
+                  {tr(ROL_NOMI[r])}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="space-y-1.5">
           <span className="text-xs font-medium text-ink">{tr('Лавозими')}</span>
@@ -499,7 +547,7 @@ function TahrirQatori({
           yettilik a'zosi uchun. Boshqa rollar butun tumanni
           ko'radi, ularga mahalla biriktirish ma'nosiz.
         */}
-        {toliqHuquq && xodim.rol === 'YETTILIK' && (
+        {toliqHuquq && rol === 'YETTILIK' && (
           <label className="space-y-1.5">
             <span className="text-xs font-medium text-ink">{tr('Маҳалла')}</span>
             <select
@@ -523,13 +571,23 @@ function TahrirQatori({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={ishlayapti || fullName.trim().length < 3}
+          disabled={
+            ishlayapti ||
+            fullName.trim().length < 3 ||
+            username.trim().length < 3 ||
+            // Boshqa roldan yettilikka o'tkazishda mahalla shart
+            (rolOzgardi && rol === 'YETTILIK' && !mahallaId)
+          }
           onClick={() =>
             saqla({
               fullName: fullName.trim(),
               position: position.trim() || null,
               telefon: telefon.trim() || null,
               ...(mahallaId ? { mahallaId } : {}),
+              // O'zgarmagan maydonni yubormaymiz: aks holda har bir
+              // saqlash jurnalda "логин ўзгартирилди" deb qolardi
+              ...(username.trim() !== xodim.username ? { username: username.trim() } : {}),
+              ...(rolOzgardi ? { rol } : {}),
             })
           }
           className="flex items-center gap-1.5 rounded-md tugma-asosiy px-3 py-2 text-xs font-semibold disabled:opacity-60"

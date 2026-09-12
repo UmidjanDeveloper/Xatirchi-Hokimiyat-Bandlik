@@ -8,14 +8,12 @@ import { Loader2, Plus, UserPlus, X } from 'lucide-react';
 import type { Rol } from '@prisma/client';
 import { ROL_NOMI } from '@/components/shell/navigatsiya';
 import { parolYarat } from '@/lib/parol-yarat';
-import { XodimRoyxati, type Mahalla, type Xodim } from './xodim-royxati';
+import { ROLLAR, XodimRoyxati, type Mahalla, type Xodim } from './xodim-royxati';
 
 /*
  * Tur ta'riflari `xodim-royxati.tsx` da - ikki joyda saqlansa,
  * biri yangilanib, ikkinchisi eskirib qolardi.
  */
-
-const ROLLAR: Rol[] = ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'];
 
 /**
  * Xodimlarni boshqarish: yangi hisob ochish va ro'yxat.

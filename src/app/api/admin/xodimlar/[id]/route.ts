@@ -22,6 +22,21 @@ import { shifrla, shifrniOch } from '@/lib/sir-shifrlash';
  */
 
 const Tahrir = z.object({
+  /*
+   * Login va rol - FAQAT administrator uchun.
+   *
+   * Sxema kim so'rayotganini bilmaydi, shuning uchun bu
+   * maydonlar shu yerda qabul qilinadi, lekin quyida rol
+   * tekshiriladi va rahbar yuborgan bo'lsa rad etiladi.
+   */
+  username: z
+    .string()
+    .min(3)
+    .max(32)
+    .regex(/^[a-z0-9_]+$/, 'Логин фақат кичик лотин ҳарф, рақам ва _ дан иборат')
+    .optional(),
+  rol: z.enum(['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN']).optional(),
+
   // Profil
   fullName: z.string().min(3).max(100).optional(),
   position: z.string().max(100).nullish(),
@@ -82,6 +97,22 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const d = natija.data;
 
   /*
+   * Login va rolni faqat administrator o'zgartiradi.
+   *
+   * Nega alohida: bandlik rahbari mahalla hisoblarini boshqaradi,
+   * lekin rol o'zgartirish huquqi unga BERILMAYDI - aks holda u
+   * mahalla raisini ADMIN qilib, uning nomidan kirib olardi.
+   * Login ham shunday: uni almashtirish hisobni boshqa odamga
+   * o'tkazishning eng qisqa yo'li.
+   */
+  if ((d.username !== undefined || d.rol !== undefined) && q.sessiya.rol !== 'ADMIN') {
+    return NextResponse.json(
+      { xabar: 'Логин ва ролни фақат администратор ўзгартиради' },
+      { status: 403 }
+    );
+  }
+
+  /*
    * Administrator o'zini o'chira olmaydi.
    *
    * Aks holda oxirgi administrator o'zini faolsizlantirib qo'ysa,
@@ -90,6 +121,39 @@ export async function PATCH(request: Request, { params }: { params: { id: string
    */
   if (d.faol === false && params.id === q.sessiya.userId) {
     return NextResponse.json({ xabar: 'Ўзингизни фаолсизлантира олмайсиз' }, { status: 400 });
+  }
+
+  /*
+   * Shu sababdan administrator o'z rolini ham pasaytira olmaydi.
+   * O'zini HOKIM qilib qo'ysa, orqaga qaytarishga huquqi qolmaydi.
+   */
+  if (d.rol && d.rol !== 'ADMIN' && params.id === q.sessiya.userId) {
+    return NextResponse.json({ xabar: 'Ўз ролингизни пасайтира олмайсиз' }, { status: 400 });
+  }
+
+  /*
+   * "Oxirgi administrator qolmasin" degan alohida tekshiruv
+   * KERAK EMAS va ataylab qo'shilmagan: rolni faqat ADMIN
+   * o'zgartira oladi, `talabQil` esa rolni har so'rovda bazadan
+   * o'qiydi - demak so'rov yuborgan odamning o'zi faol ADMIN.
+   * Yuqoridagi "o'zini pasaytirmaslik" qoidasi bilan birga bu
+   * tizimda hech bo'lmaganda bitta administrator qolishini
+   * kafolatlaydi.
+   */
+
+  /*
+   * Login band emasmi. Prisma ning unique xatosini kutib
+   * turgandan ko'ra oldindan tekshirish yaxshi: foydalanuvchi
+   * "P2002" emas, tushunarli xabar oladi.
+   */
+  if (d.username && d.username !== r.nishon.username) {
+    const band = await prisma.user.findUnique({
+      where: { username: d.username },
+      select: { id: true },
+    });
+    if (band) {
+      return NextResponse.json({ xabar: 'Бу логин банд' }, { status: 400 });
+    }
   }
 
   if (d.fullName) {
@@ -102,12 +166,33 @@ export async function PATCH(request: Request, { params }: { params: { id: string
    * maydonga tayanadi va u bo'sh bo'lsa xodim butun tumandagi
    * oilalar ma'lumotini ko'rib qoladi.
    */
-  if (d.mahallaId === null && r.nishon.rol === 'YETTILIK') {
+  const yangiRol = d.rol ?? r.nishon.rol;
+
+  if (d.mahallaId === null && yangiRol === 'YETTILIK') {
     return NextResponse.json(
       { xabar: 'Маҳалла еттилиги аъзоси маҳалласиз бўла олмайди' },
       { status: 400 }
     );
   }
+
+  /*
+   * Boshqa roldan YETTILIK ga o'tkazilayotgan bo'lsa, mahalla
+   * shu so'rovda kelishi kerak: mahallasiz yettilik a'zosi butun
+   * tuman ma'lumotini ko'rib qoladi.
+   */
+  if (d.rol === 'YETTILIK' && r.nishon.rol !== 'YETTILIK' && !d.mahallaId) {
+    return NextResponse.json(
+      { xabar: 'Ролни маҳалла еттилигига ўзгартиришда маҳалла танланиши шарт' },
+      { status: 400 }
+    );
+  }
+
+  /*
+   * Teskarisi: yettilikdan boshqa rolga o'tsa, mahalla biriktirmasi
+   * ma'nosini yo'qotadi - uni tozalaymiz, aks holda hisob keyin
+   * qayta yettilikka qaytarilsa eski mahalla "yopishib" qolardi.
+   */
+  const mahallaniTozala = d.rol !== undefined && d.rol !== 'YETTILIK';
 
   let korsatiladiganParol: string | null = null;
 
@@ -120,6 +205,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   await prisma.user.update({
     where: { id: params.id },
     data: {
+      ...(d.username ? { username: d.username } : {}),
+      ...(d.rol ? { rol: d.rol } : {}),
+      ...(mahallaniTozala ? { mahallaId: null } : {}),
       ...(d.fullName ? { fullName: d.fullName.trim() } : {}),
       ...(d.position !== undefined ? { position: d.position?.trim() || null } : {}),
       ...(d.telefon !== undefined ? { phone: d.telefon ? telefonSaqlashUchun(d.telefon) : null } : {}),
@@ -139,11 +227,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const nima = d.yangiParol
     ? 'парол тайинланди'
-    : d.faol !== undefined
-      ? d.faol
-        ? 'фаоллаштирилди'
-        : 'фаолсизлантирилди'
-      : 'профил таҳрирланди';
+    : d.rol
+      ? `роли ${d.rol} га ўзгартирилди`
+      : d.username
+        ? `логини ${d.username} га ўзгартирилди`
+        : d.faol !== undefined
+          ? d.faol
+            ? 'фаоллаштирилди'
+            : 'фаолсизлантирилди'
+          : 'профил таҳрирланди';
 
   await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
     obyektTuri: 'User',
