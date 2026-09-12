@@ -9,24 +9,12 @@ import type { Rol } from '@prisma/client';
 import { ROL_NOMI } from '@/components/shell/navigatsiya';
 import { formatPhone } from '@/lib/utils';
 import { parolYarat } from '@/lib/parol-yarat';
+import { XodimRoyxati, type Mahalla, type Xodim } from './xodim-royxati';
 
-interface Xodim {
-  id: string;
-  username: string;
-  fullName: string;
-  position: string | null;
-  phone: string | null;
-  rol: Rol;
-  faol: boolean;
-  parolAlmashtirilsin: boolean;
-  oxirgiKirish: Date | null;
-  mahalla: { nomiKirill: string } | null;
-}
-
-interface Mahalla {
-  id: string;
-  nomiKirill: string;
-}
+/*
+ * Tur ta'riflari `xodim-royxati.tsx` da - ikki joyda saqlansa,
+ * biri yangilanib, ikkinchisi eskirib qolardi.
+ */
 
 const ROLLAR: Rol[] = ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'];
 
@@ -329,65 +317,12 @@ export function XodimBoshqaruvi({
         </div>
       )}
 
-      {/* ── Ro'yxat ── */}
-      <div className="karta divide-y divide-line">
-        {xodimlar.map((x) => (
-          <div key={x.id} className="flex flex-wrap items-center gap-3 p-3.5">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                {/*
-                  Ism ham alifboga ergashadi. Bazada u kirillda
-                  saqlanadi (hujjatlar shunday), lotin ko'rinishi
-                  o'girish orqali hosil bo'ladi - xuddi mahalla
-                  nomlari kabi. Busiz bitta qatorda lotin lavozim
-                  va kirill ism yonma-yon turardi.
-                */}
-                <span className="truncate font-medium text-ink">{tr(x.fullName)}</span>
-                <code className="raqam rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">
-                  {x.username}
-                </code>
-                {!x.faol && (
-                  <span className="rounded bg-danger-bg px-1.5 py-0.5 text-[11px] font-semibold text-danger">
-                    {tr('Фаол эмас')}
-                  </span>
-                )}
-                {x.parolAlmashtirilsin && x.faol && (
-                  <span className="rounded bg-warn-bg px-1.5 py-0.5 text-[11px] font-semibold text-warn">
-                    {tr('Парол алмаштирилмаган')}
-                  </span>
-                )}
-              </div>
-              <p className="mt-0.5 truncate text-xs text-ink-faint">
-                {tr(ROL_NOMI[x.rol])}
-                {x.mahalla ? tr(` · ${x.mahalla.nomiKirill} МФЙ`) : ''}
-                {x.phone ? ` · ${formatPhone(x.phone)}` : ''}
-              </p>
-            </div>
-
-            <div className="flex shrink-0 gap-1.5">
-              <button
-                type="button"
-                onClick={() => parolTikla(x.id, x.username)}
-                title={tr("Паролни тиклаш")}
-                className="flex h-9 w-9 items-center justify-center rounded-md border border-line text-ink-faint transition-colors hover:text-ink"
-              >
-                <KeyRound className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => faollikOzgartir(x.id, !x.faol)}
-                className={`rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
-                  x.faol
-                    ? 'border-line text-ink-muted hover:border-danger hover:text-danger'
-                    : 'border-ok bg-ok-bg text-ok'
-                }`}
-              >
-                {x.faol ? tr('Фаолсизлантириш') : tr('Фаоллаштириш')}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* ── Ro'yxat: qidiruv, tahrir va parol ── */}
+      <XodimRoyxati
+        xodimlar={xodimlar}
+        mahallalar={mahallalar}
+        toliqHuquq={!faqatYettilik}
+      />
     </div>
   );
 }

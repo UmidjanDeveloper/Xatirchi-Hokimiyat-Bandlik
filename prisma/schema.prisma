@@ -67,7 +67,25 @@ model User {
   /// yozuvlari saqlanib qoladi (o'chirish tarixni buzardi).
   faol Boolean @default(true)
 
-  /// Parolni birinchi kirishda almashtirish talab qilinadimi
+  /// Administrator tayinlagan oxirgi parol - SHIFRLANGAN holda.
+  ///
+  /// Bazani ochgan odam faqat tushunarsiz belgilar ko'radi;
+  /// ochish uchun ilovaning `SESSION_SECRET` i ham kerak.
+  ///
+  /// Kirish paroli bundan MUSTAQIL: u scrypt bilan xeshlangan va
+  /// hech qachon orqaga o'qilmaydi. Bu maydon faqat "qanday parol
+  /// berganimni ko'ray" degan ehtiyoj uchun.
+  berilganParol String?
+
+  /// Parol oxirgi marta qachon tayinlangani
+  parolBerilganVaqt DateTime?
+
+  /// Parolni birinchi kirishda almashtirish talab qilinadimi.
+  ///
+  /// Ikkinchi vazifasi ham bor: `berilganParol` hali amaldami
+  /// yoki yo'qmi - shuni bildiradi. `true` bo'lsa xodim hali
+  /// o'zgartirmagan, ya'ni saqlangan parol to'g'ri. `false`
+  /// bo'lsa xodim o'z parolini qo'ygan va saqlangani ESKIRGAN.
   parolAlmashtirilsin Boolean @default(true)
 
   oxirgiKirish DateTime?

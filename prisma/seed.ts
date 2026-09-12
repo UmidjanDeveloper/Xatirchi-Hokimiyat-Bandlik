@@ -17,6 +17,7 @@ import { MAHALLALAR_BAZASI } from '../src/lib/mahallalar';
 import { parolXeshla, parolYaroqlimi } from '../src/lib/auth';
 import { lotinga } from '../src/lib/alifbo';
 import { parolYarat } from '../src/lib/parol-yarat';
+import { shifrla } from '../src/lib/sir-shifrlash';
 import { writeFileSync } from 'node:fs';
 
 const prisma = new PrismaClient();
@@ -73,6 +74,9 @@ async function adminYarat() {
     data: {
       username,
       passwordHash: parolXeshla(parol),
+      // Shifrlangan nusxa - administrator panelda ko'ra olishi uchun
+      berilganParol: shifrla(parol),
+      parolBerilganVaqt: new Date(),
       fullName,
       rol: 'ADMIN',
       // Birinchi kirishda parolni almashtirish talab qilinadi:
@@ -141,6 +145,9 @@ async function raislarYarat() {
       data: {
         username,
         passwordHash: parolXeshla(parol),
+        // Shifrlangan nusxa - administrator panelda ko'ra olishi uchun
+        berilganParol: shifrla(parol),
+        parolBerilganVaqt: new Date(),
         fullName: m.raisFish,
         position: 'МФЙ раиси',
         phone: m.raisTelefon,

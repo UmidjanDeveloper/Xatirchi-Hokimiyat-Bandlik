@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { parolXeshla, parolYaroqlimi } from '@/lib/auth';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
+import { shifrla } from '@/lib/sir-shifrlash';
 import { ismTekshir } from '@/lib/inson-tekshiruvi';
 
 const Yangi = z
@@ -87,6 +88,9 @@ export async function POST(request: Request) {
       data: {
         username: d.username.toLowerCase(),
         passwordHash: parolXeshla(d.parol),
+        // Shifrlangan nusxa - administrator keyinroq ko'ra olishi uchun
+        berilganParol: shifrla(d.parol),
+        parolBerilganVaqt: new Date(),
         fullName: d.fullName.trim(),
         position: d.position?.trim() || null,
         phone: d.telefon ? (telefonSaqlashUchun(d.telefon) ?? d.telefon) : null,

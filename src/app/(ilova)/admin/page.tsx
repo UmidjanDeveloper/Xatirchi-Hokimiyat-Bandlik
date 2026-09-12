@@ -122,11 +122,11 @@ export default async function AdminSahifasi() {
                     </td>
                     <td className="py-2 pr-3 text-ink">{tr(j.user.fullName)}</td>
                     <td className="py-2 pr-3 text-ink-muted">
-                      {AMAL_NOMI[j.amal] ?? j.amal}
+                      {tr(AMAL_NOMI[j.amal] ?? j.amal)}
                     </td>
                     <td className="py-2 text-xs text-ink-faint">
                       {j.obyektTuri ? `${j.obyektTuri} ` : ''}
-                      {j.izoh ?? ''}
+                      {tr(j.izoh ?? '')}
                     </td>
                   </tr>
                 ))}
