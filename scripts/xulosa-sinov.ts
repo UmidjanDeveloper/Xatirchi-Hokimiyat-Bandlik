@@ -211,6 +211,31 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    nomi: 'МАРКАЗЛАШГАН суви бор оилага сув тавсияси ЧИҚМАЙДИ',
+    tekshir: () =>
+      !qoidaTavsiyalari(x({ ichimlikSuvi: 'Markazlashgan' })).some((y) =>
+        y.sarlavha.includes('Ичимлик суви')
+      ),
+  },
+  {
+    nomi: 'Қудуқдан фойдаланадиган оилага «муҳим» тавсия чиқади',
+    tekshir: () => {
+      const y = qoidaTavsiyalari(x({ ichimlikSuvi: 'Quduq' })).find((q) =>
+        q.sarlavha.includes('Ичимлик суви')
+      );
+      return y?.daraja === 'muhim';
+    },
+  },
+  {
+    nomi: 'Суви умуман йўқ оилага «шошилинч» тавсия чиқади',
+    tekshir: () => {
+      const y = qoidaTavsiyalari(x({ ichimlikSuvi: "Yo'q" })).find((q) =>
+        q.sarlavha.includes('Ичимлик суви')
+      );
+      return y?.daraja === 'shoshilinch';
+    },
+  },
+  {
     nomi: 'Ҳунарманд — имконият сифатида кўрсатилади',
     tekshir: () => {
       const t = qoidaTavsiyalari(x({ hunarmandBor: true, hunarTurlari: ['Tikuvchilik'] }));

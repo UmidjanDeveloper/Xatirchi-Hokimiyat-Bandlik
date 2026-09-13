@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Lightbulb, Loader2, RefreshCw, Siren, Sparkles } from 'lucide-react';
+import { AlertTriangle, Lightbulb, ListChecks, Loader2, Siren, Sparkles } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
-import type { XonadonXulosasi, XulosaDarajasi } from '@/lib/xonadon-xulosa';
+import type { XonadonXulosasi as Xulosa, XulosaDarajasi } from '@/lib/xonadon-xulosa';
 
 /**
  * ============================================================
@@ -39,12 +39,17 @@ const DARAJA: Record<XulosaDarajasi, { nomi: string; sinf: string; ikonka: typeo
 
 interface Props {
   xonadonId: string;
-  /** Базада сақланган хулоса — JSON матн ёки `null` */
+  /**
+   * ҚОИДА бўйича хулоса — серверда ҳисобланиб, тайёр ҳолда
+   * келади. Ҳар доим бор, ҳар роль кўради, сўровсиз.
+   */
+  qoida: Xulosa;
+  /** Базада сақланган AI хулосаси — JSON матн ёки `null` */
   saqlangan: string | null;
   vaqti: string | null;
-  /** Ходим хулоса тайёрлай оладими (ҳоким фақат ўқийди) */
-  tahrirlaydi: boolean;
-  /** Қоралама анкетада хулоса ёзилмайди */
+  /** AI хулосасини сўрай оладими (ҳоким, раҳбар, админ) */
+  aiSoraydi: boolean;
+  /** Қоралама анкетада AI хулосаси ёзилмайди */
   qoralama: boolean;
 }
 
@@ -55,22 +60,34 @@ interface Props {
  * ҳолида кўрсатилади. Хулоса йўқолиб кетгандан кўра, шакли
  * бузилган бўлса ҳам кўринган яхши.
  */
-function oqi(xom: string | null): XonadonXulosasi | { xom: string } | null {
+function oqi(xom: string | null): Xulosa | null {
   if (!xom) return null;
   try {
-    const d = JSON.parse(xom) as XonadonXulosasi;
+    const d = JSON.parse(xom) as Xulosa;
     if (typeof d?.holat === 'string' && Array.isArray(d?.tavsiyalar)) return d;
   } catch {
-    /* JSON emas - pastda xom matn sifatida ko'rsatiladi */
+    /* JSON emas yoki eski shakл - qoida bo'yicha xulosa ko'rsatiladi */
   }
-  return { xom };
+  return null;
 }
 
-export function XonadonXulosasi({ xonadonId, saqlangan, vaqti, tahrirlaydi, qoralama }: Props) {
+export function XonadonXulosasi({
+  xonadonId,
+  qoida,
+  saqlangan,
+  vaqti,
+  aiSoraydi,
+  qoralama,
+}: Props) {
   const { t: tr } = useAlifbo();
   const router = useRouter();
 
-  const [xulosa, setXulosa] = useState(() => oqi(saqlangan));
+  /*
+   * Бошланғич ҳолат: сақланган AI хулосаси бўлса — ўша, бўлмаса
+   * ҚОИДА бўйича хулоса. Ya'ni блок ҲЕЧ ҚАЧОН бўш турмайди ва
+   * ҳеч ким тугма босишини кутмайди.
+   */
+  const [xulosa, setXulosa] = useState<Xulosa>(() => oqi(saqlangan) ?? qoida);
   const [yuklanmoqda, setYuklanmoqda] = useState(false);
   const [xato, setXato] = useState<string | null>(null);
   const [yangiVaqt, setYangiVaqt] = useState<string | null>(null);
@@ -96,7 +113,14 @@ export function XonadonXulosasi({ xonadonId, saqlangan, vaqti, tahrirlaydi, qora
     }
   }
 
-  const tugma = tahrirlaydi && !qoralama && (
+  const aiMi = xulosa.manba === 'ai';
+  const sana = yangiVaqt ?? vaqti;
+
+  /*
+   * Тугма фақат ҳоким, раҳбар ва администраторда. Қоралама
+   * анкетада эса умуман йўқ: у ҳали юборилмаган.
+   */
+  const tugma = aiSoraydi && !qoralama && (
     <button
       type="button"
       onClick={tayyorla}
@@ -106,66 +130,28 @@ export function XonadonXulosasi({ xonadonId, saqlangan, vaqti, tahrirlaydi, qora
       {yuklanmoqda ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
       ) : (
-        <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
       )}
-      {xulosa ? tr('Янгилаш') : tr('Хулоса тайёрлаш')}
+      {aiMi ? tr('Янгилаш') : tr('Сунъий интеллект таҳлили')}
     </button>
   );
-
-  /* ── Ҳали тайёрланмаган ── */
-  if (!xulosa) {
-    return (
-      <section className="karta p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
-              <h2 className="text-sm font-bold text-ink">{tr('Хулоса ва тавсиялар')}</h2>
-            </div>
-            <p className="mt-1.5 text-xs text-ink-muted">
-              {qoralama
-                ? tr('Қоралама анкета бўйича хулоса ёзилмайди — аввал уни юборинг.')
-                : tahrirlaydi
-                  ? tr('Анкета маълумоти асосида «нимадан бошлаш керак» деган тавсиялар тайёрланади. Оила бошлиғининг исми, манзили ва телефони ташқарига ЮБОРИЛМАЙДИ — фақат сонлар ва рўйхатдан танланган қийматлар.')
-                  : tr('Бу хонадон учун хулоса ҳали тайёрланмаган.')}
-            </p>
-          </div>
-          {tugma}
-        </div>
-        {xato && <div className="quti-xato mt-3">{xato}</div>}
-      </section>
-    );
-  }
-
-  /* ── Эски шаклдаги ёзув ── */
-  if ('xom' in xulosa) {
-    return (
-      <section className="karta p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 className="text-sm font-bold text-ink">{tr('Хулоса ва тавсиялар')}</h2>
-          {tugma}
-        </div>
-        <p className="mt-2 whitespace-pre-wrap text-sm text-ink-muted">{xulosa.xom}</p>
-        {xato && <div className="quti-xato mt-3">{xato}</div>}
-      </section>
-    );
-  }
-
-  const sana = yangiVaqt ?? vaqti;
 
   return (
     <section className="karta overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-4 sm:px-5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
-            <h2 className="text-sm font-bold text-ink">{tr('Хулоса ва тавсиялар')}</h2>
-          </div>
+          <h2 className="flex items-center gap-1.5 text-sm font-bold text-ink">
+            {aiMi ? (
+              <Sparkles className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+            ) : (
+              <ListChecks className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
+            )}
+            {tr('Хулоса ва тавсиялар')}
+          </h2>
           <p className="mt-1 text-xs text-ink-faint">
-            {xulosa.manba === 'ai'
-              ? tr('сунъий интеллект таҳлили')
-              : tr('белгиланган чегаралар бўйича')}
-            {sana ? ` · ${sana}` : ''}
+            {aiMi
+              ? `${tr('сунъий интеллект таҳлили')}${sana ? ` · ${sana}` : ''}`
+              : tr('анкетадаги белгиланган чегаралар бўйича')}
           </p>
         </div>
         {tugma}
@@ -214,9 +200,9 @@ export function XonadonXulosasi({ xonadonId, saqlangan, vaqti, tahrirlaydi, qora
       )}
 
       <p className="border-t border-line px-4 py-3 text-[11px] leading-relaxed text-ink-faint sm:px-5">
-        {xulosa.manba === 'ai'
+        {aiMi
           ? tr('Матн сунъий интеллект томонидан, анкетанинг ИСМСИЗ маълумоти асосида тайёрланган: оила бошлиғининг исми, манзили, телефони ва ходим ёзган эркин изоҳлар юборилмаган. Тавсия — қарор эмас; охирги сўз ходимники.')
-          : tr('Тавсиялар анкетадаги белгиланган чегаралар бўйича ҳисобланган — сунъий интеллект жавоб бермади ёки калит созланмаган.')}
+          : tr('Тавсиялар анкетадаги белгиланган чегаралар бўйича ҳисобланган — ҳеч қаерга маълумот юборилмайди. Тавсия — қарор эмас; охирги сўз ходимники.')}
       </p>
     </section>
   );

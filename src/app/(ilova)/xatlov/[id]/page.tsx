@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { matnchi } from '@/lib/alifbo-server';
 import { notFound, redirect } from 'next/navigation';
 import { CheckCircle2, Pencil, UserRound } from 'lucide-react';
-import { joriySessiya, mahallagaRuxsat } from '@/lib/auth';
+import { aiXulosaSoraydi, joriySessiya, mahallagaRuxsat } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { jurnal } from '@/lib/api-auth';
 import { formatDate, formatPhone } from '@/lib/utils';
@@ -23,6 +23,7 @@ import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
 import { ImzoKorinishi } from '@/components/xatlov/imzo-maydoni';
 import { XonadonXulosasi } from '@/components/xatlov/xonadon-xulosasi';
+import { qoidaXulosasi, xonadonDalili } from '@/lib/xonadon-xulosa';
 import { ChoraHolati } from '@/components/chora/chora-holati';
 
 /*
@@ -335,9 +336,15 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
       */}
       <XonadonXulosasi
         xonadonId={x.id}
+        /*
+          Қоида бўйича хулоса СЕРВЕРДА ҳисобланади ва тайёр
+          ҳолда келади: тугма кутилмайди, сўров юборилмайди,
+          пул кетмайди. Ҳар роль кўради.
+        */
+        qoida={qoidaXulosasi(xonadonDalili(x))}
         saqlangan={x.aiXulosa}
         vaqti={x.aiXulosaVaqti ? formatDate(x.aiXulosaVaqti).split(',')[0] : null}
-        tahrirlaydi={sessiya.rol !== 'HOKIM'}
+        aiSoraydi={aiXulosaSoraydi(sessiya.rol)}
         qoralama={x.holati === 'QORALAMA'}
       />
 

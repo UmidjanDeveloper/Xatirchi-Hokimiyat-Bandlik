@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
-import { mahallagaRuxsat } from '@/lib/auth';
+import { aiXulosaSoraydi, mahallagaRuxsat } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { xonadonXulosasiOl, type XonadonDalili } from '@/lib/xonadon-xulosa';
+import { xonadonDalili, xonadonXulosasiOl } from '@/lib/xonadon-xulosa';
 
 /**
  * ============================================================
@@ -30,8 +30,23 @@ export const maxDuration = 30;
 const SOATIGA = 40;
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const q = await talabQil(['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN']);
+  /*
+   * AI СЎРОВИ ФАҚАТ УЧ РОЛГА.
+   *
+   * Қоида бўйича хулоса ҳамма роль учун саҳифанинг ўзида
+   * ҳисобланади — у текин. AI эса ҳар сўровда пул ечади, шунинг
+   * учун фақат қарор қабул қиладиган даража: ҳоким, бандлик
+   * раҳбари, администратор.
+   */
+  const q = await talabQil(['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN']);
   if (q instanceof NextResponse) return q;
+
+  if (!aiXulosaSoraydi(q.sessiya.rol)) {
+    return NextResponse.json(
+      { xabar: 'Сунъий интеллект хулосасини ҳоким, бандлик раҳбари ва администратор сўрай олади.' },
+      { status: 403 }
+    );
+  }
 
   /*
    * Чегара IP га эмас, ХОДИМГА қўйилади: бу ердаги хавф ўғри
@@ -77,72 +92,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     );
   }
 
-  const yil = new Date().getFullYear();
+  const xulosa = await xonadonXulosasiOl(xonadonDalili(x));
 
-  /*
-   * Далил объекти ШУ ЕРДА тузилади ва унга фақат керакли
-   * майдонлар кўчирилади. Хонадон ёзувини бутунлигича узатиш
-   * мумкин эмас эди: унда исм, манзил, телефон ва ходим ёзган
-   * эркин матнлар бор.
-   */
-  const dalil: XonadonDalili = {
-    jamiAzo: x.jamiAzo,
-    bolalarSoni: x.bolalarSoni,
-    mehnatgaLayoqatli: x.mehnatgaLayoqatli,
-    ishlaydiganlar: x.ishlaydiganlar,
-    ishsizlarSoni: x.ishsizlarSoni,
-    bogchaKutayotganAyollar: x.bogchaKutayotganAyollar,
-    ishsizlikMuddatiOy: x.ishsizlikMuddatiOy,
-    kasbHunarIstagi: x.kasbHunarIstagi,
-    kasbHunarYonalishi: x.kasbHunarYonalishi,
-    tadbirkorlikIstagi: x.tadbirkorlikIstagi,
-    tadbirkorlikSohasi: x.tadbirkorlikSohasi,
-    moliyaEhtiyoji: x.moliyaEhtiyoji,
-    moliyaTuri: x.moliyaTuri,
-    talabQilinganMablag: x.talabQilinganMablag,
-    mablagYonalishi: x.mablagYonalishi,
-    oylikDaromad: x.oylikDaromad,
-    daromadManbalari: x.daromadManbalari,
-    kambagallikSabablari: x.kambagallikSabablari,
-    maktabgachaYoshdagi: x.maktabgachaYoshdagi,
-    maktabgachaQamrovda: x.maktabgachaQamrovda,
-    maktabYoshdagi: x.maktabYoshdagi,
-    maktabQamrovda: x.maktabQamrovda,
-    togarakQamrovi: x.togarakQamrovi,
-    uzoqDavolanish: x.uzoqDavolanish,
-    uyHolati: x.uyHolati,
-    ichimlikSuvi: x.ichimlikSuvi,
-    sugorishSuvi: x.sugorishSuvi,
-    elektr: x.elektr,
-    gaz: x.gaz,
-    gazTuri: x.gazTuri,
-    kanalizatsiya: x.kanalizatsiya,
-    nogironlikBor: x.nogironlikBor,
-    yolgizKeksa: x.yolgizKeksa,
-    parvarishgaMuhtoj: x.parvarishgaMuhtoj,
-    hujjatlarToliq: x.hujjatlarToliq,
-    tomorqaBor: x.tomorqaBor,
-    ekinMaydoni: x.ekinMaydoni,
-    chorvaBor: x.chorvaBor,
-    chorvaTurlari: x.chorvaTurlari,
-    hunarmandBor: x.hunarmandBor,
-    hunarTurlari: x.hunarTurlari,
-    zarurKomak: x.zarurKomak,
-    issiqxonaTalabi: x.issiqxonaTalabi,
-    ijaraYer: x.ijaraYer,
-    ishsizlar: x.ishsizlar.map((p) => ({
-      jinsi: p.jinsi,
-      yoshi: p.tugilganSana ? yil - p.tugilganSana.getFullYear() : null,
-      malumoti: p.malumoti,
-      mutaxassisligi: p.mutaxassisligi,
-      xohlaganIsh: p.xohlaganIsh,
-      organmoqchiKasb: p.organmoqchiKasb,
-      holati: p.holati,
-      nogironlik: p.nogironlik,
-    })),
-  };
-
-  const xulosa = await xonadonXulosasiOl(dalil);
 
   await prisma.household.update({
     where: { id: x.id },

@@ -167,6 +167,27 @@ export function tahlilKoradi(rol: Rol): boolean {
 }
 
 /**
+ * AI xulosasini SO'RAY oladimi.
+ *
+ * Qoida bo'yicha xulosa HAMMAGA ko'rinadi va bepul: u anketadagi
+ * chegaralardan hisoblanadi, tashqariga so'rov yubormaydi.
+ *
+ * AI esa pul turadi va har so'rov hisobdan yechiladi. Shuning
+ * uchun u faqat QAROR QABUL QILADIGAN darajaga ochiq: hokim,
+ * bandlik rahbari va administrator. Mahalla xodimi va bandlik
+ * mutaxassisi kundalik ishda o'nlab yozuvni ochadi - ularning
+ * har biriga model chaqirilsa, byudjet bir haftada tugardi.
+ *
+ * Ayni paytda `tahlilKoradi` bilan bir xil ro'yxat, lekin
+ * MA'NOSI boshqa: biri "panelni ko'radi", ikkinchisi "modelga
+ * pul sarflashi mumkin". Ertaga biri o'zgarsa, ikkinchisi
+ * o'zgarmasligi kerak.
+ */
+export function aiXulosaSoraydi(rol: Rol): boolean {
+  return rol === 'HOKIM' || rol === 'BANDLIK_RAHBAR' || rol === 'ADMIN';
+}
+
+/**
  * So'rovga qo'shiladigan mahalla filtri.
  *
  * YETTILIK a'zosi faqat o'z mahallasini ko'rishi kerak. Buni har bir

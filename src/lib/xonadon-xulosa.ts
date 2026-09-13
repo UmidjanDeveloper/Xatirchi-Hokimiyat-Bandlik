@@ -69,6 +69,20 @@ const UZOQ_ISHSIZLIK_OY = 12;
 
 export type XulosaDarajasi = 'shoshilinch' | 'muhim' | 'imkoniyat';
 
+/** `xonadonDalili()` га кераклиси — Prisma ёзувининг бир қисми */
+export interface XonadonYozuvi extends Omit<XonadonDalili, 'ishsizlar'> {
+  ishsizlar: {
+    jinsi: string;
+    tugilganSana: Date | null;
+    malumoti: string | null;
+    mutaxassisligi: string | null;
+    xohlaganIsh: string | null;
+    organmoqchiKasb: string | null;
+    holati: string;
+    nogironlik: boolean;
+  }[];
+}
+
 export interface XonadonTavsiyasi {
   daraja: XulosaDarajasi;
   sarlavha: string;
@@ -465,7 +479,24 @@ export function qoidaTavsiyalari(x: XonadonDalili): XonadonTavsiyasi[] {
     });
   }
 
-  if (x.ichimlikSuvi && !/quvur|Quvur|қувур|Қувур/.test(kirillcha(ICHIMLIK_SUVI, x.ichimlikSuvi))) {
+  /*
+   * Сув манбаи КАТАЛОГ ҚИЙМАТИ бўйича текширилади, матн ичидан
+   * сўз қидириб эмас.
+   *
+   * Илгари бу ерда «қувур» сўзи изланарди, ҳолбуки каталогда
+   * ундай сўз умуман йўқ: қийматлар «Марказлашган», «Қудуқ»,
+   * «Йўқ». Натижада МАРКАЗЛАШГАН суви бор оилага ҳам «суви
+   * марказлашмаган» деган тавсия чиқарди — ва буни экранда
+   * сезиб бўлмасди, чунки тавсия ўзи чиройли кўринарди.
+   */
+  if (x.ichimlikSuvi === "Yo'q") {
+    t.push({
+      daraja: 'shoshilinch',
+      sarlavha: 'Ичимлик суви манбаи йўқ',
+      dalil:
+        'Анкетада ичимлик суви манбаи «йўқ» деб белгиланган. Бу — биринчи навбатдаги масала: «Тошкентсувтаъминот» ҳудудий бўлими ва маҳалла билан биргаликда сув етказиш йўлини ҳал қилиш.',
+    });
+  } else if (x.ichimlikSuvi && x.ichimlikSuvi !== 'Markazlashgan') {
     t.push({
       daraja: 'muhim',
       sarlavha: 'Ичимлик суви марказлашган эмас',
@@ -562,7 +593,7 @@ export function qoidaTavsiyalari(x: XonadonDalili): XonadonTavsiyasi[] {
 }
 
 /** Қоида бўйича ҳолат матни */
-function qoidaHolati(x: XonadonDalili): string {
+export function qoidaHolati(x: XonadonDalili): string {
   const g: string[] = [];
 
   g.push(
@@ -593,6 +624,86 @@ function qoidaHolati(x: XonadonDalili): string {
   );
 
   return g.join(' ');
+}
+
+/**
+ * Хонадон ёзувидан далил объектини тузади.
+ *
+ * Хонадонни бутунлигича узатиб бўлмайди: унда исм, манзил,
+ * телефон ва ходим ёзган эркин матнлар бор. Шунинг учун керакли
+ * майдонлар ШУ ЕРДА, битта жойда кўчирилади — сервер ва саҳифа
+ * иккиси ҳам шуни чақиради ва улар орасида фарқ бўлиши мумкин
+ * эмас.
+ */
+export function xonadonDalili(x: XonadonYozuvi): XonadonDalili {
+  const yil = new Date().getFullYear();
+  return {
+    jamiAzo: x.jamiAzo,
+    bolalarSoni: x.bolalarSoni,
+    mehnatgaLayoqatli: x.mehnatgaLayoqatli,
+    ishlaydiganlar: x.ishlaydiganlar,
+    ishsizlarSoni: x.ishsizlarSoni,
+    bogchaKutayotganAyollar: x.bogchaKutayotganAyollar,
+    ishsizlikMuddatiOy: x.ishsizlikMuddatiOy,
+    kasbHunarIstagi: x.kasbHunarIstagi,
+    kasbHunarYonalishi: x.kasbHunarYonalishi,
+    tadbirkorlikIstagi: x.tadbirkorlikIstagi,
+    tadbirkorlikSohasi: x.tadbirkorlikSohasi,
+    moliyaEhtiyoji: x.moliyaEhtiyoji,
+    moliyaTuri: x.moliyaTuri,
+    talabQilinganMablag: x.talabQilinganMablag,
+    mablagYonalishi: x.mablagYonalishi,
+    oylikDaromad: x.oylikDaromad,
+    daromadManbalari: x.daromadManbalari,
+    kambagallikSabablari: x.kambagallikSabablari,
+    maktabgachaYoshdagi: x.maktabgachaYoshdagi,
+    maktabgachaQamrovda: x.maktabgachaQamrovda,
+    maktabYoshdagi: x.maktabYoshdagi,
+    maktabQamrovda: x.maktabQamrovda,
+    togarakQamrovi: x.togarakQamrovi,
+    uzoqDavolanish: x.uzoqDavolanish,
+    uyHolati: x.uyHolati,
+    ichimlikSuvi: x.ichimlikSuvi,
+    sugorishSuvi: x.sugorishSuvi,
+    elektr: x.elektr,
+    gaz: x.gaz,
+    gazTuri: x.gazTuri,
+    kanalizatsiya: x.kanalizatsiya,
+    nogironlikBor: x.nogironlikBor,
+    yolgizKeksa: x.yolgizKeksa,
+    parvarishgaMuhtoj: x.parvarishgaMuhtoj,
+    hujjatlarToliq: x.hujjatlarToliq,
+    tomorqaBor: x.tomorqaBor,
+    ekinMaydoni: x.ekinMaydoni,
+    chorvaBor: x.chorvaBor,
+    chorvaTurlari: x.chorvaTurlari,
+    hunarmandBor: x.hunarmandBor,
+    hunarTurlari: x.hunarTurlari,
+    zarurKomak: x.zarurKomak,
+    issiqxonaTalabi: x.issiqxonaTalabi,
+    ijaraYer: x.ijaraYer,
+    ishsizlar: x.ishsizlar.map((p) => ({
+      jinsi: p.jinsi,
+      yoshi: p.tugilganSana ? yil - p.tugilganSana.getFullYear() : null,
+      malumoti: p.malumoti,
+      mutaxassisligi: p.mutaxassisligi,
+      xohlaganIsh: p.xohlaganIsh,
+      organmoqchiKasb: p.organmoqchiKasb,
+      holati: p.holati,
+      nogironlik: p.nogironlik,
+    })),
+  };
+}
+
+/**
+ * ФАҚАТ ҚОИДА бўйича хулоса — сўровсиз, дарҳол.
+ *
+ * Ҳар хонадон саҳифаси очилганда ҳисобланади ва ҳамма роль
+ * кўради. Ҳеч қаерга сўров юборилмайди, шунинг учун ҳам текин,
+ * ҳам интернетсиз ишлайди.
+ */
+export function qoidaXulosasi(x: XonadonDalili): XonadonXulosasi {
+  return { manba: 'qoida', holat: qoidaHolati(x), tavsiyalar: qoidaTavsiyalari(x) };
 }
 
 /**

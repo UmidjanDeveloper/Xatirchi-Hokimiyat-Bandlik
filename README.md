@@ -305,9 +305,27 @@ Ikkita manba, bitta shakl:
    «oilada hunarmand ham, yer ham bor — ikkisi birga ko'proq
    natija beradi».
 
-AI kaliti qo'yilmagan bo'lsa, tizim **to'liq ishlaydi** —
-qoida bo'yicha xulosa chiqadi. Matn ostida manba har doim
-ko'rsatiladi: o'quvchi uni kim yozganini bilishi shart.
+**Qoida bo'yicha xulosa har doim, hammaga, avtomatik.** Xonadon
+sahifasi ochilganda u serverda hisoblanadi va darhol ko'rinadi —
+tugma bosish shart emas, hech qayerga so'rov ketmaydi, pul
+sarflanmaydi. Mahalla xodimi ham, bandlik mutaxassisi ham shuni
+ko'radi.
+
+**AI xulosasini faqat uch rol so'ray oladi**: hokim, bandlik
+rahbari, administrator. Ularda «Sun'iy intellekt tahlili»
+tugmasi chiqadi.
+
+Sababi byudjet: AI har so'rovda pul yechadi. Mahalla xodimi
+kunda o'nlab yozuvni ochadi — har biriga model chaqirilsa,
+mablag' bir haftada tugardi. Qaror qabul qiladigan daraja esa
+kunda bir-ikki marta chuqurroq tahlil so'raydi, va o'sha yerda
+AI haqiqatan foyda beradi.
+
+Chek faqat tugmani yashirish emas — API ham `403` qaytaradi
+(`aiXulosaSoraydi()`, `src/lib/auth.ts`).
+
+Matn ostida manba har doim ko'rsatiladi: o'quvchi uni kim
+yozganini bilishi shart.
 
 **Qaysi AI ishlatiladi.** Ikkitasi qo'llab-quvvatlanadi va
 muhit o'zgaruvchisiga qarab o'zi tanlanadi:
