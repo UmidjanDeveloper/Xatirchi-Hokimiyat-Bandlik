@@ -66,7 +66,7 @@ function oqi(xom: string | null): Xulosa | null {
     const d = JSON.parse(xom) as Xulosa;
     if (typeof d?.holat === 'string' && Array.isArray(d?.tavsiyalar)) return d;
   } catch {
-    /* JSON emas yoki eski shakл - qoida bo'yicha xulosa ko'rsatiladi */
+    /* JSON emas yoki eski shakl - qoida bo'yicha xulosa ko'rsatiladi */
   }
   return null;
 }

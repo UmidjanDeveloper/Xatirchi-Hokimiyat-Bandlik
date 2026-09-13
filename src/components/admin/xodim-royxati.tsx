@@ -357,7 +357,7 @@ export function XodimRoyxati({
 /**
  * Parol ko'rinmasa, NEGA ko'rinmaganini aytish shart.
  *
- * "Kо'rinmadi" degan yozuv foydalanuvchini boshi berk ko'chaga
+ * "Ko'rinmadi" degan yozuv foydalanuvchini boshi berk ko'chaga
  * olib boradi: u qayta-qayta bosaveradi. Har bir sabab boshqa
  * ish talab qiladi, matn ham shuni aytadi.
  */

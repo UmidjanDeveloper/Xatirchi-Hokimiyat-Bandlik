@@ -6,6 +6,7 @@ import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate, percent } from '@/lib/utils';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
+import { MahallaOrinlari } from '@/components/ish-orni/mahalla-orinlari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
 
@@ -160,6 +161,23 @@ export default async function XatlovlarSahifasi() {
       {mahalla && yuborilgan.length > 0 && (
         <AiXulosa qamrovNomi={`${mahalla.nomiKirill} МФЙ`} />
       )}
+
+      {/*
+        ── БЎШ ИШ ЎРИНЛАРИ ТАҚСИМОТИ ──
+
+        Эълонни бандлик маркази киритади, одамни эса маҳалла
+        ходими билади. Илгари бу иккови учрашмасди: эълон
+        базада «бор» бўлиб турар, ишсиз одам рўйхатда «бор»
+        бўлиб турарди.
+
+        Энди ходим ўз саҳифасида кўради: қайси эълон, нечта
+        ўрин бўш ва ЎЗ маҳалласидаги қайси фуқаро тўғри келади
+        — исми ва телефони билан.
+
+        Мос фуқаро бўлмаса блок умуман чиқмайди — ходимга ҳар
+        кирганда бўш карточка кўрсатишнинг маъноси йўқ.
+      */}
+      {filtr.mahallaId && <MahallaOrinlari mahallaId={filtr.mahallaId} />}
 
       {xatlovlar.length === 0 ? (
         <div className="karta p-8 text-center">

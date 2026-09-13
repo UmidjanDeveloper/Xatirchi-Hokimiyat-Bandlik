@@ -8,6 +8,7 @@ import { formatDate, formatPhone } from '@/lib/utils';
 import { KASB_YONALISHI, MALUMOT, kirillcha } from '@/lib/constants';
 import { BAND_HOLATLAR, orinHisobi } from '@/lib/joylashtirish';
 import { nomzodlarniTop } from '@/lib/moslashtirish';
+import { OrinTaqsimoti } from '@/components/ish-orni/orin-taqsimoti';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { MoslikNishoni } from '@/components/ish-orni/moslik-nishoni';
 import {
@@ -203,6 +204,17 @@ export default async function IshOrniSahifasi({
           </div>
         </section>
       )}
+
+      {/*
+        ── ТАҚСИМОТ ──
+
+        Номзодлар рўйхатидан ОЛДИН туради ва бу атайлаб:
+        аввал «қайси маҳаллаларга хабар бериш керак» деган
+        амалий савол, кейин «кимга таклиф қилиш» деган
+        батафсил рўйхат. Ходим кўпинча биринчисини қилиб,
+        иккинчисини раисга қолдиради.
+      */}
+      <OrinTaqsimoti orinId={orin.id} />
 
       {/* ── Мос номзодлар ── */}
       <section className="karta p-4 sm:p-5">
