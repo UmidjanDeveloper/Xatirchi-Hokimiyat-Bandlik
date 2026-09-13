@@ -257,6 +257,49 @@ foydalanuvchi yaratish paytida turadi.
   deb belgilab qo'yishi va hokim panelidagi eng muhim raqam yolg'on
   chiqishi mumkin edi
 
+### Xonadon bo'yicha xulosa va tavsiyalar
+
+Anketaning 11 bo'limi xodimga «nima bor» deydi. Xulosa bloki
+«**nimadan boshlash kerak**» deydi: shoshilinch → muhim →
+imkoniyat tartibida, har biri raqamli dalil bilan.
+
+Ikkita manba, bitta shakl:
+
+1. **Qoida** — anketadagi chegaralar. Hujjat to'liqmi, maktab
+   yoshidagi bola maktabdami, jon boshiga daromad eng kam
+   iste'mol xarajatidan yuqorimi, ishsizlik 12 oydan oshdimi.
+   Kalit va internet talab qilmaydi, natijasi takrorlanadi.
+2. **AI** — Claude. Qoida ko'rmaydigan bog'lanishni topadi:
+   «oilada hunarmand ham, yer ham bor — ikkisi birga ko'proq
+   natija beradi».
+
+`ANTHROPIC_API_KEY` qo'yilmagan bo'lsa, tizim **to'liq ishlaydi** —
+qoida bo'yicha xulosa chiqadi. Matn ostida manba har doim
+ko'rsatiladi: o'quvchi uni kim yozganini bilishi shart.
+
+Xulosa **bir marta tayyorlanib bazaga yoziladi**, har ochilganda
+qayta hisoblanmaydi: bir xil anketaga har safar boshqa tavsiya
+chiqsa, xodim qaysi biriga amal qilishni bilmay qolardi. Anketa
+o'zgarsa — «Yangilash» tugmasi.
+
+**AI ga nima yuboriladi va nima YUBORILMAYDI.** Yuboriladi:
+sonlar va ro'yxatdan tanlangan katalog qiymatlari (uy holati, suv
+manbai, chorva turi), hamda kasb nomlari. Yuborilmaydi: oila
+boshlig'ining ismi, manzil, telefon, ishsizlarning F.I.Sh.si,
+nogiron va parvarishga muhtoj shaxslar ro'yxati, **va xodim yozgan
+har qanday erkin matn** — izohlar, sabablar, «boshqa muammolar»,
+umumiy xulosa.
+
+Erkin matn butunlay chiqarib tashlanganining sababi oddiy: unga
+xodim nima yozganini oldindan bilib bo'lmaydi. «Izoh» maydoniga
+«qo'shnisi Karimov aytishicha...» deb yozilsa, ism tashqariga
+chiqib ketardi. Katalog qiymati esa har doim ro'yxatdan tanlangan.
+
+Yuboriladigan matn **bitta funksiyada** — `dalilnomaYasa()` —
+tuziladi, shuning uchun «nima yuborildi» degan savolga javob
+berish uchun shu funksiyani o'qish kifoya. `npm run sinov` buni
+har safar tekshiradi.
+
 ### Hokim paneli
 
 - **Voronka** — 5 bosqichning har birida nechta odam turgani, svod
@@ -521,6 +564,9 @@ oladi. Shuning uchun:
   tekshiriladi: xodim ishdan bo'shatilgan bo'lsa, cookie yaroqli
   bo'lsa ham kira olmaydi
 - **Qidiruv tizimlari indekslamaydi** (`robots: noindex`)
+- **AI ga shaxsiy ma'lumot yuborilmaydi** — faqat sonlar va katalog
+  qiymatlari; erkin matn butunlay chiqarib tashlanadi (`npm run sinov`
+  buni har safar tekshiradi)
 - **Supabase avtomatik API'si yopilgan** — pastda batafsil
 
 ### Supabase avtomatik API'si
@@ -571,6 +617,7 @@ scripts/
   tekshir.ts               # Joylashtirishdan oldingi tekshiruv
   alifbo-sinov.ts          # Transliteratsiya sinovi
   moslik-sinov.ts          # E'lon ↔ fuqaro moslik hisobi sinovi
+  xulosa-sinov.ts          # Xonadon xulosasi: maxfiylik va qoidalar
 
 src/lib/
   alifbo.ts                # Kirill -> lotin o'girish dvigateli
@@ -585,6 +632,7 @@ src/lib/
   inson-tekshiruvi.ts      # Ism va telefon tekshiruvi
   hudud-qidiruv.ts         # Kirill/lotin fonetik qidiruv
   moslik.ts                # E'lon ↔ fuqaro moslik hisobi (sof funksiya)
+  xonadon-xulosa.ts        # Xonadon tavsiyalari: qoida + AI, ISMSIZ
   moslashtirish.ts         # Moslashtirish taxtasi — server so'rovlari
   joylashtirish.ts         # Band o'rinlar hisobi va holat qaytishi
   tahlil.ts                # Hokim paneli hisob-kitoblari

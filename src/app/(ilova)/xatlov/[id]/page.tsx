@@ -22,6 +22,7 @@ import {
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
 import { ImzoKorinishi } from '@/components/xatlov/imzo-maydoni';
+import { XonadonXulosasi } from '@/components/xatlov/xonadon-xulosasi';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -309,10 +310,26 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
 
       {x.umumiyXulosa && (
         <section className="karta p-4 sm:p-5">
-          <h2 className="mb-2 text-sm font-bold text-ink">{tr('Умумий хулоса')}</h2>
+          <h2 className="mb-2 text-sm font-bold text-ink">{tr('Ходимнинг хулосаси')}</h2>
           <p className="whitespace-pre-wrap text-sm text-ink-muted">{x.umumiyXulosa}</p>
         </section>
       )}
+
+      {/*
+        ── Тавсиялар ──
+
+        Ходимнинг ўз хулосасидан КЕЙИН туради: аввал одам нима
+        деганини ўқиш, кейин ҳисоб нима деганини кўриш керак.
+        Тескари бўлса, ходим ўз кузатувини эмас, тайёр матнни
+        такрорлай бошларди.
+      */}
+      <XonadonXulosasi
+        xonadonId={x.id}
+        saqlangan={x.aiXulosa}
+        vaqti={x.aiXulosaVaqti ? formatDate(x.aiXulosaVaqti).split(',')[0] : null}
+        tahrirlaydi={sessiya.rol !== 'HOKIM'}
+        qoralama={x.holati === 'QORALAMA'}
+      />
 
       {/*
         ── Розилик ва имзо ──

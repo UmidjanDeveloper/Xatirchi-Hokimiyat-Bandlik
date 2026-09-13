@@ -335,9 +335,17 @@ model Household {
   // ── X. XULOSA ──
   umumiyXulosa String?
 
-  /// AI tayyorlagan tavsiya. Xonadon ma'lumoti ISMSIZ yuboriladi:
-  /// F.I.Sh., manzil va telefon chiqarib tashlanadi, faqat holat
-  /// qoladi. Shuning uchun bu matnda ham shaxs nomi bo'lmaydi.
+  /// Tayyorlangan tavsiya - JSON matn sifatida:
+  /// `{ manba, holat, tavsiyalar: [{ daraja, sarlavha, dalil }] }`.
+  ///
+  /// Alohida ustun ochilmadi: bu ma'lumot bo'yicha qidirilmaydi
+  /// va sanalmaydi, u faqat o'qiladi. Shakli o'zgarsa, eski
+  /// yozuv xom matn sifatida ko'rsatiladi - yo'qolmaydi.
+  ///
+  /// Xonadon ma'lumoti AI ga ISMSIZ yuboriladi: F.I.Sh., manzil,
+  /// telefon va xodim yozgan HAR QANDAY erkin matn chiqarib
+  /// tashlanadi, faqat sonlar va katalog qiymatlari qoladi.
+  /// Shuning uchun bu matnda ham shaxs nomi bo'lmaydi.
   aiXulosa      String?
   aiXulosaVaqti DateTime?
   /// Qaysi usul ishlatilgani: 'ai' yoki 'qoida'
