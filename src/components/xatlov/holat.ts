@@ -72,6 +72,13 @@ export interface XatlovHolati {
   talabQilinganMablag: Raqam;
   mablagYonalishi: string[];
 
+  // II-B. Chet elda mehnat
+  chetElMehnati: boolean;
+  chetElIshchilar: Raqam;
+  chetElDavlatlari: string[];
+  chetElBoshqaDavlat: string;
+  chetElOylikPul: Raqam;
+
   // III. Daromad
   oylikDaromad: Raqam;
   daromadManbalari: string[];
@@ -202,6 +209,12 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     talabQilinganMablag: '',
     mablagYonalishi: [],
 
+    chetElMehnati: false,
+    chetElIshchilar: '',
+    chetElDavlatlari: [],
+    chetElBoshqaDavlat: '',
+    chetElOylikPul: '',
+
     oylikDaromad: '',
     daromadManbalari: [],
     daromadImkoniyati: '',
@@ -312,6 +325,8 @@ export function yuborishUchun(h: XatlovHolati) {
       bogchaKutayotganAyollar: r(x.bogchaKutayotganAyollar),
       ishsizlikMuddatiOy: r(x.ishsizlikMuddatiOy),
       talabQilinganMablag: r(x.talabQilinganMablag),
+      chetElIshchilar: r(x.chetElIshchilar),
+      chetElOylikPul: r(x.chetElOylikPul),
       oylikDaromad: r(x.oylikDaromad),
       maktabgachaYoshdagi: r(x.maktabgachaYoshdagi),
       maktabgachaQamrovda: r(x.maktabgachaQamrovda),

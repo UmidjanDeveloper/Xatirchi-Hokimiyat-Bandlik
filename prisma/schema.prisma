@@ -243,6 +243,28 @@ model Household {
   talabQilinganMablag BigInt?
   mablagYonalishi     String[]
 
+  // ── II-B. CHET ELDA MEHNAT MIGRATSIYASI ──
+  //
+  // Xatirchi tumani uchun bu ALOHIDA bo'lim bo'lishi shart:
+  // ko'p oilaning asosiy daromadi chet eldagi a'zosidan keladi
+  // va bu raqamsiz oila ahvolini to'g'ri baholab bo'lmaydi.
+  // "Daromadi yo'q" deb belgilangan oila aslida oyiga bir necha
+  // million so'm olayotgan bo'lishi mumkin.
+
+  /// Oilada chet elda ishlayotgan a'zo bormi
+  chetElMehnati      Boolean  @default(false)
+  /// Nechta a'zo chet elda ishlaydi
+  chetElIshchilar    Int      @default(0)
+  /// Qaysi davlat(lar)da - katalogdan
+  chetElDavlatlari   String[]
+  /// Katalogda "Boshqa" tanlansa - davlat nomi qo'lda
+  chetElBoshqaDavlat String?
+  /// Oyiga oilaga yuboriladigan pul (so'mda).
+  ///
+  /// Aynan YUBORILADIGAN summa so'raladi, chet eldagi maosh
+  /// emas: oila byudjetiga kirib keladigan pul shu.
+  chetElOylikPul     BigInt?
+
   // ── III. DAROMAD ──
   oylikDaromad         BigInt?
   daromadManbalari     String[]

@@ -477,6 +477,29 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
     xt.ishsizlarSoni = 'Ишсизлар сонини киритинг (ишсиз бўлмаса 0 ёзинг)';
   }
 
+  /*
+   * ЧЕТ ЭЛДАГИ МЕҲНАТ.
+   *
+   * «Ҳа» босилган бўлса, қолган учта жавоб МАЖБУРИЙ. Акс ҳолда
+   * ҳисоботда «12 хонадондан биров чет элда ишлайди» деган рақам
+   * чиқади-ю, қайси давлат ва қанча пул экани бўш қолади — бундай
+   * маълумотдан ҳеч қандай қарор чиқмайди.
+   */
+  if (h.chetElMehnati) {
+    if (h.chetElIshchilar === '' || h.chetElIshchilar < 1) {
+      xt.chetElIshchilar = 'Чет элда ишлаётганлар сонини киритинг';
+    }
+    if (h.chetElDavlatlari.length === 0) {
+      xt.chetElDavlatlari = 'Камида битта давлатни белгиланг';
+    }
+    if (h.chetElDavlatlari.includes('Boshqa') && h.chetElBoshqaDavlat.trim().length < 3) {
+      xt.chetElBoshqaDavlat = 'Давлат номини ёзинг';
+    }
+    if (h.chetElOylikPul === '') {
+      xt.chetElOylikPul = 'Ойига юборадиган пулни киритинг (юбормаса 0 ёзинг)';
+    }
+  }
+
   // Har bir ishsiz qatorini tekshiramiz
   h.ishsizlar.forEach((p, i) => {
     const ism = ismTekshir(p.fish, 'Ф.И.Ш.');
@@ -517,7 +540,14 @@ function xatoQadami(xatolar: Record<string, string>): number {
       'bogchaKutayotganAyollar',
       'ishsizlikMuddatiOy',
     ],
-    ['talabQilinganMablag', 'oylikDaromad'],
+    [
+      'talabQilinganMablag',
+      'oylikDaromad',
+      'chetElIshchilar',
+      'chetElDavlatlari',
+      'chetElBoshqaDavlat',
+      'chetElOylikPul',
+    ],
     [
       'maktabgachaYoshdagi',
       'maktabgachaQamrovda',

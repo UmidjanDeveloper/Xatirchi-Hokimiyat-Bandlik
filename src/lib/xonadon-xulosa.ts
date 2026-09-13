@@ -1,5 +1,6 @@
 import { matnSora } from './ai';
 import {
+  CHET_EL_DAVLATI,
   CHORVA_TURI,
   DAROMAD_MANBAI,
   HUNAR_TURI,
@@ -113,6 +114,11 @@ export interface XonadonDalili {
   talabQilinganMablag: bigint | null;
   mablagYonalishi: string[];
   oylikDaromad: bigint | null;
+  chetElMehnati: boolean;
+  chetElIshchilar: number;
+  chetElDavlatlari: string[];
+  chetElBoshqaDavlat: string | null;
+  chetElOylikPul: bigint | null;
   daromadManbalari: string[];
   kambagallikSabablari: string[];
   maktabgachaYoshdagi: number;
@@ -198,20 +204,44 @@ export function dalilnomaYasa(x: XonadonDalili): string {
   if (x.ishsizlikMuddatiOy != null) s.push(`- Энг узоқ ишсизлик муддати: ${x.ishsizlikMuddatiOy} ой`);
 
   s.push('', '## Даромад');
+  /*
+   * Чет элдан келадиган пул ҲАМ шу ерга ёзилади.
+   *
+   * Акс ҳолда AI «даромади йўқ» деган хулосага келади ва қоида
+   * бўйича хулоса билан ЗИДДИЯТГА тушади: биттаси «темир
+   * дафтарга тавсия қиламан» дейди, иккинчиси демайди. Иккита
+   * хулоса бир экранда турибди — ходим қайси бирига ишонишни
+   * билмай қолади.
+   */
+  const chetElPuli = x.chetElMehnati && x.chetElOylikPul != null ? Number(x.chetElOylikPul) : 0;
   if (x.oylikDaromad != null) {
-    const d = Number(x.oylikDaromad);
-    s.push(`- Ойлик даромад: ${pul(d)}`);
-    if (x.jamiAzo > 0) {
-      s.push(`- Жон бошига: ${pul(d / x.jamiAzo)} (энг кам истеъмол харажати: ${pul(MINIMAL_ISTEMOL_SOM)})`);
-    }
+    s.push(`- Маҳаллий ойлик даромад: ${pul(Number(x.oylikDaromad))}`);
   } else {
-    s.push('- Ойлик даромад кўрсатилмаган');
+    s.push('- Маҳаллий ойлик даромад кўрсатилмаган');
+  }
+  if (chetElPuli > 0) s.push(`- Чет элдан ойига келадиган пул: ${pul(chetElPuli)}`);
+  if (x.oylikDaromad != null || chetElPuli > 0) {
+    const jami = Number(x.oylikDaromad ?? 0) + chetElPuli;
+    if (chetElPuli > 0) s.push(`- Жами ойлик даромад: ${pul(jami)}`);
+    if (x.jamiAzo > 0) {
+      s.push(`- Жон бошига: ${pul(jami / x.jamiAzo)} (энг кам истеъмол харажати: ${pul(MINIMAL_ISTEMOL_SOM)})`);
+    }
   }
   if (x.daromadManbalari.length) {
     s.push(`- Манбалари: ${x.daromadManbalari.map((v) => kirillcha(DAROMAD_MANBAI, v)).join(', ')}`);
   }
   if (x.kambagallikSabablari.length) {
     s.push(`- Ходим белгилаган сабаблар: ${x.kambagallikSabablari.map((v) => kirillcha(KAMBAGALLIK_SABABI, v)).join(', ')}`);
+  }
+
+  if (x.chetElMehnati) {
+    const davlatlar = x.chetElDavlatlari
+      .map((d) => (d === 'Boshqa' ? tozala(x.chetElBoshqaDavlat) || 'кўрсатилмаган' : kirillcha(CHET_EL_DAVLATI, d)))
+      .filter(Boolean);
+    s.push('', '## Чет элдаги меҳнат');
+    s.push(`- Чет элда ишлаётганлар: ${x.chetElIshchilar} киши`);
+    if (davlatlar.length) s.push(`- Давлатлар: ${davlatlar.join(', ')}`);
+    if (chetElPuli === 0) s.push('- Ойига юборадиган пул кўрсатилмаган');
   }
 
   if (x.ishsizlar.length) {
@@ -421,13 +451,29 @@ export function qoidaTavsiyalari(x: XonadonDalili): XonadonTavsiyasi[] {
     });
   }
 
-  if (x.oylikDaromad != null && x.jamiAzo > 0) {
-    const jonBoshiga = Number(x.oylikDaromad) / x.jamiAzo;
+  /*
+   * ЖОН БОШИГА ДАРОМАД — чет элдан келадиган пул ҲАМ қўшилади.
+   *
+   * Хонадон эгаси кўпинча ўғли Россиядан юборадиган пулни
+   * «даромад» деб ҳисобламайди: у «иш ҳақи» эмас-да. Натижада
+   * ойига 5 млн сўм олаётган оила «даромади 0» бўлиб, «темир
+   * дафтар» тавсиясини оларди — ва ҳақиқатан муҳтож оиланинг
+   * ўрнини эгалларди. Шунинг учун бу ерда иккови ЙИҒИНДИСИ
+   * олинади, тавсия матнида эса иккови алоҳида кўрсатилади:
+   * ходим рақам қаердан чиққанини кўриб турсин.
+   */
+  const chetElPuli = x.chetElMehnati && x.chetElOylikPul != null ? Number(x.chetElOylikPul) : 0;
+  if ((x.oylikDaromad != null || chetElPuli > 0) && x.jamiAzo > 0) {
+    const jamiDaromad = Number(x.oylikDaromad ?? 0) + chetElPuli;
+    const jonBoshiga = jamiDaromad / x.jamiAzo;
     if (jonBoshiga < MINIMAL_ISTEMOL_SOM) {
+      const tarkib = chetElPuli > 0
+        ? ` (маҳаллий даромад ${pul(Number(x.oylikDaromad ?? 0))} + чет элдан ${pul(chetElPuli)})`
+        : '';
       t.push({
         daraja: 'shoshilinch',
         sarlavha: 'Даромад энг кам истеъмол харажатидан паст',
-        dalil: `Жон бошига ойига ${pul(jonBoshiga)} тўғри келади — энг кам истеъмол харажати ${pul(MINIMAL_ISTEMOL_SOM)}. Оилани «темир дафтар» кўриб чиқувига киритиш ва ижтимоий нафақа ҳуқуқини текшириш.`,
+        dalil: `Жон бошига ойига ${pul(jonBoshiga)} тўғри келади${tarkib} — энг кам истеъмол харажати ${pul(MINIMAL_ISTEMOL_SOM)}. Оилани «темир дафтар» кўриб чиқувига киритиш ва ижтимоий нафақа ҳуқуқини текшириш.`,
       });
     }
   }
@@ -468,6 +514,22 @@ export function qoidaTavsiyalari(x: XonadonDalili): XonadonTavsiyasi[] {
       daraja: 'muhim',
       sarlavha: 'Боғча ўрни — ишга чиқиш шарти',
       dalil: `${x.bogchaKutayotganAyollar} аёл боғча ўрни бўлса ишлашга тайёр. Уларни бандлик навбатига қўйиш ва боғча масаласини параллел ҳал қилиш.`,
+    });
+  }
+
+  if (x.chetElMehnati) {
+    const davlatlar = x.chetElDavlatlari.length
+      ? x.chetElDavlatlari
+          .map((d) => (d === 'Boshqa' ? (x.chetElBoshqaDavlat ?? 'бошқа давлат') : kirillcha(CHET_EL_DAVLATI, d)))
+          .join(', ')
+      : 'давлат кўрсатилмаган';
+    const oylik = x.chetElOylikPul != null && Number(x.chetElOylikPul) > 0
+      ? ` Ойига оилага ${pul(Number(x.chetElOylikPul))} юборилади — бу оила даромадининг бир қисми ва режалаштиришда ҳисобга олиниши керак.`
+      : ' Пул юбориш миқдори кўрсатилмаган — уни аниқлаш керак, чунки оила даромади шунга боғлиқ.';
+    t.push({
+      daraja: 'muhim',
+      sarlavha: 'Оила аъзоси чет элда ишлайди',
+      dalil: `${x.chetElIshchilar} киши ${davlatlar}да меҳнат қилмоқда.${oylik} Қайтиб келганда иш билан таъминлаш учун бандлик маркази уларни ҳисобга олиб борсин: мигрант қайтгач иш қидиради, лекин ҳеч қайси рўйхатда бўлмайди.`,
     });
   }
 
@@ -654,6 +716,11 @@ export function xonadonDalili(x: XonadonYozuvi): XonadonDalili {
     talabQilinganMablag: x.talabQilinganMablag,
     mablagYonalishi: x.mablagYonalishi,
     oylikDaromad: x.oylikDaromad,
+    chetElMehnati: x.chetElMehnati,
+    chetElIshchilar: x.chetElIshchilar,
+    chetElDavlatlari: x.chetElDavlatlari,
+    chetElBoshqaDavlat: x.chetElBoshqaDavlat,
+    chetElOylikPul: x.chetElOylikPul,
     daromadManbalari: x.daromadManbalari,
     kambagallikSabablari: x.kambagallikSabablari,
     maktabgachaYoshdagi: x.maktabgachaYoshdagi,

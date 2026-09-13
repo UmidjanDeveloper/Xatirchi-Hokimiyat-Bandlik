@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { jurnal } from '@/lib/api-auth';
 import { formatDate, formatPhone } from '@/lib/utils';
 import {
+  CHET_EL_DAVLATI,
   DAROMAD_MANBAI,
   ICHIMLIK_SUVI,
   ISH_TURI_ISTAGI,
@@ -216,6 +217,31 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
           qiymat={q(x.mablagYonalishi.map((y) => tr(kirillcha(MABLAG_YONALISHI, y))))}
         />
       </Bolim>
+
+      {/* ── II-Б ── */}
+      {x.chetElMehnati && (
+        <Bolim raqam="II-Б" sarlavha={tr("Чет элдаги меҳнат")}>
+          <Qator nomi={tr("Чет элда ишлаётганлар")} qiymat={q(x.chetElIshchilar)} />
+          <Qator nomi={tr("Ойига юборадиган пул")} qiymat={q(x.chetElOylikPul)} />
+          <div className="sm:col-span-2">
+            <Qator
+              nomi={tr("Давлат(лар)")}
+              qiymat={q(
+                x.chetElDavlatlari.map((y) =>
+                  /*
+                    «Бошқа» танланган бўлса, каталогдаги умумий сўз ўрнига
+                    ходим ёзган давлат номи кўринади — акс ҳолда карточкада
+                    «Бошқа давлат» деб турса, уни очиб ҳам фойда йўқ.
+                  */
+                  y === 'Boshqa' && x.chetElBoshqaDavlat
+                    ? x.chetElBoshqaDavlat
+                    : tr(kirillcha(CHET_EL_DAVLATI, y))
+                )
+              )}
+            />
+          </div>
+        </Bolim>
+      )}
 
       {/* ── III ── */}
       <Bolim raqam="III" sarlavha={tr("Даромад")}>

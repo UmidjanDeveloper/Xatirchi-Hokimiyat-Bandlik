@@ -35,6 +35,11 @@ const ASOS: XonadonDalili = {
   talabQilinganMablag: null,
   mablagYonalishi: [],
   oylikDaromad: BigInt(6_000_000),
+  chetElMehnati: false,
+  chetElIshchilar: 0,
+  chetElDavlatlari: [],
+  chetElBoshqaDavlat: null,
+  chetElOylikPul: null,
   daromadManbalari: ['Ish haqi'],
   kambagallikSabablari: [],
   maktabgachaYoshdagi: 1,
@@ -276,6 +281,121 @@ const YAXSHI = JSON.stringify({
   holat: 'Оила оғир аҳволда.',
   tavsiyalar: [{ daraja: 'shoshilinch', sarlavha: 'Ҳужжат', dalil: 'Расмийлаштириш керак.' }],
 });
+
+/* ── Чет элдаги меҳнат ── */
+SINOVLAR.push(
+  {
+    nomi: 'Чет элда ишловчи аъзо — тавсия чиқади',
+    tekshir: () =>
+      bor(
+        x({ chetElMehnati: true, chetElIshchilar: 2, chetElDavlatlari: ['Rossiya'] }),
+        'Оила аъзоси чет элда ишлайди'
+      ),
+  },
+  {
+    nomi: 'Чет элда ишловчи йўқ — тавсия чиқмайди',
+    tekshir: () => !bor(x({}), 'Оила аъзоси чет элда ишлайди'),
+  },
+  {
+    nomi: '«Бошқа давлат» тавсияда каталог сўзи эмас, ходим ёзган ном билан чиқади',
+    tekshir: () => {
+      const t = qoidaTavsiyalari(
+        x({
+          chetElMehnati: true,
+          chetElIshchilar: 1,
+          chetElDavlatlari: ['Boshqa'],
+          chetElBoshqaDavlat: 'Хитой',
+        })
+      ).find((y) => y.sarlavha === 'Оила аъзоси чет элда ишлайди');
+      return !!t && t.dalil.includes('Хитой') && !t.dalil.includes('Бошқа давлат');
+    },
+  },
+  {
+    /*
+     * Энг муҳим синов: чет элдан келадиган пул жон бошига
+     * даромадга ҚЎШИЛАДИ. Бу қўшилмаса, ойига 9 млн олаётган
+     * оила «темир дафтар»га тавсия қилинарди.
+     */
+    nomi: 'Чет элдан келадиган пул жон бошига даромадга қўшилади',
+    tekshir: () =>
+      !bor(
+        x({
+          jamiAzo: 4,
+          oylikDaromad: BigInt(1_000_000),
+          chetElMehnati: true,
+          chetElIshchilar: 1,
+          chetElOylikPul: BigInt(9_000_000),
+        }),
+        'Даромад энг кам истеъмол харажатидан паст'
+      ),
+  },
+  {
+    nomi: 'Чет эл пули бўлмаса, паст даромад тавсияси барибир чиқади',
+    tekshir: () =>
+      bor(
+        x({ jamiAzo: 4, oylikDaromad: BigInt(1_000_000) }),
+        'Даромад энг кам истеъмол харажатидан паст'
+      ),
+  },
+  {
+    nomi: 'Паст даромад тавсиясида икки манба алоҳида кўрсатилади',
+    tekshir: () => {
+      const t = qoidaTavsiyalari(
+        x({
+          jamiAzo: 10,
+          oylikDaromad: BigInt(1_000_000),
+          chetElMehnati: true,
+          chetElIshchilar: 1,
+          chetElOylikPul: BigInt(2_000_000),
+        })
+      ).find((y) => y.sarlavha === 'Даромад энг кам истеъмол харажатидан паст');
+      return !!t && t.dalil.includes('чет элдан');
+    },
+  },
+  {
+    nomi: 'Далилномада чет эл пули ва жами даромад кўрсатилади',
+    tekshir: () => {
+      const m = dalilnomaYasa(
+        x({
+          jamiAzo: 4,
+          oylikDaromad: BigInt(1_000_000),
+          chetElMehnati: true,
+          chetElIshchilar: 1,
+          chetElDavlatlari: ['Janubiy Koreya'],
+          chetElOylikPul: BigInt(9_000_000),
+        })
+      );
+      return (
+        m.includes('Чет элдан ойига келадиган пул') &&
+        m.includes('Жами ойлик даромад') &&
+        m.includes('Жанубий Корея')
+      );
+    },
+  },
+  {
+    nomi: 'Чет элда ишламайдиган оила далилномасида бу бўлим йўқ',
+    tekshir: () => !dalilnomaYasa(x({})).includes('Чет элдаги меҳнат'),
+  },
+  {
+    /*
+     * «Даромад кўрсатилмаган, лекин чет элдан пул келади» —
+     * илгари бу ҳолат УМУМАН текширилмасди, чунки шарт
+     * `oylikDaromad != null` эди.
+     */
+    nomi: 'Маҳаллий даромад кўрсатилмаса ҳам, чет эл пули бўйича ҳисоб юритилади',
+    tekshir: () =>
+      bor(
+        x({
+          jamiAzo: 8,
+          oylikDaromad: null,
+          chetElMehnati: true,
+          chetElIshchilar: 1,
+          chetElOylikPul: BigInt(2_000_000),
+        }),
+        'Даромад энг кам истеъмол харажатидан паст'
+      ),
+  }
+);
 
 SINOVLAR.push(
   { nomi: 'Тўғри JSON қабул қилинади', tekshir: () => javobniTekshir(YAXSHI) !== null },

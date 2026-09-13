@@ -4,6 +4,7 @@ import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 
 import { Plus, Trash2, UserPlus, Users } from 'lucide-react';
 import {
+  CHET_EL_DAVLATI,
   CHORVA_TURI,
   DAROMAD_MANBAI,
   GAZ_TURI,
@@ -357,6 +358,89 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
                 ozgardi={(q) => yangila('mablagYonalishi', q)}
               />
             </div>
+          </>
+        )}
+      </Bolim>
+
+      {/*
+        ЧЕТ ЭЛДАГИ МЕҲНАТ — алоҳида бўлим.
+        Бу савол «Даромад» бўлимидан ОЛДИН турибди, чунки ундаги
+        «ойлик даромад» рақами шу ердаги пулни ҳам ўз ичига олиши
+        керак. Акс ҳолда хонадон «даромади йўқ» бўлиб кўринади-ю,
+        аслида ҳар ой Россиядан бир неча миллион сўм келиб туради.
+      */}
+      <Bolim
+        raqam="II-Б"
+        sarlavha={tr("Чет элдаги меҳнат ва пул ўтказмаси")}
+        izoh={tr("Оила аъзоси чет элда ишласа, ундан келадиган пул ҳам оила даромади ҳисобланади.")}
+      >
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq={tr("Оила аъзоларидан бирортаси ҳозир чет элда ишлайдими")}
+            qiymat={h.chetElMehnati}
+            ozgardi={(q) => {
+              yangila('chetElMehnati', q);
+              // «Йўқ»га қайтарилса, олдин киритилган жавоблар тозаланади:
+              // акс ҳолда кўринмайдиган майдонлар базага кетиб қолади.
+              if (!q) {
+                yangila('chetElIshchilar', '');
+                yangila('chetElDavlatlari', []);
+                yangila('chetElBoshqaDavlat', '');
+                yangila('chetElOylikPul', '');
+              }
+            }}
+          />
+        </ToliqKeng>
+
+        {h.chetElMehnati && (
+          <>
+            <RaqamMaydoni
+              yorliq={tr("Чет элда ишлаётганлар сони")}
+              majburiy
+              min={1}
+              max={30}
+              qiymat={h.chetElIshchilar}
+              ozgardi={(q) => yangila('chetElIshchilar', q)}
+              xato={x(xatolar, 'chetElIshchilar')}
+              birlik={tr("киши")}
+            />
+
+            <PulMaydoni
+              yorliq={tr("Ойига оилага юборадиган пул")}
+              izoh={tr("Тахминий миқдор — сўмда. Доллар бўлса, жорий курс бўйича ҳисобланади.")}
+              majburiy
+              qiymat={h.chetElOylikPul}
+              ozgardi={(q) => yangila('chetElOylikPul', q)}
+              xato={x(xatolar, 'chetElOylikPul')}
+            />
+
+            <ToliqKeng>
+              <KopTanlovMaydoni
+                yorliq={tr("Қайси давлат(лар)да")}
+                izoh={tr("Бир нечта аъзо турли давлатда бўлса, ҳаммасини белгиланг.")}
+                majburiy
+                variantlar={CHET_EL_DAVLATI}
+                qiymatlar={h.chetElDavlatlari}
+                ozgardi={(q) => {
+                  yangila('chetElDavlatlari', q);
+                  if (!q.includes('Boshqa')) yangila('chetElBoshqaDavlat', '');
+                }}
+                xato={x(xatolar, 'chetElDavlatlari')}
+              />
+            </ToliqKeng>
+
+            {h.chetElDavlatlari.includes('Boshqa') && (
+              <ToliqKeng>
+                <MatnMaydoni
+                  yorliq={tr("«Бошқа давлат» — қайси давлат")}
+                  izoh={tr("Рўйхатда йўқ давлат номини ёзинг.")}
+                  majburiy
+                  qiymat={h.chetElBoshqaDavlat}
+                  ozgardi={(q) => yangila('chetElBoshqaDavlat', q)}
+                  xato={x(xatolar, 'chetElBoshqaDavlat')}
+                />
+              </ToliqKeng>
+            )}
           </>
         )}
       </Bolim>

@@ -25,6 +25,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import {
+  CHET_EL_DAVLATI,
   CHORVA_TURI,
   DAROMAD_MANBAI,
   GAZ_TURI,
@@ -192,6 +193,11 @@ export async function xonadonBolimlari(
     daromad,
     daromadManbalari,
     kambagallikSabablari,
+    // Chet eldagi mehnat
+    chetElXonadon,
+    chetElJamlar,
+    chetElDavlatlari,
+    chetElBoshqaDavlatlar,
   ] = await Promise.all([
     prisma.household.aggregate({
       where: filtr,
@@ -268,6 +274,26 @@ export async function xonadonBolimlari(
     }),
     massivSanoq(filtr, 'daromadManbalari', DAROMAD_MANBAI),
     massivSanoq(filtr, 'kambagallikSabablari', KAMBAGALLIK_SABABI),
+
+    prisma.household.count({ where: { ...filtr, chetElMehnati: true } }),
+    prisma.household.aggregate({
+      where: { ...filtr, chetElMehnati: true },
+      _sum: { chetElIshchilar: true, chetElOylikPul: true },
+      _avg: { chetElOylikPul: true },
+      _count: { chetElOylikPul: true },
+    }),
+    massivSanoq({ ...filtr, chetElMehnati: true }, 'chetElDavlatlari', CHET_EL_DAVLATI),
+    /*
+     * «Бошқа давлат» — эркин матн. Каталогда йўқ давлат қайта-қайта
+     * ёзилса, у ердан янги йўналиш чиқади (масалан, Хитой ёки
+     * Чехия) ва каталогга қўшиш керак бўлади. Шунинг учун улар
+     * ҳам гуруҳланиб, ҳисоботда алоҳида кўринади.
+     */
+    prisma.household.groupBy({
+      by: ['chetElBoshqaDavlat'],
+      where: { ...filtr, chetElMehnati: true, chetElBoshqaDavlat: { not: null } },
+      _count: true,
+    }),
   ]);
 
   const bolimlar: Bolim[] = [];
@@ -432,6 +458,104 @@ export async function xonadonBolimlari(
               sarlavha: 'Камбағаллик сабаблари — хонадон сони',
               nomlar: kambagallikSabablari.map((x) => x.nomi),
               qatorlar: [{ nomi: 'Хонадон', qiymatlar: kambagallikSabablari.map((x) => x.soni) }],
+            },
+          ]
+        : undefined,
+    });
+  }
+
+  /* ── Chet eldagi mehnat va pul o'tkazmasi ─────────────────── */
+  /*
+   * Бу бўлим нима учун керак.
+   *
+   * Хатловда «ойлик даромад» деб ёзилган рақам кўпинча ФАҚАТ
+   * маҳаллий даромадни кўрсатади: оила бошлиғи Россиядаги ўғли
+   * юборадиган пулни «даромад» деб ҳисобламайди. Натижада
+   * хонадон энг муҳтож рўйхатига тушиб қолади ва ҳақиқатан
+   * муҳтож оиланинг ўрнини эгаллайди.
+   *
+   * Иккинчи томони — қайтиш. Чет элдан қайтган киши иш
+   * қидиради, лекин у бандлик рўйхатида йўқ. Қайси давлатда
+   * нечта одам борлигини билган марказ, курс ёпилгани ёки
+   * чегара ёпилгани ҳақидаги хабарни эшитганда, неча кишига
+   * иш кераклигини ОЛДИНДАН билади.
+   */
+  if (chetElXonadon > 0) {
+    const ishchilar = chetElJamlar._sum.chetElIshchilar ?? 0;
+    const jamiPul = raqamga(chetElJamlar._sum.chetElOylikPul as unknown as bigint | null);
+    const ortachaPul = raqamga(chetElJamlar._avg.chetElOylikPul as unknown as bigint | null);
+    const pulKorsatgan = chetElJamlar._count.chetElOylikPul ?? 0;
+
+    const jadvallar: Jadval[] = [];
+
+    const davlatlar = sanoqJadvali(
+      'Қайси давлатларда ишлашмоқда',
+      'Битта хонадондан бир неча давлатга кетган бўлиши мумкин, шунинг учун устунлар йиғиндиси хонадон сонидан кўп бўлиши мумкин',
+      'Давлат',
+      chetElDavlatlari,
+      chetElXonadon
+    );
+    if (davlatlar) jadvallar.push(davlatlar);
+
+    /* Каталогда йўқ, ходим қўлда ёзган давлатлар */
+    const boshqalar = chetElBoshqaDavlatlar
+      .map((g) => ({ nomi: (g.chetElBoshqaDavlat ?? '').trim(), soni: g._count }))
+      .filter((x) => x.nomi.length > 0)
+      .sort((a, b) => b.soni - a.soni);
+
+    if (boshqalar.length) {
+      jadvallar.push({
+        sarlavha: '«Бошқа давлат» деб ёзилганлар',
+        izoh: 'Рўйхатда йўқ давлатлар. Биттаси такрорланаверса, уни каталогга қўшиш керак.',
+        ustunlar: [
+          { sarlavha: 'Давлат' },
+          { sarlavha: 'Хонадон', raqamli: true, eni: 26 },
+        ],
+        qatorlar: boshqalar.map((x) => ({ nomi: x.nomi, qiymatlar: [son(x.soni)] })),
+      });
+    }
+
+    bolimlar.push({
+      kalit: 'chet-el',
+      sarlavha: 'Чет элдаги меҳнат ва пул ўтказмаси',
+      varaqNomi: 'Чет элдаги меҳнат',
+      kirish:
+        'Чет элда ишлаётган оила аъзоси юборадиган пул ҳам оила даромади. Бу бўлимсиз хонадон «даромади йўқ» бўлиб кўринади ва энг муҳтожлар рўйхатига нотўғри тушади.',
+      korsatkichlar: [
+        {
+          nomi: 'Аъзоси чет элда ишлайдиган хонадон',
+          qiymat: son(chetElXonadon),
+          izoh: `хатловдан ўтганларнинг ${foiz(foizi(chetElXonadon, jamiXonadon))}и`,
+          yonalish: 'betaraf',
+        },
+        {
+          nomi: 'Чет элдаги ишчилар',
+          qiymat: son(ishchilar),
+          izoh: `ҳар хонадонда ўртача ${String(Math.round((ishchilar / chetElXonadon) * 10) / 10).replace('.', ',')} киши`,
+        },
+        ...(pulKorsatgan > 0
+          ? [
+              {
+                nomi: 'Ойига келадиган пул',
+                qiymat: `${pul(jamiPul)} сўм`,
+                izoh: `${son(pulKorsatgan)} хонадон кўрсатган`,
+              },
+              {
+                nomi: 'Хонадонга ўртача',
+                qiymat: `${pul(ortachaPul)} сўм`,
+                izoh: 'ойига',
+              },
+            ]
+          : []),
+      ],
+      jadvallar,
+      diagrammalar: chetElDavlatlari.length
+        ? [
+            {
+              turi: 'gorizontal',
+              sarlavha: 'Давлатлар кесимида — хонадон сони',
+              nomlar: chetElDavlatlari.map((x) => x.nomi),
+              qatorlar: [{ nomi: 'Хонадон', qiymatlar: chetElDavlatlari.map((x) => x.soni) }],
             },
           ]
         : undefined,

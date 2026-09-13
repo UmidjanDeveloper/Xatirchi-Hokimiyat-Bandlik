@@ -37,6 +37,7 @@ import {
   OILADAGI_ORNI,
   OILAVIY_HOLAT,
   BANDLIK_TAKLIFI,
+  CHET_EL_DAVLATI,
   UY_HOLATI,
   qiymatlar,
 } from './constants';
@@ -171,6 +172,13 @@ export const XonadonSxemasi = z.object({
   moliyaTuri: koptanlov(MOLIYA_TURI),
   talabQilinganMablag: summa,
   mablagYonalishi: koptanlov(MABLAG_YONALISHI),
+
+  // II-B. Chet elda mehnat migratsiyasi
+  chetElMehnati: z.boolean().default(false),
+  chetElIshchilar: son(30),
+  chetElDavlatlari: koptanlov(CHET_EL_DAVLATI),
+  chetElBoshqaDavlat: matn(100),
+  chetElOylikPul: summa,
 
   // III. Daromad
   oylikDaromad: summa,

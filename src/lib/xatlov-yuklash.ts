@@ -60,6 +60,12 @@ export async function xatlovniYukla(
     talabQilinganMablag: p(x.talabQilinganMablag),
     mablagYonalishi: x.mablagYonalishi,
 
+    chetElMehnati: x.chetElMehnati,
+    chetElIshchilar: s(x.chetElIshchilar),
+    chetElDavlatlari: x.chetElDavlatlari,
+    chetElBoshqaDavlat: t(x.chetElBoshqaDavlat),
+    chetElOylikPul: p(x.chetElOylikPul),
+
     oylikDaromad: p(x.oylikDaromad),
     daromadManbalari: x.daromadManbalari,
     daromadImkoniyati: t(x.daromadImkoniyati),
