@@ -114,6 +114,24 @@ function javobniTekshir(xom: string): { holat: string; tavsiyalar: HisobotTavsiy
   if (typeof d.holat !== 'string' || !d.holat.trim()) return null;
   if (!Array.isArray(d.tavsiyalar)) return null;
 
+  /*
+   * ЖАВОБ КИРИЛЛДА БЎЛИШИ ШАРТ.
+   *
+   * Кўрсатмада «фақат кирилл ёзувидаги ўзбек тилида» дейилган,
+   * аммо очиқ моделлар (Llama ва ҳ.к.) буни ҳар доим ҳам
+   * бажармайди — инглизча ёки лотинча жавоб қайтариши мумкин.
+   *
+   * Бундай матнни қабул қилиб бўлмайди: бутун илова кириллда
+   * сақлайди ва керак бўлганда лотинга ЎГИРАДИ (`lotinga()`).
+   * Инглизча матн эса иккала алифбода ҳам инглизча бўлиб
+   * қолаверади ва ҳисоботни бузади.
+   *
+   * Шунинг учун кириллсиз жавоб РАД ЭТИЛАДИ ва қоида бўйича
+   * хулоса ишлатилади — у ҳар доим тўғри ёзувда.
+   */
+  if (!/[\u0400-\u04FF]/.test(d.holat)) return null;
+
+
   const darajalar = new Set(['shoshilinch', 'muhim', 'imkoniyat']);
   const tavsiyalar: HisobotTavsiyasi[] = [];
 

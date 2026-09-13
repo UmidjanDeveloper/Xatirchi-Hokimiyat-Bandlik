@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import {
-  geminiModellari,
+  mavjudModellar,
   joriyModel,
   joriyProvayder,
   kalitNiqobi,
@@ -42,15 +42,14 @@ export async function POST() {
     return NextResponse.json({
       sozlangan: false,
       xabar:
-        'AI калити созланмаган. Vercel → Settings → Environment Variables да GEMINI_API_KEY ёки ANTHROPIC_API_KEY қўшинг ва қайта деплой қилинг.',
+        'Vercel → Settings → Environment Variables да қуйидагилардан БИТТАСИНИ қўшинг ва қайта деплой қилинг: GROQ_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY ёки ANTHROPIC_API_KEY.',
     });
   }
 
   const model = joriyModel(provayder);
 
-  // Gemini да мавжуд моделлар рўйхати — «модел топилмади» да керак
-  const modellar =
-    provayder === 'gemini' ? (await geminiModellari()).modellar : [];
+  // Мавжуд моделлар рўйхати — «модел топилмади» хатосида керак
+  const { modellar } = await mavjudModellar();
 
   const natija = await matnSoraBatafsil({
     tizim:

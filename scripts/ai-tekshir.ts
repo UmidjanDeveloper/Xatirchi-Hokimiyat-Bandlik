@@ -15,7 +15,7 @@
  * ============================================================
  */
 import { envYukla } from './env-yukla';
-import { geminiModellari, joriyModel, joriyProvayder, kalitNiqobi, matnSoraBatafsil } from '../src/lib/ai';
+import { joriyModel, joriyProvayder, kalitNiqobi, mavjudModellar, matnSoraBatafsil } from '../src/lib/ai';
 
 envYukla();
 
@@ -24,7 +24,7 @@ const XATO = '✗';
 const OGOH = '!';
 
 async function modellarniKorsat(): Promise<void> {
-  const { modellar, xato } = await geminiModellari();
+  const { modellar, xato } = await mavjudModellar();
   if (xato) {
     console.log(`  ${OGOH}  Модел рўйхатини олиб бўлмади: ${xato}`);
     return;
@@ -34,10 +34,13 @@ async function modellarniKorsat(): Promise<void> {
   for (const n of modellar.slice(0, 12)) console.log(`       ${n}`);
   if (modellar.length > 12) console.log(`       … яна ${modellar.length - 12} та`);
 
-  const joriy = joriyModel('gemini');
+  const p = joriyProvayder();
+  if (!p) return;
+  const joriy = joriyModel(p);
   if (modellar.length && !modellar.includes(joriy)) {
+    const ozgaruvchi = { groq: 'GROQ_MODEL', openai: 'OPENAI_MODEL', gemini: 'GEMINI_MODEL', anthropic: 'ANTHROPIC_MODEL' }[p];
     console.log(`\n  ${OGOH}  Созланган модел «${joriy}» бу рўйхатда ЙЎҚ.`);
-    console.log(`       GEMINI_MODEL="${modellar[0]}" деб қўйинг.`);
+    console.log(`       ${ozgaruvchi}="${modellar[0]}" деб қўйинг.`);
   }
 }
 
@@ -49,7 +52,9 @@ async function main() {
   if (!provayder) {
     console.log(`  ${XATO}  Калит топилмади.\n`);
     console.log('     Қуйидагилардан БИТТАСИНИ қўйинг:\n');
-    console.log('       GEMINI_API_KEY="..."      — Google Gemini');
+    console.log('       GROQ_API_KEY="gsk_..."    — Groq (текин даражаси бор)');
+    console.log('       OPENAI_API_KEY="sk-..."   — OpenAI (пуллик)');
+    console.log('       GEMINI_API_KEY="AIza..."  — Google Gemini');
     console.log('       ANTHROPIC_API_KEY="..."   — Anthropic Claude\n');
     console.log('     Маҳаллий синов учун: лойиҳа илдизидаги .env файлига.');
     console.log('     Ишлаб турган сайт учун: Vercel → Settings → Environment Variables.\n');
@@ -64,7 +69,7 @@ async function main() {
 
   console.log(`  ${OK}  Калит:     ${kalitNiqobi()}\n`);
 
-  if (provayder === 'gemini') {
+  if (provayder !== 'anthropic') {
     await modellarniKorsat();
     console.log('');
   }
@@ -85,10 +90,12 @@ async function main() {
     console.log(`     Сабаби: ${natija.xato ?? 'номаълум'}\n`);
     if (/401|403|API_KEY|API key/i.test(natija.xato ?? '')) {
       console.log('     → Калит нотўғри ёки фаоллаштирилмаган.');
-      console.log('       Gemini учун: https://aistudio.google.com/apikey\n');
+      console.log('       Groq:   https://console.groq.com/keys');
+      console.log('       OpenAI: https://platform.openai.com/api-keys');
+      console.log('       Gemini: https://aistudio.google.com/apikey\n');
     } else if (/404|not found/i.test(natija.xato ?? '')) {
-      console.log(`     → «${model}» модели топилмади. Юқоридаги рўйхатдан танланг`);
-      console.log('       ва GEMINI_MODEL ўзгарувчисига ёзинг.\n');
+      console.log(`     → «${model}» модели топилмади. Юқоридаги рўйхатдан танланг ва`);
+      console.log(`       ${{ groq: 'GROQ_MODEL', openai: 'OPENAI_MODEL', gemini: 'GEMINI_MODEL', anthropic: 'ANTHROPIC_MODEL' }[provayder]} ўзгарувчисига ёзинг.\n`);
     } else if (/429|quota|RESOURCE_EXHAUSTED/i.test(natija.xato ?? '')) {
       console.log('     → Кунлик текин лимит тугаган. Эртага қайта уриниб кўринг.\n');
     }

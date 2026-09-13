@@ -311,6 +311,26 @@ SINOVLAR.push(
     },
   },
   {
+    nomi: 'КИРИЛЛСИЗ жавоб рад этилади (очиқ моделлар учун муҳим)',
+    tekshir: () =>
+      javobniTekshir(
+        JSON.stringify({
+          holat: 'The family is in a difficult situation.',
+          tavsiyalar: [{ daraja: 'muhim', sarlavha: 'Documents', dalil: 'Fix them.' }],
+        })
+      ) === null,
+  },
+  {
+    nomi: 'Лотин ўзбекча жавоб ҳам рад этилади',
+    tekshir: () =>
+      javobniTekshir(
+        JSON.stringify({
+          holat: 'Oila ogʻir ahvolda, hujjatlari toʻliq emas.',
+          tavsiyalar: [{ daraja: 'muhim', sarlavha: 'Hujjat', dalil: 'Rasmiylashtirish kerak.' }],
+        })
+      ) === null,
+  },
+  {
     nomi: 'Тавсиялар шошилинчдан бошлаб тартибланади',
     tekshir: () => {
       const d = javobniTekshir(

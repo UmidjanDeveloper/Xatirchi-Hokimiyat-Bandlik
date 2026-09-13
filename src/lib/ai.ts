@@ -33,7 +33,7 @@
  * ============================================================
  */
 
-export type Provayder = 'gemini' | 'anthropic';
+export type Provayder = 'groq' | 'openai' | 'gemini' | 'anthropic';
 
 /** Жавобни кутиш муддати — ошса қоидага тушамиз */
 const KUTISH_MS = 20_000;
@@ -46,6 +46,8 @@ const KUTISH_MS = 20_000;
  * тегиш шарт эмас.
  */
 const ODATIY_MODEL: Record<Provayder, string> = {
+  groq: 'llama-3.3-70b-versatile',
+  openai: 'gpt-4o-mini',
   gemini: 'gemini-2.5-flash',
   anthropic: 'claude-sonnet-5',
 };
@@ -60,38 +62,85 @@ export interface Sorov {
 }
 
 /** Созланган провайдер — ҳеч бири бўлмаса `null` */
-export function joriyProvayder(): Provayder | null {
-  const tanlangan = process.env.AI_PROVAYDER?.trim().toLowerCase();
-  if (tanlangan === 'gemini') return process.env.GEMINI_API_KEY ? 'gemini' : null;
-  if (tanlangan === 'anthropic') return process.env.ANTHROPIC_API_KEY ? 'anthropic' : null;
+/** Ҳар провайдернинг калит ўзгарувчиси */
+const KALIT_NOMI: Record<Provayder, string> = {
+  groq: 'GROQ_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+};
 
-  if (process.env.GEMINI_API_KEY) return 'gemini';
-  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
+/** Провайдернинг калити — созланмаган бўлса `null` */
+function kalitOl(p: Provayder): string | null {
+  return process.env[KALIT_NOMI[p]]?.trim() || null;
+}
+
+export function joriyProvayder(): Provayder | null {
+  const tanlangan = process.env.AI_PROVAYDER?.trim().toLowerCase() as Provayder | undefined;
+  if (tanlangan && tanlangan in KALIT_NOMI) {
+    return kalitOl(tanlangan) ? tanlangan : null;
+  }
+
+  // Аниқ танланмаган бўлса — топилганининг биринчиси
+  for (const p of ['groq', 'openai', 'gemini', 'anthropic'] as Provayder[]) {
+    if (kalitOl(p)) return p;
+  }
   return null;
 }
 
 /** Провайдернинг модели */
 export function joriyModel(p: Provayder): string {
-  const berilgan = p === 'gemini' ? process.env.GEMINI_MODEL : process.env.ANTHROPIC_MODEL;
-  return berilgan?.trim() || ODATIY_MODEL[p];
+  const nomi = {
+    groq: 'GROQ_MODEL',
+    openai: 'OPENAI_MODEL',
+    gemini: 'GEMINI_MODEL',
+    anthropic: 'ANTHROPIC_MODEL',
+  }[p];
+  return process.env[nomi]?.trim() || ODATIY_MODEL[p];
 }
 
 /**
- * Калитга очиқ Gemini моделлари рўйхати.
+ * Калитга очиқ моделлар рўйхати.
  *
  * Модел номлари вақт ўтиши билан ўзгаради ва текин даражадаги
  * калитга ҳамма модел очиқ бўлмайди. «Модел топилмади» хатосига
  * тушганда, тахмин қилиш ўрнига ШУ рўйхатдан танлаш керак.
+ *
+ * Anthropic да бундай рўйхат керак эмас — у ерда моделлар
+ * ҳужжатда аниқ ёзилган ва калитга қараб ўзгармайди.
  */
-export async function geminiModellari(): Promise<{ modellar: string[]; xato?: string }> {
-  const kalit = process.env.GEMINI_API_KEY;
-  if (!kalit) return { modellar: [], xato: 'GEMINI_API_KEY sozlanmagan' };
+export async function mavjudModellar(): Promise<{ modellar: string[]; xato?: string }> {
+  const p = joriyProvayder();
+  if (!p) return { modellar: [], xato: 'AI kaliti sozlanmagan' };
+  if (p === 'anthropic') return { modellar: [] };
+
+  const kalit = kalitOl(p) as string;
 
   try {
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
-      headers: { 'x-goog-api-key': kalit },
-    });
+    const r = OPENAI_USLUBI[p]
+      ? await fetch(`${OPENAI_USLUBI[p]}/models`, {
+          headers: { authorization: `Bearer ${kalit}` },
+        })
+      : await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+          headers: { 'x-goog-api-key': kalit },
+        });
+
     if (!r.ok) return { modellar: [], xato: `${r.status}: ${await xatoMatni(r)}` };
+
+    if (OPENAI_USLUBI[p]) {
+      const d = (await r.json()) as { data?: { id?: string }[] };
+      const modellar = (d.data ?? [])
+        .map((m) => m.id ?? '')
+        .filter(Boolean)
+        /*
+         * Овоз, расм ва ўлчов моделлари (whisper, tts, dall-e,
+         * embedding...) матн сўровига ярамайди — рўйхатда
+         * кўрсатиш чалғитарди.
+         */
+        .filter((n) => !/whisper|tts|guard|playai|dall-e|embedding|moderation|audio|image/i.test(n))
+        .sort();
+      return { modellar };
+    }
 
     const d = (await r.json()) as {
       models?: { name?: string; supportedGenerationMethods?: string[] }[];
@@ -118,7 +167,7 @@ export async function geminiModellari(): Promise<{ modellar: string[]; xato?: st
 export function kalitNiqobi(): string | null {
   const p = joriyProvayder();
   if (!p) return null;
-  const k = (p === 'gemini' ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY) ?? '';
+  const k = kalitOl(p) ?? '';
   if (k.length < 12) return `${'*'.repeat(k.length)} (${k.length} belgi)`;
   return `${k.slice(0, 4)}…${k.slice(-4)} (${k.length} belgi)`;
 }
@@ -193,6 +242,67 @@ async function geminiSora(kalit: string, s: Sorov, signal: AbortSignal): Promise
   return { matn };
 }
 
+/** OpenAI услубидаги провайдерларнинг манзили */
+const OPENAI_USLUBI: Partial<Record<Provayder, string>> = {
+  groq: 'https://api.groq.com/openai/v1',
+  openai: 'https://api.openai.com/v1',
+};
+
+/**
+ * OpenAI билан мос интерфейс — Groq ҳам, OpenAI нинг ўзи ҳам.
+ *
+ * Иккиси бир хил сўров шаклини қабул қилади, фақат манзил
+ * фарқли. Шунинг учун битта функция иккисига ҳам хизмат
+ * қилади — алоҳида ёзиш такрор бўларди.
+ *
+ * `response_format: json_object` ЮБОРИЛМАЙДИ: Groq даги очиқ
+ * моделларнинг ҳаммаси уни қўллаб-қувватламайди ва қўллаб-
+ * қувватламагани 400 хатоси билан рад этади. Кўрсатма матнида
+ * «фақат JSON» деб ёзилган, жавобни текширадиган
+ * `javobniTekshir()` эса ```json блокини ҳам оча олади —
+ * шунинг учун қўшимча параметрсиз ҳам ишлайверади.
+ */
+async function openAiUslubida(
+  p: Provayder,
+  kalit: string,
+  s: Sorov,
+  signal: AbortSignal
+): Promise<SorovNatijasi> {
+  const nomi = p === 'groq' ? 'Groq' : 'OpenAI';
+  const javob = await fetch(`${OPENAI_USLUBI[p]}/chat/completions`, {
+    method: 'POST',
+    signal,
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${kalit}` },
+    body: JSON.stringify({
+      model: joriyModel(p),
+      max_tokens: s.maxTokens ?? 2000,
+      temperature: 0.3,
+      messages: [
+        { role: 'system', content: s.tizim },
+        { role: 'user', content: s.savol },
+      ],
+    }),
+  });
+
+  if (!javob.ok) {
+    return { matn: null, xato: `${nomi} ${javob.status}: ${await xatoMatni(javob)}` };
+  }
+
+  const d = (await javob.json()) as {
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
+  };
+  const tanlov = d.choices?.[0];
+  const matn = tanlov?.message?.content ?? '';
+
+  if (!matn.trim()) {
+    return {
+      matn: null,
+      xato: `${nomi} bo‘sh javob qaytardi (finish_reason: ${tanlov?.finish_reason ?? 'noma’lum'})`,
+    };
+  }
+  return { matn };
+}
+
 async function anthropicSora(kalit: string, s: Sorov, signal: AbortSignal): Promise<SorovNatijasi> {
   const javob = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -233,9 +343,12 @@ export async function matnSoraBatafsil(s: Sorov): Promise<SorovNatijasi> {
   const soat = setTimeout(() => toxtatgich.abort(), KUTISH_MS);
 
   try {
-    return provayder === 'gemini'
-      ? await geminiSora(process.env.GEMINI_API_KEY as string, s, toxtatgich.signal)
-      : await anthropicSora(process.env.ANTHROPIC_API_KEY as string, s, toxtatgich.signal);
+    const kalit = kalitOl(provayder) as string;
+    if (provayder === 'groq' || provayder === 'openai') {
+      return await openAiUslubida(provayder, kalit, s, toxtatgich.signal);
+    }
+    if (provayder === 'gemini') return await geminiSora(kalit, s, toxtatgich.signal);
+    return await anthropicSora(kalit, s, toxtatgich.signal);
   } catch (e) {
     const sabab =
       (e as Error)?.name === 'AbortError'

@@ -31,16 +31,37 @@ interface Natija {
   xato?: string | null;
 }
 
+/** Провайдерга қараб модел ўзгарувчисининг номи */
+const MODEL_OZGARUVCHISI: Record<string, string> = {
+  groq: 'GROQ_MODEL',
+  openai: 'OPENAI_MODEL',
+  gemini: 'GEMINI_MODEL',
+  anthropic: 'ANTHROPIC_MODEL',
+};
+
+/** Калит қаердан олинади */
+const KALIT_MANBAI: Record<string, string> = {
+  groq: 'console.groq.com/keys (калит «gsk_…» билан бошланади)',
+  openai: 'platform.openai.com/api-keys (калит «sk-…» билан бошланади)',
+  gemini: 'aistudio.google.com/apikey (калит «AIza…» билан бошланади)',
+  anthropic: 'console.anthropic.com (калит «sk-ant-…» билан бошланади)',
+};
+
 /** Хатога қараб аниқ маслаҳат */
-function maslahat(xato: string, model: string): string | null {
-  if (/401|403|API.?KEY|API key|INVALID_ARGUMENT|UNAUTHENTICATED/i.test(xato)) {
-    return 'Калит нотўғри ёки фаоллаштирилмаган. Gemini калити aistudio.google.com/apikey да олинади ва «AIza…» билан бошланади.';
+function maslahat(xato: string, model: string, provayder: string): string | null {
+  if (/401|403|API.?KEY|API key|INVALID_ARGUMENT|UNAUTHENTICATED|invalid_api_key/i.test(xato)) {
+    return `Калит нотўғри ёки фаоллаштирилмаган. Калит бу ердан олинади: ${KALIT_MANBAI[provayder] ?? ''}`;
   }
-  if (/404|not found|NOT_FOUND/i.test(xato)) {
-    return `«${model}» модели топилмади. Қуйидаги рўйхатдан бирини танлаб, GEMINI_MODEL ўзгарувчисига ёзинг.`;
+  if (/404|not found|NOT_FOUND|model_not_found|decommissioned/i.test(xato)) {
+    return `«${model}» модели топилмади ёки ишлатилмай қўйилган. Қуйидаги рўйхатдан бирини танлаб, ${
+      MODEL_OZGARUVCHISI[provayder] ?? 'MODEL'
+    } ўзгарувчисига ёзинг.`;
   }
-  if (/429|quota|RESOURCE_EXHAUSTED/i.test(xato)) {
-    return 'Кунлик текин лимит тугаган. Эртага ўзи тикланади.';
+  if (/insufficient_quota|billing|exceeded your current quota/i.test(xato)) {
+    return 'Ҳисобда маблағ қолмаган. OpenAI API текин эмас — platform.openai.com/settings/organization/billing да тўлдириш керак.';
+  }
+  if (/429|quota|RESOURCE_EXHAUSTED|rate.?limit/i.test(xato)) {
+    return 'Лимит тугаган. Бир оздан сўнг ёки эртага ўзи тикланади.';
   }
   if (/сонияда келмади|timeout|abort/i.test(xato)) {
     return 'Жавоб вақтида келмади. Қайта уриниб кўринг.';
@@ -157,9 +178,9 @@ export function AiHolati() {
                   {natija.xato}
                 </p>
               )}
-              {natija.xato && maslahat(natija.xato, natija.model ?? '') && (
+              {natija.xato && maslahat(natija.xato, natija.model ?? '', natija.provayder ?? '') && (
                 <p className="mt-2 text-xs leading-relaxed">
-                  {tr(maslahat(natija.xato, natija.model ?? '') as string)}
+                  {tr(maslahat(natija.xato, natija.model ?? '', natija.provayder ?? '') as string)}
                 </p>
               )}
               <p className="mt-2 text-[11px] opacity-90">
@@ -173,7 +194,7 @@ export function AiHolati() {
             <div className="quti-ogoh flex items-start gap-1.5">
               <TriangleAlert className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
-                {tr('Созланган модел калитингизга очиқ моделлар рўйхатида ЙЎҚ. Қуйидагилардан бирини GEMINI_MODEL ўзгарувчисига ёзинг.')}
+                {tr(`Созланган модел калитингизга очиқ моделлар рўйхатида ЙЎҚ. Қуйидагилардан бирини ${MODEL_OZGARUVCHISI[natija.provayder ?? ''] ?? 'MODEL'} ўзгарувчисига ёзинг.`)}
               </span>
             </div>
           )}

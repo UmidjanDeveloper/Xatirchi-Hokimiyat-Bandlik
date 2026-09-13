@@ -314,18 +314,28 @@ muhit o'zgaruvchisiga qarab o'zi tanlanadi:
 
 | O'zgaruvchi | Provayder | Kalit qayerdan |
 |---|---|---|
-| `GEMINI_API_KEY` | Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — bepul darajasi bor |
-| `ANTHROPIC_API_KEY` | Anthropic Claude | [console.anthropic.com](https://console.anthropic.com) — pullik |
+| `GROQ_API_KEY` | Groq (`gsk_…`) | [console.groq.com/keys](https://console.groq.com/keys) — bepul darajasi bor |
+| `OPENAI_API_KEY` | OpenAI (`sk-…`) | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) — **pullik**, bepul darajasi yo'q |
+| `GEMINI_API_KEY` | Google Gemini (`AIza…`) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — bepul darajasi bor |
+| `ANTHROPIC_API_KEY` | Anthropic Claude (`sk-ant-…`) | [console.anthropic.com](https://console.anthropic.com) — pullik |
 
-Ikkalasi ham qo'yilsa Gemini ishlaydi; aniq tanlash uchun
-`AI_PROVAYDER="gemini"` yoki `"anthropic"`. Model nomini
-`GEMINI_MODEL` / `ANTHROPIC_MODEL` bilan almashtirish mumkin —
-model nomlari vaqt o'tishi bilan o'zgaradi va buning uchun kodga
-tegish shart emas.
+Bir nechtasi qo'yilsa tartib:
+**Groq → OpenAI → Gemini → Anthropic**. Aniq tanlash uchun
+`AI_PROVAYDER="groq"`. Model nomini `GROQ_MODEL` /
+`OPENAI_MODEL` / `GEMINI_MODEL` / `ANTHROPIC_MODEL` bilan
+almashtirish mumkin — model nomlari vaqt o'tishi bilan
+o'zgaradi va buning uchun kodga tegish shart emas.
 
-Ikkala provayder ham **bitta eshikdan** o'tadi (`src/lib/ai.ts`),
-shuning uchun yuboriladigan ma'lumot ikkisida ham bir xil:
-faqat sonlar va katalog qiymatlari.
+Barcha provayderlar **bitta eshikdan** o'tadi
+(`src/lib/ai.ts`), shuning uchun yuboriladigan ma'lumot
+hammasida bir xil: faqat sonlar va katalog qiymatlari.
+
+**Javob kirillda bo'lishi shart.** Ochiq modellar (Llama va
+h.k.) ba'zan inglizcha yoki lotincha javob qaytaradi. Bunday
+matn **rad etiladi** va qoida bo'yicha xulosa ishlatiladi:
+butun ilova kirillda saqlaydi va kerak bo'lganda lotinga
+o'giradi, inglizcha matn esa ikkala alifboda ham inglizcha
+bo'lib qolaverardi.
 
 Kalitni qo'ygach **albatta tekshiring**. Ikki yo'l bor:
 
@@ -350,12 +360,13 @@ Bu tekshiruv kerak, chunki ilova kalit noto'g'ri bo'lsa ham
 **ishlayveradi** — xulosa jimgina qoida bo'yicha hisoblanadi va
 xato hech qayerda ko'rinmaydi.
 
-> **Diqqat.** Bepul (AI Studio) darajasidagi Gemini kalitida
-> Google yuborilgan ma'lumotdan o'z xizmatlarini yaxshilash
-> uchun foydalanishi mumkin — pullik darajada bunday emas.
-> Bizda faqat jamlangan sonlar ketadi (ism, manzil, telefon
-> yo'q), lekin davlat tizimi uchun bu farqni bilib turish
-> kerak. Amaldagi shartlarni Google sahifasidan tasdiqlang.
+> **Diqqat.** Bepul darajadagi xizmatlar (Groq, Gemini AI
+> Studio) yuborilgan ma'lumotdan o'z modellarini yaxshilash
+> uchun foydalanishi mumkin — pullik darajada odatda bunday
+> emas. Bizda faqat jamlangan sonlar ketadi (ism, manzil,
+> telefon yo'q), lekin davlat tizimi uchun bu farqni bilib
+> turish kerak. Amaldagi shartlarni provayder sahifasidan
+> tasdiqlang.
 
 Xulosa **bir marta tayyorlanib bazaga yoziladi**, har ochilganda
 qayta hisoblanmaydi: bir xil anketaga har safar boshqa tavsiya
