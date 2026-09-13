@@ -46,7 +46,14 @@ const KUTISH_MS = 20_000;
  * тегиш шарт эмас.
  */
 const ODATIY_MODEL: Record<Provayder, string> = {
-  groq: 'llama-3.3-70b-versatile',
+  /*
+   * Groq очиқ моделларни тез-тез алмаштиради ва эскиларини
+   * ишлатишдан олиб ташлайди — `llama-3.3-70b-versatile` шундай
+   * йўқолган. Шунинг учун одатий қиймат ҳам абадий эмас:
+   * «модел топилмади» хатосида текширув саҳифаси калитга очиқ
+   * рўйхатни кўрсатади ва GROQ_MODEL орқали алмаштирилади.
+   */
+  groq: 'openai/gpt-oss-120b',
   openai: 'gpt-4o-mini',
   gemini: 'gemini-2.5-flash',
   anthropic: 'claude-sonnet-5',
@@ -137,7 +144,12 @@ export async function mavjudModellar(): Promise<{ modellar: string[]; xato?: str
          * embedding...) матн сўровига ярамайди — рўйхатда
          * кўрсатиш чалғитарди.
          */
-        .filter((n) => !/whisper|tts|guard|playai|dall-e|embedding|moderation|audio|image/i.test(n))
+        .filter(
+          (n) =>
+            !/whisper|tts|guard|playai|orpheus|dall-e|embedding|moderation|audio|image|realtime|transcribe/i.test(
+              n
+            )
+        )
         .sort();
       return { modellar };
     }
