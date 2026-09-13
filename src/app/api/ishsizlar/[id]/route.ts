@@ -26,12 +26,17 @@ const Tahrir = IshsizSxemasi.partial().extend({
 
 function holatniAniqla(
   joriy: IshsizHolati,
-  d: z.infer<typeof Tahrir>
+  d: z.infer<typeof Tahrir>,
+  elongaBoglangan: boolean
 ): IshsizHolati {
   if (d.qolHolati) return d.qolHolati;
 
   // Tasdiqlangan yozuv orqaga qaytmaydi - u yakuniy natija
   if (joriy === 'TASDIQLANDI') return joriy;
+
+  // E'longa bog'langan fuqaro anketa tahriri bilan orqaga
+  // qaytmaydi: o'rin band turibdi, demak u joylashtirilgan.
+  if (elongaBoglangan) return 'JOYLASHTIRILDI';
 
   if (d.ishJoyi?.trim()) return 'JOYLASHTIRILDI';
   if (d.takliflar && d.takliflar.length > 0) return 'TAKLIF_BERILDI';
@@ -82,14 +87,43 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const mavjud = await prisma.unemployedPerson.findUnique({
     where: { id: params.id },
-    select: { holati: true },
+    select: { holati: true, vacancyId: true },
   });
   if (!mavjud) return NextResponse.json({ xabar: 'Фуқаро топилмади' }, { status: 404 });
 
   const d = natija.data;
-  const yangiHolat = holatniAniqla(mavjud.holati, d);
 
-  const { qolHolati: _q, householdId: _h, mahallaId: _m, ...maydonlar } = d;
+  /*
+   * E'lon orqali joylashtirilgan fuqaroni anketa formasi orqali
+   * "rad etdi" ga o'tkazib bo'lmaydi. Aks holda ish o'rni BAND
+   * bo'lib qolardi-yu, fuqaro esa rad etgan bo'lib turardi -
+   * ya'ni o'rin hech kimga taklif qilinmasdi.
+   *
+   * To'g'ri yo'l: avval joylashtirishni bekor qilish, keyin
+   * holatni o'zgartirish. Shunda o'rin ham bo'shaydi.
+   */
+  if (mavjud.vacancyId && d.qolHolati === 'RAD_ETDI') {
+    return NextResponse.json(
+      {
+        xabar:
+          'Фуқаро эълонга жойлаштирилган. Аввал жойлаштиришни бекор қилинг — шунда иш ўрни ҳам бўшайди.',
+      },
+      { status: 409 }
+    );
+  }
+
+  const yangiHolat = holatniAniqla(mavjud.holati, d, mavjud.vacancyId !== null);
+
+  const { qolHolati: _q, householdId: _h, mahallaId: _m, ...barchasi } = d;
+
+  /*
+   * E'longa bog'langan bo'lsa, ish joyi va lavozim e'londan
+   * keladi - forma yuborgan matn e'tiborga olinmaydi. Aks holda
+   * e'londa "Xatirchi non zavodi", anketada "non zavod" bo'lib,
+   * bitta korxona hisobotda ikkiga bo'linib ketardi.
+   */
+  const { ishJoyi: _ij, ishLavozimi: _il, ...vacancylisiz } = barchasi;
+  const maydonlar = mavjud.vacancyId ? vacancylisiz : barchasi;
 
   const p = await prisma.unemployedPerson.update({
     where: { id: params.id },

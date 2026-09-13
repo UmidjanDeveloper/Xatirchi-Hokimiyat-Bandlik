@@ -10,6 +10,9 @@ import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
+import { orinHisobi } from '@/lib/joylashtirish';
+import { bandOrinlar as bandOrinlarniSana } from '@/lib/moslashtirish';
+import { moslikniHisobla, type Moslik } from '@/lib/moslik';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -20,6 +23,18 @@ import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
  */
 export function generateMetadata() {
   return { title: matnchi()('Операцион панел') };
+}
+
+/**
+ * Номзод чипига қўйиладиган изоҳ (tooltip).
+ *
+ * Тахтада жой тор — балл рақами кўринади, «нега» эса сичқонча
+ * тегизилганда чиқади. Тўлиқ тушунтириш эълон саҳифасида.
+ */
+function moslikIzohi(m: Moslik, tr: (matn: string) => string): string {
+  const qatorlar = [...m.sabablar, ...m.ogohlantirishlar.map((x) => `! ${x}`)];
+  if (m.tosiq) qatorlar.unshift(`⚠ ${m.tosiq}`);
+  return qatorlar.map(tr).join('\n');
 }
 
 export default async function BandlikSahifasi() {
@@ -71,17 +86,28 @@ export default async function BandlikSahifasi() {
         korxonaNomi: true,
         lavozim: true,
         yonalish: true,
+        talablar: true,
+        maosh: true,
         ornlarSoni: true,
         mahallaId: true,
         mahalla: { select: { nomiKirill: true } },
       },
     }),
 
-    // Ish istaklari - moslashtirish uchun
+    /*
+     * Иш истаклари — мослаштириш учун.
+     *
+     * Майдонлар тўлиқ ўқилади: тахтадаги тартиб эълон
+     * саҳифасидаги тартиб билан БИР ХИЛ бўлиши керак, бу эса
+     * иккаласи ҳам битта ҳисобдан («moslik.ts») фойдаланишини
+     * талаб қилади. Икки жойда икки хил тартиб чиқса, мутахассис
+     * қайси бирига ишонишни билмай қоларди.
+     */
     prisma.unemployedPerson.findMany({
       where: {
         ...filtr,
         xohlaganIsh: { not: null },
+        vacancyId: null,
         holati: { in: ['ANIQLANDI', 'SUHBAT_OTKAZILDI', 'TAKLIF_BERILDI'] },
       },
       select: {
@@ -89,6 +115,19 @@ export default async function BandlikSahifasi() {
         fish: true,
         xohlaganIsh: true,
         mahallaId: true,
+        jinsi: true,
+        tugilganSana: true,
+        malumoti: true,
+        mutaxassisligi: true,
+        organmoqchiKasb: true,
+        oxirgiIshJoyi: true,
+        avvalgiIshJoyi: true,
+        kutilayotganMaosh: true,
+        ishgaTayyorligi: true,
+        haydovchilikGuvohnomasi: true,
+        haydovchilikToifasi: true,
+        takliflar: true,
+        vacancyId: true,
         mahalla: { select: { nomiKirill: true } },
       },
     }),
@@ -120,21 +159,14 @@ export default async function BandlikSahifasi() {
    * yo'qotadi. Aynan mahalla qidiruvidagi funksiya, chunki muammo
    * bir xil: bir narsa turlicha yozilgan.
    */
-  const istakKaliti = new Map<
-    string,
-    { id: string; fish: string; mahallaId: string; mahalla: string }[]
-  >();
+  type Istak = (typeof istaklar)[number];
+  const istakKaliti = new Map<string, Istak[]>();
   for (const i of istaklar) {
     if (!i.xohlaganIsh) continue;
     const k = hududKaliti(i.xohlaganIsh);
     if (!k) continue;
     const r = istakKaliti.get(k) ?? [];
-    r.push({
-      id: i.id,
-      fish: i.fish,
-      mahallaId: i.mahallaId,
-      mahalla: i.mahalla.nomiKirill,
-    });
+    r.push(i);
     istakKaliti.set(k, r);
   }
 
@@ -153,23 +185,70 @@ export default async function BandlikSahifasi() {
    */
   const KORSATILADIGAN = 6;
 
+  /*
+   * Band o'rinlar bitta so'rovda sanaladi va TO'LGAN e'lonlar
+   * taxtadan chiqariladi: bo'sh o'rni qolmagan e'lonni taklif
+   * qilish - mutaxassisni ham, fuqaroni ham bekorga yugurtirish.
+   */
+  const band = await bandOrinlarniSana(ishOrinlari.map((v) => v.id));
+
   const moslar = ishOrinlari
     .map((v) => {
+      const hisob = orinHisobi(v.ornlarSoni, band.get(v.id) ?? 0);
       const barchasi = istakKaliti.get(hududKaliti(v.lavozim)) ?? [];
-      const ozMahallasi = barchasi.filter((n) => n.mahallaId === v.mahallaId);
-      const boshqalar = barchasi.filter((n) => n.mahallaId !== v.mahallaId);
+
+      /*
+       * Nomzodlar O'Z MAHALLASI birinchi bo'lib tartiblanadi, ichida
+       * esa moslik balli bo'yicha - e'lon sahifasidagi tartib bilan
+       * bir xil bo'lishi uchun.
+       */
+      const baholangan = barchasi.map((n) => ({
+        nomzod: n,
+        moslik: moslikniHisobla(
+          {
+            lavozim: v.lavozim,
+            yonalish: v.yonalish,
+            talablar: v.talablar,
+            maosh: v.maosh,
+            mahallaId: v.mahallaId,
+          },
+          n
+        ),
+      }));
+
+      const tartib = (a: (typeof baholangan)[number], b: (typeof baholangan)[number]) => {
+        const at = a.moslik.tosiq ? 1 : 0;
+        const bt = b.moslik.tosiq ? 1 : 0;
+        if (at !== bt) return at - bt;
+        return b.moslik.ball - a.moslik.ball;
+      };
+
+      const ozMahallasi = baholangan.filter((n) => n.nomzod.mahallaId === v.mahallaId).sort(tartib);
+      const boshqalar = baholangan.filter((n) => n.nomzod.mahallaId !== v.mahallaId).sort(tartib);
+
       return {
         ...v,
+        hisob,
         ozMahallasi,
         korsatiladigan: [...ozMahallasi, ...boshqalar].slice(0, KORSATILADIGAN),
         jamiNomzod: barchasi.length,
       };
     })
-    .filter((v) => v.jamiNomzod > 0)
+    .filter((v) => v.jamiNomzod > 0 && !v.hisob.toldimi)
     // Avval o'z mahallasida nomzodi borlar - ular bilan bugun ish qilinadi
     .sort((a, b) => b.ozMahallasi.length - a.ozMahallasi.length || b.jamiNomzod - a.jamiNomzod);
 
-  const bandOrinlar = ishOrinlari.reduce((s, v) => s + v.ornlarSoni, 0);
+  /*
+   * KPI - BO'SH qolgan o'rinlar, e'lon qilinganlar emas.
+   *
+   * Ilgari bu yerda `ornlarSoni` yig'indisi turardi va joylashuv
+   * bo'lgandan keyin ham o'zgarmasdi: rahbar panelda "48 bo'sh
+   * o'rin" ni ko'rib turardi-yu, amalda 12 tasi qolgan bo'lardi.
+   */
+  const boshOrinlar = ishOrinlari.reduce(
+    (s, v) => s + orinHisobi(v.ornlarSoni, band.get(v.id) ?? 0).qolgan,
+    0
+  );
 
   return (
     <div className="space-y-5">
@@ -211,7 +290,7 @@ export default async function BandlikSahifasi() {
         <Kpi
           ikonka={<GraduationCap className="h-4 w-4" />}
           nomi={tr("Бўш иш ўрни")}
-          qiymat={bandOrinlar}
+          qiymat={boshOrinlar}
         />
         <Kpi ikonka={<Plane className="h-4 w-4" />} nomi={tr("Миграция номзоди")} qiymat={migratsiya} />
       </div>
@@ -232,11 +311,14 @@ export default async function BandlikSahifasi() {
             {moslar.slice(0, 10).map((v) => (
               <div key={v.id} className="rounded-md border border-line p-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium text-ink">
+                  <Link
+                    href={`/ish-orinlari/${v.id}`}
+                    className="text-sm font-medium text-ink transition-colors hover:text-accent"
+                  >
                     {v.lavozim} — {v.korxonaNomi}
-                  </span>
+                  </Link>
                   <span className="raqam shrink-0 text-xs text-ink-faint">
-                    {tr(`${v.ornlarSoni} ўрин · ${v.mahalla.nomiKirill}`)}
+                    {tr(`${v.hisob.qolgan} ўрин бўш · ${v.mahalla.nomiKirill}`)}
                   </span>
                 </div>
 
@@ -249,13 +331,14 @@ export default async function BandlikSahifasi() {
                 </p>
 
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {v.korsatiladigan.map((n) => {
+                  {v.korsatiladigan.map(({ nomzod: n, moslik }) => {
                     const yaqin = n.mahallaId === v.mahallaId;
                     return (
                       <Link
                         key={n.id}
                         href={`/ishsizlar/${n.id}`}
-                        className={`rounded px-2 py-1 text-[11px] font-medium transition-opacity hover:opacity-80 ${
+                        title={moslikIzohi(moslik, tr)}
+                        className={`flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-opacity hover:opacity-80 ${
                           yaqin
                             ? 'bg-accent-soft text-accent'
                             : 'border border-line bg-surface text-ink-muted'
@@ -264,8 +347,9 @@ export default async function BandlikSahifasi() {
                         {n.fish}
                         {/* Boshqa mahalladan bo'lsa - qayerdanligi ko'rinsin */}
                         {!yaqin && (
-                          <span className="ml-1 text-ink-faint">· {tr(n.mahalla)}</span>
+                          <span className="text-ink-faint">· {tr(n.mahalla.nomiKirill)}</span>
                         )}
+                        <span className="raqam text-ink-faint">{moslik.ball}%</span>
                       </Link>
                     );
                   })}

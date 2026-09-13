@@ -19,6 +19,7 @@ va har bosqichda kim javobgar ekani yozib boriladi.
 
 - [Nima uchun bu tizim](#nima-uchun-bu-tizim)
 - [Ishlash zanjiri](#ishlash-zanjiri)
+- [Bo'sh ish o'rni qanday ishlaydi](#bosh-ish-orni-qanday-ishlaydi)
 - [Ikki alifbo](#ikki-alifbo)
 - [Rollar va huquqlar](#rollar-va-huquqlar)
 - [Asosiy imkoniyatlar](#asosiy-imkoniyatlar)
@@ -64,14 +65,81 @@ shu sababli svod jadvali platformaga import qilingan.
  70 ta MFY         11 bo'lim          Aniqlandi            Muammo
  svod jadvali      yettilik           Suhbat o'tkazildi    Sabab
  raqamlari         a'zosi             Taklif berildi       Yechim
- = MAXRAJ          to'ldiradi         Joylashtirildi       Mas'ul tashkilot
-                                      Tasdiqlandi          Muddat
+ = MAXRAJ          to'ldiradi         Joylashtirildi  ◀─┐  Mas'ul tashkilot
+                                      Tasdiqlandi       │  Muddat
+                                                        │
+                                   BO'SH ISH O'RNI ─────┘
+                                   (e'lon)
+
+                                   Korxona · lavozim
+                                   N ta o'rin
+                                   band / bo'sh
 ```
 
 **Bog'lanish nuqtasi.** Xonadon anketasining I bo'limida «3 ta ishsiz»
 deb yozilgan bo'lsa, uchalasining ham ismini kiritmaguncha forma
 yubormaydi. Ishsizlar soni faqat raqam bo'lib qolsa, bandlik markazi
 kim bilan ishlashini bilmaydi va butun xatlov qog'ozbozlikka aylanadi.
+
+---
+
+## Bo'sh ish o'rni qanday ishlaydi
+
+Savol: **bandlik rahbari e'lon qo'ydi — keyin nima bo'ladi?**
+
+```
+1. E'LON            rahbar/mutaxassis «Bo'sh ish o'rinlari» ga kiritadi
+                    korxona · lavozim · yo'nalish · N ta o'rin · maosh · talablar
+        │
+        ▼
+2. NOMZODLAR        e'lon sahifasi mos fuqarolarni O'ZI topadi va
+                    moslik bali bo'yicha tartiblaydi (0–100%)
+                    har bal yonida «nega» — sabablari ochiladi
+        │
+        ▼
+3. JOYLASHTIRISH    mutaxassis «Joylashtirish» ni bosadi va sanani tasdiqlaydi
+                    ish joyi va lavozim E'LONDAN ko'chiriladi, qo'lda terilmaydi
+        │
+        ▼
+4. O'RIN BAND       fuqaro «Joylashtirildi» holatiga o'tadi
+                    e'londa bo'sh o'rin bittaga kamayadi
+                    oxirgi o'rin to'lsa — e'lon AVTOMATIK yopiladi
+        │
+        ▼
+5. BEKOR QILISH     ishga chiqmasa — «Joylashtirishni bekor qilish»
+                    o'rin bo'shaydi, e'lon to'lgani uchun yopilgan bo'lsa
+                    qayta ochiladi; sabab yozilsa fuqaro «Rad etdi» bo'ladi
+```
+
+**Moslik nimaga qarab hisoblanadi.** Faqat TEGISHLI mezonlar
+sanaladi — e'lon haydovchilik guvohnomasini talab qilmasa,
+guvohnomasi yo'qligi uchun hech kim jazolanmaydi:
+
+| Mezon | Nimaga qaraladi |
+|---|---|
+| Kasb | mutaxassisligi, xohlagan ishi, avvalgi ish joyi, o'rganmoqchi kasbi |
+| Yo'nalish | e'londagi yo'nalish fuqaro istagiga to'g'ri keladimi |
+| Maosh | kutgan maoshi taklifdan oshadimi |
+| Guvohnoma | faqat e'lon talab qilsa — va aynan qaysi toifa (CE ≠ C + E) |
+| Ma'lumoti | faqat e'londa «oliy ma'lumot» yozilgan bo'lsa |
+| Tayyorligi | to'liq / qisman / uy sharoitida |
+| Mahalla | shu mahalladanmi (qatnov masalasi) |
+| Bandlik istagi | yollanma ishni xohlaydimi yoki YaTT ochmoqchimi |
+
+Taqqoslash **fonetik kalit** orqali: «пайвандчи», `payvandchi` va
+`Payvandchi (2-razryad)` bitta kalitga tushadi.
+
+**To'siq** alohida ko'rsatiladi va nomzodni ro'yxat oxiriga tushiradi,
+lekin uni yashirmaydi: nafaqa yoshi, mehnatga layoqatli yoshdan
+kichiklik, allaqachon boshqa e'longa joylashganlik. Qaror odamniki.
+
+**Ikki mutaxassis bir vaqtda bir o'ringa ikki odam joylashtira
+olmaydi.** Joylashtirish `SERIALIZABLE` tranzaksiyada bajariladi:
+ikkinchisi rad etiladi va «qayta urinib ko'ring» xabarini oladi.
+
+Band o'rinlar soni **alohida hisoblagichda saqlanmaydi** — har safar
+bog'lanishlardan sanaladi. Hisoblagich ertami-kechami haqiqatdan
+chetga chiqadi; sanash bir oz qimmatroq, lekin har doim to'g'ri.
 
 ---
 
@@ -215,7 +283,9 @@ foydalanuvchi yaratish paytida turadi.
 - **Navbat** — suhbat kutayotganlar va taklif kutayotganlar
 - **Moslashtirish taxtasi** — bo'sh ish o'rni ↔ shu kasbda ishlashni
   istagan fuqarolar. Taqqoslash fonetik kalit orqali: «пайвандчи» va
-  `payvandchi` bitta kalitga tushadi
+  `payvandchi` bitta kalitga tushadi. Nomzodlar e'lon sahifasidagi
+  bilan **bir xil** moslik hisobidan tartiblanadi — ikki joyda ikki
+  xil tartib chiqsa, mutaxassis qay biriga ishonishni bilmay qolardi
 - **Kurs ochish taklifi** — talab 15 tadan oshgan kasblar
 
 ### Chora-tadbirlar
@@ -499,6 +569,8 @@ prisma/
 
 scripts/
   tekshir.ts               # Joylashtirishdan oldingi tekshiruv
+  alifbo-sinov.ts          # Transliteratsiya sinovi
+  moslik-sinov.ts          # E'lon ↔ fuqaro moslik hisobi sinovi
 
 src/lib/
   alifbo.ts                # Kirill -> lotin o'girish dvigateli
@@ -512,6 +584,9 @@ src/lib/
   xatlov-sxema.ts          # Zod sxemalari (server + brauzer)
   inson-tekshiruvi.ts      # Ism va telefon tekshiruvi
   hudud-qidiruv.ts         # Kirill/lotin fonetik qidiruv
+  moslik.ts                # E'lon ↔ fuqaro moslik hisobi (sof funksiya)
+  moslashtirish.ts         # Moslashtirish taxtasi — server so'rovlari
+  joylashtirish.ts         # Band o'rinlar hisobi va holat qaytishi
   tahlil.ts                # Hokim paneli hisob-kitoblari
   tavsiyalar.ts            # Tavsiyalar motori
   chora-tadbir.ts          # Kechikkanlarni hisoblash
@@ -522,7 +597,7 @@ src/app/(ilova)/
   ishsizlar/               # Ishsizlar ro'yxati va suhbat anketasi
   xonadonlar/              # Barcha xatlovlar (bandlik uchun)
   bandlik/                 # Operatsion panel
-  ish-orinlari/            # Bo'sh ish o'rinlari reestri
+  ish-orinlari/            # Bo'sh ish o'rinlari reestri va e'lon sahifasi
   chora-tadbirlar/         # Topshiriqlar
   panel/                   # Hokim tahlil paneli
   admin/                   # Xodimlar va audit jurnali
@@ -539,6 +614,7 @@ src/app/(ilova)/
 | `npm run typecheck` | TypeScript tekshiruvi |
 | `npm run lint` | Kod uslubi tekshiruvi |
 | `npm run tekshir` | **Joylashtirishdan oldingi tekshiruv** |
+| `npm run sinov` | Transliteratsiya va moslik hisobi sinovlari |
 | `npm run db:deploy` | Migratsiyalarni bazaga qo'llash (server) |
 | `npm run db:migrate` | Yangi migratsiya yaratish (ishlab chiqish) |
 | `npm run db:seed` | 70 MFY, raislar va administratorni yaratish |

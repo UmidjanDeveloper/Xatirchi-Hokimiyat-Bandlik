@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { matnchi } from '@/lib/alifbo-server';
 import { notFound, redirect } from 'next/navigation';
-import { House, Phone } from 'lucide-react';
+import { BriefcaseBusiness, House, Phone } from 'lucide-react';
 import { joriySessiya, bandlikIshi } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { jurnal } from '@/lib/api-auth';
@@ -11,6 +11,12 @@ import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 import { SuhbatFormasi, type SuhbatHolati } from '@/components/ishsiz/suhbat-formasi';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
+import { orinlarniTop, nomzodMaydonlari } from '@/lib/moslashtirish';
+import { MoslikNishoni } from '@/components/ish-orni/moslik-nishoni';
+import {
+  BekorQilishTugmasi,
+  JoylashtirishTugmasi,
+} from '@/components/ish-orni/joylashtirish-tugmasi';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -39,6 +45,16 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
       household: { select: { id: true, manzil: true, oilaBoshligi: true } },
       mutaxassis: { select: { fullName: true } },
       topshiriqlar: { orderBy: { muddat: 'asc' } },
+      vacancy: {
+        select: {
+          id: true,
+          korxonaNomi: true,
+          lavozim: true,
+          telefon: true,
+          maosh: true,
+          mahalla: { select: { nomiKirill: true } },
+        },
+      },
     },
   });
 
@@ -54,6 +70,18 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
     obyektTuri: 'UnemployedPerson',
     obyektId: p.id,
   });
+
+  /*
+   * Мос бўш иш ўринлари.
+   *
+   * Фақат бандлик ходими учун ва фақат ҳали жойлашмаган
+   * фуқарога қидирилади: жойлашган одамга «мана бу ишга ҳам
+   * бориш мумкин» деб кўрсатиш чалкашлик туғдирарди.
+   */
+  const orinlar =
+    bandlikIshi(sessiya.rol) && !p.vacancyId && p.holati !== 'TASDIQLANDI'
+      ? await orinlarniTop(nomzodMaydonlari(p))
+      : [];
 
   const boshlangich: SuhbatHolati = {
     fish: p.fish,
@@ -189,14 +217,119 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           </div>
         )}
 
-        {p.ishJoyi && (
+        {p.ishJoyi && !p.vacancy && (
           <div className="quti-ok mt-3">
             {tr('Иш жойи:')} <b>{p.ishJoyi}</b>
             {p.ishLavozimi ? ` — ${p.ishLavozimi}` : ''}
             {p.ishgaKirganSana ? ` (${formatDate(p.ishgaKirganSana)})` : ''}
+            <p className="mt-1 text-xs">
+              {tr('Эълонсиз, қўлда киритилган иш жойи — бўш ўринлар ҳисобига кирмайди.')}
+            </p>
           </div>
         )}
       </div>
+
+      {/* ── Иш ўрни ─────────────────────────────────────────────
+          Занжирнинг охирги ҳалқаси: эълон → номзод → банд ўрин.
+          Илгари бу ерда фақат «иш жойи» деган матн майдони бор
+          эди ва иш ўрни тўлгани ҳеч қаерда кўринмасди. */}
+      {bandlikIshi(sessiya.rol) && (
+        <section className="karta p-4 sm:p-5">
+          <h2 className="flex items-center gap-1.5 text-sm font-bold text-ink">
+            <BriefcaseBusiness className="h-4 w-4 shrink-0 text-ink-faint" />
+            {tr('Иш ўрни')}
+          </h2>
+
+          {p.vacancy ? (
+            <div className="mt-3">
+              <div className="rounded-md border border-line p-3">
+                <Link
+                  href={`/ish-orinlari/${p.vacancy.id}`}
+                  className="text-sm font-semibold text-ink transition-colors hover:text-accent"
+                >
+                  {p.vacancy.lavozim} — {p.vacancy.korxonaNomi}
+                </Link>
+                <p className="mt-0.5 text-xs text-ink-muted">
+                  {tr(p.vacancy.mahalla.nomiKirill)} {tr('МФЙ')}
+                  {p.vacancy.maosh
+                    ? ` · ${(Number(p.vacancy.maosh) / 1_000_000).toFixed(1)} ${tr('млн сўм')}`
+                    : ''}
+                  {p.ishgaKirganSana
+                    ? ` · ${tr('ишга кирган:')} ${formatDate(p.ishgaKirganSana).split(',')[0]}`
+                    : ''}
+                </p>
+                {p.vacancy.telefon && (
+                  <a
+                    href={`tel:${p.vacancy.telefon}`}
+                    className="raqam mt-1.5 flex items-center gap-1 text-xs font-medium text-accent"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    {formatPhone(p.vacancy.telefon)}
+                  </a>
+                )}
+                <div className="mt-2.5">
+                  <BekorQilishTugmasi
+                    orinId={p.vacancy.id}
+                    ishsizId={p.id}
+                    nomi={p.fish}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : orinlar.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-muted">
+              {p.holati === 'TASDIQLANDI'
+                ? tr('Фуқаро ишга жойлашгани тасдиқланган.')
+                : tr('Ҳозирча мос бўш иш ўрни йўқ. Янги эълон қўшилганда шу ерда кўринади.')}
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-xs text-ink-faint">
+                {tr('Анкета маълумотига кўра энг мос келгани юқорида')}
+              </p>
+              <div className="mt-3 space-y-2">
+                {orinlar.map(({ orin, hisob, moslik }) => (
+                  <div key={orin.id} className="rounded-md border border-line p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/ish-orinlari/${orin.id}`}
+                          className="text-sm font-semibold text-ink transition-colors hover:text-accent"
+                        >
+                          {orin.lavozim} — {orin.korxonaNomi}
+                        </Link>
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                          {tr(orin.mahalla.nomiKirill)}
+                          {orin.maosh
+                            ? ` · ${(Number(orin.maosh) / 1_000_000).toFixed(1)} ${tr('млн сўм')}`
+                            : ''}
+                        </p>
+                      </div>
+                      <span className="raqam shrink-0 rounded bg-surface-muted px-2 py-1 text-[11px] font-medium text-ink-muted">
+                        {hisob.qolgan} {tr('ўрин бўш')}
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5">
+                      <MoslikNishoni moslik={moslik} />
+                    </div>
+
+                    <div className="mt-2.5">
+                      <JoylashtirishTugmasi
+                        orinId={orin.id}
+                        ishsizId={p.id}
+                        nomi={`${orin.lavozim} — ${orin.korxonaNomi}`}
+                        tosiq={moslik.tosiq}
+                        kichik
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {/* ── Chora-tadbirlar ── */}
       <section className="karta space-y-2 p-4 sm:p-5">
@@ -216,7 +349,21 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
 
       {/* ── Suhbat anketasi ── */}
       {bandlikIshi(sessiya.rol) ? (
-        <SuhbatFormasi id={p.id} boshlangich={boshlangich} />
+        /*
+          `key` — joylashtirish natijasi formada DARHOL ko'rinishi uchun.
+
+          `SuhbatFormasi` boshlang'ich holatni `useState` ga oladi va
+          keyingi `router.refresh()` da uni qayta o'qimaydi. Natijada
+          joylashtirilgandan keyin "Natija" bo'limi bo'sh turib
+          qolardi — server yangi ma'lumot yuborgan bo'lsa ham. Kalit
+          o'zgarishi komponentni qaytadan yaratadi.
+        */
+        <SuhbatFormasi
+          key={p.vacancyId ?? 'elonsiz'}
+          id={p.id}
+          boshlangich={boshlangich}
+          elongaBoglangan={p.vacancyId !== null}
+        />
       ) : (
         <div className="karta p-4 text-sm text-ink-muted">
           {tr('Суҳбат анкетасини фақат бандлик маркази ходимлари тўлдиради.')}

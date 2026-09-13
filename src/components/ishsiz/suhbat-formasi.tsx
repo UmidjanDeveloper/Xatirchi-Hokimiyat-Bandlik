@@ -70,9 +70,19 @@ export interface SuhbatHolati {
 export function SuhbatFormasi({
   id,
   boshlangich,
+  elongaBoglangan = false,
 }: {
   id: string;
   boshlangich: SuhbatHolati;
+  /**
+   * Fuqaro e'lon orqali joylashtirilganmi.
+   *
+   * Shunda ish joyi va lavozim e'londan keladi va bu yerda
+   * TAHRIRLANMAYDI: ikki joyda ikki xil yozilsa, bitta korxona
+   * hisobotda ikkiga bo'linib ketardi. Server ham shu qoidani
+   * qaytaradi - forma yuborgan matnni e'tiborsiz qoldiradi.
+   */
+  elongaBoglangan?: boolean;
 }) {
   const { t: tr } = useAlifbo();
 
@@ -421,29 +431,49 @@ export function SuhbatFormasi({
       <Bolim
         raqam="6"
         sarlavha={tr("Натижа")}
-        izoh={tr("Иш жойи ёзилиши билан ҳолат «Жойлаштирилди» га ўтади — бу ҳоким панелидаги асосий кўрсаткич.")}
+        izoh={
+          elongaBoglangan
+            ? tr("Фуқаро эълон орқали жойлаштирилган — иш жойи ва лавозим эълондан келади.")
+            : tr("Иш жойи ёзилиши билан ҳолат «Жойлаштирилди» га ўтади — бу ҳоким панелидаги асосий кўрсаткич.")
+        }
       >
-        <MatnMaydoni
-          yorliq={tr("Иш жойи (корхона номи)")}
-          qiymat={h.ishJoyi}
-          ozgardi={(q) => yangila('ishJoyi', q)}
-          xato={xatolar.ishJoyi}
-        />
-        <MatnMaydoni
-          yorliq={tr("Лавозими")}
-          qiymat={h.ishLavozimi}
-          ozgardi={(q) => yangila('ishLavozimi', q)}
-        />
+        {elongaBoglangan ? (
+          <ToliqKeng>
+            <div className="quti-ok">
+              {tr('Иш жойи:')} <b>{h.ishJoyi}</b>
+              {h.ishLavozimi ? ` — ${h.ishLavozimi}` : ''}
+              <p className="mt-1 text-xs">
+                {tr('Ўзгартириш учун юқоридаги «Иш ўрни» бўлимидан жойлаштиришни бекор қилинг.')}
+              </p>
+            </div>
+          </ToliqKeng>
+        ) : (
+          <>
+            <MatnMaydoni
+              yorliq={tr("Иш жойи (корхона номи)")}
+              qiymat={h.ishJoyi}
+              ozgardi={(q) => yangila('ishJoyi', q)}
+              xato={xatolar.ishJoyi}
+            />
+            <MatnMaydoni
+              yorliq={tr("Лавозими")}
+              qiymat={h.ishLavozimi}
+              ozgardi={(q) => yangila('ishLavozimi', q)}
+            />
+          </>
+        )}
         <SanaMaydoni
           yorliq={tr("Ишга кирган санаси")}
           qiymat={h.ishgaKirganSana}
           ozgardi={(q) => yangila('ishgaKirganSana', q)}
         />
-        <MatnMaydoni
-          yorliq={tr("Рад этган бўлса — сабаби")}
-          qiymat={h.radSababi}
-          ozgardi={(q) => yangila('radSababi', q)}
-        />
+        {!elongaBoglangan && (
+          <MatnMaydoni
+            yorliq={tr("Рад этган бўлса — сабаби")}
+            qiymat={h.radSababi}
+            ozgardi={(q) => yangila('radSababi', q)}
+          />
+        )}
       </Bolim>
 
       <div className="karta sticky bottom-0 flex items-center gap-2 p-3 sm:p-4">

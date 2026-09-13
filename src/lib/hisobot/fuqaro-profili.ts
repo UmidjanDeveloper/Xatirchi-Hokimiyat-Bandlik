@@ -25,6 +25,7 @@ import type { Prisma } from '@prisma/client';
 import type { IshsizHolati, TopshiriqHolati } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
+import { BAND_HOLATLAR } from '@/lib/joylashtirish';
 import { TOPSHIRIQ_HOLATI } from '@/lib/chora-tadbir';
 import {
   BANDLIK_TAKLIFI,
@@ -145,6 +146,8 @@ export async function fuqaroBolimlari(
     ishOrinlari,
     ishOrniYonalishlari,
     maoshJamlari,
+    bandFaolOrin,
+    elonOrqaliJoylashgan,
   ] = await Promise.all([
     prisma.unemployedPerson.findMany({
       where: filtr,
@@ -216,6 +219,32 @@ export async function fuqaroBolimlari(
       _avg: { maosh: true },
       _min: { maosh: true },
       _max: { maosh: true },
+    }),
+
+    /*
+     * Очиқ эълонлардаги БАНД ўринлар.
+     *
+     * `ornlarSoni` йиғиндиси эълон қилинган ўринни беради, бўш
+     * қолганини эмас. Икки эълоннинг ҳар бирида 3 ўрин бўлиб,
+     * тўрттаси банд бўлса, «6 бўш ўрин» деган рақам ҳисоботни
+     * ёлғонга айлантиради — амалда 2 та бўш.
+     *
+     * Маҳалла кесимида ЭЪЛОН маҳалласи бўйича саналади,
+     * фуқаронинг маҳалласи бўйича эмас: савол «шу маҳаллада
+     * нечта ўрин банд бўлди» деганидир.
+     */
+    prisma.unemployedPerson.count({
+      where: {
+        holati: { in: BAND_HOLATLAR },
+        vacancy: { faol: true, ...(mahallaId ? { mahallaId } : {}) },
+      },
+    }),
+
+    prisma.unemployedPerson.count({
+      where: {
+        holati: { in: BAND_HOLATLAR },
+        vacancy: mahallaId ? { mahallaId } : { is: {} },
+      },
     }),
   ]);
 
@@ -642,8 +671,19 @@ export async function fuqaroBolimlari(
       kirish:
         'Талаб ва таклифни ёнма-ён қўйиш учун. Иш ўрни кўп бўлган йўналишда курс очиш — энг тез натижа берадиган чора.',
       korsatkichlar: [
-        { nomi: 'Жами бўш ўрин', qiymat: son(jamiIshOrni), yonalish: 'kop-yaxshi' },
+        {
+          nomi: 'Ҳозир бўш ўрин',
+          qiymat: son(Math.max(0, jamiIshOrni - bandFaolOrin)),
+          izoh: `эълон қилинган ${son(jamiIshOrni)} тадан · ${son(bandFaolOrin)} таси банд`,
+          yonalish: 'kop-yaxshi',
+        },
         { nomi: 'Эълон қилган корхона', qiymat: son(ishOrinlari._count) },
+        {
+          nomi: 'Эълон орқали ишга жойлашган',
+          qiymat: son(elonOrqaliJoylashgan),
+          izoh: 'ёпилган эълонлар билан бирга',
+          yonalish: 'kop-yaxshi',
+        },
         ...(ortacha > 0
           ? [
               {

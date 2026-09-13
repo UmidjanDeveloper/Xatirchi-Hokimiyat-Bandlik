@@ -193,11 +193,11 @@ model Household {
   manzil String
 
   // ── Oila boshlig'i ──
-  oilaBoshligi      String
+  oilaBoshligi             String
   /// Oila boshlig'i jinsi. Nafaqa yoshi ayol va erkak uchun
   /// har xil (55/60), shuning uchun yosh tekshiruvi busiz
   /// ishlamaydi.
-  oilaBoshligiJinsi String?
+  oilaBoshligiJinsi        String?
   /// Oila boshlig'ining tug'ilgan SANASI.
   ///
   /// Ilgari faqat `tugilganYili` (yil) so'ralardi, ishsiz fuqaroda
@@ -210,8 +210,8 @@ model Household {
   /// bo'lardi. Yangi anketalarda ikkisi ham to'ldiriladi (yil
   /// sanadan olinadi), eskilarida esa yil o'z holida qoladi.
   oilaBoshligiTugilganSana DateTime?
-  tugilganYili      Int?
-  telefon           String?
+  tugilganYili             Int?
+  telefon                  String?
 
   jamiAzo     Int
   bolalarSoni Int @default(0)
@@ -446,12 +446,22 @@ model UnemployedPerson {
   xulosa      String?
 
   // ── Natija ──
-  /// Qayerga joylashtirildi
+  /// Qayerga joylashtirildi - e'londagi korxona nomi ko'chiriladi
   ishJoyi         String?
   ishLavozimi     String?
   ishgaKirganSana DateTime?
   /// Rad etgan bo'lsa - sababi
   radSababi       String?
+
+  /// Qaysi E'LONGA joylashtirildi.
+  ///
+  /// `ishJoyi` erkin matn bo'lib qolaveradi: fuqaro e'lonsiz,
+  /// o'zi topgan ishga ham joylashishi mumkin. Lekin e'lon orqali
+  /// joylashtirilganda bu maydon to'ldiriladi va shundan keyingina
+  /// "qaysi o'rin band bo'ldi", "e'londan nechta odam ishga
+  /// kirdi" degan savollarga javob bor.
+  vacancyId String?
+  vacancy   Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
 
   // ── Suhbat o'tkazgan mutaxassis ──
   suhbatSanasi DateTime?
@@ -470,6 +480,7 @@ model UnemployedPerson {
   @@index([holati])
   @@index([householdId])
   @@index([mutaxassisId])
+  @@index([vacancyId])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -529,6 +540,14 @@ model ActionPlan {
 /// Xatlovning X bo'limida mahalladagi tadbirkorlik subyektlari va
 /// ulardagi bo'sh ish o'rinlari qayd etiladi. Bu jadval ularni
 /// nomma-nom saqlaydi - moslashtirish taxtasi shunga tayanadi.
+/// Bo'sh ish o'rni e'loni nega yopilgani
+enum VacancyYopilishi {
+  /// Barcha o'rinlar band bo'ldi - avtomatik yopildi
+  TOLDI
+  /// Xodim qo'li bilan yopdi (korxona voz kechdi, muddat o'tdi...)
+  QOLDA
+}
+
 model Vacancy {
   id        String  @id @default(cuid())
   mahallaId String
@@ -543,9 +562,21 @@ model Vacancy {
   talablar    String?
   telefon     String?
 
-  faol      Boolean  @default(true)
+  faol           Boolean           @default(true)
+  /// Nega yopilgani. `faol = false` bo'lganda to'ldiriladi.
+  ///
+  /// Buni saqlash shart: o'rin to'lgani uchun avtomatik yopilgan
+  /// e'lon joylashtirish bekor qilinsa QAYTA ochilishi kerak,
+  /// xodim qo'li bilan yopgani esa ochilmasligi kerak. Sababsiz
+  /// ikkalasi bir xil ko'rinardi.
+  yopilishSababi VacancyYopilishi?
+  yopilganSana   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Shu e'lon orqali ishga joylashtirilgan fuqarolar
+  joylashganlar UnemployedPerson[]
 
   @@index([mahallaId, faol])
   @@index([yonalish, faol])
