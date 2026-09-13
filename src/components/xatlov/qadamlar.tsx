@@ -933,14 +933,27 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
   const kutilgan = h.ishsizlarSoni === '' ? 0 : h.ishsizlarSoni;
   const kiritilgan = h.ishsizlar.length;
 
-  function qatorYangila<K extends keyof IshsizQatori>(
-    qatorId: string,
-    kalit: K,
-    qiymat: IshsizQatori[K]
-  ) {
+  /**
+   * Bitta shaxs qatorini yangilaydi.
+   *
+   * DIQQAT: o'zgarishlar BITTA obyektda beriladi, ketma-ket
+   * ikki chaqiruvda emas.
+   *
+   * Sababi jiddiy edi. Bu funksiya yangi massivni `h.ishsizlar`
+   * dan quradi, `h` esa render paytidagi qiymat. Bitta
+   * ishlov ichida ikki marta chaqirilsa, ikkinchisi O'SHA
+   * eski massivdan qurar va birinchisining o'zgarishini yo'q
+   * qilardi.
+   *
+   * Amalda bu shunday ko'rinardi: xodim "дастурчи" deb yozib,
+   * keyin "тикувчилик" ga tuzatadi - maydon esa "дастурчи"
+   * bo'lib qolaverardi va IT-shaharcha vaucheri taklifi
+   * ekranda turaverardi. Xodim uni o'chira olmasdi.
+   */
+  function qatorYangila(qatorId: string, ozgarish: Partial<IshsizQatori>) {
     yangila(
       'ishsizlar',
-      h.ishsizlar.map((p) => (p.qatorId === qatorId ? { ...p, [kalit]: qiymat } : p))
+      h.ishsizlar.map((p) => (p.qatorId === qatorId ? { ...p, ...ozgarish } : p))
     );
   }
 
@@ -1006,7 +1019,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   yorliq={tr("Ф.И.Ш.")}
                   majburiy
                   qiymat={p.fish}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'fish', q)}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { fish: q })}
                   xato={x(xatolar, `ishsiz.${i}.fish`)}
                 />
 
@@ -1014,7 +1027,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   yorliq={tr("Телефон рақами")}
                   turi="tel"
                   qiymat={p.telefon ?? ''}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'telefon', q)}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { telefon: q })}
                   xato={x(xatolar, `ishsiz.${i}.telefon`)}
                 />
 
@@ -1023,7 +1036,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   majburiy
                   variantlar={JINS}
                   qiymat={p.jinsi}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'jinsi', q ?? 'Erkak')}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { jinsi: q ?? 'Erkak' })}
                 />
 
                 {/*
@@ -1044,7 +1057,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   yorliq={tr("Туғилган санаси")}
                   majburiy
                   qiymat={p.tugilganSana}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'tugilganSana', q)}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { tugilganSana: q })}
                   eng_erta="1920-01-01"
                   eng_kech={new Date().toLocaleDateString('en-CA')}
                   xato={x(xatolar, `ishsiz.${i}.tugilganSana`)}
@@ -1070,19 +1083,19 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   yorliq={tr("Маълумоти")}
                   variantlar={MALUMOT}
                   qiymat={p.malumoti ?? null}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'malumoti', q)}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { malumoti: q })}
                 />
 
                 <MatnMaydoni
                   yorliq={tr("Мавжуд малака / мутахассислиги")}
                   qiymat={p.mutaxassisligi ?? ''}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'mutaxassisligi', q)}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { mutaxassisligi: q })}
                 />
 
                 <RaqamMaydoni
                   yorliq={tr("Иш тажрибаси")}
                   qiymat={p.ishTajribasiYil}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'ishTajribasiYil', q)}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { ishTajribasiYil: q })}
                   max={60}
                   qadam={0.5}
                   birlik={tr("йил")}
@@ -1091,13 +1104,13 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                 <MatnMaydoni
                   yorliq={tr("Қайси йўналишда ишлашни истайди")}
                   qiymat={p.xohlaganIsh ?? ''}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'xohlaganIsh', q)}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { xohlaganIsh: q })}
                 />
 
                 <PulMaydoni
                   yorliq={tr("Қаноатлантирадиган иш ҳақи")}
                   qiymat={p.kutilayotganMaosh}
-                  ozgardi={(q) => qatorYangila(p.qatorId, 'kutilayotganMaosh', q)}
+                  ozgardi={(q) => qatorYangila(p.qatorId, { kutilayotganMaosh: q })}
                 />
 
                 {/*
@@ -1113,10 +1126,13 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   <HaYoqMaydoni
                     yorliq={tr("Ҳайдовчилик гувоҳномаси борми")}
                     qiymat={p.haydovchilikGuvohnomasi ?? false}
-                    ozgardi={(q) => {
-                      qatorYangila(p.qatorId, 'haydovchilikGuvohnomasi', q);
-                      if (!q) qatorYangila(p.qatorId, 'haydovchilikToifasi', []);
-                    }}
+                    ozgardi={(q) =>
+                      qatorYangila(p.qatorId, {
+                        haydovchilikGuvohnomasi: q,
+                        // «Йўқ»га қайтарилса, тоифалар тозаланади
+                        ...(q ? {} : { haydovchilikToifasi: [] }),
+                      })
+                    }
                   />
                 </div>
 
@@ -1128,7 +1144,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                       majburiy
                       variantlar={HAYDOVCHILIK_TOIFASI}
                       qiymatlar={p.haydovchilikToifasi ?? []}
-                      ozgardi={(q) => qatorYangila(p.qatorId, 'haydovchilikToifasi', q)}
+                      ozgardi={(q) => qatorYangila(p.qatorId, { haydovchilikToifasi: q })}
                       xato={x(xatolar, `ishsiz.${i}.haydovchilikToifasi`)}
                     />
                   </div>
@@ -1138,13 +1154,12 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   <HaYoqMaydoni
                     yorliq={tr("Касб-ҳунарга ўқиш истаги борми")}
                     qiymat={p.kasbHunarEhtiyoji ?? false}
-                    ozgardi={(q) => {
-                      qatorYangila(p.qatorId, 'kasbHunarEhtiyoji', q);
-                      if (!q) {
-                        qatorYangila(p.qatorId, 'organmoqchiKasb', '');
-                        qatorYangila(p.qatorId, 'itShaharchaVaucheri', false);
-                      }
-                    }}
+                    ozgardi={(q) =>
+                      qatorYangila(p.qatorId, {
+                        kasbHunarEhtiyoji: q,
+                        ...(q ? {} : { organmoqchiKasb: '', itShaharchaVaucheri: false }),
+                      })
+                    }
                   />
                 </div>
 
@@ -1155,10 +1170,13 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                       izoh={tr("Аниқ касб ёзинг — курс очиш қарори шунга таянади")}
                       majburiy
                       qiymat={p.organmoqchiKasb ?? ''}
-                      ozgardi={(q) => {
-                        qatorYangila(p.qatorId, 'organmoqchiKasb', q);
-                        if (!itYonalishimi(q)) qatorYangila(p.qatorId, 'itShaharchaVaucheri', false);
-                      }}
+                      ozgardi={(q) =>
+                        qatorYangila(p.qatorId, {
+                          organmoqchiKasb: q,
+                          // IT бўлмай қолса, ваучер белгиси ҳам тушади
+                          ...(itYonalishimi(q) ? {} : { itShaharchaVaucheri: false }),
+                        })
+                      }
                       xato={x(xatolar, `ishsiz.${i}.organmoqchiKasb`)}
                       placeholder={tr("масалан: пайвандчи, тикувчи, дастурчи")}
                     />
@@ -1184,7 +1202,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                     <HaYoqMaydoni
                       yorliq={tr("IT-шаҳарча ваучери ҳақида айтилди ва йўналтирилдими")}
                       qiymat={p.itShaharchaVaucheri ?? false}
-                      ozgardi={(q) => qatorYangila(p.qatorId, 'itShaharchaVaucheri', q)}
+                      ozgardi={(q) => qatorYangila(p.qatorId, { itShaharchaVaucheri: q })}
                     />
                   </div>
                 )}
@@ -1242,6 +1260,19 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
         </div>
       </section>
 
+    </>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+//  OXIRGI QADAM: XI. XULOSA + XII. ROZILIK VA IMZO
+// ═════════════════════════════════════════════════════════════
+
+export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
+  const { t: tr } = useAlifbo();
+
+  return (
+    <>
       <Bolim raqam="XI" sarlavha={tr("Хулоса")}>
         <ToliqKeng>
           <MatnMaydoni
@@ -1307,12 +1338,113 @@ function nomKaliti(ism: string): string {
     .trim();
 }
 
+/**
+ * ============================================================
+ *  ҚАДАМЛАР ТАРТИБИ
+ *
+ *  Тартиб ЎЗГАРТИРИЛДИ ва сабаби муҳим.
+ *
+ *  Илгари ишсиз фуқаролар ЭНГ ОХИРГИ қадамда сўраларди: аввал
+ *  хонадон, меҳнат, тадбиркорлик, болалар, уй-жой, ер-чорва —
+ *  олти қадам, кейин «энди ишсизлар кимлар?». Ҳолбуки 2-қадамда
+ *  «нечта ишсиз бор» деб сўралган эди. Яъни САВОЛ ва унинг
+ *  ДАВОМИ орасида тўртта алоқасиз қадам турарди.
+ *
+ *  Амалда бу нимага олиб келади: ходим ҳам, оила ҳам чарчаган
+ *  пайтда — анкетанинг охирида — платформанинг ЭНГ МУҲИМ
+ *  маълумотига етиб келади. Ишсиз фуқаронинг исми, касби,
+ *  прававси, нима ўрганмоқчилиги — бандлик маркази фақат
+ *  шулар билан ишлайди. Қолган ҳамма нарса (газ, сув, томорқа)
+ *  — чора-тадбир учун керак, аммо ИШГА ЖОЙЛАШТИРИШ учун эмас.
+ *
+ *  Энди «нечта ишсиз» ва «улар кимлар» ЁНМА-ЁН туради:
+ *  2-қадамда рақам, 3-қадамда шахслар. Форма ҳам ўша ерда
+ *  иккови тенглигини текширади — ходим бир экранда кўради.
+ *
+ *  Хулоса ва имзо эса алоҳида, ЭНГ ОХИРГИ қадамга ажратилди:
+ *  фуқаро нимага рози бўлаётганини билиши учун аввал ҳамма
+ *  саволни кўриши керак.
+ * ============================================================
+ */
+/*
+ * Ҳар қадам ЎЗ майдонларини санаб туради.
+ *
+ * Илгари бу рўйхат бошқа файлда, алоҳида массивда эди. Тартиб
+ * ўзгарганда иккисини БИРГА ўзгартириш керак бўларди — эсдан
+ * чиқса, «Юбориш» босилганда ходим нотўғри қадамга олиб
+ * борилар, экранда эса ҳеч қандай қизил белги кўринмасди:
+ * хато бошқа қадамда қолиб кетган бўларди. Энди тартиб ва
+ * майдонлар БИТТА жойда — улар ажралиб кета олмайди.
+ */
 export const QADAMLAR = [
-  { nomi: 'Хонадон', komponent: QadamXonadon },
-  { nomi: 'Меҳнат ва бандлик', komponent: QadamMehnat },
-  { nomi: 'Тадбиркорлик ва даромад', komponent: QadamTadbirkorlik },
-  { nomi: 'Болалар ва соғлиқ', komponent: QadamBolalarSogliq },
-  { nomi: 'Уй-жой ва ижтимоий ҳимоя', komponent: QadamUyJoy },
-  { nomi: 'Ер, чорва ва ҳунармандчилик', komponent: QadamYerChorva },
-  { nomi: 'Ишсизлар ва хулоса', komponent: QadamIshsizlar },
+  {
+    nomi: 'Хонадон',
+    komponent: QadamXonadon,
+    maydonlar: [
+      'mahallaId',
+      'manzil',
+      'oilaBoshligi',
+      'oilaBoshligiJinsi',
+      'tugilganYili',
+      'telefon',
+      'jamiAzo',
+      'bolalarSoni',
+    ],
+  },
+  {
+    nomi: 'Меҳнат ва бандлик',
+    komponent: QadamMehnat,
+    maydonlar: [
+      'mehnatgaLayoqatli',
+      'ishlaydiganlar',
+      'davlatKorxonada',
+      'xususiySektorda',
+      'ishsizlarSoni',
+      'bogchaKutayotganAyollar',
+      'ishsizlikMuddatiOy',
+    ],
+  },
+  { nomi: 'Ишсиз фуқаролар', komponent: QadamIshsizlar, maydonlar: ['ishsizlar'] },
+  {
+    nomi: 'Тадбиркорлик ва даромад',
+    komponent: QadamTadbirkorlik,
+    maydonlar: [
+      'talabQilinganMablag',
+      'oylikDaromad',
+      'chetElIshchilar',
+      'chetElDavlatlari',
+      'chetElBoshqaDavlat',
+      'chetElOylikPul',
+    ],
+  },
+  {
+    nomi: 'Болалар ва соғлиқ',
+    komponent: QadamBolalarSogliq,
+    maydonlar: [
+      'maktabgachaYoshdagi',
+      'maktabgachaQamrovda',
+      'maktabYoshdagi',
+      'maktabQamrovda',
+      'togarakQamrovi',
+      'uzoqDavolanishIzoh',
+    ],
+  },
+  {
+    nomi: 'Уй-жой ва ижтимоий ҳимоя',
+    komponent: QadamUyJoy,
+    maydonlar: ['nogironlikIzoh', 'nogironShaxslar', 'parvarishShaxslar'],
+  },
+  {
+    nomi: 'Ер, чорва ва ҳунармандчилик',
+    komponent: QadamYerChorva,
+    maydonlar: [
+      'ekinMaydoni',
+      'chorvaTurlari',
+      'hunarTurlari',
+      'hunarmandchilik',
+      'issiqxonaMaydoni',
+      'ijaraYerMaydoni',
+    ],
+  },
+  { nomi: 'Хулоса ва имзо', komponent: QadamXulosa, maydonlar: ['rozilikBerdi', 'imzoYoli'] },
 ] as const;

@@ -462,10 +462,22 @@ function asosiyMaydonlarniTekshir(h: XatlovHolati): Record<string, string> {
 function toliqTekshir(h: XatlovHolati): Record<string, string> {
   const xt = asosiyMaydonlarniTekshir(h);
 
-  if (h.telefon.trim()) {
-    const tel = telefonTekshir(h.telefon);
-    if (!tel.ok) xt.telefon = tel.xabar ?? 'Телефон рақами нотўғри';
-  }
+  /*
+   * ОИЛА БОШЛИҒИНИНГ ТЕЛЕФОНИ — мажбурий.
+   *
+   * Илгари бу текширув `if (h.telefon.trim())` ичида турарди:
+   * яъни рақам ЁЗИЛГАН бўлса текширилар, бўш қолдирилса
+   * ўтиб кетарди. Схемада эса у мажбурий (`min(7)`) — натижада
+   * форма «Юбориш» ни очиб берар, сервер эса 400 қайтарар ва
+   * ходим экранда «String must contain at least 7 character(s)»
+   * деган ёзувни кўрарди. Қайси майдон экани ҳам айтилмасди.
+   *
+   * Ходим учун телефонсиз хатловнинг маъноси ҳам йўқ: бандлик
+   * маркази фуқарога қўнғироқ қила олмаса, зanжир шу ерда
+   * узилади.
+   */
+  const tel = telefonTekshir(h.telefon);
+  if (!tel.ok) xt.telefon = tel.xabar ?? 'Телефон рақами нотўғри';
 
   if (h.jamiAzo === '' || h.jamiAzo < 1) {
     xt.jamiAzo = 'Хонадондаги аъзолар сонини киритинг';
@@ -544,46 +556,14 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
  * aks holda xatoni qidirib 7 ta qadamni aylanib chiqadi.
  */
 function xatoQadami(xatolar: Record<string, string>): number {
-  const qadamMaydonlari: string[][] = [
-    ['mahallaId', 'manzil', 'oilaBoshligi', 'oilaBoshligiJinsi', 'tugilganYili', 'telefon', 'jamiAzo', 'bolalarSoni'],
-    [
-      'mehnatgaLayoqatli',
-      'ishlaydiganlar',
-      'davlatKorxonada',
-      'xususiySektorda',
-      'ishsizlarSoni',
-      'bogchaKutayotganAyollar',
-      'ishsizlikMuddatiOy',
-    ],
-    [
-      'talabQilinganMablag',
-      'oylikDaromad',
-      'chetElIshchilar',
-      'chetElDavlatlari',
-      'chetElBoshqaDavlat',
-      'chetElOylikPul',
-    ],
-    [
-      'maktabgachaYoshdagi',
-      'maktabgachaQamrovda',
-      'maktabYoshdagi',
-      'maktabQamrovda',
-      'togarakQamrovi',
-      'uzoqDavolanishIzoh',
-    ],
-    ['nogironlikIzoh', 'nogironShaxslar', 'parvarishShaxslar'],
-    ['ekinMaydoni', 'chorvaTurlari', 'hunarTurlari', 'hunarmandchilik', 'issiqxonaMaydoni', 'ijaraYerMaydoni'],
-    ['ishsizlar'],
-  ];
-
   const kalitlar = Object.keys(xatolar);
 
-  for (let i = 0; i < qadamMaydonlari.length; i++) {
-    if (kalitlar.some((k) => qadamMaydonlari[i].includes(k))) return i;
+  // `ishsiz.0.fish` kabi kalitlar shaxslar qadamiga tegishli
+  if (kalitlar.some((k) => k.startsWith('ishsiz.'))) {
+    const i = QADAMLAR.findIndex((q) => q.maydonlar.some((m) => m === 'ishsizlar'));
+    if (i >= 0) return i;
   }
 
-  // `ishsiz.0.fish` kabi kalitlar oxirgi qadamga tegishli
-  if (kalitlar.some((k) => k.startsWith('ishsiz.'))) return QADAMLAR.length - 1;
-
-  return 0;
+  const i = QADAMLAR.findIndex((q) => kalitlar.some((k) => q.maydonlar.some((m) => m === k)));
+  return i >= 0 ? i : 0;
 }
