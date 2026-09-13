@@ -1,3 +1,4 @@
+import { matnSora } from './ai';
 import {
   CHORVA_TURI,
   DAROMAD_MANBAI,
@@ -52,12 +53,6 @@ import {
  *  олиб ташланади ва узунлиги чекланади.
  * ============================================================
  */
-
-/** AI жавобини кутиш муддати. Ошса — қоидага тушади. */
-const KUTISH_MS = 20_000;
-
-/** Модел — арзон ва тез, хулоса матни учун етарли */
-const MODEL = 'claude-sonnet-5';
 
 /**
  * Аҳоли жон бошига энг кам истеъмол харажати (сўм/ой).
@@ -338,41 +333,19 @@ export function javobniTekshir(xom: string): { holat: string; tavsiyalar: Xonado
   return { holat: d.holat.trim().slice(0, 900), tavsiyalar: tavsiyalar.slice(0, 8) };
 }
 
-/** AI дан хулоса сўрайди. Муваффақиятсиз бўлса `null`. */
+/**
+ * AI дан хулоса сўрайди. Муваффақиятсиз бўлса `null`.
+ *
+ * Провайдер (Gemini ёки Claude) `lib/ai.ts` да танланади —
+ * бу ерда қайси модел ишлаётгани аҳамиятсиз.
+ */
 async function aiXulosasi(dalilnoma: string): Promise<{ holat: string; tavsiyalar: XonadonTavsiyasi[] } | null> {
-  const kalit = process.env.ANTHROPIC_API_KEY;
-  if (!kalit) return null;
-
-  const toxtatgich = new AbortController();
-  const soat = setTimeout(() => toxtatgich.abort(), KUTISH_MS);
-
-  try {
-    const javob = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      signal: toxtatgich.signal,
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': kalit,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1500,
-        system: TIZIM_KORSATMASI,
-        messages: [{ role: 'user', content: dalilnoma }],
-      }),
-    });
-
-    if (!javob.ok) return null;
-
-    const d = (await javob.json()) as { content?: { type: string; text?: string }[] };
-    const matn = d.content?.find((c) => c.type === 'text')?.text;
-    return matn ? javobniTekshir(matn) : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(soat);
-  }
+  const matn = await matnSora({
+    tizim: TIZIM_KORSATMASI,
+    savol: dalilnoma,
+    maxTokens: 1500,
+  });
+  return matn ? javobniTekshir(matn) : null;
 }
 
 /* ── Қоида бўйича хулоса ───────────────────────────────────── */

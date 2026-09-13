@@ -305,9 +305,45 @@ Ikkita manba, bitta shakl:
    «oilada hunarmand ham, yer ham bor — ikkisi birga ko'proq
    natija beradi».
 
-`ANTHROPIC_API_KEY` qo'yilmagan bo'lsa, tizim **to'liq ishlaydi** —
+AI kaliti qo'yilmagan bo'lsa, tizim **to'liq ishlaydi** —
 qoida bo'yicha xulosa chiqadi. Matn ostida manba har doim
 ko'rsatiladi: o'quvchi uni kim yozganini bilishi shart.
+
+**Qaysi AI ishlatiladi.** Ikkitasi qo'llab-quvvatlanadi va
+muhit o'zgaruvchisiga qarab o'zi tanlanadi:
+
+| O'zgaruvchi | Provayder | Kalit qayerdan |
+|---|---|---|
+| `GEMINI_API_KEY` | Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — bepul darajasi bor |
+| `ANTHROPIC_API_KEY` | Anthropic Claude | [console.anthropic.com](https://console.anthropic.com) — pullik |
+
+Ikkalasi ham qo'yilsa Gemini ishlaydi; aniq tanlash uchun
+`AI_PROVAYDER="gemini"` yoki `"anthropic"`. Model nomini
+`GEMINI_MODEL` / `ANTHROPIC_MODEL` bilan almashtirish mumkin —
+model nomlari vaqt o'tishi bilan o'zgaradi va buning uchun kodga
+tegish shart emas.
+
+Ikkala provayder ham **bitta eshikdan** o'tadi (`src/lib/ai.ts`),
+shuning uchun yuboriladigan ma'lumot ikkisida ham bir xil:
+faqat sonlar va katalog qiymatlari.
+
+Kalitni qo'ygach **albatta tekshiring**:
+
+```bash
+npm run ai-tekshir
+```
+
+U qaysi modellar kalitingizga ochiqligini ko'rsatadi va sinov
+so'rovi yuboradi. Bu buyruq kerak, chunki ilova kalit noto'g'ri
+bo'lsa ham **ishlayveradi** — xulosa jimgina qoida bo'yicha
+hisoblanadi va xato hech qayerda ko'rinmaydi.
+
+> **Diqqat.** Bepul (AI Studio) darajasidagi Gemini kalitida
+> Google yuborilgan ma'lumotdan o'z xizmatlarini yaxshilash
+> uchun foydalanishi mumkin — pullik darajada bunday emas.
+> Bizda faqat jamlangan sonlar ketadi (ism, manzil, telefon
+> yo'q), lekin davlat tizimi uchun bu farqni bilib turish
+> kerak. Amaldagi shartlarni Google sahifasidan tasdiqlang.
 
 Xulosa **bir marta tayyorlanib bazaga yoziladi**, har ochilganda
 qayta hisoblanmaydi: bir xil anketaga har safar boshqa tavsiya
@@ -677,6 +713,7 @@ src/lib/
   inson-tekshiruvi.ts      # Ism va telefon tekshiruvi
   hudud-qidiruv.ts         # Kirill/lotin fonetik qidiruv
   moslik.ts                # E'lon ↔ fuqaro moslik hisobi (sof funksiya)
+  ai.ts                    # AI provayderi: Gemini yoki Claude — bitta eshik
   xonadon-xulosa.ts        # Xonadon tavsiyalari: qoida + AI, ISMSIZ
   moslashtirish.ts         # Moslashtirish taxtasi — server so'rovlari
   joylashtirish.ts         # Band o'rinlar hisobi va holat qaytishi
@@ -707,6 +744,7 @@ src/app/(ilova)/
 | `npm run typecheck` | TypeScript tekshiruvi |
 | `npm run lint` | Kod uslubi tekshiruvi |
 | `npm run tekshir` | **Joylashtirishdan oldingi tekshiruv** |
+| `npm run ai-tekshir` | AI kaliti va modelni tekshirish |
 | `npm run sinov` | Transliteratsiya va moslik hisobi sinovlari |
 | `npm run db:deploy` | Migratsiyalarni bazaga qo'llash (server) |
 | `npm run db:migrate` | Yangi migratsiya yaratish (ishlab chiqish) |

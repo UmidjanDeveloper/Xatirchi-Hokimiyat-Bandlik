@@ -30,17 +30,12 @@
  *  `Korsatkich`/`Jadval` лардан ўқийди, хом ёзувлардан эмас.
  * ============================================================
  */
+import { matnSora } from '@/lib/ai';
 import { MASUL_TASHKILOT, kirillcha } from '@/lib/constants';
 import { tavsiyalarniHisobla } from '@/lib/tavsiyalar';
 import type { TahlilNatijasi } from '@/lib/tahlil';
 import type { Bolim, HisobotTavsiyasi, Xulosa } from './turlar';
 import { foiz, foizi, son } from './format';
-
-/** AI жавобини кутиш муддати. Ошса — қоидага тушади. */
-const KUTISH_MS = 20_000;
-
-/** Модел — арзон ва тез, хулоса матни учун етарли */
-const MODEL = 'claude-sonnet-5';
 
 /**
  * AI га юбориладиган далилнома.
@@ -143,43 +138,19 @@ function javobniTekshir(xom: string): { holat: string; tavsiyalar: HisobotTavsiy
   return { holat: d.holat.trim().slice(0, 1200), tavsiyalar: tavsiyalar.slice(0, 8) };
 }
 
-/** AI дан хулоса сўрайди. Муваффақиятсиз бўлса `null`. */
+/**
+ * AI дан хулоса сўрайди. Муваффақиятсиз бўлса `null`.
+ *
+ * Тармоқ узилди, калит нотўғри ёки муддат ўтди — фарқи йўқ,
+ * барибир қоидага тушамиз. Провайдер `lib/ai.ts` да танланади.
+ */
 async function aiXulosasi(dalilnoma: string): Promise<{ holat: string; tavsiyalar: HisobotTavsiyasi[] } | null> {
-  const kalit = process.env.ANTHROPIC_API_KEY;
-  if (!kalit) return null;
-
-  const toxtatgich = new AbortController();
-  const soat = setTimeout(() => toxtatgich.abort(), KUTISH_MS);
-
-  try {
-    const javob = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      signal: toxtatgich.signal,
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': kalit,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 2000,
-        system: TIZIM_KORSATMASI,
-        messages: [{ role: 'user', content: dalilnoma }],
-      }),
-    });
-
-    if (!javob.ok) return null;
-
-    const d = (await javob.json()) as { content?: { type: string; text?: string }[] };
-    const matn = d.content?.find((c) => c.type === 'text')?.text;
-    return matn ? javobniTekshir(matn) : null;
-  } catch {
-    // Тармоқ узилди, калит нотўғри ёки муддат ўтди — фарқи йўқ,
-    // барибир қоидага тушамиз.
-    return null;
-  } finally {
-    clearTimeout(soat);
-  }
+  const matn = await matnSora({
+    tizim: TIZIM_KORSATMASI,
+    savol: dalilnoma,
+    maxTokens: 2000,
+  });
+  return matn ? javobniTekshir(matn) : null;
 }
 
 /**
