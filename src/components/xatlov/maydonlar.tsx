@@ -341,10 +341,26 @@ export function HaYoqMaydoni({
   yorliq,
   izoh,
   xato,
+  majburiy,
   qiymat,
   ozgardi,
 }: AsosMaydon & {
-  qiymat: boolean;
+  /**
+   * `null` — ҲАЛИ СЎРАЛМАГАН.
+   *
+   * Илгари бу майдон оддий `boolean` эди ва ҳамма савол `false`
+   * дан бошланарди. Яъни «йўқ» ва «сўрамадим» базада БИР ХИЛ
+   * ёзиларди — ҳолбуки бу компонентнинг ўзи айнан шу фарқ учун
+   * яратилган эди (пастдаги изоҳга қаранг).
+   *
+   * Оқибати жиддий: ходим «газ таъминоти» саволини ўтказиб
+   * юборса, ҳисоботда у «газсиз хонадон» бўлиб чиқар ва
+   * туманнинг газлаштириш режасига нотўғри рақам кирарди.
+   *
+   * Энди жавобсиз савол ҲЕЧ ҚАЙСИ тугма босилмаган ҳолда
+   * туради ва «Юбориш» уни ўтказиб юбормайди.
+   */
+  qiymat: boolean | null;
   ozgardi: (q: boolean) => void;
 }) {
   const { t: tr } = useAlifbo();
@@ -354,6 +370,7 @@ export function HaYoqMaydoni({
     <div className="space-y-1.5">
       <span id={id} className="block text-sm font-medium text-ink">
         {yorliq}
+        {majburiy && <span className="ml-0.5 text-danger">*</span>}
       </span>
       {izoh && <span className="block text-xs text-ink-faint">{izoh}</span>}
       <div className="flex gap-2" role="group" aria-labelledby={id}>
@@ -371,7 +388,9 @@ export function HaYoqMaydoni({
                 ? v.q
                   ? 'border-ok bg-ok-bg font-medium text-ok'
                   : 'border-line-strong bg-surface-muted font-medium text-ink'
-                : 'border-line bg-surface text-ink-muted hover:border-line-strong'
+                : xato
+                  ? 'maydon-xato bg-surface text-ink-muted'
+                  : 'border-line bg-surface text-ink-muted hover:border-line-strong'
             }`}
           >
             {v.matn}

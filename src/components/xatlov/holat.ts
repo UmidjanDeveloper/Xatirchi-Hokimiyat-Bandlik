@@ -60,20 +60,20 @@ export interface XatlovHolati {
   bogchaKutayotganAyollar: Raqam;
   ishsizlikMuddatiOy: Raqam;
   ishTuriIstagi: string | null;
-  kasbHunarIstagi: boolean;
+  kasbHunarIstagi: boolean | null;
   kasbHunarYonalishi: string[];
   bandlikTakliflari: string;
 
   // II. Tadbirkorlik
-  tadbirkorlikIstagi: boolean;
+  tadbirkorlikIstagi: boolean | null;
   tadbirkorlikSohasi: string[];
-  moliyaEhtiyoji: boolean;
+  moliyaEhtiyoji: boolean | null;
   moliyaTuri: string[];
   talabQilinganMablag: Raqam;
   mablagYonalishi: string[];
 
   // II-B. Chet elda mehnat
-  chetElMehnati: boolean;
+  chetElMehnati: boolean | null;
   chetElIshchilar: Raqam;
   chetElDavlatlari: string[];
   chetElBoshqaDavlat: string;
@@ -96,7 +96,7 @@ export interface XatlovHolati {
   togarakSababi: string;
 
   // V. Sog'liq
-  uzoqDavolanish: boolean;
+  uzoqDavolanish: boolean | null;
   uzoqDavolanishIzoh: string;
   doriEhtiyoji: string;
   tibbiyXizmatEhtiyoji: string;
@@ -105,41 +105,41 @@ export interface XatlovHolati {
   // VI. Uy-joy
   uyHolati: string | null;
   ichimlikSuvi: string | null;
-  sugorishSuvi: boolean;
-  elektr: boolean;
-  gaz: boolean;
+  sugorishSuvi: boolean | null;
+  elektr: boolean | null;
+  gaz: boolean | null;
   gazTuri: string | null;
-  kanalizatsiya: boolean;
+  kanalizatsiya: boolean | null;
   sanitariya: string;
   boshqaMuammolar: string;
 
   // VII. Ijtimoiy himoya
-  nogironlikBor: boolean;
+  nogironlikBor: boolean | null;
   nogironlikIzoh: string;
   nogironShaxslar: ShaxsQatori[];
-  yolgizKeksa: boolean;
-  parvarishgaMuhtoj: boolean;
+  yolgizKeksa: boolean | null;
+  parvarishgaMuhtoj: boolean | null;
   parvarishIzoh: string;
   parvarishShaxslar: ShaxsQatori[];
   boshqaMuhtojlar: string;
 
   // VIII. Hujjatlar
-  hujjatlarToliq: boolean;
+  hujjatlarToliq: boolean | null;
   hujjatIzoh: string;
   xizmatTosiqlari: string;
 
   // IX. Yer, chorva va hunarmandchilik
-  tomorqaBor: boolean;
+  tomorqaBor: boolean | null;
   ekinMaydoni: Raqam;
-  chorvaBor: boolean;
+  chorvaBor: boolean | null;
   chorvaTurlari: string[];
-  hunarmandBor: boolean;
+  hunarmandBor: boolean | null;
   hunarTurlari: string[];
   hunarmandchilik: string;
   zarurKomak: string[];
-  issiqxonaTalabi: boolean;
+  issiqxonaTalabi: boolean | null;
   issiqxonaMaydoni: Raqam;
-  ijaraYer: boolean;
+  ijaraYer: boolean | null;
   ijaraYerMaydoni: Raqam;
 
   // X. Xulosa
@@ -198,18 +198,18 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     bogchaKutayotganAyollar: '',
     ishsizlikMuddatiOy: '',
     ishTuriIstagi: null,
-    kasbHunarIstagi: false,
+    kasbHunarIstagi: null,
     kasbHunarYonalishi: [],
     bandlikTakliflari: '',
 
-    tadbirkorlikIstagi: false,
+    tadbirkorlikIstagi: null,
     tadbirkorlikSohasi: [],
-    moliyaEhtiyoji: false,
+    moliyaEhtiyoji: null,
     moliyaTuri: [],
     talabQilinganMablag: '',
     mablagYonalishi: [],
 
-    chetElMehnati: false,
+    chetElMehnati: null,
     chetElIshchilar: '',
     chetElDavlatlari: [],
     chetElBoshqaDavlat: '',
@@ -229,7 +229,7 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     togarakQamrovi: '',
     togarakSababi: '',
 
-    uzoqDavolanish: false,
+    uzoqDavolanish: null,
     uzoqDavolanishIzoh: '',
     doriEhtiyoji: '',
     tibbiyXizmatEhtiyoji: '',
@@ -237,40 +237,40 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
 
     uyHolati: null,
     ichimlikSuvi: null,
-    sugorishSuvi: false,
+    sugorishSuvi: null,
     // Xatirchi tumanida elektr deyarli hamma xonadonda bor, gaz esa
     // ko'p qishloqda yo'q. Boshlang'ich qiymat shunga qarab qo'yilgan.
-    elektr: true,
-    gaz: false,
+    elektr: null,
+    gaz: null,
     gazTuri: null,
-    kanalizatsiya: false,
+    kanalizatsiya: null,
     sanitariya: '',
     boshqaMuammolar: '',
 
-    nogironlikBor: false,
+    nogironlikBor: null,
     nogironlikIzoh: '',
     nogironShaxslar: [],
-    yolgizKeksa: false,
-    parvarishgaMuhtoj: false,
+    yolgizKeksa: null,
+    parvarishgaMuhtoj: null,
     parvarishIzoh: '',
     parvarishShaxslar: [],
     boshqaMuhtojlar: '',
 
-    hujjatlarToliq: true,
+    hujjatlarToliq: null,
     hujjatIzoh: '',
     xizmatTosiqlari: '',
 
-    tomorqaBor: false,
+    tomorqaBor: null,
     ekinMaydoni: '',
-    chorvaBor: false,
+    chorvaBor: null,
     chorvaTurlari: [],
-    hunarmandBor: false,
+    hunarmandBor: null,
     hunarTurlari: [],
     hunarmandchilik: '',
     zarurKomak: [],
-    issiqxonaTalabi: false,
+    issiqxonaTalabi: null,
     issiqxonaMaydoni: '',
-    ijaraYer: false,
+    ijaraYer: null,
     ijaraYerMaydoni: '',
 
     umumiyXulosa: '',
@@ -309,6 +309,18 @@ export const r = (x: Raqam): number | null => (x === '' ? null : x);
 export const m = (x: string): string | null => (x.trim() ? x.trim() : null);
 
 /**
+ * Javobsiz Ha/Yo'q savolini `false` ga aylantiradi.
+ *
+ * Formada javobsiz savol `null` bo'lib turadi va yakuniy
+ * yuborishda tekshiruv uni o'tkazmaydi. Lekin QORALAMA yarim
+ * to'ldirilgan bo'lishi mumkin - butun mazmuni shu. Shuning
+ * uchun simga chiqаётган qiymat har doim `boolean`: sxemada
+ * bu maydonlar `z.boolean()` va `null` ni qabul qilmaydi,
+ * qoralama saqlash esa tushunarsiz 400 xatosi bilan tugardi.
+ */
+export const j = (x: boolean | null): boolean => x ?? false;
+
+/**
  * Forma holatini API kutgan ko'rinishga o'tkazadi.
  * Bir joyda turishi muhim: qoralama ham, yakuniy yuborish ham shuni ishlatadi.
  */
@@ -318,6 +330,27 @@ export function yuborishUchun(h: XatlovHolati) {
     xonadon: {
       ...x,
       tugilganYili: r(x.tugilganYili),
+
+      /* Javobsiz Ha/Yo'q — qoralamada `false` bo'lib ketadi */
+      kasbHunarIstagi: j(x.kasbHunarIstagi),
+      tadbirkorlikIstagi: j(x.tadbirkorlikIstagi),
+      moliyaEhtiyoji: j(x.moliyaEhtiyoji),
+      chetElMehnati: j(x.chetElMehnati),
+      uzoqDavolanish: j(x.uzoqDavolanish),
+      elektr: j(x.elektr),
+      gaz: j(x.gaz),
+      sugorishSuvi: j(x.sugorishSuvi),
+      kanalizatsiya: j(x.kanalizatsiya),
+      nogironlikBor: j(x.nogironlikBor),
+      yolgizKeksa: j(x.yolgizKeksa),
+      parvarishgaMuhtoj: j(x.parvarishgaMuhtoj),
+      hujjatlarToliq: j(x.hujjatlarToliq),
+      tomorqaBor: j(x.tomorqaBor),
+      chorvaBor: j(x.chorvaBor),
+      hunarmandBor: j(x.hunarmandBor),
+      issiqxonaTalabi: j(x.issiqxonaTalabi),
+      ijaraYer: j(x.ijaraYer),
+
       jamiAzo: r(x.jamiAzo),
       bolalarSoni: r(x.bolalarSoni),
       mehnatgaLayoqatli: r(x.mehnatgaLayoqatli),

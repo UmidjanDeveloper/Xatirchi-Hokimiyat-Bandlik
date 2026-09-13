@@ -159,6 +159,7 @@ export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
       */}
       <RaqamMaydoni
         yorliq={tr("Шу жумладан, болалар сони")}
+        majburiy
         izoh={tr("18 ёшгача — болалар бўлмаса 0 ёзинг")}
         qiymat={h.bolalarSoni}
         ozgardi={(q) => yangila('bolalarSoni', q)}
@@ -197,6 +198,7 @@ export function QadamMehnat({ h, yangila, xatolar }: QadamProps) {
 
         <RaqamMaydoni
           yorliq={tr("Шулардан ишлайдиганлар сони")}
+          majburiy
           qiymat={h.ishlaydiganlar}
           ozgardi={(q) => yangila('ishlaydiganlar', q)}
           max={40}
@@ -263,8 +265,10 @@ export function QadamMehnat({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Касб-ҳунар ёки тадбиркорликка ўқишни истайдими?")}
+            majburiy
             qiymat={h.kasbHunarIstagi}
             ozgardi={(q) => yangila('kasbHunarIstagi', q)}
+            xato={x(xatolar, 'kasbHunarIstagi')}
           />
         </ToliqKeng>
 
@@ -309,8 +313,10 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Тадбиркорлик фаолиятини бошлаш ёки кенгайтириш истаги")}
+            majburiy
             qiymat={h.tadbirkorlikIstagi}
             ozgardi={(q) => yangila('tadbirkorlikIstagi', q)}
+            xato={x(xatolar, 'tadbirkorlikIstagi')}
           />
         </ToliqKeng>
 
@@ -328,8 +334,10 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Имтиёзли кредит, субсидия ёки ссудага эҳтиёж мавжудми")}
+            majburiy
             qiymat={h.moliyaEhtiyoji}
             ozgardi={(q) => yangila('moliyaEhtiyoji', q)}
+            xato={x(xatolar, 'moliyaEhtiyoji')}
           />
         </ToliqKeng>
 
@@ -379,6 +387,7 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Оила аъзоларидан бирортаси ҳозир чет элда ишлайдими")}
+            majburiy
             qiymat={h.chetElMehnati}
             ozgardi={(q) => {
               yangila('chetElMehnati', q);
@@ -391,6 +400,7 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
                 yangila('chetElOylikPul', '');
               }
             }}
+            xato={x(xatolar, 'chetElMehnati')}
           />
         </ToliqKeng>
 
@@ -450,6 +460,7 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
       <Bolim raqam="III" sarlavha={tr("Даромад манбалари ва камбағалликка тушиш сабаблари")}>
         <PulMaydoni
           yorliq={tr("Оиланинг ойлик умумий даромади")}
+          majburiy
           qiymat={h.oylikDaromad}
           ozgardi={(q) => yangila('oylikDaromad', q)}
           xato={x(xatolar, 'oylikDaromad')}
@@ -500,6 +511,7 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
       <Bolim raqam="IV" sarlavha={tr("Болалар таълими ва ривожланиши")}>
         <RaqamMaydoni
           yorliq={tr("Мактабгача ёшдаги болалар сони")}
+          majburiy
           qiymat={h.maktabgachaYoshdagi}
           ozgardi={(q) => yangila('maktabgachaYoshdagi', q)}
           max={20}
@@ -509,6 +521,7 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
 
         <RaqamMaydoni
           yorliq={tr("Шулардан боғчага қатнайдиганлар")}
+          majburiy
           qiymat={h.maktabgachaQamrovda}
           ozgardi={(q) => yangila('maktabgachaQamrovda', q)}
           max={20}
@@ -518,6 +531,7 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
 
         <RaqamMaydoni
           yorliq={tr("Мактаб ёшидаги болалар сони")}
+          majburiy
           qiymat={h.maktabYoshdagi}
           ozgardi={(q) => yangila('maktabYoshdagi', q)}
           max={20}
@@ -527,6 +541,7 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
 
         <RaqamMaydoni
           yorliq={tr("Шулардан мактабга қатнайдиганлар")}
+          majburiy
           qiymat={h.maktabQamrovda}
           ozgardi={(q) => yangila('maktabQamrovda', q)}
           max={20}
@@ -562,8 +577,10 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Оилада узоқ муддатли даволанишга муҳтож аъзо мавжудми")}
+            majburiy
             qiymat={h.uzoqDavolanish}
             ozgardi={(q) => yangila('uzoqDavolanish', q)}
+            xato={x(xatolar, 'uzoqDavolanish')}
           />
         </ToliqKeng>
 
@@ -615,28 +632,36 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
       <Bolim raqam="VI" sarlavha={tr("Уй-жой ва коммунал шароит")}>
         <TanlovMaydoni
           yorliq={tr("Уй-жойнинг ҳолати")}
+          majburiy
           variantlar={UY_HOLATI}
           qiymat={h.uyHolati}
           ozgardi={(q) => yangila('uyHolati', q)}
+          xato={x(xatolar, 'uyHolati')}
         />
 
         <TanlovMaydoni
           yorliq={tr("Ичимлик суви таъминоти")}
+          majburiy
           variantlar={ICHIMLIK_SUVI}
           qiymat={h.ichimlikSuvi}
           ozgardi={(q) => yangila('ichimlikSuvi', q)}
+          xato={x(xatolar, 'ichimlikSuvi')}
         />
 
         <HaYoqMaydoni
           yorliq={tr("Электр энергияси")}
+          majburiy
           qiymat={h.elektr}
           ozgardi={(q) => yangila('elektr', q)}
+          xato={x(xatolar, 'elektr')}
         />
 
         <HaYoqMaydoni
           yorliq={tr("Газ таъминоти")}
+          majburiy
           qiymat={h.gaz}
           ozgardi={(q) => yangila('gaz', q)}
+          xato={x(xatolar, 'gaz')}
         />
 
         {/*
@@ -658,14 +683,18 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
 
         <HaYoqMaydoni
           yorliq={tr("Суғориш суви таъминоти")}
+          majburiy
           qiymat={h.sugorishSuvi}
           ozgardi={(q) => yangila('sugorishSuvi', q)}
+          xato={x(xatolar, 'sugorishSuvi')}
         />
 
         <HaYoqMaydoni
           yorliq={tr("Канализация тизими")}
+          majburiy
           qiymat={h.kanalizatsiya}
           ozgardi={(q) => yangila('kanalizatsiya', q)}
+          xato={x(xatolar, 'kanalizatsiya')}
         />
 
         <ToliqKeng>
@@ -682,8 +711,10 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Ногиронлиги бўлган шахс(лар) мавжудми")}
+            majburiy
             qiymat={h.nogironlikBor}
             ozgardi={(q) => yangila('nogironlikBor', q)}
+            xato={x(xatolar, 'nogironlikBor')}
           />
         </ToliqKeng>
 
@@ -701,14 +732,18 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
 
         <HaYoqMaydoni
           yorliq={tr("Ёлғиз яшовчи кекса(лар) мавжудми")}
+          majburiy
           qiymat={h.yolgizKeksa}
           ozgardi={(q) => yangila('yolgizKeksa', q)}
+          xato={x(xatolar, 'yolgizKeksa')}
         />
 
         <HaYoqMaydoni
           yorliq={tr("Парваришга муҳтож шахс(лар) мавжудми")}
+          majburiy
           qiymat={h.parvarishgaMuhtoj}
           ozgardi={(q) => yangila('parvarishgaMuhtoj', q)}
+          xato={x(xatolar, 'parvarishgaMuhtoj')}
         />
 
         {h.parvarishgaMuhtoj && (
@@ -738,9 +773,11 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Оила аъзоларининг шахсни тасдиқловчи ҳужжатлари тўлиқми")}
+            majburiy
             izoh={tr("Паспорт, туғилганлик тўғрисида гувоҳнома ва бошқалар")}
             qiymat={h.hujjatlarToliq}
             ozgardi={(q) => yangila('hujjatlarToliq', q)}
+            xato={x(xatolar, 'hujjatlarToliq')}
           />
         </ToliqKeng>
 
@@ -785,8 +822,10 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Томорқа ер майдони мавжудми")}
+            majburiy
             qiymat={h.tomorqaBor}
             ozgardi={(q) => yangila('tomorqaBor', q)}
+            xato={x(xatolar, 'tomorqaBor')}
           />
         </ToliqKeng>
 
@@ -812,8 +851,10 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Чорвачилик ёки паррандачилик мавжудми")}
+            majburiy
             qiymat={h.chorvaBor}
             ozgardi={(q) => yangila('chorvaBor', q)}
+            xato={x(xatolar, 'chorvaBor')}
           />
         </ToliqKeng>
 
@@ -833,8 +874,10 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Ҳунармандчилик ёки уй шароитида ишлаб чиқариш борми")}
+            majburiy
             qiymat={h.hunarmandBor}
             ozgardi={(q) => yangila('hunarmandBor', q)}
+            xato={x(xatolar, 'hunarmandBor')}
           />
         </ToliqKeng>
 
@@ -880,8 +923,10 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Иссиқхонага талаби")}
+            majburiy
             qiymat={h.issiqxonaTalabi}
             ozgardi={(q) => yangila('issiqxonaTalabi', q)}
+            xato={x(xatolar, 'issiqxonaTalabi')}
           />
         </ToliqKeng>
 
@@ -900,8 +945,10 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <HaYoqMaydoni
             yorliq={tr("Оила аъзоларида ижара ер мавжудми")}
+            majburiy
             qiymat={h.ijaraYer}
             ozgardi={(q) => yangila('ijaraYer', q)}
+            xato={x(xatolar, 'ijaraYer')}
           />
         </ToliqKeng>
 
@@ -1395,6 +1442,7 @@ export const QADAMLAR = [
     nomi: 'Меҳнат ва бандлик',
     komponent: QadamMehnat,
     maydonlar: [
+      'kasbHunarIstagi',
       'mehnatgaLayoqatli',
       'ishlaydiganlar',
       'davlatKorxonada',
@@ -1409,6 +1457,9 @@ export const QADAMLAR = [
     nomi: 'Тадбиркорлик ва даромад',
     komponent: QadamTadbirkorlik,
     maydonlar: [
+      'tadbirkorlikIstagi',
+      'moliyaEhtiyoji',
+      'chetElMehnati',
       'talabQilinganMablag',
       'oylikDaromad',
       'chetElIshchilar',
@@ -1421,6 +1472,7 @@ export const QADAMLAR = [
     nomi: 'Болалар ва соғлиқ',
     komponent: QadamBolalarSogliq,
     maydonlar: [
+      'uzoqDavolanish',
       'maktabgachaYoshdagi',
       'maktabgachaQamrovda',
       'maktabYoshdagi',
@@ -1432,12 +1484,27 @@ export const QADAMLAR = [
   {
     nomi: 'Уй-жой ва ижтимоий ҳимоя',
     komponent: QadamUyJoy,
-    maydonlar: ['nogironlikIzoh', 'nogironShaxslar', 'parvarishShaxslar'],
+    maydonlar: [
+      'uyHolati',
+      'ichimlikSuvi',
+      'elektr',
+      'gaz',
+      'sugorishSuvi',
+      'kanalizatsiya',
+      'nogironlikBor',
+      'yolgizKeksa',
+      'parvarishgaMuhtoj',
+      'hujjatlarToliq','nogironlikIzoh', 'nogironShaxslar', 'parvarishShaxslar'],
   },
   {
     nomi: 'Ер, чорва ва ҳунармандчилик',
     komponent: QadamYerChorva,
     maydonlar: [
+      'tomorqaBor',
+      'chorvaBor',
+      'hunarmandBor',
+      'issiqxonaTalabi',
+      'ijaraYer',
       'ekinMaydoni',
       'chorvaTurlari',
       'hunarTurlari',
