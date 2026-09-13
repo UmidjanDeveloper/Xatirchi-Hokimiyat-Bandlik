@@ -9,6 +9,7 @@ import { formatDate, formatPhone } from '@/lib/utils';
 import {
   CHET_EL_DAVLATI,
   DAROMAD_MANBAI,
+  HAYDOVCHILIK_TOIFASI,
   ICHIMLIK_SUVI,
   ISH_TURI_ISTAGI,
   KAMBAGALLIK_SABABI,
@@ -168,6 +169,30 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
                     {p.malumoti ? ` · ${tr(kirillcha(MALUMOT, p.malumoti))}` : ''}
                     {p.xohlaganIsh ? ` · ${p.xohlaganIsh}` : ''}
                   </p>
+                  {/*
+                    Тоифа ва ваучер рўйхатда КЎРИНИБ туради:
+                    бандлик ходими ҳайдовчи керак бўлган эълонни
+                    очганда, ҳар бир фуқаро картасини очиб
+                    чиқмасдан кимни таклиф қилишни билади.
+                  */}
+                  {(p.haydovchilikToifasi.length > 0 || p.itShaharchaVaucheri) && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {p.haydovchilikToifasi.map((t) => (
+                        <span
+                          key={t}
+                          className="raqam rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-ink-muted"
+                          title={tr(kirillcha(HAYDOVCHILIK_TOIFASI, t))}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                      {p.itShaharchaVaucheri && (
+                        <span className="rounded border border-accent bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent">
+                          {tr('IT ваучер')}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {p.telefon && (
                   <span className="raqam shrink-0 text-xs text-ink-muted">

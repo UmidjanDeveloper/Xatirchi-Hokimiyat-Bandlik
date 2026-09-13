@@ -509,6 +509,21 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
       const tel = telefonTekshir(p.telefon);
       if (!tel.ok) xt[`ishsiz.${i}.telefon`] = tel.xabar ?? 'Телефон рақами нотўғри';
     }
+
+    /*
+     * «Ҳа» босилган саволнинг давоми МАЖБУРИЙ.
+     *
+     * «Прававси бор» деган маълумот тоифасиз ишламайди: юк
+     * машинаси эълонига C керакми, CE ми — билмасдан одам
+     * таклиф қилиб бўлмайди. «Касб ўрганмоқчи» ҳам шундай:
+     * қайси касб экани ёзилмаса, курс очиш қарори чиқмайди.
+     */
+    if (p.haydovchilikGuvohnomasi && (p.haydovchilikToifasi?.length ?? 0) === 0) {
+      xt[`ishsiz.${i}.haydovchilikToifasi`] = 'Гувоҳнома тоифасини белгиланг';
+    }
+    if (p.kasbHunarEhtiyoji && (p.organmoqchiKasb ?? '').trim().length < 3) {
+      xt[`ishsiz.${i}.organmoqchiKasb`] = 'Қайси касбни ўрганмоқчи — ёзинг';
+    }
   });
 
   // Arifmetika va ishsizlar soni bog'lanishi

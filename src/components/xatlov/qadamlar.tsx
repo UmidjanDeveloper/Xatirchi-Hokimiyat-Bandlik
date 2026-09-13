@@ -9,6 +9,7 @@ import {
   DAROMAD_MANBAI,
   GAZ_TURI,
   HA_YOQ,
+  HAYDOVCHILIK_TOIFASI,
   HUNAR_TURI,
   ICHIMLIK_SUVI,
   ISH_TURI_ISTAGI,
@@ -20,6 +21,7 @@ import {
   MOLIYA_TURI,
   OILADAGI_ORNI,
   UY_HOLATI,
+  itYonalishimi,
 } from '@/lib/constants';
 import {
   BelgiMaydoni,
@@ -1098,11 +1100,51 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   ozgardi={(q) => qatorYangila(p.qatorId, 'kutilayotganMaosh', q)}
                 />
 
+                {/*
+                  ── ҲАЙДОВЧИЛИК ГУВОҲНОМАСИ ──
+
+                  Бўш иш ўринларининг сезиларли қисми — ҳайдовчи:
+                  юк ташиш, автобус, трактор. Тоифасиз «прававси
+                  бор» деган маълумотдан фойда йўқ: юк машинаси
+                  эълонига C керакми, CE ми — шуни билмасдан
+                  одам таклиф қилиб бўлмайди.
+                */}
+                <div className="sm:col-span-2">
+                  <HaYoqMaydoni
+                    yorliq={tr("Ҳайдовчилик гувоҳномаси борми")}
+                    qiymat={p.haydovchilikGuvohnomasi ?? false}
+                    ozgardi={(q) => {
+                      qatorYangila(p.qatorId, 'haydovchilikGuvohnomasi', q);
+                      if (!q) qatorYangila(p.qatorId, 'haydovchilikToifasi', []);
+                    }}
+                  />
+                </div>
+
+                {p.haydovchilikGuvohnomasi && (
+                  <div className="sm:col-span-2">
+                    <KopTanlovMaydoni
+                      yorliq={tr("Қайси тоифалар")}
+                      izoh={tr("Гувоҳномада очиқ турган ҳамма тоифани белгиланг")}
+                      majburiy
+                      variantlar={HAYDOVCHILIK_TOIFASI}
+                      qiymatlar={p.haydovchilikToifasi ?? []}
+                      ozgardi={(q) => qatorYangila(p.qatorId, 'haydovchilikToifasi', q)}
+                      xato={x(xatolar, `ishsiz.${i}.haydovchilikToifasi`)}
+                    />
+                  </div>
+                )}
+
                 <div className="sm:col-span-2">
                   <HaYoqMaydoni
                     yorliq={tr("Касб-ҳунарга ўқиш истаги борми")}
                     qiymat={p.kasbHunarEhtiyoji ?? false}
-                    ozgardi={(q) => qatorYangila(p.qatorId, 'kasbHunarEhtiyoji', q)}
+                    ozgardi={(q) => {
+                      qatorYangila(p.qatorId, 'kasbHunarEhtiyoji', q);
+                      if (!q) {
+                        qatorYangila(p.qatorId, 'organmoqchiKasb', '');
+                        qatorYangila(p.qatorId, 'itShaharchaVaucheri', false);
+                      }
+                    }}
                   />
                 </div>
 
@@ -1111,9 +1153,38 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                     <MatnMaydoni
                       yorliq={tr("Қайси касбни ўрганиш истаги бор")}
                       izoh={tr("Аниқ касб ёзинг — курс очиш қарори шунга таянади")}
+                      majburiy
                       qiymat={p.organmoqchiKasb ?? ''}
-                      ozgardi={(q) => qatorYangila(p.qatorId, 'organmoqchiKasb', q)}
+                      ozgardi={(q) => {
+                        qatorYangila(p.qatorId, 'organmoqchiKasb', q);
+                        if (!itYonalishimi(q)) qatorYangila(p.qatorId, 'itShaharchaVaucheri', false);
+                      }}
+                      xato={x(xatolar, `ishsiz.${i}.organmoqchiKasb`)}
                       placeholder={tr("масалан: пайвандчи, тикувчи, дастурчи")}
+                    />
+                  </div>
+                )}
+
+                {/*
+                  ── IT-ШАҲАРЧА ВАУЧЕРИ ──
+
+                  Бу блок ФАҚАТ IT касби ёзилганда очилади ва
+                  ходимга нима дейишни айтиб туради. Сабаби: IT
+                  нинг йўли бошқа. Касб-ҳунар курси туманда
+                  очилади ва гуруҳ тўлишини кутади; IT-шаҳарчага
+                  эса битта одамни ҳам ҳозир йўналтириш мумкин.
+                  Ходим буни билмаса, IT ўрганмоқчи одам «курс
+                  гуруҳи тўлмади» деб ойлаб кутиб ўтираверади.
+                */}
+                {p.kasbHunarEhtiyoji && itYonalishimi(p.organmoqchiKasb) && (
+                  <div className="sm:col-span-2 space-y-2.5 rounded-md border border-accent bg-accent-soft p-3.5">
+                    <p className="text-xs text-ink-muted">
+                      {tr('Бу — IT йўналиши. Фуқарони туманда курс кутишга қолдирмасдан, IT-шаҳарча дастурига ВАУЧЕР билан йўналтириш мумкин: гуруҳ тўлиши шарт эмас, битта одам ҳам юборилади. Ваучерни бандлик маркази расмийлаштиради.')}
+                    </p>
+                    <HaYoqMaydoni
+                      yorliq={tr("IT-шаҳарча ваучери ҳақида айтилди ва йўналтирилдими")}
+                      qiymat={p.itShaharchaVaucheri ?? false}
+                      ozgardi={(q) => qatorYangila(p.qatorId, 'itShaharchaVaucheri', q)}
                     />
                   </div>
                 )}

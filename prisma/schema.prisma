@@ -466,8 +466,21 @@ model UnemployedPerson {
   ishgaTayyorligi         String?
   haydovchilikGuvohnomasi Boolean   @default(false)
   haydovchilikToifasi     String[]
-  imtiyozEhtiyoji         Boolean   @default(false)
-  imtiyozTuri             String[]
+
+  /// IT-shaharchaga VAUCHER bilan yo'naltirilganmi.
+  ///
+  /// `takliflar` ro'yxatida ham "IT-shaharchaga yo'naltirish"
+  /// bandi bor, lekin u SUHBAT natijasi - bandlik mutaxassisi
+  /// to'ldiradi. Bu maydon esa XATLOV paytida, mahalla xodimi
+  /// eshik oldida belgilaydi: fuqaro IT o'rganmoqchi ekan va
+  /// vaucher haqida shu yerda aytildi.
+  ///
+  /// Ikkovi bir xil emas: birinchisi "nima qilish kerak", bu esa
+  /// "nima qilindi". Vaucher berilgan-u kursga bormagan odam
+  /// shu farq orqali ko'rinadi.
+  itShaharchaVaucheri Boolean  @default(false)
+  imtiyozEhtiyoji     Boolean  @default(false)
+  imtiyozTuri         String[]
 
   // ── 5. Bandlikni ta'minlash bo'yicha takliflar ──
   takliflar   String[]

@@ -294,8 +294,11 @@ export function bosIshsiz(): IshsizQatori {
     ishTajribasiYil: '',
     xohlaganIsh: '',
     kutilayotganMaosh: '',
+    haydovchilikGuvohnomasi: false,
+    haydovchilikToifasi: [],
     kasbHunarEhtiyoji: false,
     organmoqchiKasb: '',
+    itShaharchaVaucheri: false,
   };
 }
 

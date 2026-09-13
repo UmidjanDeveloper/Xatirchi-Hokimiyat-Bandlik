@@ -290,8 +290,11 @@ export async function POST(request: Request) {
               ishTajribasiYil: p.ishTajribasiYil ?? null,
               xohlaganIsh: p.xohlaganIsh ?? null,
               kutilayotganMaosh: p.kutilayotganMaosh ? BigInt(p.kutilayotganMaosh) : null,
+              haydovchilikGuvohnomasi: p.haydovchilikGuvohnomasi ?? false,
+              haydovchilikToifasi: p.haydovchilikToifasi ?? [],
               kasbHunarEhtiyoji: p.kasbHunarEhtiyoji ?? false,
               organmoqchiKasb: p.organmoqchiKasb ?? null,
+              itShaharchaVaucheri: p.itShaharchaVaucheri ?? false,
               holati: 'ANIQLANDI',
             },
           });

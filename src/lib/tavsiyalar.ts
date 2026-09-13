@@ -1,4 +1,4 @@
-import { MASUL_TASHKILOT, MABLAG_YONALISHI, kirillcha } from './constants';
+import { MASUL_TASHKILOT, MABLAG_YONALISHI, itYonalishimi, kirillcha } from './constants';
 import type { TahlilNatijasi } from './tahlil';
 
 /**
@@ -119,31 +119,13 @@ export function tavsiyalarniHisobla(t: TahlilNatijasi): Tavsiya[] {
    * Чегара ҳам пастроқ: IT-шаҳарчага юбориш учун гуруҳ тўлиши
    * шарт эмас, битта одамни ҳам йўналтириш мумкин.
    */
-  const IT_SOZLARI = [
-    'it',
-    'dastur',
-    'дастур',
-    'programm',
-    'програм',
-    'kompyuter',
-    'компьютер',
-    'web',
-    'веб',
-    'dizayn',
-    'дизайн',
-    'sayt',
-    'сайт',
-    'axborot texnologiya',
-    'ахборот технология',
-    'sun’iy intellekt',
-    'сунъий интеллект',
-  ];
-
+  /*
+   * Сўзлар рўйхати `constants.ts` да — хатлов формаси ҲАМ
+   * шундан фойдаланади. Иккови алоҳида ёзилса, формада ваучер
+   * таклиф қилинмаган одам ҳисоботда IT талабгори бўлиб чиқади.
+   */
   const itTalabi = t.kursTalabi
-    .filter((k) => {
-      const n = k.kasb.toLowerCase();
-      return IT_SOZLARI.some((w) => n.includes(w));
-    })
+    .filter((k) => itYonalishimi(k.kasb))
     .reduce((s, k) => s + k.soni, 0);
 
   if (itTalabi >= 3) {

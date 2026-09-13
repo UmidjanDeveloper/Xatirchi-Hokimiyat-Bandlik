@@ -314,6 +314,8 @@ export const IshsizSxemasi = z.object({
 
   kasbHunarEhtiyoji: z.boolean().default(false),
   organmoqchiKasb: matn(200),
+  /// Xatlov paytida berilgan IT-shaharcha yo'llanmasi — suhbatda o'chirilmaydi
+  itShaharchaVaucheri: z.boolean().default(false),
   ishTajribasiYil: z.coerce.number().min(0).max(60).nullish(),
   avvalgiIshJoyi: matn(500),
   oxirgiIshJoyi: matn(300),
@@ -365,8 +367,36 @@ export const IshsizQisqaSxemasi = z.object({
   ishTajribasiYil: z.coerce.number().min(0).max(60).nullish(),
   xohlaganIsh: matn(300),
   kutilayotganMaosh: summa,
+
+  /*
+   * ҲАЙДОВЧИЛИК ГУВОҲНОМАСИ — қисқа анкетада ҲАМ сўралади.
+   *
+   * Илгари бу савол фақат бандлик мутахассисининг суҳбат
+   * анкетасида бор эди. Амалда эса бўш иш ўринларининг сезиларли
+   * қисми — ҳайдовчи: юк ташиш, автобус, трактор. Маҳалла ходими
+   * эшик олдида «правангиз борми?» деб сўраса, ўша одам эртасига
+   * мослик рўйхатига тушади; суҳбатни кутса, икки ҳафта
+   * йўқотилади.
+   *
+   * Тоифа МУҲИМ: «прававси бор» деган маълумот билан юк машинаси
+   * эълонига одам танлаб бўлмайди — C тоифаси керакми, CE ми,
+   * шуни билиш керак.
+   */
+  haydovchilikGuvohnomasi: z.boolean().default(false),
+  haydovchilikToifasi: koptanlov(HAYDOVCHILIK_TOIFASI),
+
   kasbHunarEhtiyoji: z.boolean().default(false),
   organmoqchiKasb: matn(200),
+
+  /*
+   * IT-шаҳарча ваучери — хатлов пайтида берилган йўлланма.
+   *
+   * `takliflar` даги «IT-шаҳарчага йўналтириш» СУҲБАТ натижаси.
+   * Бу эса эшик олдида: ходим IT ўрганмоқчи одамга ваучер
+   * ҳақида айтди ва белгилади. Иккови бир хил эмас — ваучер
+   * берилган-у курсга бормаган одам шу фарқдан кўринади.
+   */
+  itShaharchaVaucheri: z.boolean().default(false),
 });
 
 export type IshsizQisqa = z.input<typeof IshsizQisqaSxemasi>;

@@ -412,3 +412,63 @@ export const HUNAR_TURI = v(
   ['Kulolchilik', 'Кулолчилик'],
   ['Boshqa', 'Бошқа']
 );
+
+// ─────────────────────────────────────────────────────────────
+//  IT YO'NALISHINI TANISH
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * "O'rganmoqchi bo'lgan kasb" IT ga tegishlimi.
+ *
+ * Bu ro'yxat IKKI joyda kerak bo'ladi va ikkovi bir xil javob
+ * berishi SHART:
+ *   · xatlov formasi - xodimga IT-shaharcha vaucherini taklif
+ *     qilish uchun, aynan o'sha odam qarshisida turganda;
+ *   · tuman tavsiyalari - "N ta fuqaro IT o'rganmoqchi" degan
+ *     xulosa uchun.
+ *
+ * Ikkovi alohida yozilsa, formada vaucher taklif qilinmagan
+ * odam hisobotda IT talabgori bo'lib chiqishi mumkin edi - va
+ * bandlik markazi ro'yxatni ko'rib, "bu odamga nega hech kim
+ * aytmagan" degan savolga javob topa olmasdi.
+ *
+ * Kirill va lotin birga: xodim qaysi alifboda yozishi oldindan
+ * ma'lum emas.
+ */
+export const IT_SOZLARI = [
+  'it',
+  'dastur',
+  'дастур',
+  'programm',
+  'програм',
+  'kompyuter',
+  'компьютер',
+  'komputer',
+  'web',
+  'веб',
+  'dizayn',
+  'дизайн',
+  'sayt',
+  'сайт',
+  'axborot texnologiya',
+  'ахборот технология',
+  'sun’iy intellekt',
+  "sun'iy intellekt",
+  'сунъий интеллект',
+];
+
+/**
+ * Matnda IT yo'nalishi bor-yo'qligini aniqlaydi.
+ *
+ * "it" - qisqa so'z va boshqa so'zlar ichida uchraydi
+ * ("tikuvchilik", "santexnik"). Shuning uchun u faqat ALOHIDA
+ * so'z sifatida hisobga olinadi; qolganlari esa qism sifatida
+ * ham topiladi ("dasturchi", "dasturlash").
+ */
+export function itYonalishimi(matn: string | null | undefined): boolean {
+  if (!matn) return false;
+  const past = matn.toLowerCase();
+  const sozlar = past.split(/[^\p{L}\p{N}’']+/u).filter(Boolean);
+  if (sozlar.includes('it') || sozlar.includes('ит')) return true;
+  return IT_SOZLARI.filter((w) => w !== 'it').some((w) => past.includes(w));
+}

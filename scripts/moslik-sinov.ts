@@ -13,6 +13,7 @@
  *  МУНОСАБАТ синовдан ўтади («мос номзод номосдан юқори»).
  * ============================================================
  */
+import { itYonalishimi } from '../src/lib/constants';
 import { haydovchilikTalabi, moslikBoyichaTartibla, moslikniHisobla } from '../src/lib/moslik';
 import type { NomzodMaydonlari, OrinMaydonlari } from '../src/lib/moslik';
 
@@ -202,6 +203,34 @@ const SINOVLAR: Sinov[] = [
     },
   },
 ];
+
+/* ── IT йўналишини таниш ──
+ *
+ * Бу функция ИККИ жойда ишлатилади: хатлов формаси ваучерни
+ * шунга қараб таклиф қилади, туман тавсиялари эса «нечта одам
+ * IT ўрганмоқчи» деб шунга қараб санайди. Иккови бир хил жавоб
+ * бериши ШАРТ — акс ҳолда ваучер таклиф қилинмаган одам
+ * ҳисоботда IT талабгори бўлиб чиқади.
+ */
+SINOVLAR.push(
+  { nomi: 'IT — «дастурчи» таниладi', tekshir: () => itYonalishimi('дастурчи') },
+  { nomi: 'IT — лотинча «dasturlash» таниладi', tekshir: () => itYonalishimi('Dasturlash') },
+  { nomi: 'IT — «веб дизайн» таниладi', tekshir: () => itYonalishimi('веб дизайн') },
+  { nomi: 'IT — ёлғиз «IT» сўзи таниладi', tekshir: () => itYonalishimi('IT') },
+  { nomi: 'IT — «IT mutaxassis» таниладi', tekshir: () => itYonalishimi('IT mutaxassis') },
+  {
+    /*
+     * «it» жуда қисқа сўз ва бошқа сўзлар ичида учрайди.
+     * Қисм сифатида изланса, «тикувчилик» ҳам IT бўлиб қоларди
+     * ва тикувчига IT-шаҳарча ваучери таклиф қилинарди.
+     */
+    nomi: 'IT эмас — «тикувчилик» ичидаги «it» ҳисобга олинмайди',
+    tekshir: () => !itYonalishimi('тикувчилик'),
+  },
+  { nomi: 'IT эмас — «santexnik» ҳисобга олинмайди', tekshir: () => !itYonalishimi('santexnik') },
+  { nomi: 'IT эмас — «пайвандчи»', tekshir: () => !itYonalishimi('пайвандчи') },
+  { nomi: 'IT эмас — бўш матн', tekshir: () => !itYonalishimi('') && !itYonalishimi(null) }
+);
 
 let xato = 0;
 for (const s of SINOVLAR) {

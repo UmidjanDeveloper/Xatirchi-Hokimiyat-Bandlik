@@ -29,6 +29,7 @@ import { BAND_HOLATLAR } from '@/lib/joylashtirish';
 import { TOPSHIRIQ_HOLATI } from '@/lib/chora-tadbir';
 import {
   BANDLIK_TAKLIFI,
+  HAYDOVCHILIK_TOIFASI,
   ISHGA_TAYYORLIK,
   JINS,
   KASB_YONALISHI,
@@ -161,6 +162,8 @@ export async function fuqaroBolimlari(
         ishgaTayyorligi: true,
         imtiyozEhtiyoji: true,
         haydovchilikGuvohnomasi: true,
+        haydovchilikToifasi: true,
+        itShaharchaVaucheri: true,
         ishTajribasiYil: true,
         kutilayotganMaosh: true,
         takliflar: true,
@@ -351,6 +354,28 @@ export async function fuqaroBolimlari(
     const kasbEhtiyoji = shaxslar.filter((s) => s.kasbHunarEhtiyoji).length;
     const imtiyoz = shaxslar.filter((s) => s.imtiyozEhtiyoji).length;
     const guvohnoma = shaxslar.filter((s) => s.haydovchilikGuvohnomasi).length;
+    const itVaucher = shaxslar.filter((s) => s.itShaharchaVaucheri).length;
+
+    /*
+     * ҲАЙДОВЧИЛИК ТОИФАЛАРИ — алоҳида жадвал.
+     *
+     * «Гувоҳномаси бор: 84» деган рақамдан юк машинаси эълонига
+     * одам танлаб бўлмайди. Бўш ўринларнинг катта қисми айнан
+     * тоифага боғлиқ: C — юк машинаси, D — автобус, F — трактор.
+     * Бир одамда бир нечта тоифа бўлиши мумкин, шунинг учун
+     * устунлар йиғиндиси гувоҳномаси борлар сонидан кўп бўлади —
+     * жадвал изоҳида шу айтилган.
+     */
+    const toifaXarita = new Map<string, number>();
+    for (const sh of shaxslar) {
+      for (const t of sh.haydovchilikToifasi) {
+        toifaXarita.set(t, (toifaXarita.get(t) ?? 0) + 1);
+      }
+    }
+    const toifaSanoq = HAYDOVCHILIK_TOIFASI.map((k) => ({
+      nomi: k.kirill,
+      soni: toifaXarita.get(k.qiymat) ?? 0,
+    })).filter((x) => x.soni > 0);
 
     const profilJadvallari: Jadval[] = [];
     const jins = sanoqJadvali('Жинси бўйича', undefined, 'Жинси', jinsSanoq, jamiFuqaro, true);
@@ -384,9 +409,19 @@ export async function fuqaroBolimlari(
     );
     if (muddatJ) profilJadvallari.push(muddatJ);
 
+    const toifaJ = sanoqJadvali(
+      'Ҳайдовчилик гувоҳномаси тоифалари',
+      'Бўш ўринларнинг катта қисми тоифага боғлиқ: C — юк машинаси, D — автобус, F — трактор. Бир фуқарода бир нечта тоифа бўлиши мумкин, шунинг учун устун йиғиндиси гувоҳномаси борлар сонидан кўп.',
+      'Тоифа',
+      toifaSanoq,
+      guvohnoma
+    );
+    if (toifaJ) profilJadvallari.push(toifaJ);
+
     const qoshimchaQatorlar: Qator[] = [
       { nomi: 'Касб-ҳунар ўрганишга эҳтиёж билдирган', qiymatlar: [son(kasbEhtiyoji), foiz(foizi(kasbEhtiyoji, jamiFuqaro))] },
       { nomi: 'Ҳайдовчилик гувоҳномаси бор', qiymatlar: [son(guvohnoma), foiz(foizi(guvohnoma, jamiFuqaro))] },
+      { nomi: 'IT-шаҳарча ваучери билан йўналтирилган', qiymatlar: [son(itVaucher), foiz(foizi(itVaucher, jamiFuqaro))] },
       { nomi: 'Ногиронлиги бор', qiymatlar: [son(nogironlik), foiz(foizi(nogironlik, jamiFuqaro))] },
       { nomi: 'Имтиёзга эҳтиёжи бор', qiymatlar: [son(imtiyoz), foiz(foizi(imtiyoz, jamiFuqaro))] },
     ].filter((q) => q.qiymatlar[0] !== '0');

@@ -101,6 +101,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
 
     kasbHunarEhtiyoji: p.kasbHunarEhtiyoji,
     organmoqchiKasb: p.organmoqchiKasb ?? '',
+    itShaharchaVaucheri: p.itShaharchaVaucheri,
     ishTajribasiYil: p.ishTajribasiYil ?? '',
     avvalgiIshJoyi: p.avvalgiIshJoyi ?? '',
     oxirgiIshJoyi: p.oxirgiIshJoyi ?? '',

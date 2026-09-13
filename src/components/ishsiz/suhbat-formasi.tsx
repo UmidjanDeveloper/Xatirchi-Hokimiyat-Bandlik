@@ -14,6 +14,7 @@ import {
   MOLIYA_TURI,
   NOGIRONLIK_GURUHI,
   OILAVIY_HOLAT,
+  itYonalishimi,
 } from '@/lib/constants';
 import { ismTekshir, telefonTekshir } from '@/lib/inson-tekshiruvi';
 import {
@@ -45,6 +46,7 @@ export interface SuhbatHolati {
 
   kasbHunarEhtiyoji: boolean;
   organmoqchiKasb: string;
+  itShaharchaVaucheri: boolean;
   ishTajribasiYil: number | '';
   avvalgiIshJoyi: string;
   oxirgiIshJoyi: string;
@@ -299,9 +301,33 @@ export function SuhbatFormasi({
             yorliq={tr("Қайси касбни ўрганиш истаги")}
             izoh={tr("Аниқ касб ёзинг")}
             qiymat={h.organmoqchiKasb}
-            ozgardi={(q) => yangila('organmoqchiKasb', q)}
+            ozgardi={(q) => {
+              yangila('organmoqchiKasb', q);
+              if (!itYonalishimi(q)) yangila('itShaharchaVaucheri', false);
+            }}
             placeholder={tr("масалан: пайвандчи")}
           />
+        )}
+
+        {/*
+          IT ёзилганда ваучер саволи очилади — худди хатлов
+          формасидагидек. Маҳалла ходими белгилаган бўлса, бу
+          ерда кўриниб туради ва мутахассис уни ЎЧИРМАСЛИГИ
+          керак: ваучер аллақачон берилган.
+        */}
+        {h.kasbHunarEhtiyoji && itYonalishimi(h.organmoqchiKasb) && (
+          <ToliqKeng>
+            <div className="space-y-2.5 rounded-md border border-accent bg-accent-soft p-3.5">
+              <p className="text-xs text-ink-muted">
+                {tr('IT йўналиши — гуруҳ тўлишини кутиш шарт эмас. Ваучер билан IT-шаҳарча дастурига йўналтириш мумкин.')}
+              </p>
+              <HaYoqMaydoni
+                yorliq={tr("IT-шаҳарча ваучери берилдими")}
+                qiymat={h.itShaharchaVaucheri}
+                ozgardi={(q) => yangila('itShaharchaVaucheri', q)}
+              />
+            </div>
+          </ToliqKeng>
         )}
 
         <RaqamMaydoni

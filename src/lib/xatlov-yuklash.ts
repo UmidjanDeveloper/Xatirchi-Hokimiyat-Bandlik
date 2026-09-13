@@ -144,8 +144,11 @@ export async function xatlovniYukla(
       ishTajribasiYil: s(i.ishTajribasiYil),
       xohlaganIsh: t(i.xohlaganIsh),
       kutilayotganMaosh: p(i.kutilayotganMaosh),
+      haydovchilikGuvohnomasi: i.haydovchilikGuvohnomasi,
+      haydovchilikToifasi: i.haydovchilikToifasi,
       kasbHunarEhtiyoji: i.kasbHunarEhtiyoji,
       organmoqchiKasb: t(i.organmoqchiKasb),
+      itShaharchaVaucheri: i.itShaharchaVaucheri,
     })),
   };
 
