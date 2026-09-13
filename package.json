@@ -16,7 +16,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",
     "tekshir": "tsx scripts/tekshir.ts",
-    "sinov": "tsx scripts/alifbo-sinov.ts && tsx scripts/moslik-sinov.ts && tsx scripts/xulosa-sinov.ts",
+    "sinov": "tsx scripts/alifbo-sinov.ts && tsx scripts/moslik-sinov.ts && tsx scripts/xulosa-sinov.ts && tsx scripts/pdf-sinov.ts",
     "vercel-build": "prisma generate && prisma migrate deploy && next build"
   },
   "prisma": {

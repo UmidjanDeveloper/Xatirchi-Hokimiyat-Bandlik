@@ -11,6 +11,7 @@ import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 import { SuhbatFormasi, type SuhbatHolati } from '@/components/ishsiz/suhbat-formasi';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
+import { ChoraHolati } from '@/components/chora/chora-holati';
 import { orinlarniTop, nomzodMaydonlari } from '@/lib/moslashtirish';
 import { MoslikNishoni } from '@/components/ish-orni/moslik-nishoni';
 import {
@@ -341,7 +342,16 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
             <p className="mt-1.5 text-[11px] text-ink-faint">
               {tr(kirillcha(MASUL_TASHKILOT, t.masulTashkilot))} {tr('· муддат:')}{' '}
               {formatDate(t.muddat).split(',')[0]}
+              {t.bajarilganSana
+                ? ` · ${tr('бажарилди:')} ${formatDate(t.bajarilganSana).split(',')[0]}`
+                : ''}
             </p>
+            <ChoraHolati
+              topshiriqId={t.id}
+              joriy={t.holati}
+              natijaIzohi={t.natijaIzohi}
+              ozgartiraOladi={sessiya.rol !== 'HOKIM'}
+            />
           </div>
         ))}
         {bandlikIshi(sessiya.rol) && <ChoraQoshish ishsizId={p.id} />}

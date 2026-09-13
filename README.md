@@ -335,6 +335,17 @@ har safar tekshiradi.
 
 Muammo → sabab → yechim → mas'ul tashkilot → muddat → holat.
 
+Topshiriq **yopiladi ham**: ro'yxatning o'zida holat tugmalari
+turadi (Kutilmoqda / Bajarilmoqda / Bajarildi / Bekor qilindi).
+«Bajarildi» va «Bekor qilindi» da **natija izohi** so'raladi —
+«nima qilindi» degan savolga oldindan javob. Izoh majburiy emas,
+lekin yozilsa hokimga ham ko'rinadi. Bajarilgan sanani tizim
+**o'zi qo'yadi**: xodim uni orqaga surib, kechikkanini yashira
+olmaydi.
+
+Hokim bu yerda **faqat o'qiydi** — topshiriqni u bajarmaydi,
+natijasini so'raydi.
+
 «Kechikdi» holati bazada **saqlanmaydi**, har safar sanadan
 hisoblanadi. Saqlansa, uni har kecha yangilaydigan vazifa (cron)
 kerak bo'lardi; vazifa bir kecha ishlamay qolsa, panel «kechikkan
@@ -617,6 +628,7 @@ scripts/
   tekshir.ts               # Joylashtirishdan oldingi tekshiruv
   alifbo-sinov.ts          # Transliteratsiya sinovi
   moslik-sinov.ts          # E'lon ↔ fuqaro moslik hisobi sinovi
+  pdf-sinov.ts             # PDF matn sig'dirish (jimgina kesilmasin)
   xulosa-sinov.ts          # Xonadon xulosasi: maxfiylik va qoidalar
 
 src/lib/

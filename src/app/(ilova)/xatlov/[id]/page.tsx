@@ -23,6 +23,7 @@ import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
 import { ImzoKorinishi } from '@/components/xatlov/imzo-maydoni';
 import { XonadonXulosasi } from '@/components/xatlov/xonadon-xulosasi';
+import { ChoraHolati } from '@/components/chora/chora-holati';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -300,7 +301,16 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
               <p className="mt-1.5 text-[11px] text-ink-faint">
                 {tr(kirillcha(MASUL_TASHKILOT, t.masulTashkilot))} {tr('· муддат:')}{' '}
                 {formatDate(t.muddat).split(',')[0]}
+                {t.bajarilganSana
+                  ? ` · ${tr('бажарилди:')} ${formatDate(t.bajarilganSana).split(',')[0]}`
+                  : ''}
               </p>
+              <ChoraHolati
+                topshiriqId={t.id}
+                joriy={t.holati}
+                natijaIzohi={t.natijaIzohi}
+                ozgartiraOladi={sessiya.rol !== 'HOKIM'}
+              />
             </div>
           ))}
 

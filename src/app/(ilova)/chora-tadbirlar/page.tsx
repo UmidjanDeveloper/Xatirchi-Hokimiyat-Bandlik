@@ -13,6 +13,7 @@ import {
   korinadiganHolat,
   qolganKun,
 } from '@/lib/chora-tadbir';
+import { ChoraHolati } from '@/components/chora/chora-holati';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -64,6 +65,13 @@ export default async function ChoraTadbirlarSahifasi({
         ? { holati: searchParams.holati as never }
         : {}),
   };
+
+  /*
+   * Ҳоким ФАҚАТ ЎҚИЙДИ: у топшириқни ўзи бажармайди, натижасини
+   * сўрайди. Унга тугма кўрсатиш «мен ёпиб қўяман» деган нотўғри
+   * йўлни очарди.
+   */
+  const ozgartiraOladi = sessiya.rol !== 'HOKIM';
 
   const [royxat, jami, bajarilgan, kechikkan, tashkilotlar] = await Promise.all([
     prisma.actionPlan.findMany({
@@ -232,7 +240,29 @@ export default async function ChoraTadbirlarSahifasi({
                       </Link>
                     </>
                   )}
+
+                  {t.bajarilganSana && (
+                    <>
+                      <span>·</span>
+                      <span className="text-ok">
+                        {tr('бажарилди:')} {formatDate(t.bajarilganSana).split(',')[0]}
+                      </span>
+                    </>
+                  )}
                 </div>
+
+                {/*
+                  Ҳолат тугмалари — рўйхатнинг ўзида.
+                  Топшириқни ёпиш учун хонадон саҳифасига ўтиш
+                  шарт эмас: масъул ходим кунда ўнлаб топшириқни
+                  шу ердан юритади.
+                */}
+                <ChoraHolati
+                  topshiriqId={t.id}
+                  joriy={t.holati}
+                  natijaIzohi={t.natijaIzohi}
+                  ozgartiraOladi={ozgartiraOladi}
+                />
               </div>
             );
           })}

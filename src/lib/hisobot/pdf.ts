@@ -88,6 +88,38 @@ async function shriftYukla(): Promise<{ regular: string; bold: string }> {
 
 /* ── Чизиш ёрдамчилари ──────────────────────────────────────── */
 
+/**
+ * Матнни белгиланган қатор сонига сиғдиради.
+ *
+ * ЎҚУВЧИ МАТН КЕСИЛГАНИНИ КЎРИШИ КЕРАК. Илгари ортиқча қатор
+ * жимгина ташлаб юбориларди ва изоҳ сўз ўртасида тугарди:
+ * «эълон қилинган 18 тадан · 0 таси» — «банд» сўзи йўқолган, ва
+ * ҳисоботни ўқиган одам буни билмасди ҳам.
+ *
+ * Энди охирги қаторга уч нуқта қўшилади: жумла тугамаганини
+ * кўрсатади ва тўлиқ рақам жадвалда борлигини эслатади.
+ *
+ * Синов учун экспорт қилинган (`scripts/pdf-sinov.ts`).
+ */
+export function sigdir(doc: jsPDFType, matn: string, eni: number, qatorlar = 2): string[] {
+  const barchasi = doc.splitTextToSize(matn, eni) as string[];
+  if (barchasi.length <= qatorlar) return barchasi;
+
+  const kesilgan = barchasi.slice(0, qatorlar);
+  const oxirgi = kesilgan[qatorlar - 1];
+
+  /*
+   * Уч нуқта қўшилгач қатор кенгайиб кетмаслиги учун охиридан
+   * бир неча белги олиб ташланади — сўз чегарасигача.
+   */
+  let matnBilan = `${oxirgi} …`;
+  while (doc.getTextWidth(matnBilan) > eni && matnBilan.length > 4) {
+    matnBilan = `${matnBilan.slice(0, -3).trimEnd()} …`;
+  }
+  kesilgan[qatorlar - 1] = matnBilan;
+  return kesilgan;
+}
+
 /** Ҳолат бўйича ранг: яхшиланиш йўналишини ҳисобга олади */
 function korsatkichRangi(k: Korsatkich): [number, number, number] {
   if (k.foiz === undefined || k.yonalish === 'betaraf' || !k.yonalish) return QORA;
@@ -240,7 +272,7 @@ function muqova(h: Hujjat, m: Hisobot): void {
     doc.setFont('Hisobot', 'normal');
     doc.setFontSize(7.4);
     doc.setTextColor(...KUL);
-    doc.text(doc.splitTextToSize(k.nomi, kartaEni - 10) as string[], x + 5, y + 7);
+    doc.text(sigdir(doc, k.nomi, kartaEni - 10), x + 5, y + 7);
 
     doc.setFont('Hisobot', 'bold');
     doc.setFontSize(17);
@@ -251,7 +283,7 @@ function muqova(h: Hujjat, m: Hisobot): void {
       doc.setFont('Hisobot', 'normal');
       doc.setFontSize(6.6);
       doc.setTextColor(...KUL);
-      doc.text((doc.splitTextToSize(k.izoh, kartaEni - 10) as string[]).slice(0, 2), x + 5, y + 22);
+      doc.text(sigdir(doc, k.izoh, kartaEni - 10, 2), x + 5, y + 22);
     }
   });
   h.y += Math.ceil(m.bosh.length / 2) * (kartaBoyi + 5) + 4;
@@ -428,7 +460,13 @@ function korsatkichlarChiz(h: Hujjat, korsatkichlar: Korsatkich[]): void {
   const { doc } = h;
   const ustunSoni = Math.min(korsatkichlar.length, 4);
   const eni = ICHKI / ustunSoni;
-  const boyi = 19;
+  /*
+   * Карта баландлиги изоҳнинг ИККИ қаторига мўлжалланган.
+   * 19 мм эди ва изоҳга атиги битта қатор қоларди — «эълон
+   * қилинган 18 тадан · 0 таси банд» каби изоҳ сўз ўртасида
+   * кесиларди.
+   */
+  const boyi = 23;
 
   h.joyOchar(Math.ceil(korsatkichlar.length / ustunSoni) * (boyi + 3));
 
@@ -446,7 +484,7 @@ function korsatkichlarChiz(h: Hujjat, korsatkichlar: Korsatkich[]): void {
     doc.setFont('Hisobot', 'normal');
     doc.setFontSize(6.6);
     doc.setTextColor(...KUL);
-    doc.text((doc.splitTextToSize(k.nomi, eni - 8) as string[]).slice(0, 2), x + 3, y + 5);
+    doc.text(sigdir(doc, k.nomi, eni - 8), x + 3, y + 5);
 
     doc.setFont('Hisobot', 'bold');
     doc.setFontSize(12.5);
@@ -457,7 +495,7 @@ function korsatkichlarChiz(h: Hujjat, korsatkichlar: Korsatkich[]): void {
       doc.setFont('Hisobot', 'normal');
       doc.setFontSize(6);
       doc.setTextColor(...KUL);
-      doc.text((doc.splitTextToSize(k.izoh, eni - 7) as string[]).slice(0, 1), x + 3, y + 17);
+      doc.text(sigdir(doc, k.izoh, eni - 7, 2), x + 3, y + 17, { lineHeightFactor: 1.25 });
     }
   });
 
