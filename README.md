@@ -257,6 +257,38 @@ foydalanuvchi yaratish paytida turadi.
   deb belgilab qo'yishi va hokim panelidagi eng muhim raqam yolg'on
   chiqishi mumkin edi
 
+### Aloqa uzilganda — oflayn navbat
+
+Xatlov **hovlida, xonadon eshigi oldida** to'ldiriladi. Xatirchi
+tumanining chekka mahallalarida aloqa uzilib turadi.
+
+Ikkita alohida himoya:
+
+1. **Qoralama** — har o'zgarishda brauzer xotirasiga yoziladi.
+   Telefon o'chsa yoki sahifa yopilsa, xodim to'ldirgan joyidan
+   davom etadi.
+2. **Navbat** — tayyor xatlov yuborilayotganda aloqa uzilsa,
+   u navbatga tushadi va **aloqa tiklanishi bilan o'zi ketadi**.
+   `/xatlov` sahifasining tepasida «N ta xatlov hali yuborilmagan»
+   degan chiziq turadi; navbat bo'sh bo'lsa — chiziq ko'rinmaydi.
+
+Ilgari xodimga «keyin qayta yuboring» deb yozilardi va qayta
+yuborishni **u eslab qolishi** kerak edi: anketani qayta ochib,
+oxirigacha o'tib, yana tugmani bosish. Kun oxirida, o'nta
+xonadondan keyin, buni hech kim eslamaydi.
+
+**Takror yuborishdan qo'rqmaydi.** Server javobi kelishidan oldin
+aloqa uzilsa, yozuv aslida saqlangan bo'lishi mumkin. Qayta
+yuborilganda server `409` qaytaradi («bu xonadon allaqachon
+xatlovdan o'tgan») — chunki mahalla + manzil + oila boshlig'i
+bo'yicha yagonalik chegarasi bor. Navbat buni **muvaffaqiyat**
+deb hisoblaydi va yozuvni chiqaradi.
+
+Ma'lumotida xato bo'lgan yozuv **o'chirilmaydi** — bu xodimning
+bir soatlik ishi. U navbatda qoladi, besh urinishdan keyin
+«e'tibor talab qiladi» deb belgilanadi va qolganlarini to'sib
+qo'ymaydi.
+
 ### Xonadon bo'yicha xulosa va tavsiyalar
 
 Anketaning 11 bo'limi xodimga «nima bor» deydi. Xulosa bloki
@@ -629,6 +661,7 @@ scripts/
   alifbo-sinov.ts          # Transliteratsiya sinovi
   moslik-sinov.ts          # E'lon ↔ fuqaro moslik hisobi sinovi
   pdf-sinov.ts             # PDF matn sig'dirish (jimgina kesilmasin)
+  navbat-sinov.ts          # Oflayn navbat: takror, yaroqsiz, aloqa yo'q
   xulosa-sinov.ts          # Xonadon xulosasi: maxfiylik va qoidalar
 
 src/lib/

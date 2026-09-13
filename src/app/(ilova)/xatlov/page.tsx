@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { formatDate, percent } from '@/lib/utils';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -73,6 +74,16 @@ export default async function XatlovlarSahifasi() {
 
   return (
     <div className="space-y-5">
+      {/*
+        Юборилмаган хатловлар — саҳифанинг ЭНГ ТЕПАСИДА.
+
+        Ходим бу саҳифани кунда ўнлаб марта очади; агар алоқа
+        узилганда бир нечта хатлов навбатда қолган бўлса, у
+        буни биринчи қарашда кўриши керак. Навбат бўш бўлса —
+        чизиқ умуман кўринмайди.
+      */}
+      <XatlovNavbati />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="sahifa-sarlavha">{tr('Хатловлар')}</h1>

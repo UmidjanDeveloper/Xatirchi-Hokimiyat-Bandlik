@@ -159,31 +159,94 @@ export function urinishBelgila(localId: string): void {
 }
 
 /**
+ * Bitta yozuvni yuborishga urinish natijasi.
+ *
+ * Nega oddiy `boolean` emas: "yuborilmadi" ning UCH XIL sababi
+ * bor va ularga munosabat ham har xil bo'lishi kerak.
+ *
+ *  · `saqlandi`  - server qabul qildi, navbatdan chiqariladi;
+ *  · `takror`    - server "bu xonadon allaqachon bor" dedi (409).
+ *                  Bu ham MUVAFFAQIYAT: aloqa javob kelishidan
+ *                  oldin uzilgan bo'lsa, yozuv aslida saqlangan
+ *                  bo'ladi. Uni navbatda qoldirish - xodimga
+ *                  abadiy "yuborilmagan" deb ko'rsatib turish;
+ *  · `yaroqsiz`  - ma'lumotda xato bor (400). Qayta-qayta
+ *                  yuborish foydasiz, lekin O'CHIRIB HAM
+ *                  BO'LMAYDI: bu xodimning bir soatlik ishi.
+ *                  Navbatda qoladi va xodimga ko'rsatiladi;
+ *  · `aloqa-yoq` - tarmoq yo'q yoki server javob bermadi.
+ *                  Qolganlariga urinish ham behuda - to'xtaymiz.
+ */
+export type YuborishNatijasi = 'saqlandi' | 'takror' | 'yaroqsiz' | 'aloqa-yoq';
+
+/**
+ * Shundan ortiq urinishdan keyin yozuv "e'tibor talab qiladi"
+ * deb belgilanadi va avtomatik yuborishga qo'shilmaydi.
+ *
+ * Chegara bo'lmasa, ma'lumoti buzuq bitta yozuv har safar
+ * navbatni to'sib turardi va orqasidagilar yuborilmasdi.
+ */
+export const MAX_URINISH = 5;
+
+/** Yozuv avtomatik yuborishga yaroqlimi */
+export function avtomatikYuboriladimi(y: NavbatYozuvi): boolean {
+  return y.urinishlar < MAX_URINISH;
+}
+
+export interface NavbatNatijalari {
+  /** Serverga yangi yozilganlar */
+  yuborildi: number;
+  /** Server "allaqachon bor" degani - ular ham yo'qolmadi */
+  takror: number;
+  /** Navbatda qolgani */
+  qoldi: number;
+  /** E'tibor talab qiladiganlar (urinish chegarasidan oshgan) */
+  etibor: number;
+  /** Aloqa yo'qligi sababli to'xtadimi */
+  aloqaYoq: boolean;
+}
+
+/**
  * Navbatni serverga yuborishga urinadi.
  *
  * @param yubor bitta yozuvni yuboradigan funksiya
- * @returns nechtasi yuborildi
  */
 export async function navbatniYubor(
-  yubor: (malumot: unknown) => Promise<boolean>
-): Promise<{ yuborildi: number; qoldi: number }> {
-  const navbat = navbatniOqi();
+  yubor: (malumot: unknown) => Promise<YuborishNatijasi>
+): Promise<NavbatNatijalari> {
+  const navbat = navbatniOqi().filter(avtomatikYuboriladimi);
   let yuborildi = 0;
+  let takror = 0;
+  let aloqaYoq = false;
 
   for (const yozuv of navbat) {
+    let natija: YuborishNatijasi;
     try {
-      if (await yubor(yozuv.malumot)) {
-        navbatdanOchir(yozuv.localId);
-        yuborildi++;
-      } else {
-        urinishBelgila(yozuv.localId);
-      }
+      natija = await yubor(yozuv.malumot);
     } catch {
-      urinishBelgila(yozuv.localId);
-      // Aloqa uzilgan bo'lsa qolganlariga urinish ham behuda
+      natija = 'aloqa-yoq';
+    }
+
+    if (natija === 'saqlandi' || natija === 'takror') {
+      navbatdanOchir(yozuv.localId);
+      if (natija === 'takror') takror++;
+      else yuborildi++;
+      continue;
+    }
+
+    urinishBelgila(yozuv.localId);
+    if (natija === 'aloqa-yoq') {
+      aloqaYoq = true;
       break;
     }
   }
 
-  return { yuborildi, qoldi: navbatniOqi().length };
+  const qolgan = navbatniOqi();
+  return {
+    yuborildi,
+    takror,
+    qoldi: qolgan.length,
+    etibor: qolgan.filter((y) => !avtomatikYuboriladimi(y)).length,
+    aloqaYoq,
+  };
 }

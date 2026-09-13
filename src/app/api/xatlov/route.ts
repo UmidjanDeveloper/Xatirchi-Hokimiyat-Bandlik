@@ -6,6 +6,7 @@ import { jurnal, talabQil } from '@/lib/api-auth';
 import { mahallaFiltri, mahallagaRuxsat } from '@/lib/auth';
 import { QoralamaSxemasi, YuborishSxemasi } from '@/lib/xatlov-sxema';
 import { takrorKaliti, yuborishgaTayyormi } from '@/lib/xatlov-tekshiruvi';
+import { yiliniAniqla } from '@/lib/xatlov-sxema';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
 
 /** Ro'yxat so'rovi */
@@ -157,8 +158,52 @@ export async function POST(request: Request) {
 
   const kalit = takrorKaliti(xonadon.manzil ?? '', xonadon.oilaBoshligi ?? '');
 
+  /*
+   * Tug'ilgan yil SANADAN olinadi.
+   *
+   * Asosiy maydon to'liq sana bo'ldi; yil esa eski yozuvlar va
+   * tahlil uchun saqlanadi. Buni forma ham qiladi, lekin server
+   * ham qilishi kerak: boshqa mijoz (oflayn navbat, kelajakdagi
+   * mobil ilova) faqat sanani yuborsa, ilgari tushunarsiz
+   * "Expected number, received nan" xatosi qaytardi.
+   */
+  const tugilganYili = yiliniAniqla(xonadon);
+  if (turi === 'yakuniy' && tugilganYili == null) {
+    return NextResponse.json(
+      {
+        xabar: 'Ma‘lumotlarda nomuvofiqlik bor',
+        xatolar: [
+          {
+            maydon: 'oilaBoshligiTugilganSana',
+            xabar: 'Оила бошлиғининг туғилган санасини киритинг',
+          },
+        ],
+      },
+      { status: 422 }
+    );
+  }
+
   const malumot = {
     ...xonadon,
+    ...(tugilganYili == null ? {} : { tugilganYili }),
+
+    /*
+     * QORALAMA yarim to'ldirilgan bo'lishi MUMKIN - butun mazmuni
+     * shu: xodim eshik oldida, telefoni o'chishidan oldin
+     * yozganini saqlab qo'yadi.
+     *
+     * Lekin `jamiAzo` bazada majburiy ustun va unda `default`
+     * yo'q edi: xodim oila a'zolari sonini hali kiritmagan
+     * bo'lsa, saqlash 500 xatosi bilan tugardi va unga faqat
+     * "Saqlashda xatolik yuz berdi" deb ko'rsatilardi - qaysi
+     * maydon ekani aytilmasdi.
+     *
+     * 0 - "hali kiritilmagan" degani va bu YOLG'ON emas:
+     * qoralamalar tahlilga ham, hisobotga ham kirmaydi
+     * (`holati: { not: 'QORALAMA' }`). Yakuniy yuborishda esa
+     * sxema kamida 1 ni talab qiladi.
+     */
+    jamiAzo: xonadon.jamiAzo ?? 0,
     telefon: telefonSaqlashUchun(xonadon.telefon ?? '') ?? xonadon.telefon ?? null,
     takrorKaliti: kalit,
     holati: turi === 'yakuniy' ? ('YUBORILGAN' as const) : ('QORALAMA' as const),

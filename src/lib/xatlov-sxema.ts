@@ -127,7 +127,24 @@ export const XonadonSxemasi = z.object({
     .min(new Date('1920-01-01'), { message: 'Туғилган сана 1920 йилдан кейин бўлиши керак' })
     .max(new Date(), { message: 'Туғилган сана келажакда бўлиши мумкин эмас' })
     .nullish(),
-  tugilganYili: z.coerce.number().int().min(1920).max(2026),
+  /*
+   * Tug'ilgan YIL - endi SANADAN kelib chiqadi.
+   *
+   * Asosiy maydon `oilaBoshligiTugilganSana` bo'ldi; yil esa
+   * eski yozuvlar va tahlil uchun saqlanadi. Forma ikkisini ham
+   * yuboradi, lekin sxema yilni MAJBURIY talab qilsa, sana
+   * yuborgan har qanday mijoz (masalan oflayn navbat) tushunarsiz
+   * "Expected number, received nan" xatosini olardi.
+   *
+   * Shuning uchun yil ixtiyoriy. Uni sanadan olish va ikkalasi
+   * ham yo'qligini tekshirish - `yiliniAniqla()` ning ishi; u
+   * API yo'lida chaqiriladi.
+   *
+   * Sxema ODDIY OBYEKT bo'lib qolishi kerak: qoralama sxemasi
+   * undan `.partial()` orqali yasaladi va `transform` qo'shilsa
+   * bu imkoniyat yo'qoladi.
+   */
+  tugilganYili: z.coerce.number().int().min(1920).max(2026).nullish(),
   oilaBoshligiJinsi: z.enum(qiymatlar(JINS)),
   telefon: z.string().min(7).max(20),
 
@@ -228,6 +245,25 @@ export const XonadonSxemasi = z.object({
 
 export type XonadonKirishi = z.input<typeof XonadonSxemasi>;
 export type XonadonMalumoti = z.output<typeof XonadonSxemasi>;
+
+/**
+ * Tug'ilgan yilni sanadan chiqaradi.
+ *
+ * Asosiy maydon - to'liq SANA; yil esa eski yozuvlar va tahlil
+ * uchun saqlanadi. Forma ikkisini ham yuboradi, lekin boshqa
+ * mijoz (oflayn navbat, kelajakdagi mobil ilova) faqat sanani
+ * yuborishi mumkin - o'shanda yil shu yerda hisoblanadi.
+ *
+ * @returns yil, yoki ikkalasi ham yo'q bo'lsa `null`
+ */
+export function yiliniAniqla(d: {
+  tugilganYili?: number | null;
+  oilaBoshligiTugilganSana?: Date | null;
+}): number | null {
+  if (d.tugilganYili != null) return d.tugilganYili;
+  if (d.oilaBoshligiTugilganSana) return d.oilaBoshligiTugilganSana.getFullYear();
+  return null;
+}
 
 /**
  * Qoralama sxemasi - deyarli hamma maydon ixtiyoriy.

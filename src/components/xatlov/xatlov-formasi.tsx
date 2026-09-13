@@ -20,7 +20,7 @@ import {
   yuborishgaTayyormi,
   type XatlovRaqamlari,
 } from '@/lib/xatlov-tekshiruvi';
-import { qoralamaOchir, qoralamaOqi, qoralamaSaqla } from '@/lib/offline';
+import { navbatgaQosh, qoralamaOchir, qoralamaOqi, qoralamaSaqla } from '@/lib/offline';
 import { bosHolat, yuborishUchun, type XatlovHolati } from './holat';
 import { QADAMLAR } from './qadamlar';
 
@@ -192,8 +192,25 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       router.push(`/xatlov/${natija.id}?yangi=1`);
       router.refresh();
     } catch {
+      /*
+       * Aloqa uzildi. Ilgari xodimga "keyin qayta yuboring" deb
+       * yozilardi va qayta yuborishni u ESLAB QOLISHI kerak
+       * bo'lardi: anketani qayta ochib, oxirigacha o'tib, yana
+       * tugmani bosish. Kun oxirida, o'nta xonadondan keyin,
+       * buni hech kim eslamaydi.
+       *
+       * Endi tayyor xatlov NAVBATGA tushadi va aloqa tiklanishi
+       * bilan o'zi ketadi. Qoralama `id` si ham birga boradi -
+       * busiz navbat yangi yozuv yaratishga urinardi.
+       */
+      const navbat = navbatgaQosh({ turi: 'yakuniy', id, malumot: yuborishUchun(h) });
+
       setServerXatosi(
-        tr('Алоқа йўқ. Маълумот телефон хотирасида сақланди — алоқа тикланганда қайта юборинг.')
+        navbat.ok
+          ? tr('Алоқа йўқ. Хатлов навбатга қўйилди — алоқа тикланиши билан ўзи юборилади. Телефонни ўчирсангиз ҳам йўқолмайди.')
+          : navbat.sabab === 'navbat-toldi'
+            ? tr('Алоқа йўқ ва навбат тўлган. Администраторга мурожаат қилинг — маълумот юборилмай турибди.')
+            : tr('Алоқа йўқ ва телефон хотирасига ёзиб бўлмади. Браузер хотирасини бўшатиб, қайта уриниб кўринг.')
       );
     } finally {
       setYuborilmoqda(false);
