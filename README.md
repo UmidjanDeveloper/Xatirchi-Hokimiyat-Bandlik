@@ -327,16 +327,28 @@ Ikkala provayder ham **bitta eshikdan** o'tadi (`src/lib/ai.ts`),
 shuning uchun yuboriladigan ma'lumot ikkisida ham bir xil:
 faqat sonlar va katalog qiymatlari.
 
-Kalitni qo'ygach **albatta tekshiring**:
+Kalitni qo'ygach **albatta tekshiring**. Ikki yo'l bor:
+
+**Brauzerdan** — terminal kerak emas:
+`Boshqaruv` → **«Sun'iy intellekt ulanishi»** → **Tekshirish**.
+Faqat administrator ko'radi. Kalitning o'zi hech qachon
+qaytarilmaydi — sahifa suratga olinishi mumkin, shuning uchun
+faqat niqoblangan boshi va oxiri ko'rsatiladi.
+
+**Terminaldan:**
 
 ```bash
 npm run ai-tekshir
 ```
 
-U qaysi modellar kalitingizga ochiqligini ko'rsatadi va sinov
-so'rovi yuboradi. Bu buyruq kerak, chunki ilova kalit noto'g'ri
-bo'lsa ham **ishlayveradi** — xulosa jimgina qoida bo'yicha
-hisoblanadi va xato hech qayerda ko'rinmaydi.
+Ikkalasi ham bir xil ishni qiladi: qaysi modellar kalitingizga
+ochiqligini ro'yxatlaydi, sinov so'rovi yuboradi va xatoni
+tushunarli qilib aytadi (kalit noto'g'ri / model topilmadi /
+kunlik limit tugadi).
+
+Bu tekshiruv kerak, chunki ilova kalit noto'g'ri bo'lsa ham
+**ishlayveradi** — xulosa jimgina qoida bo'yicha hisoblanadi va
+xato hech qayerda ko'rinmaydi.
 
 > **Diqqat.** Bepul (AI Studio) darajasidagi Gemini kalitida
 > Google yuborilgan ma'lumotdan o'z xizmatlarini yaxshilash

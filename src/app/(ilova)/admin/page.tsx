@@ -4,6 +4,7 @@ import { joriySessiya } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
+import { AiHolati } from '@/components/admin/ai-holati';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -89,6 +90,16 @@ export default async function AdminSahifasi() {
         <h2 className="text-sm font-bold text-ink">{tr('Ходимлар (')}{xodimlar.length})</h2>
         <XodimBoshqaruvi xodimlar={xodimlar} mahallalar={mahallalar} />
       </section>
+
+      {/*
+        Sun'iy intellekt ulanishi.
+
+        Kalit noto'g'ri bo'lsa ilova TO'XTAMAYDI - xulosa jimgina
+        qoida bo'yicha hisoblanadi. Bu atayin shunday, lekin
+        sozlash paytida "kalitni qo'ydim, nega o'zgarmadi?" degan
+        savolga javob kerak bo'ladi. Shu tugma javob beradi.
+      */}
+      <AiHolati />
 
       {/*
         Audit jurnali. Xatlov ma'lumotlari oila daromadi va sog'liq

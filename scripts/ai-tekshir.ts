@@ -15,7 +15,7 @@
  * ============================================================
  */
 import { envYukla } from './env-yukla';
-import { joriyModel, joriyProvayder, matnSoraBatafsil } from '../src/lib/ai';
+import { geminiModellari, joriyModel, joriyProvayder, kalitNiqobi, matnSoraBatafsil } from '../src/lib/ai';
 
 envYukla();
 
@@ -23,35 +23,21 @@ const OK = '✓';
 const XATO = '✗';
 const OGOH = '!';
 
-async function geminiModellari(kalit: string): Promise<void> {
-  try {
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
-      headers: { 'x-goog-api-key': kalit },
-    });
-    if (!r.ok) {
-      const t = await r.text().catch(() => '');
-      console.log(`  ${OGOH}  Модел рўйхатини олиб бўлмади (${r.status}): ${t.slice(0, 200)}`);
-      return;
-    }
-    const d = (await r.json()) as {
-      models?: { name?: string; supportedGenerationMethods?: string[] }[];
-    };
-    const mos = (d.models ?? [])
-      .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
-      .map((m) => (m.name ?? '').replace('models/', ''))
-      .filter((n) => n.startsWith('gemini'));
+async function modellarniKorsat(): Promise<void> {
+  const { modellar, xato } = await geminiModellari();
+  if (xato) {
+    console.log(`  ${OGOH}  Модел рўйхатини олиб бўлмади: ${xato}`);
+    return;
+  }
 
-    console.log(`  ${OK}  Калитингиз учун мавжуд моделлар (${mos.length} та):`);
-    for (const n of mos.slice(0, 12)) console.log(`       ${n}`);
-    if (mos.length > 12) console.log(`       … яна ${mos.length - 12} та`);
+  console.log(`  ${OK}  Калитингиз учун мавжуд моделлар (${modellar.length} та):`);
+  for (const n of modellar.slice(0, 12)) console.log(`       ${n}`);
+  if (modellar.length > 12) console.log(`       … яна ${modellar.length - 12} та`);
 
-    const joriy = joriyModel('gemini');
-    if (mos.length && !mos.includes(joriy)) {
-      console.log(`\n  ${OGOH}  Созланган модел «${joriy}» бу рўйхатда ЙЎҚ.`);
-      console.log(`       GEMINI_MODEL="${mos[0]}" деб қўйинг.`);
-    }
-  } catch (e) {
-    console.log(`  ${OGOH}  Модел рўйхати: ${(e as Error).message}`);
+  const joriy = joriyModel('gemini');
+  if (modellar.length && !modellar.includes(joriy)) {
+    console.log(`\n  ${OGOH}  Созланган модел «${joriy}» бу рўйхатда ЙЎҚ.`);
+    console.log(`       GEMINI_MODEL="${modellar[0]}" деб қўйинг.`);
   }
 }
 
@@ -76,14 +62,10 @@ async function main() {
   console.log(`  ${OK}  Провайдер: ${provayder}`);
   console.log(`  ${OK}  Модел:     ${model}`);
 
-  const kalit =
-    provayder === 'gemini'
-      ? (process.env.GEMINI_API_KEY as string)
-      : (process.env.ANTHROPIC_API_KEY as string);
-  console.log(`  ${OK}  Калит:     ${kalit.slice(0, 6)}…${kalit.slice(-4)} (${kalit.length} белги)\n`);
+  console.log(`  ${OK}  Калит:     ${kalitNiqobi()}\n`);
 
   if (provayder === 'gemini') {
-    await geminiModellari(kalit);
+    await modellarniKorsat();
     console.log('');
   }
 

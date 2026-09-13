@@ -76,6 +76,53 @@ export function joriyModel(p: Provayder): string {
   return berilgan?.trim() || ODATIY_MODEL[p];
 }
 
+/**
+ * Калитга очиқ Gemini моделлари рўйхати.
+ *
+ * Модел номлари вақт ўтиши билан ўзгаради ва текин даражадаги
+ * калитга ҳамма модел очиқ бўлмайди. «Модел топилмади» хатосига
+ * тушганда, тахмин қилиш ўрнига ШУ рўйхатдан танлаш керак.
+ */
+export async function geminiModellari(): Promise<{ modellar: string[]; xato?: string }> {
+  const kalit = process.env.GEMINI_API_KEY;
+  if (!kalit) return { modellar: [], xato: 'GEMINI_API_KEY sozlanmagan' };
+
+  try {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+      headers: { 'x-goog-api-key': kalit },
+    });
+    if (!r.ok) return { modellar: [], xato: `${r.status}: ${await xatoMatni(r)}` };
+
+    const d = (await r.json()) as {
+      models?: { name?: string; supportedGenerationMethods?: string[] }[];
+    };
+    const modellar = (d.models ?? [])
+      .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m) => (m.name ?? '').replace('models/', ''))
+      .filter((n) => n.startsWith('gemini'));
+
+    return { modellar };
+  } catch (e) {
+    return { modellar: [], xato: (e as Error).message };
+  }
+}
+
+/**
+ * Калитнинг ниқобланган кўриниши — диагностика учун.
+ *
+ * Калитнинг ЎЗИ ҳеч қачон қайтарилмайди: диагностика саҳифаси
+ * браузерда очилади ва экран суратга олиниши мумкин. Боши ва
+ * охири «мен қўйган калит шумиди?» саволига жавоб бериш учун
+ * етарли.
+ */
+export function kalitNiqobi(): string | null {
+  const p = joriyProvayder();
+  if (!p) return null;
+  const k = (p === 'gemini' ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY) ?? '';
+  if (k.length < 12) return `${'*'.repeat(k.length)} (${k.length} belgi)`;
+  return `${k.slice(0, 4)}…${k.slice(-4)} (${k.length} belgi)`;
+}
+
 /** Диагностика учун: хато матни билан бирга қайтарадиган натижа */
 export interface SorovNatijasi {
   matn: string | null;
