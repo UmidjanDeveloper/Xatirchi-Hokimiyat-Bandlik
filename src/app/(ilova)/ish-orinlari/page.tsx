@@ -9,6 +9,7 @@ import { KASB_YONALISHI, kirillcha } from '@/lib/constants';
 import { orinHisobi } from '@/lib/joylashtirish';
 import { bandOrinlar } from '@/lib/moslashtirish';
 import { IshOrniFormasi } from '@/components/ish-orni/ish-orni-formasi';
+import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -74,7 +75,10 @@ export default async function IshOrinlariSahifasi() {
             {jamiOrin !== jamiBosh ? ` · ${jamiOrin - jamiBosh} ${tr('банд')}` : ''}
           </p>
         </div>
-        <IshOrniFormasi mahallalar={mahallalar} />
+        <div className="flex flex-wrap items-start gap-3">
+          <IshOrniFormasi mahallalar={mahallalar} />
+          <SahifaHisoboti malumotBormi={royxat.length > 0} />
+        </div>
       </div>
 
       {royxat.length === 0 ? (

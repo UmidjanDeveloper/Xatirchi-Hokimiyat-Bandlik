@@ -8,6 +8,7 @@ import { formatPhone, percent } from '@/lib/utils';
 import { MALUMOT, kirillcha } from '@/lib/constants';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
+import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -98,12 +99,15 @@ export default async function IshsizlarSahifasi({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="sahifa-sarlavha">{tr('Ишсиз фуқаролар')}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {tr('Жами')} {jamiFuqaro} {tr('та · жойлаштирилган')} {joylashtirilgan} {tr('та (')}
-          {percent(joylashtirilgan, jamiFuqaro)}%)
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="sahifa-sarlavha">{tr('Ишсиз фуқаролар')}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            {tr('Жами')} {jamiFuqaro} {tr('та · жойлаштирилган')} {joylashtirilgan} {tr('та (')}
+            {percent(joylashtirilgan, jamiFuqaro)}%)
+          </p>
+        </div>
+        <SahifaHisoboti malumotBormi={jamiFuqaro > 0} />
       </div>
 
       {/*

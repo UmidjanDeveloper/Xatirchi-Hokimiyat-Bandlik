@@ -3,6 +3,7 @@ import { matnchi } from '@/lib/alifbo-server';
 import { joriySessiya } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
+import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 export function generateMetadata() {
   return { title: matnchi()('Маҳалла ходимлари') };
@@ -61,11 +62,14 @@ export default async function MahallaXodimlariSahifasi() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="sahifa-sarlavha">{tr('Маҳалла ходимлари')}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {faolSoni} {tr('фаол ҳисоб ·')} {mahallalar.length} {tr('та МФЙ')}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="sahifa-sarlavha">{tr('Маҳалла ходимлари')}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            {faolSoni} {tr('фаол ҳисоб ·')} {mahallalar.length} {tr('та МФЙ')}
+          </p>
+        </div>
+        <SahifaHisoboti />
       </div>
 
       <div className="karta p-4 text-xs leading-relaxed text-ink-muted sm:p-5">

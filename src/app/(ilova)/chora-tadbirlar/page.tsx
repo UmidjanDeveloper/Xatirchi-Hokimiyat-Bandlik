@@ -14,6 +14,7 @@ import {
   qolganKun,
 } from '@/lib/chora-tadbir';
 import { ChoraHolati } from '@/components/chora/chora-holati';
+import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -97,11 +98,20 @@ export default async function ChoraTadbirlarSahifasi({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="sahifa-sarlavha">{tr('Чора-тадбирлар режаси')}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {tr('Муаммо → ечим → масъул ташкилот → муддат')}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="sahifa-sarlavha">{tr('Чора-тадбирлар режаси')}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            {tr('Муаммо → ечим → масъул ташкилот → муддат')}
+          </p>
+        </div>
+        {/*
+          Бу саҳифани БАРЧА рол кўради — ҳокимнинг менюсида
+          эса ундан бошқа фақат таҳлил панели бор. Тугма шу
+          ерда бўлмаса, ҳоким чора-тадбирлар рўйхатини очиб
+          туриб, уни ҳужжат қила олмасди.
+        */}
+        <SahifaHisoboti malumotBormi={jami > 0} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate } from '@/lib/utils';
+import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -85,9 +86,12 @@ export default async function XonadonlarSahifasi({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="sahifa-sarlavha">{tr('Хонадонлар')}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{jami} {tr('та хатлов')}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="sahifa-sarlavha">{tr('Хонадонлар')}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{jami} {tr('та хатлов')}</p>
+        </div>
+        <SahifaHisoboti malumotBormi={jami > 0} />
       </div>
 
       <form className="karta flex flex-wrap gap-2 p-3" method="get">
