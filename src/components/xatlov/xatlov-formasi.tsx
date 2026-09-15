@@ -580,10 +580,10 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
    */
   if (h.passivDaromadIstagi) {
     if (h.passivDaromadTurlari.length === 0) {
-      xt.passivDaromadTurlari = 'Камида битта йўлни белгиланг';
+      xt.passivDaromadTurlari = 'Камида битта воситани белгиланг';
     }
     if (h.passivDaromadTurlari.includes('Boshqa') && h.passivDaromadIzohi.trim().length < 3) {
-      xt.passivDaromadIzohi = '«Бошқа» танланди — изоҳда нимани назарда тутганини ёзинг';
+      xt.passivDaromadIzohi = '«Бошқа» белгиланди — қайси восита кераклигини ёзинг';
     }
   }
 

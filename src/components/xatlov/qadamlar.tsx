@@ -1528,21 +1528,27 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
   return (
     <>
       {/*
-        ── ПАССИВ ДАРОМАД ──
+        ── ПАССИВ ДАРОМАД ВОСИТАСИ ──
 
         Иш ўрни ва тадбиркорликдан ФАРҚЛИ учинчи йўл.
 
         Оилада ёши катта, соғлиғи заиф ёки бола парвариши билан
         банд аъзо бўлади — уни ишга жойлаштириб бўлмайди ва у
         ҳар қандай бандлик рўйхатида «имконсиз» бўлиб туради.
-        Лекин мулкини ишлатиш мумкин: бўш хонани, дўконни, ерни
-        ижарага бериш. Бу савол айнан ўшаларни кўринадиган
-        қилади.
+
+        Савол АТАЙЛАБ «сизда нима бор» эмас, «сизга НИМА БЕРСАК
+        даромад топа оласиз» тарзида қўйилган. Биринчисига
+        берилган жавоб билан ҳеч ким ҳеч нима қила олмайди;
+        иккинчиси эса тўғридан-тўғри таъминот рўйхатига
+        айланади — қайси маҳаллада нечта оила айнан нимани
+        сўраган.
+
+        Рўйхат ҲОКИМ берган.
       */}
       <Bolim
         raqam="X"
-        sarlavha={tr("Пассив даромад имконияти")}
-        izoh={tr("Меҳнатсиз, мавжуд мулк ёки жамғарма ҳисобига даромад. Ишга жойлаштириб бўлмайдиган аъзоси бор оила учун кўпинча ягона реал йўл.")}
+        sarlavha={tr("Пассив даромад воситаси")}
+        izoh={tr("Оилага қайси восита берилса, у доимий даромад топа олади. Ишга жойлаштириб бўлмайдиган аъзоси бор оила учун кўпинча ягона реал йўл.")}
       >
         <ToliqKeng>
           <HaYoqMaydoni
@@ -1564,27 +1570,37 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
           <>
             <ToliqKeng>
               <KopTanlovMaydoni
-                yorliq={tr("Қайси йўл билан")}
-                izoh={tr("Оилада мавжуд имконият бўйича — бир нечтасини белгилаш мумкин")}
+                yorliq={tr("Қайси восита керак")}
+                izoh={tr("Бир нечтасини белгилаш мумкин. Рўйхатда йўқ бўлса — «Бошқа» ни белгилаб, пастда ўз вариантини ёзинг.")}
                 majburiy
                 variantlar={PASSIV_DAROMAD_TURI}
                 qiymatlar={h.passivDaromadTurlari}
-                ozgardi={(q) => yangila('passivDaromadTurlari', q)}
+                ozgardi={(q) => {
+                  yangila('passivDaromadTurlari', q);
+                  if (!q.includes('Boshqa')) yangila('passivDaromadIzohi', '');
+                }}
                 xato={x(xatolar, 'passivDaromadTurlari')}
               />
             </ToliqKeng>
 
-            <ToliqKeng>
-              <MatnMaydoni
-                yorliq={tr("Изоҳ — нимаси бор ва нима тўсқинлик қиляпти")}
-                izoh={tr("Масалан: «бўш хона бор, лекин таъмир керак» ёки «ер бор, ҳужжати йўқ»")}
-                koptator
-                majburiy={h.passivDaromadTurlari.includes('Boshqa')}
-                qiymat={h.passivDaromadIzohi}
-                ozgardi={(q) => yangila('passivDaromadIzohi', q)}
-                xato={x(xatolar, 'passivDaromadIzohi')}
-              />
-            </ToliqKeng>
+            {/*
+              «Бошқа» белгиланса, фуқаронинг ЎЗ варианти
+              мажбурий. Акс ҳолда таъминот рўйхатида «Бошқа: 38
+              хонадон» деган банд қолади ва ундан ҳеч нарса
+              буюртма қилиб бўлмайди.
+            */}
+            {h.passivDaromadTurlari.includes('Boshqa') && (
+              <ToliqKeng>
+                <MatnMaydoni
+                  yorliq={tr("«Бошқа» — фуқаронинг ўз варианти")}
+                  izoh={tr("Қайси восита кераклигини аниқ ёзинг. Битта вариант такрорланаверса, у кейинги йил рўйхатга қўшилади.")}
+                  majburiy
+                  qiymat={h.passivDaromadIzohi}
+                  ozgardi={(q) => yangila('passivDaromadIzohi', q)}
+                  xato={x(xatolar, 'passivDaromadIzohi')}
+                />
+              </ToliqKeng>
+            )}
           </>
         )}
       </Bolim>

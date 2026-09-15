@@ -597,24 +597,37 @@ export function shaharlarRoyxati(davlatlar: string[]): Variant[] {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Passiv daromad yo'nalishlari.
+ * Passiv daromad vositalari - HOKIM bergan ro'yxat.
  *
- * Ish o'rni va tadbirkorlikdan FARQLI uchinchi yo'l: oila
- * kundalik mehnatsiz daromad olishi. Yoshi katta, sog'lig'i
- * yaxshi bo'lmagan yoki bola parvarishi bilan band a'zolar
- * uchun ko'pincha yagona real imkoniyat — ularni ishga
- * joylashtirib bo'lmaydi, lekin mulkini ishlatish mumkin.
+ * Bu "mulkni ijaraga berish" ro'yxati EMAS. Bu tuman ajratib
+ * bera oladigan aniq VOSITALAR: quyosh paneli, 100 ta tovuq,
+ * bitta sigir, kichik issiqxona. Ya'ni savol "sizda nima bor"
+ * emas, "sizga NIMA BERSAK daromad topa olasiz".
+ *
+ * Farqi amaliy: birinchisiga javob bergan oila bilan hech kim
+ * hech nima qila olmaydi, ikkinchisi esa to'g'ridan-to'g'ri
+ * ta'minot ro'yxatiga aylanadi - qaysi mahallada nechta oila
+ * aynan nimani so'ragan.
+ *
+ * Ro'yxatda yo'q vosita uchun "Boshqa" bor va unda fuqaro o'z
+ * variantini yozadi: takrorlanaveradigan javob keyingi yil
+ * ro'yxatga qo'shiladi.
+ *
+ * Emoji ATAYLAB yo'q: hisobot PDF shrifti (shrift-yasa.py)
+ * faqat kirill, lotin va raqamga qisqartirilgan va emoji unda
+ * bo'sh kvadrat bo'lib chiqardi.
  */
 export const PASSIV_DAROMAD_TURI = v(
-  ['Uy-joyni ijaraga berish', 'Уй-жойни ижарага бериш'],
-  ['Doʻkon yoki bino ijarasi', 'Дўкон ёки бино ижараси'],
-  ['Yerni ijaraga berish', 'Ерни ижарага бериш'],
-  ['Texnika yoki asbob ijarasi', 'Техника ёки асбоб ижараси'],
-  ['Avtomobil ijarasi', 'Автомобиль ижараси'],
-  ['Bank depoziti', 'Банк депозити'],
-  ['Qimmatli qogʻozlar', 'Қимматли қоғозлар'],
-  ['Ulush qoʻshib sherikchilik', 'Улуш қўшиб шерикчилик'],
-  ['Onlayn kontent va reklama', 'Онлайн контент ва реклама'],
+  ['Quyosh paneli', 'Қуёш панели'],
+  ['100 ta tovuq', '100 та товуқ'],
+  ['1 ta sigir', '1 та сигир'],
+  ['Kichik issiqxona', 'Кичик иссиқхона'],
+  ['Koʻchatchilik', 'Кўчатчилик'],
+  ['Tikuv mashinasi', 'Тикув машинаси'],
+  ['Muzlatkich ijarasi', 'Музлаткич/совуткич ижараси'],
+  ['Asbob-uskuna ijarasi', 'Асбоб-ускуналар ижараси'],
+  ['Kichik savdo nuqtasi', 'Кичик савдо нуқтаси'],
+  ['Qoʻy-echki mini-fermasi', 'Қўй-эчки мини-фермаси'],
   ['Boshqa', 'Бошқа']
 );
 
