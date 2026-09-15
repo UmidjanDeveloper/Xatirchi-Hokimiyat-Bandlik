@@ -164,6 +164,7 @@ model Mahalla {
   ishsizlar    UnemployedPerson[]
   ishOrinlar   Vacancy[]
   itVaucherlar ItVaucher[]
+  kesmalar     HouseholdKesma[]
 
   @@index([nomi])
 }
@@ -491,6 +492,8 @@ model Household {
 
   ishsizlar    UnemployedPerson[]
   topshiriqlar ActionPlan[]
+  /// Vaqt kesimidagi holatlar - "yil boshida qanday edi"
+  kesmalar     HouseholdKesma[]
 
   /// Bir xonadonni ikki marta kiritish mumkin emas
   @@unique([mahallaId, takrorKaliti])
@@ -675,6 +678,113 @@ model ActionPlan {
   @@index([muddat, holati])
   @@index([householdId])
   @@index([ishsizId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  XONADON TARIXI - KESMALAR
+// ─────────────────────────────────────────────────────────────
+
+/// Kesma nima sababdan olingani
+enum KesmaSababi {
+  /// Birinchi marta xatlovdan o'tdi
+  ILK_XATLOV
+  /// Qayta xatlov yoki tahrir - yuborilgan holatga qaytdi
+  QAYTA_XATLOV
+  /// Eski yozuvlar uchun bir martalik to'ldirish
+  BOSHLANGICH
+}
+
+/// Xonadonning MA'LUM PAYTDAGI holati.
+///
+/// ── Nega kerak ──
+///
+/// `Household` jadvalida faqat OXIRGI holat turadi. Xatlov qayta
+/// o'tkazilsa, eski raqamlar ustidan yozilib ketadi va "bu oila
+/// yil boshida qanday edi" degan savolga javob qolmaydi.
+///
+/// Kambag'allikdan chiqishni o'lchash esa aynan shu savolga
+/// tayanadi. Raqam o'sgani yetmaydi: xatlov davom etayotgani
+/// uchun umumiy raqam baribir o'sadi. Kerakli savol boshqa -
+/// "O'SHA OILA ilgarigidan yaxshiroq yashayaptimi".
+///
+/// ── Nega hamma ustun ko'chirilmaydi ──
+///
+/// `Household` da 160 dan ortiq maydon bor. Ularning ko'pi
+/// o'zgarmaydi (manzil, oila boshlig'i ismi) yoki taqqoslashga
+/// yaramaydi (izohlar, imzo). Shuning uchun bu yerda faqat
+/// HARAKATDAGI ko'rsatkichlar alohida ustun bo'lib turadi -
+/// ular bo'yicha SQL so'rov yozish mumkin.
+///
+/// To'liq yozuv esa `toliq` ichida JSON bo'lib saqlanadi: keyin
+/// boshqa savol tug'ilsa, ma'lumot yo'qolmagan bo'ladi.
+model HouseholdKesma {
+  id String @id @default(cuid())
+
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  /// Maхsus takrorlanadi: 70 ta mahalla xodimining izolyatsiyasi
+  /// so'rovning o'zida, qo'shimcha JOIN'siz ta'minlanadi
+  mahallaId String
+  mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
+
+  olinganSana DateTime    @default(now())
+  sababi      KesmaSababi @default(QAYTA_XATLOV)
+
+  // ── Oila tarkibi ──
+  jamiAzo     Int
+  bolalarSoni Int @default(0)
+
+  // ── Mehnat va bandlik ──
+  mehnatgaLayoqatli Int @default(0)
+  ishlaydiganlar    Int @default(0)
+  ishsizlarSoni     Int @default(0)
+
+  // ── Daromad ──
+  oylikDaromad      BigInt?
+  /// `oylikDaromad / jamiAzo` - kambag'allikning asosiy o'lchovi.
+  /// Alohida saqlanadi, chunki oila a'zolari soni ham o'zgaradi
+  /// va keyinchalik qayta hisoblab bo'lmaydi.
+  jonBoshigaDaromad BigInt?
+  chetElOylikPulSom BigInt?
+
+  // ── Xo'jalik ──
+  yirikShoxliSoni Int?
+  maydaShoxliSoni Int?
+  parrandaSoni    Int?
+  tomorqaMaydoni  Float?
+
+  // ── Yashash sharoiti ──
+  gaz          Boolean @default(false)
+  ichimlikSuvi String?
+  uyHolati     String?
+
+  // ── Istaklar ──
+  tadbirkorlikIstagi Boolean @default(false)
+  kasbHunarIstagi    Boolean @default(false)
+
+  /// Nogironligi bo'lgan shaxslar soni
+  nogironSoni Int @default(0)
+
+  /// Anketa javoblaridan hisoblangan 0-100 oralig'idagi ko'rsatkich.
+  ///
+  /// DIQQAT: bu RASMIY kambag'allik mezoni EMAS va oilalarni
+  /// bir-biri bilan taqqoslash uchun ham emas. U faqat BITTA
+  /// oilani O'ZI bilan vaqt kesimida taqqoslash uchun xizmat
+  /// qiladi: "shu xonadonda ahvol yaxshilandimi".
+  ///
+  /// Hisoblash usuli `src/lib/xonadon-tarixi.ts` da ochiq yozilgan
+  /// va hisobotda ham ko'rsatiladi - yopiq formula bo'lmasligi
+  /// kerak, aks holda unga ishonib bo'lmaydi.
+  farovonlikBali Int
+
+  /// O'sha paytdagi TO'LIQ yozuv - kelajakdagi savollar uchun
+  toliq Json
+
+  createdAt DateTime @default(now())
+
+  @@index([householdId, olinganSana])
+  @@index([mahallaId, olinganSana])
 }
 
 // ─────────────────────────────────────────────────────────────

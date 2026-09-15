@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
+import { kesmaSaqla } from '@/lib/xonadon-tarixi';
 import { mahallaFiltri, mahallagaRuxsat } from '@/lib/auth';
 import { QoralamaSxemasi, YuborishSxemasi } from '@/lib/xatlov-sxema';
 import { takrorKaliti, yuborishgaTayyormi } from '@/lib/xatlov-tekshiruvi';
@@ -250,6 +251,19 @@ export async function POST(request: Request) {
         : await tx.household.create({ data: malumot as Prisma.HouseholdUncheckedCreateInput });
 
       if (turi === 'yakuniy') {
+        /*
+         * ── КЕСМА ──
+         *
+         * Хонадоннинг АЙНАН шу пайтдаги ҳолати ўзгармас нусха
+         * бўлиб сақланади. Фақат ЯКУНИЙ юборишда: қоралама
+         * ҳали тўлиқ эмас ва ундан кесма олиш тарихни сохта
+         * нуқталар билан тўлдирарди.
+         *
+         * Транзакция ИЧИДА — хонадон сақланиб, кесма сақланмай
+         * қолса, тарихда тешик пайдо бўларди.
+         */
+        await kesmaSaqla(tx, h, h);
+
         /*
          * Ishsizlar ro'yxatini yangilaymiz, lekin SUHBATDAN O'TGANLARGA
          * TEGMAYMIZ.

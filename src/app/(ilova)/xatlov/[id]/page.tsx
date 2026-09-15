@@ -26,6 +26,7 @@ import {
   kirillcha,
 } from '@/lib/constants';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
+import { TarixBlogi } from '@/components/xonadon/tarix-blogi';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
 import { ImzoKorinishi } from '@/components/xatlov/imzo-maydoni';
 import { XonadonXulosasi } from '@/components/xatlov/xonadon-xulosasi';
@@ -143,6 +144,16 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
           </div>
         )}
       </div>
+
+      {/*
+        ── ХОНАДОН ТАРИХИ ──
+
+        «Бу оила йил бошида қандай эди, ҳозир қандай» — шу
+        саволга жавоб. Ишсизлар рўйхатидан ОЛДИН туради:
+        ходим аввал «аҳвол яхшиландими» деган саволга жавоб
+        олсин, кейин тафсилотга ўтсин.
+      */}
+      <TarixBlogi householdId={x.id} joriy={x} />
 
       {/* ── Ishsizlar - eng muhim blok, tepada ── */}
       <section className="karta p-4 sm:p-5">
