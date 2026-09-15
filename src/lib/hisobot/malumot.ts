@@ -425,14 +425,16 @@ export async function hisobotOl(sorov: HisobotSorovi): Promise<Hisobot> {
     ishOrni: fuqarolar.jamiIshOrni,
   };
 
-  const xulosa =
-    sorov.aiXulosa === false
-      ? {
-          manba: 'qoida' as const,
-          holat: '',
-          tavsiyalar: [],
-        }
-      : await xulosaOl(tahlil, bolimlar, qamrovNomi, asos);
+  /*
+   * AI сўралмаган роллар (маҳалла ходими, бандлик мутахассиси)
+   * ҳам ХУЛОСА ОЛАДИ — фақат қоида бўйича.
+   *
+   * Илгари бу ерда бутун хулоса ташлаб юбориларди ва улар бўш
+   * блок кўрарди. Ҳолбуки қоида бўйича хулоса арзон, тез ва
+   * айнан ўша ходимга кераклироқ: у ўз маҳалласида нима
+   * қилишни билиши керак.
+   */
+  const xulosa = await xulosaOl(tahlil, bolimlar, qamrovNomi, asos, sorov.aiXulosa !== false);
 
   const hisobot: Hisobot = {
     // `ogir()` faqat satrlarga tegadi, mantiqiy qiymat o'zgarmaydi

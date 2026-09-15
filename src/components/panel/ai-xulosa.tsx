@@ -179,6 +179,27 @@ export function AiXulosa({
         </button>
       </div>
 
+      {/*
+        ── AI ЖАВОБ БЕРМАГАНИ ──
+
+        Бу ҳолат КЎРИНИБ туриши керак. Илгари у фақат блок
+        тагидаги 11px кулранг изоҳда ёзиларди ва ҳеч ким уни
+        ўқимасди: ҳоким панелни очар, қоида матнини кўрар ва
+        «бу панелда AI умуман йўқ экан» деб ўйларди — ҳолбуки
+        AI сўралган, фақат калит ишламаган.
+
+        Энди у сарлавҳа остида, сариқ қутида туради ва нима
+        қилиш кераклигини айтади.
+      */}
+      {xulosa.aiKutilgan && xulosa.manba === 'qoida' && (
+        <div className="quti-ogoh mx-5 mt-4 text-xs">
+          <p className="font-semibold">{tr('Сунъий интеллект жавоб бермади')}</p>
+          <p className="mt-1 leading-relaxed">
+            {tr('Қуйидаги хулоса белгиланган чегаралар бўйича ҳисобланган — у ҳам тўғри, аммо боғланишларни топмайди. «Янгилаш» ни босиб кўринг; такрорланса, «Бошқарув» саҳифасидаги AI блокидан калитни текширинг.')}
+          </p>
+        </div>
+      )}
+
       {/* ── Ҳозирги ҳолат ── */}
       {xulosa.holat && (
         <div className="border-b border-line bg-surface-muted px-5 py-4">
@@ -217,8 +238,13 @@ export function AiXulosa({
         </ol>
       )}
 
-      {/* ── Огоҳлик ── */}
-      {xulosa.ogohlik && (
+      {/*
+        ── Огоҳлик ──
+
+        AI ишламаган ҳолатда бу матн ЮҚОРИДАГИ сариқ қутида
+        аллақачон айтилган — иккинчи марта такрорланмасин.
+      */}
+      {xulosa.ogohlik && !(xulosa.aiKutilgan && xulosa.manba === 'qoida') && (
         <p className="border-t border-line px-5 py-3 text-[11px] leading-relaxed text-ink-faint">
           {xulosa.ogohlik}
         </p>

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { AiHolati } from '@/components/admin/ai-holati';
+import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
@@ -82,6 +83,17 @@ export default async function AdminSahifasi() {
         </div>
         <SahifaHisoboti malumotBormi={xonadon > 0} />
       </div>
+
+      {/*
+        ── ТАҲЛИЛ ХУЛОСАСИ ──
+
+        Администратор панелида ҳам бўлиши керак: у тизимни
+        созлайди ва «AI ишлаяптими» деган саволга айнан шу
+        ердан жавоб олади. Илгари бу блок фақат ҳоким ва
+        бандлик панелида бор эди — администратор эса AI
+        ишламай турганини умуман билмасди.
+      */}
+      <AiXulosa qamrovNomi="Хатирчи тумани" />
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Karta nomi={tr("Хонадон")} soni={xonadon} />

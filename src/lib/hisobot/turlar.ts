@@ -131,6 +131,25 @@ export interface HisobotTavsiyasi {
  */
 export interface Xulosa {
   manba: 'ai' | 'qoida';
+  /**
+   * AI so'ralganmi.
+   *
+   * `manba: 'qoida'` ikki xil sababdan bo'ladi va ekranda ular
+   * BOSHQACHA ko'rinishi kerak:
+   *
+   *  · mahalla xodimi va bandlik mutaxassisi uchun qoida -
+   *    ATAYLAB, byudjetni tejash uchun. Bu nuqson emas va
+   *    ogohlantirish kerak emas;
+   *
+   *  · hokim, rahbar va administrator uchun qoida - AI javob
+   *    BERMAGANI. Bu nuqson va u ko'rinib turishi kerak.
+   *
+   * Ilgari bu farq faqat 11px kulrang izohda yozilardi, blok
+   * tagida. Foydalanuvchi uni umuman ko'rmasdi va "panelda AI
+   * yo'q" deb o'ylardi - holbuki AI so'ralgan, faqat kalit
+   * ishlamagan.
+   */
+  aiKutilgan?: boolean;
   /** 2-4 gap: hozirgi holat */
   holat: string;
   /** Nima qilish kerak - tartiblangan ro'yxat */

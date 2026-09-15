@@ -266,11 +266,29 @@ export async function xulosaOl(
   tahlil: TahlilNatijasi,
   bolimlar: Bolim[],
   qamrovNomi: string,
-  asos: { xonadon: number; fuqaro: number }
+  asos: { xonadon: number; fuqaro: number },
+  /**
+   * AI сўралсинми.
+   *
+   * `false` бўлса модел ЧАҚИРИЛМАЙДИ, аммо қоида бўйича хулоса
+   * барибир ҳисобланади.
+   *
+   * Илгари бу шарт юқорида, `malumot.ts` да турарди ва у ерда
+   * бутун хулоса ташлаб юбориларди — маҳалла ходими ва бандлик
+   * мутахассиси БЎШ блок кўрарди: «Ҳозирги маълумот асосида
+   * алоҳида тавсия чиқмади», ҳолбуки унинг маҳалласида ўнлаб
+   * тавсия бор эди.
+   */
+  aiKerak = true
 ): Promise<Xulosa> {
   const kalit = keshKaliti(qamrovNomi, asos);
   const saqlangan = kesh.get(kalit);
-  if (saqlangan && Date.now() - saqlangan.vaqti < KESH_MUDDATI_MS) {
+  /*
+   * Кеш фақат AI натижасини сақлайди, шунинг учун AI
+   * сўралмаган чақирувга уни бермаймиз — акс ҳолда бандлик
+   * мутахассиси ҳокимнинг AI хулосасини кўриб қоларди.
+   */
+  if (aiKerak && saqlangan && Date.now() - saqlangan.vaqti < KESH_MUDDATI_MS) {
     return saqlangan.xulosa;
   }
 
@@ -284,7 +302,7 @@ export async function xulosaOl(
   // асоссиз хулоса чиқарарди, фақат пул ва вақт кетарди.
   const yetarli = asos.xonadon >= 5;
 
-  if (yetarli) {
+  if (aiKerak && yetarli) {
     const ai = await aiXulosasi(dalilnomaYasa(qamrovNomi, bolimlar, asos));
     if (ai) {
       /*
@@ -305,6 +323,7 @@ export async function xulosaOl(
 
       const natija: Xulosa = {
         manba: 'ai',
+        aiKutilgan: true,
         holat: ai.holat,
         tavsiyalar: hammasi.slice(0, 12),
         ogohlik:
@@ -325,10 +344,18 @@ export async function xulosaOl(
    */
   return {
     manba: 'qoida',
+    /*
+     * AI сўралган, аммо жавоб бермаган ҳолат ЭКРАНДА кўриниб
+     * туриши керак — акс ҳолда фойдаланувчи «панелда AI йўқ»
+     * деб ўйлайди ва калит бузуқлигини билмайди.
+     */
+    aiKutilgan: aiKerak && yetarli,
     holat: qoidaHolati(tahlil, qamrovNomi),
     tavsiyalar: qoidaTavsiyalari,
-    ogohlik: yetarli
-      ? 'Хулоса белгиланган чегаралар бўйича ҳисоблангани — сунъий интеллект жавоб бермади ёки калит созланмаган.'
-      : 'Маълумот ҳали кам: хулоса фақат чегаралар бўйича ҳисобланган. Хатлов давом этгани сари таҳлил аниқлашади.',
+    ogohlik: !aiKerak
+      ? undefined
+      : yetarli
+        ? 'Сунъий интеллект жавоб бермади — хулоса белгиланган чегаралар бўйича ҳисобланди. Калит созланганини «Бошқарув» саҳифасидан текширинг.'
+        : 'Маълумот ҳали кам: хулоса фақат чегаралар бўйича ҳисобланган. Хатлов давом этгани сари таҳлил аниқлашади.',
   };
 }
