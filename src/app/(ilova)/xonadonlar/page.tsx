@@ -138,7 +138,7 @@ export default async function XonadonlarSahifasi({
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate font-medium text-ink">{x.oilaBoshligi}</span>
+                  <span className="truncate font-medium text-ink">{tr(x.oilaBoshligi)}</span>
                   <span
                     className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${HOLAT[x.holati].sinf}`}
                   >
@@ -146,7 +146,7 @@ export default async function XonadonlarSahifasi({
                   </span>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-ink-faint">
-                  {x.manzil} · {tr(x.mahalla.nomiKirill)} · {x.xodim.fullName}
+                  {x.manzil} · {tr(x.mahalla.nomiKirill)} · {tr(x.xodim.fullName)}
                 </p>
               </div>
               <div className="shrink-0 text-right">

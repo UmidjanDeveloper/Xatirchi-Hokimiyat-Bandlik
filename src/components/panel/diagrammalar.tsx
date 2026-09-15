@@ -327,7 +327,14 @@ export function KursTalabiBlogi({
               className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-surface-muted"
             >
               <span className="w-24 shrink-0 truncate text-xs text-ink-muted sm:w-36">
-                {k.kasb}
+                {/*
+                  Касб номини фуқаронинг ЎЗИ айтади ва ходим
+                  кириллда ёзиши мумкин. Лотин режимида у
+                  ўгирилиши керак — акс ҳолда бутун рўйхат
+                  лотинда туриб, орасида биттаси кириллда
+                  қолиб кетарди.
+                */}
+                {tr(k.kasb)}
               </span>
               <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-muted">
                 <div

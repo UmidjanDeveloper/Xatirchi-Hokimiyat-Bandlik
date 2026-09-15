@@ -97,11 +97,32 @@ async function bazaniTekshir(prisma: PrismaClient) {
   );
   yoz('OK', 'Ulanish', version.split(',')[0]);
 
-  /* Migratsiyalar qo'llanganmi */
+  /*
+   * Migratsiyalar qo'llanganmi.
+   *
+   * ── Uchta holat, ikkitasi normal ──
+   *
+   *   finished_at BOR           - qo'llangan, hammasi joyida
+   *   rolled_back_at BOR        - xato bo'lgan va HAL QILINGAN
+   *                               (`prisma migrate resolve --rolled-back`).
+   *                               Yozuv tarixda qoladi, lekin
+   *                               keyin muvaffaqiyatli urinish
+   *                               bo'lgan - bu XATO EMAS.
+   *   ikkovi ham YO'Q           - HAQIQATAN yarim qolgan:
+   *                               migratsiya boshlangan, tugamagan
+   *                               va hal ham qilinmagan. Baza
+   *                               noaniq holatda.
+   *
+   * Ilgari bu yerda faqat `finished_at` qaralardi va qaytarilgan
+   * yozuv ham "yarim qolgan" deb chiqarardi. Baza to'g'ri
+   * bo'lsa ham skript XATO berardi - va joylashtirishdan oldin
+   * bu keraksiz vahima tug'dirardi.
+   */
   const migratsiyalar = await prisma.$queryRawUnsafe<
-    { migration_name: string; finished_at: Date | null }[]
+    { migration_name: string; finished_at: Date | null; rolled_back_at: Date | null }[]
   >(
-    `SELECT migration_name, finished_at FROM "_prisma_migrations" ORDER BY started_at`
+    `SELECT migration_name, finished_at, rolled_back_at
+       FROM "_prisma_migrations" ORDER BY started_at`
   ).catch(() => null);
 
   if (!migratsiyalar) {
@@ -109,11 +130,24 @@ async function bazaniTekshir(prisma: PrismaClient) {
     return;
   }
 
-  const tugallanmagan = migratsiyalar.filter((m) => !m.finished_at);
+  const tugallanmagan = migratsiyalar.filter((m) => !m.finished_at && !m.rolled_back_at);
+  const qaytarilgan = migratsiyalar.filter((m) => m.rolled_back_at);
+  const qollangan = migratsiyalar.filter((m) => m.finished_at);
+
   if (tugallanmagan.length) {
     yoz('XATO', 'Migratsiya', `${tugallanmagan[0].migration_name} yarim qolgan`);
+  } else if (qaytarilgan.length) {
+    /*
+     * Ogohlantirish, xato emas: baza to'g'ri, lekin tarixda
+     * muvaffaqiyatsiz urinish bor. Buni bilib turish foydali.
+     */
+    yoz(
+      'OGOH',
+      'Migratsiya',
+      `${qollangan.length} ta qo‘llangan · ${qaytarilgan.length} ta eski urinish qaytarilgan (baza to‘g‘ri)`
+    );
   } else {
-    yoz('OK', 'Migratsiya', `${migratsiyalar.length} ta qo‘llangan`);
+    yoz('OK', 'Migratsiya', `${qollangan.length} ta qo‘llangan`);
   }
 }
 

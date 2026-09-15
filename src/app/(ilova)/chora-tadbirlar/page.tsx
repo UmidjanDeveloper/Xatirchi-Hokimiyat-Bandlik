@@ -234,7 +234,7 @@ export default async function ChoraTadbirlarSahifasi({
                         href={`/xatlov/${t.household.id}`}
                         className="truncate hover:text-accent"
                       >
-                        {t.household.oilaBoshligi}
+                        {tr(t.household.oilaBoshligi)}
                       </Link>
                     </>
                   )}

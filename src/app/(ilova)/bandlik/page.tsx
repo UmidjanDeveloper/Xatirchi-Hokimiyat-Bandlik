@@ -537,7 +537,7 @@ function Navbat({
                 className="flex items-center gap-2 py-2.5 transition-colors hover:bg-surface-muted"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{p.fish}</p>
+                  <p className="truncate text-sm font-medium text-ink">{tr(p.fish)}</p>
                   <p className="truncate text-[11px] text-ink-faint">
                     {tr(p.mahalla.nomiKirill)}
                     {p.xohlaganIsh ? tr(` · истаги: ${p.xohlaganIsh}`) : ''}

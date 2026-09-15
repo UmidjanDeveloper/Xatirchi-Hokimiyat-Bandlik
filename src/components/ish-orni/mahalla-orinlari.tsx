@@ -109,7 +109,7 @@ export async function MahallaOrinlari({ mahallaId }: { mahallaId: string }) {
                 const k = MOSLIK_KORINISHI[n.moslik.daraja];
                 const ichi = (
                   <>
-                    <span className="font-medium text-ink">{n.fish}</span>
+                    <span className="font-medium text-ink">{tr(n.fish)}</span>
                     <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${k.sinf}`}>
                       {tr(k.nomi)} · {n.moslik.ball}%
                     </span>

@@ -115,12 +115,12 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
       <div className="karta p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="sahifa-sarlavha">{x.oilaBoshligi}</h1>
+            <h1 className="sahifa-sarlavha">{tr(x.oilaBoshligi)}</h1>
             <p className="mt-1 text-sm text-ink-muted">
               {x.manzil} · {tr(x.mahalla.nomiKirill)} {tr('МФЙ')}
             </p>
             <p className="mt-1 text-xs text-ink-faint">
-              {tr('Хатловни ўтказди:')} {x.xodim.fullName}
+              {tr('Хатловни ўтказди:')} {tr(x.xodim.fullName)}
               {x.xodim.position ? ` (${x.xodim.position})` : ''} ·{' '}
               {formatDate(x.xatlovSanasi)}
             </p>
@@ -176,7 +176,7 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-medium text-ink">{p.fish}</span>
+                    <span className="truncate font-medium text-ink">{tr(p.fish)}</span>
                     <HolatNishoni holati={p.holati} />
                   </div>
                   <p className="mt-0.5 truncate text-xs text-ink-faint">

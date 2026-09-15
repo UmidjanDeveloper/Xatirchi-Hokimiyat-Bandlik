@@ -190,7 +190,7 @@ export default async function IshsizlarSahifasi({
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate font-medium text-ink">{p.fish}</span>
+                  <span className="truncate font-medium text-ink">{tr(p.fish)}</span>
                   <HolatNishoni holati={p.holati} />
                 </div>
                 <p className="mt-0.5 truncate text-xs text-ink-faint">

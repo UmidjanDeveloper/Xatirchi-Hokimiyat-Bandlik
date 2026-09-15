@@ -153,14 +153,14 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
       <div className="karta p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="sahifa-sarlavha">{p.fish}</h1>
+            <h1 className="sahifa-sarlavha">{tr(p.fish)}</h1>
             <p className="mt-1 text-sm text-ink-muted">
               {tr(p.mahalla.nomiKirill)} {tr('МФЙ ·')} {p.jinsi === 'Erkak' ? tr('Эркак') : tr('Аёл')}
               {p.malumoti ? ` · ${tr(kirillcha(MALUMOT, p.malumoti))}` : ''}
             </p>
             {p.mutaxassis && p.suhbatSanasi && (
               <p className="mt-1 text-xs text-ink-faint">
-                {tr('Суҳбатни ўтказди:')} {p.mutaxassis.fullName} · {formatDate(p.suhbatSanasi)}
+                {tr('Суҳбатни ўтказди:')} {tr(p.mutaxassis.fullName)} · {formatDate(p.suhbatSanasi)}
               </p>
             )}
           </div>
@@ -222,7 +222,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           >
             <House className="h-4 w-4 shrink-0" />
             <span className="min-w-0 truncate">
-              {tr('Хонадон:')} {p.household.oilaBoshligi} · {p.household.manzil}
+              {tr('Хонадон:')} {tr(p.household.oilaBoshligi)} · {p.household.manzil}
             </span>
           </Link>
         )}
@@ -294,7 +294,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
                   <BekorQilishTugmasi
                     orinId={p.vacancy.id}
                     ishsizId={p.id}
-                    nomi={p.fish}
+                    nomi={tr(p.fish)}
                   />
                 </div>
               </div>

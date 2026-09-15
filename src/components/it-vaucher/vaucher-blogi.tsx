@@ -126,7 +126,7 @@ export function VaucherBlogi({
             </p>
             {organmoqchiKasb && (
               <p className="mt-1.5 text-xs text-ink-faint">
-                {tr('Ўз сўзи:')} <span className="text-ink-muted">{organmoqchiKasb}</span>
+                {tr('Ўз сўзи:')} <span className="text-ink-muted">{tr(organmoqchiKasb)}</span>
               </p>
             )}
           </div>

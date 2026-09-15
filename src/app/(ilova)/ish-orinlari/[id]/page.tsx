@@ -197,7 +197,7 @@ export default async function IshOrniSahifasi({
                   <HolatNishoni holati={p.holati} />
                 </div>
                 <div className="mt-2.5">
-                  <BekorQilishTugmasi orinId={orin.id} ishsizId={p.id} nomi={p.fish} />
+                  <BekorQilishTugmasi orinId={orin.id} ishsizId={p.id} nomi={tr(p.fish)} />
                 </div>
               </div>
             ))}

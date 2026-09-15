@@ -145,10 +145,10 @@ export function VaucherNavbati({
                 className="flex items-start gap-2 rounded-md border border-line p-2.5 transition-colors hover:border-accent"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{n.fish}</p>
+                  <p className="truncate text-sm font-medium text-ink">{tr(n.fish)}</p>
                   <p className="mt-0.5 text-[11px] text-ink-faint">
                     {tr(`${n.mahallaNomi} МФЙ`)}
-                    {n.organmoqchiKasb && ` · ${n.organmoqchiKasb}`}
+                    {n.organmoqchiKasb && ` · ${tr(n.organmoqchiKasb)}`}
                   </p>
                 </div>
 

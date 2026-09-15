@@ -127,10 +127,15 @@ function Yozuv({ y }: { y: Dublikat['yozuvlar'][number] }) {
   const ichi = (
     <>
       {/*
-        Исм ҳар ёзувда АЛОҲИДА кўрсатилади: гуруҳдагилар бир
-        хил ўқилади, аммо ҳар хил ёзилган бўлиши мумкин —
-        «Тошматов Акрам» ва «Toshmatov Akram». Ходим қайси
-        ёзувда қандай турганини кўриши керак.
+        Исм ҳар ёзувда АЛОҲИДА кўрсатилади ва АЙНАН ёзилганича —
+        `tr()` дан ЎТКАЗИЛМАЙДИ.
+
+        Бу қасддан қилинган истисно. Илова қолган ҳамма жойда
+        исмни танланган алифбода кўрсатади, бу ерда эса
+        йўқ: бутун блокнинг мақсади «бир хил одам икки хил
+        ёзилган» эканини кўрсатиш. Ўгирилса, «Тошматов Акрам»
+        ва «Toshmatov Akram» экранда БИР ХИЛ бўлиб қоларди ва
+        ходим нима учун гумон қилинганини тушунмасди.
       */}
       <p className="truncate text-xs font-medium text-ink">{y.fish}</p>
       <p className="mt-0.5 text-[11px] font-medium text-ink-muted">
@@ -138,7 +143,7 @@ function Yozuv({ y }: { y: Dublikat['yozuvlar'][number] }) {
       </p>
       {y.oilaBoshligi && (
         <p className="text-[11px] text-ink-muted">
-          {tr('оила боши:')} {y.oilaBoshligi}
+          {tr('оила боши:')} {y.oilaBoshligi}{/* юқоридаги изоҳ: айнан ёзилганича */}
         </p>
       )}
       {y.manzil && <p className="text-[11px] text-ink-faint">{y.manzil}</p>}
