@@ -11,6 +11,7 @@ import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
+import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
@@ -135,6 +136,15 @@ export default async function AdminSahifasi({
         <h2 className="text-sm font-bold text-ink">{tr('Ходимлар (')}{xodimlar.length})</h2>
         <XodimBoshqaruvi xodimlar={xodimlar} mahallalar={mahallalar} />
       </section>
+
+      {/*
+        ── ТАКРОРЛАНГАН ФУҚАРОЛАР ──
+
+        Бу маълумот СИФАТИ масаласи, шунинг учун администратор
+        панелида: бир одам икки хонадонда ёзилиб қолса, ишсизлар
+        сони ошиб кўринади ва барча фоиз бузилади.
+      */}
+      <DublikatRoyxati />
 
       {/*
         IT-шаҳарча ваучерлари — администраторда ҳам.

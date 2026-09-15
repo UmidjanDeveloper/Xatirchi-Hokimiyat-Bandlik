@@ -11,6 +11,7 @@ import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
+import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
@@ -336,6 +337,13 @@ export default async function BandlikSahifasi({
         qamrovNomi="Хатирчи тумани"
         bera
       />
+
+      {/*
+        Такрорланган фуқаролар — раҳбарга ҳам. Ишсизлар сони
+        унинг асосий кўрсаткичи, ва у сон нотўғри бўлса,
+        барча режа нотўғри тузилади.
+      */}
+      <DublikatRoyxati chegara={10} />
 
       {/* ── Moslashtirish taxtasi ── */}
       <section className="karta p-4 sm:p-5">

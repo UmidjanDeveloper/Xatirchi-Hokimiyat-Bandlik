@@ -13,6 +13,7 @@ import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
+import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
 
 /*
@@ -213,6 +214,18 @@ export default async function XatlovlarSahifasi({
           qamrovNomi={`${mahalla.nomiKirill} МФЙ`}
         />
       )}
+
+      {/*
+        ── ТАКРОРЛАНГАН ФУҚАРОЛАР ──
+
+        Ходимга АЙНАН керак: келин эрининг ва ота-онасининг
+        хонадонида иккита бўлиб ёзилиб қолиши — унинг ўз
+        маҳалласидаги ҳолат, ва уни фақат у ҳал қила олади.
+
+        Жуфти бошқа МФЙ дан бўлиши мумкин: келин айнан бошқа
+        маҳаллага узатилади ва уни фақат шундай топиш мумкин.
+      */}
+      {mahalla && <DublikatRoyxati mahallaId={filtr.mahallaId} chegara={10} />}
 
       {/*
         ── IT-ШАҲАРЧА ВАУЧЕРЛАРИ ──
