@@ -14,11 +14,11 @@ import {
   Voronka,
 } from '@/components/panel/diagrammalar';
 import {
-  DinamikaChizigi,
   MahallalarJadvali,
   MahallaUstunlari,
   ToifaDoirasi,
 } from '@/components/panel/grafiklar';
+import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 
@@ -191,28 +191,14 @@ export default async function PanelSahifasi() {
             </section>
           )}
 
-          {/* ── Oylik dinamika ── */}
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="karta p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-ink">{tr('Хатлов динамикаси')}</h2>
-              <p className="mt-1 text-xs text-ink-faint">
-                {tr('Ойма-ой тўпланиб борадиган хонадон сони')}
-              </p>
-              <div className="mt-4">
-                <DinamikaChizigi dinamika={t.dinamika} tur="xatlov" />
-              </div>
-            </section>
+          {/*
+            ── Ўсиш, камайиш ва динамика ──
 
-            <section className="karta p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-ink">{tr('Ишсизлар билан иш динамикаси')}</h2>
-              <p className="mt-1 text-xs text-ink-faint">
-                {tr('Аниқланган ва ишга жойлашган фуқаролар — тўпланиб борадиган сон')}
-              </p>
-              <div className="mt-4">
-                <DinamikaChizigi dinamika={t.dinamika} tur="ishsiz" />
-              </div>
-            </section>
-          </div>
+            Беш диаграмма бир блокда: сурат, ойлик оқим ва
+            тўпланиб бориш. Ҳокимга биринчи навбатда керагини
+            — «камайдими ёки ўсдими» — энг тепага қўйилган.
+          */}
+          <DinamikaBloglari dinamika={t.dinamika} qamrovNomi="Хатирчи тумани" />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Voronka bosqichlar={t.voronka} bazaIshsiz={bosh.bazaIshsiz} />

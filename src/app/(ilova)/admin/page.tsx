@@ -2,10 +2,12 @@ import { redirect } from 'next/navigation';
 import { matnchi } from '@/lib/alifbo-server';
 import { joriySessiya } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { tahlilOl } from '@/lib/tahlil';
 import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { AiHolati } from '@/components/admin/ai-holati';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
@@ -37,7 +39,7 @@ export default async function AdminSahifasi() {
   if (!sessiya) redirect('/kirish');
   if (sessiya.rol !== 'ADMIN') redirect('/');
 
-  const [xodimlar, mahallalar, jurnal, statistika] = await Promise.all([
+  const [xodimlar, mahallalar, jurnal, statistika, tahlil] = await Promise.all([
     prisma.user.findMany({
       orderBy: [{ faol: 'desc' }, { rol: 'asc' }, { fullName: 'asc' }],
       select: {
@@ -68,6 +70,7 @@ export default async function AdminSahifasi() {
       prisma.actionPlan.count(),
       prisma.vacancy.count({ where: { faol: true } }),
     ]),
+    tahlilOl(),
   ]);
 
   const [xonadon, ishsiz, topshiriq, ishOrni] = statistika;
@@ -101,6 +104,17 @@ export default async function AdminSahifasi() {
         <Karta nomi={tr("Чора-тадбир")} soni={topshiriq} />
         <Karta nomi={tr("Бўш иш ўрни")} soni={ishOrni} />
       </div>
+
+      {/*
+        ── Ўсиш ва камайиш сурати ──
+
+        Администратор ҳам шу диаграммани кўради. Сабаби техник:
+        рақам нотўғри кўринса, «маълумот базасидами ёки
+        ҳисоблашдами» деган саволга жавоб керак бўлади, ва у
+        жавоб худди ҳоким кўраётган графикда бўлиши шарт —
+        бошқа графикда эмас.
+      */}
+      {xonadon > 0 && <DinamikaBloglari dinamika={tahlil.dinamika} qamrovNomi="Хатирчи тумани" />}
 
       <section className="space-y-3">
         <h2 className="text-sm font-bold text-ink">{tr('Ходимлар (')}{xodimlar.length})</h2>

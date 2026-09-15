@@ -74,6 +74,27 @@ export interface ChartTheme {
    */
   ramp: string[];
 
+  /**
+   * Qutbli (diverging) shkala - "o'sdimi yoki kamaydimi" uchun.
+   *
+   * Uch qism: ikki qutb va o'rtada BETARAF kulrang. O'rtada rang
+   * turmaydi - nol nuqtasi "hech narsa o'zgarmadi" degani, uni
+   * bo'yash o'zgarish bordek ko'rsatadi.
+   *
+   * `ok`/`danger` dan alohida turadi: holat ranglari nishon va
+   * yozuvda ishlatiladi, bu yerdagilar esa diagramma ustuni
+   * uchun - fon va o'lcham boshqacha, shuning uchun qadamlar
+   * ham alohida tekshirilgan.
+   */
+  qutb: {
+    /** Kamaydi - ishsizlar soni tushdi */
+    kamaydi: string;
+    /** O'sdi - ishsizlar soni ko'paydi */
+    osdi: string;
+    /** O'zgarmadi */
+    betaraf: string;
+  };
+
   /** Holat ranglari - faqat holat uchun, seriya rangi sifatida emas */
   ok: string;
   warn: string;
@@ -92,6 +113,11 @@ const LIGHT: ChartTheme = {
   toifa: ['#2563eb', '#b45309', '#0d9488', '#7e22ce', '#be123c'],
   ramp: ['#86b6ef', '#5598e7', '#2a78d6', '#1c5cab', '#104281'],
 
+  // Yorug' fon (#fcfcfb) uchun tekshirildi: yorug'lik oralig'i,
+  // rang to'yinganligi, fon bilan kontrast - o'tdi; qutblar
+  // orasidagi ajralish deutan ΔE 13.6, oddiy ko'rishda ΔE 23.6.
+  qutb: { kamaydi: '#0d9488', osdi: '#b45309', betaraf: '#94a3b8' },
+
   ok: '#047857',
   warn: '#a16207',
   danger: '#b91c1c',
@@ -109,6 +135,11 @@ const DARK: ChartTheme = {
   toifa: ['#4e90e6', '#c08726', '#22ab98', '#9d6fe0', '#df6178'],
   // Qorong'i fonda och -> to'q emas, aksincha: yorqinlik bo'yicha o'sadi
   ramp: ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#b7d3f6'],
+
+  // Qorong'i fon (#16203a) uchun alohida tanlandi - yorug'ining
+  // teskarisi emas: deutan ΔE 12.5, oddiy ko'rishda ΔE 24.8,
+  // ikkalasi ham fondan 3:1 dan yuqori ajralib turadi.
+  qutb: { kamaydi: '#22ab98', osdi: '#e0713f', betaraf: '#64748b' },
 
   ok: '#34d399',
   warn: '#fbbf24',
@@ -132,4 +163,7 @@ export const EXCEL_RANGLARI = {
   toifa: LIGHT.toifa.map((c) => c.slice(1)),
   ramp: LIGHT.ramp.map((c) => c.slice(1)),
   primary: LIGHT.primary.slice(1),
+  kamaydi: LIGHT.qutb.kamaydi.slice(1),
+  osdi: LIGHT.qutb.osdi.slice(1),
+  betaraf: LIGHT.qutb.betaraf.slice(1),
 };

@@ -4,10 +4,12 @@ import { redirect } from 'next/navigation';
 import { FileText, HousePlus, TriangleAlert, Users } from 'lucide-react';
 import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { tahlilOl } from '@/lib/tahlil';
 import { formatDate, percent } from '@/lib/utils';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { MahallaOrinlari } from '@/components/ish-orni/mahalla-orinlari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
 
 /*
@@ -35,7 +37,7 @@ export default async function XatlovlarSahifasi() {
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [xatlovlar, mahalla] = await Promise.all([
+  const [xatlovlar, mahalla, tahlil] = await Promise.all([
     prisma.household.findMany({
       where: {
         ...filtr,
@@ -67,6 +69,18 @@ export default async function XatlovlarSahifasi() {
           select: { nomiKirill: true, xonadon: true, ishsiz: true },
         })
       : null,
+    /*
+     * Динамика — ФАҚАТ ўз МФЙ си бўйича.
+     *
+     * `tahlilOl` га маҳалла берилса, ҳамма сўров ўша маҳалла
+     * билан чегараланади: бошқа МФЙ нинг битта ҳам рақами бу
+     * саҳифага тушмайди.
+     *
+     * Маҳаллага бириктирилмаган ходим (раҳбар, ҳоким) учун
+     * умуман ҳисобланмайди — уларда ўз панели бор, бу ерда
+     * туман бўйича оғир сўров юритишнинг кераги йўқ.
+     */
+    filtr.mahallaId ? tahlilOl(filtr.mahallaId) : null,
   ]);
 
   const yuborilgan = xatlovlar.filter((x) => x.holati !== 'QORALAMA');
@@ -160,6 +174,26 @@ export default async function XatlovlarSahifasi() {
       */}
       {mahalla && yuborilgan.length > 0 && (
         <AiXulosa qamrovNomi={`${mahalla.nomiKirill} МФЙ`} />
+      )}
+
+      {/*
+        ── ЎСИШ ВА КАМАЙИШ СУРАТИ — ЎЗ МАҲАЛЛАСИ БЎЙИЧА ──
+
+        Илгари бу саҳифада битта ҳам диаграмма йўқ эди: ходим
+        анкета тўлдирарди, рақам эса фақат ҳоким панелида
+        кўринарди. Ходимнинг ўзи «ишим натижа беряптими»
+        деган саволга жавоб ололмасди.
+
+        Энди олади — ва айнан ЎЗ МФЙ си бўйича: диаграммага
+        тушадиган ҳар бир рақам `tahlilOl(mahallaId)` дан
+        келади, яъни қўшни маҳалланинг битта фуқароси ҳам
+        бу ерга аралашмайди.
+      */}
+      {mahalla && tahlil && yuborilgan.length > 0 && (
+        <DinamikaBloglari
+          dinamika={tahlil.dinamika}
+          qamrovNomi={`${mahalla.nomiKirill} МФЙ`}
+        />
       )}
 
       {/*

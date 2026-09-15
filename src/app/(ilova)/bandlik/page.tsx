@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { tahlilOl } from '@/lib/tahlil';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
@@ -294,6 +295,16 @@ export default async function BandlikSahifasi() {
         />
         <Kpi ikonka={<Plane className="h-4 w-4" />} nomi={tr("Миграция номзоди")} qiymat={migratsiya} />
       </div>
+
+      {/*
+        ── Ўсиш ва камайиш сурати ──
+
+        Раҳбарга ҳоким билан БИР ХИЛ диаграмма кўринади.
+        Фарқи шуки, раҳбар бу рақамни йиғилишдан олдин кўради:
+        устун юқорига кетган бўлса, сабабини ойлик оқим
+        диаграммасидан ўша ернинг ўзида топади.
+      */}
+      <DinamikaBloglari dinamika={t.dinamika} qamrovNomi="Хатирчи тумани" />
 
       {/* ── Moslashtirish taxtasi ── */}
       <section className="karta p-4 sm:p-5">

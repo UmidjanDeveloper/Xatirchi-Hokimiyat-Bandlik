@@ -6,11 +6,13 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   Legend,
   Line,
   LineChart,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -180,6 +182,433 @@ export function DinamikaChizigi({
         ))}
       </LineChart>
     </ResponsiveContainer>
+  );
+}
+
+/** Ishorasi bilan: +12, −8, 0 */
+const ishorali = (n: number) => (n > 0 ? `+${raqam(n)}` : n < 0 ? `−${raqam(-n)}` : '0');
+
+/** Foizni ishorasi bilan: +8,4%, −3,1% */
+const foizIshorali = (n: number) =>
+  `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('ru-RU')}%`;
+
+/* ── 1b. OQIM USTUNLARI: shu oyning o'zida nechta ────────────── */
+
+/**
+ * Oylik OQIM - "shu oyning o'zida nechta qo'shildi".
+ *
+ * To'plangan chiziq bilan bir xil ma'lumot, lekin boshqa savolga
+ * javob beradi. Chiziq "qayerga yetdik" ni ko'rsatadi va u doim
+ * yuqoriga qarab yuradi - ish sekinlashsa ham chiziq pasaymaydi,
+ * faqat yotiqlashadi, buni esa ko'z ilg'amaydi. Ustun esa
+ * to'g'ridan-to'g'ri "o'tgan oy 40 ta edi, bu oy 12 ta" deydi.
+ */
+export function OqimUstunlari({
+  dinamika,
+  tur,
+}: {
+  dinamika: OylikNuqta[];
+  tur: 'xatlov' | 'ishsiz';
+}) {
+  const { t: tr } = useAlifbo();
+  const c = useChartTheme();
+
+  /*
+   * Ranglar qutbli diagramma bilan BIR XIL: to'q sariq - ishsiz
+   * qo'shildi, ko'k-yashil - ishsiz kamaydi.
+   *
+   * Atayin takrorlanadi. Ikkala diagramma ham bitta savolga
+   * javob beradi, faqat boshqa tomondan: biri natijani, ikkinchisi
+   * sababini ko'rsatadi. Rang bir xil bo'lsa, o'quvchi ma'noni
+   * BIR MARTA o'rganadi va u ikkala grafikda ham ishlaydi.
+   */
+  const seriyalar =
+    tur === 'xatlov'
+      ? [
+          {
+            kalit: 'yangiXatlov',
+            nomi: tr('Шу ойда хатловдан ўтган хонадон'),
+            rang: c.primary,
+          },
+        ]
+      : [
+          { kalit: 'yangiAniqlangan', nomi: tr('Аниқланган ишсиз'), rang: c.qutb.osdi },
+          { kalit: 'yangiJoylashgan', nomi: tr('Ишга жойлашган'), rang: c.qutb.kamaydi },
+        ];
+
+  const bormi = dinamika.some((d) =>
+    seriyalar.some((s) => (d[s.kalit as keyof OylikNuqta] as number) > 0)
+  );
+  if (!bormi) return <Bosh matn={tr('Ҳали маълумот йўқ')} />;
+
+  return (
+    <div className="space-y-3">
+      {/*
+        Легенда Recharts ники эмас, ЎЗИМИЗНИКИ.
+        Recharts легендаси ўз баландлигини олдиндан билмайди:
+        тор устунда матн икки қаторга тушиб кетади ва диаграмма
+        устига ёпишиб қолади. Оддий HTML қатор эса ўз жойини
+        ўзи эгаллайди ва диаграммани суради.
+      */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+        {seriyalar.map((s) => (
+          <span key={s.kalit} className="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="inline-block h-2 w-2 shrink-0 rounded-full"
+              style={{ background: s.rang }}
+            />
+            {s.nomi}
+          </span>
+        ))}
+      </div>
+
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart
+          data={dinamika}
+          margin={{ top: 8, right: 12, bottom: 4, left: -12 }}
+          /*
+            Оралиқ ФОИЗДА берилади, пиксельда эмас: тор устунда
+            пиксель оралиқ бутун жойни еб қўяди ва устунлар
+            сочга айланиб қолади.
+          */
+          barCategoryGap="18%"
+          barGap={1}
+        >
+          <CartesianGrid stroke={c.axisLine} vertical={false} />
+          <XAxis
+            dataKey="yorliq"
+            tick={{ fill: c.axisText, fontSize: 11 }}
+            tickLine={false}
+            axisLine={{ stroke: c.axisLine }}
+            interval="preserveStartEnd"
+            tickFormatter={(v: string) => tr(v)}
+          />
+          <YAxis
+            tick={{ fill: c.axisText, fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            width={44}
+            allowDecimals={false}
+            tickFormatter={(v: number) => raqam(v)}
+          />
+          <Tooltip
+            content={<Maslahat birlik={tur === 'xatlov' ? tr('хонадон') : tr('киши')} />}
+            cursor={{ fill: c.cursor }}
+          />
+          {seriyalar.map((s) => (
+            <Bar
+              key={s.kalit}
+              dataKey={s.kalit}
+              name={s.nomi}
+              fill={s.rang}
+              radius={[3, 3, 0, 0]}
+              maxBarSize={22}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+
+      {/* Аниқ рақам керак бўлганда — жадвал */}
+      <details className="text-xs">
+        <summary className="cursor-pointer text-ink-muted transition-colors hover:text-ink">
+          {tr('Рақамлар жадвали')}
+        </summary>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full min-w-[260px] text-left">
+            <thead>
+              <tr className="border-b border-line text-ink-faint">
+                <th className="py-1.5 pr-3 font-medium">{tr('Ой')}</th>
+                {seriyalar.map((s) => (
+                  <th key={s.kalit} className="py-1.5 pr-3 text-right font-medium">
+                    {s.nomi}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="tabular-nums text-ink-muted">
+              {dinamika.map((n) => (
+                <tr key={n.oy} className="border-b border-line/60 last:border-0">
+                  <td className="py-1.5 pr-3">{tr(n.yorliq)}</td>
+                  {seriyalar.map((s) => (
+                    <td key={s.kalit} className="py-1.5 pr-3 text-right">
+                      {raqam(n[s.kalit as keyof OylikNuqta] as number)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+/* ── 1c. QUTBLI DIAGRAMMA: o'sish va kamayish surati ─────────── */
+
+/** Qutbli diagramma uchun maslahat oynasi - sababini ham aytadi */
+function OsishMaslahati({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { payload?: OylikNuqta }[];
+  label?: string;
+}) {
+  const t = useChartTheme();
+  const { t: tr } = useAlifbo();
+  if (!active || !payload?.length) return null;
+
+  const n = payload[0]?.payload;
+  if (!n) return null;
+
+  const osdi = n.ishsizOzgarishi > 0;
+  const rang = n.ishsizOzgarishi === 0 ? t.qutb.betaraf : osdi ? t.qutb.osdi : t.qutb.kamaydi;
+
+  return (
+    <div
+      className="w-56 rounded-md border px-3 py-2 text-xs shadow-md"
+      style={{ background: t.tooltipBg, borderColor: t.tooltipBorder }}
+    >
+      {label && <p className="mb-1.5 font-semibold text-ink">{tr(label)}</p>}
+
+      <p className="flex items-center gap-2">
+        <span
+          aria-hidden="true"
+          className="inline-block h-2 w-2 shrink-0 rounded-full"
+          style={{ background: rang }}
+        />
+        <span className="text-ink-muted">
+          {n.ishsizOzgarishi === 0
+            ? tr('Ўзгармади')
+            : osdi
+              ? tr('Ишсизлар кўпайди')
+              : tr('Ишсизлар камайди')}
+        </span>
+        <span className="ml-auto font-semibold tabular-nums text-ink">
+          {ishorali(n.ishsizOzgarishi)}
+        </span>
+      </p>
+
+      {/*
+        Сабабини ҳам кўрсатамиз. Устун ўзи «ўсди» дейди, аммо
+        ҳокимга керакли савол бошқа: ишга жойлаштириш сустми,
+        ёки хатлов давом этаётгани учун янги ишсиз чиқяптими.
+        Иккови тамомила бошқа қарор талаб қилади.
+      */}
+      <div className="mt-1.5 space-y-1 border-t border-line pt-1.5 text-ink-faint">
+        <p className="flex gap-2">
+          <span>{tr('Янги аниқланган')}</span>
+          <span className="ml-auto tabular-nums">+{raqam(n.yangiAniqlangan)}</span>
+        </p>
+        <p className="flex gap-2">
+          <span>{tr('Ишга жойлашган')}</span>
+          <span className="ml-auto tabular-nums">−{raqam(n.yangiJoylashgan)}</span>
+        </p>
+        <p className="flex gap-2">
+          <span>{tr('Ой охирида рўйхатда')}</span>
+          <span className="ml-auto tabular-nums">{raqam(n.ishsizQoldiq)}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * O'SISH VA KAMAYISH SURATI.
+ *
+ * Ustun noldan yuqoriga ham, pastga ham chiqadi. O'lchov -
+ * ro'yxatda turgan (hali joylashmagan) ishsizlar sonining o'tgan
+ * oyga nisbatan o'zgarishi.
+ *
+ * Nega aynan qoldiq, "aniqlangan" emas: aniqlangan soni hech
+ * qachon kamaymaydi - xatlov davom etar ekan, u faqat o'sadi.
+ * Undan chiqadigan xulosa ham doim bitta bo'lib qolardi: "o'sdi".
+ * Qoldiq esa haqiqiy holatni ko'rsatadi - ishga joylashtirish
+ * yangi aniqlanishdan tez bo'lsa, ustun pastga tushadi.
+ *
+ * Rang yolg'iz ishlamaydi: ustunning yo'nalishi (yuqori/past),
+ * nol chizig'i, tepasidagi yozuv va legenda - hammasi bir xil
+ * ma'noni takrorlaydi.
+ */
+export function OsishUstunlari({ dinamika }: { dinamika: OylikNuqta[] }) {
+  const { t: tr } = useAlifbo();
+  const c = useChartTheme();
+
+  /*
+   * O'n ikki oyning HAMMASI chiziladi, birinchisi ham.
+   *
+   * Oqim har oyning o'z oralig'idan sanaladi, shuning uchun
+   * birinchi ustun ham to'g'ri: undan oldingi tarix unga
+   * qo'shilib ketmaydi.
+   */
+  const malumot = dinamika;
+
+  const bormi = malumot.some(
+    (d) => d.ishsizOzgarishi !== 0 || d.yangiAniqlangan > 0 || d.yangiJoylashgan > 0
+  );
+  if (!bormi) return <Bosh matn={tr('Ҳали таққослаш учун маълумот йўқ')} />;
+
+  const oxirgi = malumot[malumot.length - 1];
+  const oxirgiRang =
+    oxirgi.ishsizOzgarishi === 0
+      ? c.qutb.betaraf
+      : oxirgi.ishsizOzgarishi > 0
+        ? c.qutb.osdi
+        : c.qutb.kamaydi;
+
+  return (
+    <div className="space-y-3">
+      {/*
+        Асосий рақам диаграммадан ОЛДИН туради. Ҳоким биринчи
+        шуни ўқийди: сўнгги ойда ишсизлар сони қай томонга кетди.
+      */}
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="text-xs text-ink-faint">{tr('Сўнгги ойда')}:</span>
+        <span className="text-xl font-bold tabular-nums" style={{ color: oxirgiRang }}>
+          {ishorali(oxirgi.ishsizOzgarishi)}
+        </span>
+        <span className="text-xs text-ink-muted">{tr('киши')}</span>
+        {oxirgi.ishsizOzgarishFoizi !== 0 && (
+          <span className="text-xs font-semibold tabular-nums text-ink-muted">
+            ({foizIshorali(oxirgi.ishsizOzgarishFoizi)})
+          </span>
+        )}
+      </div>
+
+      {/* Легенда — ранг ёлғиз маъно ташимаслиги учун */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ background: c.qutb.kamaydi }}
+          />
+          {tr('Пастга — ишсизлар камайди')}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ background: c.qutb.osdi }}
+          />
+          {tr('Юқорига — ишсизлар кўпайди')}
+        </span>
+      </div>
+
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart
+          data={malumot}
+          margin={{ top: 16, right: 12, bottom: 4, left: -12 }}
+          barCategoryGap="18%"
+        >
+          <CartesianGrid stroke={c.axisLine} vertical={false} />
+          <XAxis
+            dataKey="yorliq"
+            tick={{ fill: c.axisText, fontSize: 11 }}
+            tickLine={false}
+            axisLine={{ stroke: c.axisLine }}
+            interval="preserveStartEnd"
+            tickFormatter={(v: string) => tr(v)}
+          />
+          <YAxis
+            tick={{ fill: c.axisText, fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            width={44}
+            allowDecimals={false}
+            tickFormatter={(v: number) => ishorali(v)}
+          />
+          {/* Нол чизиғи — қутбли диаграммада энг муҳим чизиқ */}
+          <ReferenceLine y={0} stroke={c.axisText} strokeWidth={1} />
+          <Tooltip content={<OsishMaslahati />} cursor={{ fill: c.cursor }} />
+          <Bar dataKey="ishsizOzgarishi" name={tr('Ўзгариш')} maxBarSize={26}>
+            {malumot.map((n) => (
+              <Cell
+                key={n.oy}
+                fill={
+                  n.ishsizOzgarishi === 0
+                    ? c.qutb.betaraf
+                    : n.ishsizOzgarishi > 0
+                      ? c.qutb.osdi
+                      : c.qutb.kamaydi
+                }
+              />
+            ))}
+            <LabelList
+              dataKey="ishsizOzgarishi"
+              position="top"
+              /*
+                Ҳар бир устунга рақам ёзилмайди — фақат ноль
+                бўлмаганига. Ўн иккита устуннинг ҳаммасига ёзув
+                қўйилса, диаграмма жадвалга айланиб қолади.
+              */
+              content={(p: unknown) => {
+                const { x, y, width, value } = p as {
+                  x: number;
+                  y: number;
+                  width: number;
+                  value: number;
+                };
+                if (!value) return null;
+                return (
+                  <text
+                    x={x + width / 2}
+                    y={value > 0 ? y - 5 : y + 13}
+                    textAnchor="middle"
+                    fontSize={10}
+                    className="fill-ink-muted tabular-nums"
+                  >
+                    {ishorali(value)}
+                  </text>
+                );
+              }}
+            />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      {/*
+        Жадвал — аниқ рақам керак бўлганда. Диаграмма тез
+        тушунилади, аммо йиғилишда «июлда нечта эди» деб
+        сўралса, кўз билан ўлчаб бўлмайди.
+      */}
+      <details className="text-xs">
+        <summary className="cursor-pointer text-ink-muted transition-colors hover:text-ink">
+          {tr('Рақамлар жадвали')}
+        </summary>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full min-w-[420px] text-left">
+            <thead>
+              <tr className="border-b border-line text-ink-faint">
+                <th className="py-1.5 pr-3 font-medium">{tr('Ой')}</th>
+                <th className="py-1.5 pr-3 text-right font-medium">{tr('Аниқланди')}</th>
+                <th className="py-1.5 pr-3 text-right font-medium">{tr('Жойлашди')}</th>
+                <th className="py-1.5 pr-3 text-right font-medium">{tr('Ўзгариш')}</th>
+                <th className="py-1.5 text-right font-medium">{tr('Сурат')}</th>
+              </tr>
+            </thead>
+            <tbody className="tabular-nums text-ink-muted">
+              {malumot.map((n) => (
+                <tr key={n.oy} className="border-b border-line/60 last:border-0">
+                  <td className="py-1.5 pr-3">{tr(n.yorliq)}</td>
+                  <td className="py-1.5 pr-3 text-right">{raqam(n.yangiAniqlangan)}</td>
+                  <td className="py-1.5 pr-3 text-right">{raqam(n.yangiJoylashgan)}</td>
+                  <td className="py-1.5 pr-3 text-right font-semibold text-ink">
+                    {ishorali(n.ishsizOzgarishi)}
+                  </td>
+                  <td className="py-1.5 text-right">
+                    {n.ishsizOzgarishFoizi === 0 ? '—' : foizIshorali(n.ishsizOzgarishFoizi)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
   );
 }
 

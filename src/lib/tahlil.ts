@@ -54,9 +54,40 @@ export interface OylikNuqta {
   oy: string;
   /** Ko'rsatish uchun: 'Сен 26' */
   yorliq: string;
+
+  /* ── To'plangan (kumulyativ) ── */
   xatlovXonadon: number;
   aniqlangan: number;
   joylashtirilgan: number;
+
+  /* ── Shu oyning O'ZIDA qo'shilgani (oqim) ── */
+  /** Shu oy xatlovdan o'tgan xonadon */
+  yangiXatlov: number;
+  /** Shu oy aniqlangan ishsiz */
+  yangiAniqlangan: number;
+  /** Shu oy ishga joylashgan */
+  yangiJoylashgan: number;
+
+  /* ── O'sish va kamayish surati ── */
+  /**
+   * Hali ishga joylashmagan, ro'yxatda turgan ishsizlar soni:
+   * `aniqlangan - joylashtirilgan`. Asosiy raqam shu - chunki
+   * "aniqlangan" hech qachon kamaymaydi, muammoning hajmi esa
+   * joylashtirish hisobiga kamayishi kerak.
+   */
+  ishsizQoldiq: number;
+  /**
+   * Qoldiqning shu oy ichidagi o'zgarishi.
+   *
+   * MANFIY = kamaydi (yaxshi), MUSBAT = o'sdi (yomon).
+   * Ayni shu son `yangiAniqlangan - yangiJoylashgan` ga teng,
+   * ya'ni diagrammada ustun qaysi tomonga qarab turgani
+   * "kim ko'p: yangi ishsizmi yoki ishga joylashganmi"
+   * degan savolga javob beradi.
+   */
+  ishsizOzgarishi: number;
+  /** O'sha o'zgarish oy BOSHIDAGI qoldiqqa nisbatan, foizda */
+  ishsizOzgarishFoizi: number;
 }
 
 export interface TahlilNatijasi {
@@ -112,37 +143,95 @@ function oyKaliti(d: Date): string {
  * darajasida - bir necha ming yozuv - shuning uchun farqi
  * sezilmaydi, lekin kod baza turiga bog'lanib qolmaydi va
  * vaqt mintaqasi bilan bog'liq nozikliklar bitta joyda qoladi.
+ *
+ * Eksport qilingan - `scripts/dinamika-sinov.ts` uni bazasiz
+ * chaqirib, arifmetikani sinovdan o'tkazadi. O'sish va kamayish
+ * surati aynan shu yerda hisoblanadi: xato bo'lsa diagramma
+ * baribir chiroyli ko'rinadi, faqat noto'g'ri tomonga qaragan
+ * ustun bilan - shuning uchun uni ko'z bilan emas, sinov bilan
+ * tekshirish kerak.
  */
-function dinamikaHisobla(
+export function dinamikaHisobla(
   xatlovSanalari: Date[],
   aniqlanganSanalari: Date[],
   joylashganSanalari: Date[]
 ): OylikNuqta[] {
   const hozir = new Date();
 
-  // Oxirgi 12 oyning kalitlari, eskisidan yangisiga
-  const oylar: { oy: string; yorliq: string; chegara: Date }[] = [];
+  /*
+   * Oxirgi 12 oy, eskisidan yangisiga. Har oyda ikki chegara
+   * bor: BOSHI va OXIRI.
+   *
+   * Nega ikkovi ham kerak: to'plangan raqam uchun faqat oy
+   * oxiri yetadi ("shu kungacha jami nechta"). Oylik OQIM
+   * uchun esa oyning o'z oralig'i kerak. Ilgari oqim ikki
+   * oyning to'plangan raqamini ayirish yo'li bilan olinardi
+   * va birinchi oy noto'g'ri chiqardi: undan oldingi TAQQOSLASH
+   * NUQTASI yo'q, shuning uchun bir yildan eski butun tarix
+   * o'sha oyda sodir bo'lgandek ko'rinardi.
+   */
+  const oylar: { oy: string; yorliq: string; boshi: Date; chegara: Date }[] = [];
   for (let i = 11; i >= 0; i--) {
     const d = new Date(hozir.getFullYear(), hozir.getMonth() - i, 1);
-    // Oy OXIRI - shu sanagacha bo'lgan hamma narsa sanaladi
-    const chegara = new Date(d.getFullYear(), d.getMonth() + 1, 1);
     oylar.push({
       oy: oyKaliti(d),
       yorliq: `${OY_NOMI[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`,
-      chegara,
+      boshi: d,
+      chegara: new Date(d.getFullYear(), d.getMonth() + 1, 1),
     });
   }
 
-  const sana = (list: Date[], chegara: Date) =>
+  /** Shu sanagacha bo'lgan hammasi - to'plangan raqam uchun */
+  const gacha = (list: Date[], chegara: Date) =>
     list.reduce((s, d) => (d < chegara ? s + 1 : s), 0);
 
-  return oylar.map((o) => ({
-    oy: o.oy,
-    yorliq: o.yorliq,
-    xatlovXonadon: sana(xatlovSanalari, o.chegara),
-    aniqlangan: sana(aniqlanganSanalari, o.chegara),
-    joylashtirilgan: sana(joylashganSanalari, o.chegara),
-  }));
+  /** Faqat shu oyning ichidagilar - oqim uchun */
+  const ichida = (list: Date[], boshi: Date, chegara: Date) =>
+    list.reduce((s, d) => (d >= boshi && d < chegara ? s + 1 : s), 0);
+
+  return oylar.map((o) => {
+    const aniqlangan = gacha(aniqlanganSanalari, o.chegara);
+    const joylashtirilgan = gacha(joylashganSanalari, o.chegara);
+
+    const yangiAniqlangan = ichida(aniqlanganSanalari, o.boshi, o.chegara);
+    const yangiJoylashgan = ichida(joylashganSanalari, o.boshi, o.chegara);
+
+    const ishsizQoldiq = aniqlangan - joylashtirilgan;
+
+    /*
+     * O'zgarish AYNAN shu oyning oqimidan olinadi, ikki oyning
+     * qoldig'ini ayirishdan emas. Natija bir xil, lekin bu yo'l
+     * birinchi oyda ham to'g'ri ishlaydi.
+     */
+    const ishsizOzgarishi = yangiAniqlangan - yangiJoylashgan;
+
+    /* Oy BOSHIDAGI qoldiq - foiz shunga nisbatan hisoblanadi */
+    const oldingiQoldiq = ishsizQoldiq - ishsizOzgarishi;
+
+    return {
+      oy: o.oy,
+      yorliq: o.yorliq,
+
+      xatlovXonadon: gacha(xatlovSanalari, o.chegara),
+      aniqlangan,
+      joylashtirilgan,
+
+      yangiXatlov: ichida(xatlovSanalari, o.boshi, o.chegara),
+      yangiAniqlangan,
+      yangiJoylashgan,
+
+      ishsizQoldiq,
+      ishsizOzgarishi,
+      /*
+       * Oy boshida hech kim ro'yxatda bo'lmasa foiz chiqarilmaydi:
+       * nolga bo'lish o'rniga nol qaytadi. Diagrammada bu
+       * "taqqoslaydigan baza yo'q" degani - ustun baribir o'z
+       * balandligi bilan turadi, faqat yonida foiz yozilmaydi.
+       */
+      ishsizOzgarishFoizi:
+        oldingiQoldiq > 0 ? Math.round((ishsizOzgarishi / oldingiQoldiq) * 1000) / 10 : 0,
+    };
+  });
 }
 
 export async function tahlilOl(mahallaId?: string): Promise<TahlilNatijasi> {
