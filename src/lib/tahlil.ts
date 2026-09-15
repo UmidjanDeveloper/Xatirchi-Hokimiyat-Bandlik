@@ -102,6 +102,14 @@ export interface TahlilNatijasi {
   };
   voronka: VoronkaBosqichi[];
   qamrov: MahallaQamrovi[];
+  /**
+   * Диаграмма қайси кесимда чизилгани.
+   *
+   * Натижа билан бирга қайтади — акс ҳолда саҳифа «ойлик»
+   * деб ёзиб қўйиб, аслида кунлик рақам кўрсатиб туриши
+   * мумкин эди.
+   */
+  davr: Davr;
   /** Oxirgi 12 oy - chiziqli grafik uchun */
   dinamika: OylikNuqta[];
   kechikkanlar: { tashkilot: string; soni: number }[];
@@ -131,6 +139,55 @@ const OY_NOMI = [
   'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек',
 ];
 
+/**
+ * ============================================================
+ *  ДАВР КЕСИМИ
+ *
+ *  Битта диаграмма учта саволга жавоб беради ва улар бир хил
+ *  эмас:
+ *
+ *    КУНЛИК  — «шу ҳафта иш кетяптими». Маҳалла ходими ва
+ *              бандлик мутахассиси учун. Ойлик кесимда бугунги
+ *              суст иш кўринмайди: ой охирида барибир рақам
+ *              тўпланиб қолади.
+ *    ОЙЛИК   — «чорак якунида қандай кўрсаткич бўлади». Раҳбар
+ *              ва ҳоким учун асосий кесим.
+ *    ЙИЛЛИК  — «уч йилда камбағаллик қисқардими». Ҳисобот ва
+ *              стратегик қарор учун.
+ *
+ *  Учовининг ҲИСОБИ бир хил, фақат оралиқ бошқача. Шунинг
+ *  учун битта функция уччаласини ҳам ҳисоблайди — акс ҳолда
+ *  уч жойда уч хил натижа чиқиб қолиши мумкин эди.
+ * ============================================================
+ */
+export type Davr = 'kun' | 'oy' | 'yil';
+
+/** Ҳар давр учун нечта нуқта чизилади */
+const DAVR_UZUNLIGI: Record<Davr, number> = {
+  kun: 30,
+  oy: 12,
+  yil: 5,
+};
+
+/** URL дан келган матнни хавфсиз давр қийматига айлантиради */
+export function davrOqi(xom?: string | null): Davr {
+  return xom === 'kun' || xom === 'yil' ? xom : 'oy';
+}
+
+/** Давр номи — саҳифа изоҳида кўринади */
+export const DAVR_NOMI: Record<Davr, string> = {
+  kun: 'Сўнгги 30 кун',
+  oy: 'Сўнгги 12 ой',
+  yil: 'Сўнгги 5 йил',
+};
+
+/** Бир нуқтанинг номи — «кун», «ой», «йил» */
+export const DAVR_BIRLIGI: Record<Davr, string> = {
+  kun: 'кун',
+  oy: 'ой',
+  yil: 'йил',
+};
+
 /** `2026-09` ko'rinishidagi kalit */
 function oyKaliti(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -154,42 +211,67 @@ function oyKaliti(d: Date): string {
 export function dinamikaHisobla(
   xatlovSanalari: Date[],
   aniqlanganSanalari: Date[],
-  joylashganSanalari: Date[]
+  joylashganSanalari: Date[],
+  davr: Davr = 'oy'
 ): OylikNuqta[] {
   const hozir = new Date();
 
   /*
-   * Oxirgi 12 oy, eskisidan yangisiga. Har oyda ikki chegara
-   * bor: BOSHI va OXIRI.
+   * Оралиқлар. Ҳар бирида икки чегара бор: БОШИ ва ОХИРИ.
    *
-   * Nega ikkovi ham kerak: to'plangan raqam uchun faqat oy
-   * oxiri yetadi ("shu kungacha jami nechta"). Oylik OQIM
-   * uchun esa oyning o'z oralig'i kerak. Ilgari oqim ikki
-   * oyning to'plangan raqamini ayirish yo'li bilan olinardi
-   * va birinchi oy noto'g'ri chiqardi: undan oldingi TAQQOSLASH
-   * NUQTASI yo'q, shuning uchun bir yildan eski butun tarix
-   * o'sha oyda sodir bo'lgandek ko'rinardi.
+   * Нега иккови ҳам керак: тўпланган рақам учун фақат охири
+   * етади («шу кунгача жами нечта»). ОҚИМ учун эса оралиқнинг
+   * ўзи керак. Илгари оқим икки нуқтанинг тўпланган рақамини
+   * айириш йўли билан олинарди ва БИРИНЧИ нуқта нотўғри
+   * чиқарди: ундан олдинги таққослаш нуқтаси йўқ, шунинг учун
+   * бутун эски тарих ўша оралиқда содир бўлгандек кўринарди.
    */
-  const oylar: { oy: string; yorliq: string; boshi: Date; chegara: Date }[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(hozir.getFullYear(), hozir.getMonth() - i, 1);
-    oylar.push({
-      oy: oyKaliti(d),
-      yorliq: `${OY_NOMI[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`,
-      boshi: d,
-      chegara: new Date(d.getFullYear(), d.getMonth() + 1, 1),
-    });
+  const oraliqlar: { oy: string; yorliq: string; boshi: Date; chegara: Date }[] = [];
+
+  for (let i = DAVR_UZUNLIGI[davr] - 1; i >= 0; i--) {
+    let boshi: Date;
+    let chegara: Date;
+    let kalit: string;
+    let yorliq: string;
+
+    if (davr === 'kun') {
+      boshi = new Date(hozir.getFullYear(), hozir.getMonth(), hozir.getDate() - i);
+      chegara = new Date(boshi.getFullYear(), boshi.getMonth(), boshi.getDate() + 1);
+      kalit = `${oyKaliti(boshi)}-${String(boshi.getDate()).padStart(2, '0')}`;
+      /*
+       * Кунлик кесимда ой номи ҲАР КУН такрорланмайди: ўттизта
+       * «12 Сен» ўқ остида бир-бирига ёпишиб кетарди. Фақат
+       * ойнинг биринчи куни тўлиқ ёзилади.
+       */
+      yorliq =
+        boshi.getDate() === 1 || i === DAVR_UZUNLIGI.kun - 1
+          ? `${boshi.getDate()} ${OY_NOMI[boshi.getMonth()]}`
+          : String(boshi.getDate());
+    } else if (davr === 'yil') {
+      const yil = hozir.getFullYear() - i;
+      boshi = new Date(yil, 0, 1);
+      chegara = new Date(yil + 1, 0, 1);
+      kalit = String(yil);
+      yorliq = String(yil);
+    } else {
+      boshi = new Date(hozir.getFullYear(), hozir.getMonth() - i, 1);
+      chegara = new Date(boshi.getFullYear(), boshi.getMonth() + 1, 1);
+      kalit = oyKaliti(boshi);
+      yorliq = `${OY_NOMI[boshi.getMonth()]} ${String(boshi.getFullYear()).slice(-2)}`;
+    }
+
+    oraliqlar.push({ oy: kalit, yorliq, boshi, chegara });
   }
 
   /** Shu sanagacha bo'lgan hammasi - to'plangan raqam uchun */
   const gacha = (list: Date[], chegara: Date) =>
     list.reduce((s, d) => (d < chegara ? s + 1 : s), 0);
 
-  /** Faqat shu oyning ichidagilar - oqim uchun */
+  /** Faqat shu oraliq ichidagilar - oqim uchun */
   const ichida = (list: Date[], boshi: Date, chegara: Date) =>
     list.reduce((s, d) => (d >= boshi && d < chegara ? s + 1 : s), 0);
 
-  return oylar.map((o) => {
+  return oraliqlar.map((o) => {
     const aniqlangan = gacha(aniqlanganSanalari, o.chegara);
     const joylashtirilgan = gacha(joylashganSanalari, o.chegara);
 
@@ -199,13 +281,13 @@ export function dinamikaHisobla(
     const ishsizQoldiq = aniqlangan - joylashtirilgan;
 
     /*
-     * O'zgarish AYNAN shu oyning oqimidan olinadi, ikki oyning
-     * qoldig'ini ayirishdan emas. Natija bir xil, lekin bu yo'l
-     * birinchi oyda ham to'g'ri ishlaydi.
+     * O'zgarish AYNAN shu oraliqning oqimidan olinadi, ikki
+     * nuqtaning qoldig'ini ayirishdan emas. Natija bir xil,
+     * lekin bu yo'l birinchi nuqtada ham to'g'ri ishlaydi.
      */
     const ishsizOzgarishi = yangiAniqlangan - yangiJoylashgan;
 
-    /* Oy BOSHIDAGI qoldiq - foiz shunga nisbatan hisoblanadi */
+    /* Oraliq BOSHIDAGI qoldiq - foiz shunga nisbatan hisoblanadi */
     const oldingiQoldiq = ishsizQoldiq - ishsizOzgarishi;
 
     return {
@@ -223,10 +305,8 @@ export function dinamikaHisobla(
       ishsizQoldiq,
       ishsizOzgarishi,
       /*
-       * Oy boshida hech kim ro'yxatda bo'lmasa foiz chiqarilmaydi:
-       * nolga bo'lish o'rniga nol qaytadi. Diagrammada bu
-       * "taqqoslaydigan baza yo'q" degani - ustun baribir o'z
-       * balandligi bilan turadi, faqat yonida foiz yozilmaydi.
+       * Oraliq boshida hech kim ro'yxatda bo'lmasa foiz
+       * chiqarilmaydi: nolga bo'lish o'rniga nol qaytadi.
        */
       ishsizOzgarishFoizi:
         oldingiQoldiq > 0 ? Math.round((ishsizOzgarishi / oldingiQoldiq) * 1000) / 10 : 0,
@@ -234,7 +314,10 @@ export function dinamikaHisobla(
   });
 }
 
-export async function tahlilOl(mahallaId?: string): Promise<TahlilNatijasi> {
+export async function tahlilOl(
+  mahallaId?: string,
+  davr: Davr = 'oy'
+): Promise<TahlilNatijasi> {
   const hozir = new Date();
   const mahallaFiltri = mahallaId ? { mahallaId } : {};
 
@@ -444,10 +527,12 @@ export async function tahlilOl(mahallaId?: string): Promise<TahlilNatijasi> {
     },
     voronka,
     qamrov,
+    davr,
     dinamika: dinamikaHisobla(
       xatlovSanalari.map((x) => x.createdAt),
       aniqlanganSanalari.map((x) => x.createdAt),
-      joylashganSanalari.map((x) => x.ishgaKirganSana as Date)
+      joylashganSanalari.map((x) => x.ishgaKirganSana as Date),
+      davr
     ),
     kechikkanlar: kechikkanlar
       .map((k) => ({ tashkilot: k.masulTashkilot, soni: k._count }))

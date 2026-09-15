@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { FileText, HousePlus, TriangleAlert, Users } from 'lucide-react';
 import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { tahlilOl } from '@/lib/tahlil';
+import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { formatDate, percent } from '@/lib/utils';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { MahallaOrinlari } from '@/components/ish-orni/mahalla-orinlari';
@@ -12,6 +12,7 @@ import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
+import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
 
 /*
@@ -31,8 +32,13 @@ const HOLAT_NISHONI: Record<string, { matn: string; sinf: string }> = {
   TASDIQLANGAN: { matn: 'Тасдиқланган', sinf: 'bg-ok-bg text-ok' },
 };
 
-export default async function XatlovlarSahifasi() {
+export default async function XatlovlarSahifasi({
+  searchParams,
+}: {
+  searchParams: { davr?: string };
+}) {
   const tr = matnchi();
+  const davr = davrOqi(searchParams.davr);
 
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
@@ -82,7 +88,7 @@ export default async function XatlovlarSahifasi() {
      * умуман ҳисобланмайди — уларда ўз панели бор, бу ерда
      * туман бўйича оғир сўров юритишнинг кераги йўқ.
      */
-    filtr.mahallaId ? tahlilOl(filtr.mahallaId) : null,
+    filtr.mahallaId ? tahlilOl(filtr.mahallaId, davr) : null,
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId, 20),
   ]);
@@ -136,6 +142,13 @@ export default async function XatlovlarSahifasi() {
             ozMahallasi
             malumotBormi={yuborilgan.length > 0}
           />
+
+          {/*
+            Давр танлаш — ходим учун ҳам. Унга айниқса КУНЛИК
+            кесим керак: «шу ҳафта нечта хонадон қилдим» деган
+            савол унинг кундалик саволи, ойлик эмас.
+          */}
+          {mahalla && yuborilgan.length > 0 && <DavrTanlash joriy={davr} />}
         </div>
       </div>
 
@@ -196,6 +209,7 @@ export default async function XatlovlarSahifasi() {
       {mahalla && tahlil && yuborilgan.length > 0 && (
         <DinamikaBloglari
           dinamika={tahlil.dinamika}
+          davr={davr}
           qamrovNomi={`${mahalla.nomiKirill} МФЙ`}
         />
       )}

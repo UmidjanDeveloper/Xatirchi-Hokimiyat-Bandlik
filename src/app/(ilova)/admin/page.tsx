@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { matnchi } from '@/lib/alifbo-server';
 import { joriySessiya } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { tahlilOl } from '@/lib/tahlil';
+import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { AiHolati } from '@/components/admin/ai-holati';
@@ -10,6 +10,7 @@ import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
+import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
@@ -34,8 +35,13 @@ const AMAL_NOMI: Record<string, string> = {
   PAROL_ALMASHTIRILDI: 'Паролини алмаштирди',
 };
 
-export default async function AdminSahifasi() {
+export default async function AdminSahifasi({
+  searchParams,
+}: {
+  searchParams: { davr?: string };
+}) {
   const tr = matnchi();
+  const davr = davrOqi(searchParams.davr);
 
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
@@ -72,7 +78,7 @@ export default async function AdminSahifasi() {
       prisma.actionPlan.count(),
       prisma.vacancy.count({ where: { faol: true } }),
     ]),
-    tahlilOl(),
+    tahlilOl(undefined, davr),
     vaucherHisobi(),
     vaucherNavbati(undefined, 10),
   ]);
@@ -88,7 +94,10 @@ export default async function AdminSahifasi() {
             {tr('Ходимлар, логинлар ва аудит журнали')}
           </p>
         </div>
-        <SahifaHisoboti malumotBormi={xonadon > 0} />
+        <div className="flex flex-wrap items-center gap-3">
+          <DavrTanlash joriy={davr} />
+          <SahifaHisoboti malumotBormi={xonadon > 0} />
+        </div>
       </div>
 
       {/*
@@ -118,7 +127,9 @@ export default async function AdminSahifasi() {
         жавоб худди ҳоким кўраётган графикда бўлиши шарт —
         бошқа графикда эмас.
       */}
-      {xonadon > 0 && <DinamikaBloglari dinamika={tahlil.dinamika} qamrovNomi="Хатирчи тумани" />}
+      {xonadon > 0 && (
+        <DinamikaBloglari dinamika={tahlil.dinamika} davr={davr} qamrovNomi="Хатирчи тумани" />
+      )}
 
       <section className="space-y-3">
         <h2 className="text-sm font-bold text-ink">{tr('Ходимлар (')}{xodimlar.length})</h2>

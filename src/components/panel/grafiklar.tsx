@@ -21,7 +21,7 @@ import {
 import { ArrowDownUp, ChevronDown } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { useChartTheme } from '@/lib/chart-theme';
-import type { MahallaQamrovi, OylikNuqta } from '@/lib/tahlil';
+import { DAVR_BIRLIGI, type Davr, type MahallaQamrovi, type OylikNuqta } from '@/lib/tahlil';
 
 /**
  * ============================================================
@@ -108,9 +108,11 @@ function Bosh({ matn }: { matn: string }) {
 export function DinamikaChizigi({
   dinamika,
   tur,
+  davr = 'oy',
 }: {
   dinamika: OylikNuqta[];
   tur: 'xatlov' | 'ishsiz';
+  davr?: Davr;
 }) {
   const { t: tr } = useAlifbo();
   const c = useChartTheme();
@@ -146,6 +148,8 @@ export function DinamikaChizigi({
             бутун саҳифа лотин бўлар, фақат диаграмма ўқида
             кирилл ойлар қолиб кетарди.
           */
+          interval={davr === 'kun' ? 0 : 'preserveStartEnd'}
+          ticks={oqYorliqlari(dinamika, davr)}
           tickFormatter={(v: string) => tr(v)}
         />
         <YAxis
@@ -185,6 +189,28 @@ export function DinamikaChizigi({
   );
 }
 
+/**
+ * Ўқда қайси ёрлиқлар кўрсатилсин.
+ *
+ * Ўттизта кунни ўққа сиғдириб бўлмайди: «17 Авг» каби ёрлиқ
+ * 40px жой олади, ўттизтасига эса 600px етмайди. Recharts
+ * ўзи ҳам сийраклаштиради, лекин у қайси ёрлиқ МУҲИМлигини
+ * билмайди — ва ой чегарасини («1 Сен») ташлаб кетди. Натижада
+ * ўқда «31» дан кейин «2» турар, қайси ойдалигини айтмасди.
+ *
+ * Шунинг учун рўйхат ўзимиз тузамиз: биринчи, охирги, ҳар
+ * бешинчи ва ОЙ БОШИ (ёрлиғида бўш жой бор — «1 Сен») ҳар
+ * доим қолади.
+ */
+function oqYorliqlari(dinamika: OylikNuqta[], davr: Davr): string[] | undefined {
+  /* Ойлик ва йиллик кесимда ёрлиқлар кам — ҳаммаси сиғади */
+  if (davr !== 'kun') return undefined;
+
+  return dinamika
+    .filter((n, i) => i === 0 || i === dinamika.length - 1 || i % 5 === 0 || n.yorliq.includes(' '))
+    .map((n) => n.yorliq);
+}
+
 /** Ishorasi bilan: +12, −8, 0 */
 const ishorali = (n: number) => (n > 0 ? `+${raqam(n)}` : n < 0 ? `−${raqam(-n)}` : '0');
 
@@ -206,9 +232,11 @@ const foizIshorali = (n: number) =>
 export function OqimUstunlari({
   dinamika,
   tur,
+  davr = 'oy',
 }: {
   dinamika: OylikNuqta[];
   tur: 'xatlov' | 'ishsiz';
+  davr?: Davr;
 }) {
   const { t: tr } = useAlifbo();
   const c = useChartTheme();
@@ -281,7 +309,8 @@ export function OqimUstunlari({
             tick={{ fill: c.axisText, fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: c.axisLine }}
-            interval="preserveStartEnd"
+            interval={davr === 'kun' ? 0 : 'preserveStartEnd'}
+            ticks={oqYorliqlari(dinamika, davr)}
             tickFormatter={(v: string) => tr(v)}
           />
           <YAxis
@@ -433,7 +462,13 @@ function OsishMaslahati({
  * nol chizig'i, tepasidagi yozuv va legenda - hammasi bir xil
  * ma'noni takrorlaydi.
  */
-export function OsishUstunlari({ dinamika }: { dinamika: OylikNuqta[] }) {
+export function OsishUstunlari({
+  dinamika,
+  davr = 'oy',
+}: {
+  dinamika: OylikNuqta[];
+  davr?: Davr;
+}) {
   const { t: tr } = useAlifbo();
   const c = useChartTheme();
 
@@ -466,7 +501,13 @@ export function OsishUstunlari({ dinamika }: { dinamika: OylikNuqta[] }) {
         шуни ўқийди: сўнгги ойда ишсизлар сони қай томонга кетди.
       */}
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="text-xs text-ink-faint">{tr('Сўнгги ойда')}:</span>
+        {/*
+          «Сўнгги ойда» деб қотириб бўлмайди: кунлик кесимда у
+          «сўнгги кунда», йилликда «сўнгги йилда» бўлиши керак.
+        */}
+        <span className="text-xs text-ink-faint">
+          {tr('Сўнгги')} {tr(DAVR_BIRLIGI[davr])}{tr('да')}:
+        </span>
         <span className="text-xl font-bold tabular-nums" style={{ color: oxirgiRang }}>
           {ishorali(oxirgi.ishsizOzgarishi)}
         </span>
@@ -510,7 +551,8 @@ export function OsishUstunlari({ dinamika }: { dinamika: OylikNuqta[] }) {
             tick={{ fill: c.axisText, fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: c.axisLine }}
-            interval="preserveStartEnd"
+            interval={davr === 'kun' ? 0 : 'preserveStartEnd'}
+            ticks={oqYorliqlari(malumot, davr)}
             tickFormatter={(v: string) => tr(v)}
           />
           <YAxis

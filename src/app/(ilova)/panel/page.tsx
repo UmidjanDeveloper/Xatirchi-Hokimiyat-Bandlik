@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { ArrowRight, Briefcase, House, TrendingUp, Users } from 'lucide-react';
 import { joriySessiya, mahallaFiltri, tahlilKoradi } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { tahlilOl } from '@/lib/tahlil';
+import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { DARAJA_KORINISHI, tavsiyalarniHisobla } from '@/lib/tavsiyalar';
 import { percent } from '@/lib/utils';
 import {
@@ -19,6 +19,7 @@ import {
   ToifaDoirasi,
 } from '@/components/panel/grafiklar';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
+import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
@@ -37,8 +38,13 @@ export function generateMetadata() {
 
 const raqam = (n: number) => n.toLocaleString('ru-RU');
 
-export default async function PanelSahifasi() {
+export default async function PanelSahifasi({
+  searchParams,
+}: {
+  searchParams: { davr?: string };
+}) {
   const tr = matnchi();
+  const davr = davrOqi(searchParams.davr);
 
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
@@ -53,7 +59,7 @@ export default async function PanelSahifasi() {
    * олади.
    */
   const [t, vHisob, vNavbat, mahallalar] = await Promise.all([
-    tahlilOl(filtr.mahallaId),
+    tahlilOl(filtr.mahallaId, davr),
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId, 10),
     filtr.mahallaId
@@ -82,9 +88,16 @@ export default async function PanelSahifasi() {
           pastgacha aylantirmasdan topadi. Xatlov boshlanmagan
           bo'lsa ko'rsatilmaydi: bo'sh hisobotning ma'nosi yo'q.
         */}
-        {bosh.xatlovXonadon > 0 && (
-          <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
-        )}
+        {/*
+          Давр танлаш ва ҳисобот тугмалари — сарлавҳа ёнида.
+          Ҳоким саҳифани пастгача айлантирмасдан топади.
+        */}
+        <div className="flex flex-wrap items-center gap-3">
+          <DavrTanlash joriy={davr} />
+          {bosh.xatlovXonadon > 0 && (
+            <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
+          )}
+        </div>
       </div>
 
       {/*
@@ -202,7 +215,11 @@ export default async function PanelSahifasi() {
             тўпланиб бориш. Ҳокимга биринчи навбатда керагини
             — «камайдими ёки ўсдими» — энг тепага қўйилган.
           */}
-          <DinamikaBloglari dinamika={t.dinamika} qamrovNomi="Хатирчи тумани" />
+          <DinamikaBloglari
+            dinamika={t.dinamika}
+            davr={davr}
+            qamrovNomi="Хатирчи тумани"
+          />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Voronka bosqichlar={t.voronka} bazaIshsiz={bosh.bazaIshsiz} />

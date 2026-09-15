@@ -2,7 +2,7 @@
 
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { DinamikaChizigi, OqimUstunlari, OsishUstunlari } from '@/components/panel/grafiklar';
-import type { OylikNuqta } from '@/lib/tahlil';
+import { DAVR_NOMI, type Davr, type OylikNuqta } from '@/lib/tahlil';
 
 /**
  * ============================================================
@@ -30,13 +30,45 @@ import type { OylikNuqta } from '@/lib/tahlil';
  *  улар бир-бирига зид рақам кўрсата олмайди.
  * ============================================================
  */
+/**
+ * Сарлавҳалар давр билан ЎЗГАРАДИ.
+ *
+ * Илгари улар «Ойлик оқим» деб қотирилган эди. Кунлик кесим
+ * қўшилганда сарлавҳа «ойлик» деб турар, остидаги устунлар эса
+ * кунлик рақам кўрсатарди — ва буни фақат рақамни санаб
+ * чиққан одам пайқарди.
+ */
+const OQIM_SARLAVHASI: Record<Davr, string> = {
+  kun: 'Кунлик оқим',
+  oy: 'Ойлик оқим',
+  yil: 'Йиллик оқим',
+};
+
+const OQIM_IZOHI: Record<Davr, { ishsiz: string; xatlov: string }> = {
+  kun: {
+    ishsiz: 'Шу КУННИНГ ўзида нечта аниқланди ва нечтаси ишга жойлашди',
+    xatlov: 'Шу КУННИНГ ўзида нечта хонадон хатловдан ўтди',
+  },
+  oy: {
+    ishsiz: 'Шу ОЙНИНГ ўзида нечта аниқланди ва нечтаси ишга жойлашди',
+    xatlov: 'Шу ОЙНИНГ ўзида нечта хонадон хатловдан ўтди — иш суръати шундан кўринади',
+  },
+  yil: {
+    ishsiz: 'Шу ЙИЛНИНГ ўзида нечта аниқланди ва нечтаси ишга жойлашди',
+    xatlov: 'Шу ЙИЛНИНГ ўзида нечта хонадон хатловдан ўтди',
+  },
+};
+
 export function DinamikaBloglari({
   dinamika,
   qamrovNomi,
+  davr = 'oy',
 }: {
   dinamika: OylikNuqta[];
   /** 'Хатирчи тумани' ёки МФЙ номи — сарлавҳада кўринади */
   qamrovNomi: string;
+  /** Қайси кесимда чизилгани — сарлавҳалар шунга мослашади */
+  davr?: Davr;
 }) {
   const { t: tr } = useAlifbo();
 
@@ -46,34 +78,36 @@ export function DinamikaBloglari({
       <section className="karta p-4 sm:p-5">
         <h2 className="text-sm font-bold text-ink">{tr('Ўсиш ва камайиш сурати')}</h2>
         <p className="mt-1 text-xs text-ink-faint">
-          {tr('Рўйхатда турган — ҳали ишга жойлашмаган — ишсизлар сони ойма-ой қай томонга кетяпти')}
+          {tr('Рўйхатда турган — ҳали ишга жойлашмаган — ишсизлар сони қай томонга кетяпти')}
           {' · '}
           {tr(qamrovNomi)}
+          {' · '}
+          {tr(DAVR_NOMI[davr])}
         </p>
         <div className="mt-4">
-          <OsishUstunlari dinamika={dinamika} />
+          <OsishUstunlari dinamika={dinamika} davr={davr} />
         </div>
       </section>
 
       {/* ── 2. Сабаби: ойлик оқим ── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="karta p-4 sm:p-5">
-          <h2 className="text-sm font-bold text-ink">{tr('Ойлик оқим: ишсизлар')}</h2>
-          <p className="mt-1 text-xs text-ink-faint">
-            {tr('Шу ойнинг ЎЗИДА нечта аниқланди ва нечтаси ишга жойлашди')}
-          </p>
+          <h2 className="text-sm font-bold text-ink">
+            {tr(OQIM_SARLAVHASI[davr])}: {tr('ишсизлар')}
+          </h2>
+          <p className="mt-1 text-xs text-ink-faint">{tr(OQIM_IZOHI[davr].ishsiz)}</p>
           <div className="mt-4">
-            <OqimUstunlari dinamika={dinamika} tur="ishsiz" />
+            <OqimUstunlari dinamika={dinamika} tur="ishsiz" davr={davr} />
           </div>
         </section>
 
         <section className="karta p-4 sm:p-5">
-          <h2 className="text-sm font-bold text-ink">{tr('Ойлик оқим: хатлов')}</h2>
-          <p className="mt-1 text-xs text-ink-faint">
-            {tr('Шу ойнинг ЎЗИДА нечта хонадон хатловдан ўтди — иш суръати шундан кўринади')}
-          </p>
+          <h2 className="text-sm font-bold text-ink">
+            {tr(OQIM_SARLAVHASI[davr])}: {tr('хатлов')}
+          </h2>
+          <p className="mt-1 text-xs text-ink-faint">{tr(OQIM_IZOHI[davr].xatlov)}</p>
           <div className="mt-4">
-            <OqimUstunlari dinamika={dinamika} tur="xatlov" />
+            <OqimUstunlari dinamika={dinamika} tur="xatlov" davr={davr} />
           </div>
         </section>
       </div>
@@ -83,10 +117,10 @@ export function DinamikaBloglari({
         <section className="karta p-4 sm:p-5">
           <h2 className="text-sm font-bold text-ink">{tr('Хатлов динамикаси')}</h2>
           <p className="mt-1 text-xs text-ink-faint">
-            {tr('Ойма-ой тўпланиб борадиган хонадон сони')}
+            {tr('Тўпланиб борадиган хонадон сони')} · {tr(DAVR_NOMI[davr])}
           </p>
           <div className="mt-4">
-            <DinamikaChizigi dinamika={dinamika} tur="xatlov" />
+            <DinamikaChizigi dinamika={dinamika} tur="xatlov" davr={davr} />
           </div>
         </section>
 
@@ -96,7 +130,7 @@ export function DinamikaBloglari({
             {tr('Аниқланган ва ишга жойлашган фуқаролар — тўпланиб борадиган сон')}
           </p>
           <div className="mt-4">
-            <DinamikaChizigi dinamika={dinamika} tur="ishsiz" />
+            <DinamikaChizigi dinamika={dinamika} tur="ishsiz" davr={davr} />
           </div>
         </section>
       </div>

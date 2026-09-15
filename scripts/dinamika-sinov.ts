@@ -14,12 +14,12 @@
  *  базасиз, ўзи алоҳида синовдан ўтказилади.
  * ============================================================
  */
-import { dinamikaHisobla } from '../src/lib/tahlil';
+import { davrOqi, dinamikaHisobla } from '../src/lib/tahlil';
 
 /** Шу ойдан N ой олдинги сана (ойнинг 15-куни — чегарага тушиб қолмаслиги учун) */
-function oyOldin(n: number): Date {
+function oyOldin(n: number, kun = 15): Date {
   const h = new Date();
-  return new Date(h.getFullYear(), h.getMonth() - n, 15, 12, 0, 0);
+  return new Date(h.getFullYear(), h.getMonth() - n, kun, 12, 0, 0);
 }
 
 /** N та бир хил сана */
@@ -172,6 +172,94 @@ const SINOVLAR: Sinov[] = [
         d[0].ishsizOzgarishFoizi === -16.7
       );
     },
+  },
+
+  /* ── ДАВР КЕСИМИ: кунлик, ойлик, йиллик ── */
+  {
+    nomi: 'Кунлик кесим — 30 та нуқта',
+    tekshir: () => dinamikaHisobla([], [], [], 'kun').length === 30,
+  },
+  {
+    nomi: 'Ойлик кесим — 12 та нуқта',
+    tekshir: () => dinamikaHisobla([], [], [], 'oy').length === 12,
+  },
+  {
+    nomi: 'Йиллик кесим — 5 та нуқта',
+    tekshir: () => dinamikaHisobla([], [], [], 'yil').length === 5,
+  },
+  {
+    nomi: 'Давр берилмаса — ойлик (эски чақириқлар бузилмайди)',
+    tekshir: () => dinamikaHisobla([], [], []).length === 12,
+  },
+  {
+    /*
+     * Энг муҳим синов: БИТТА воқеа учта кесимда ҳам бир марта
+     * саналиши керак. Чегара нотўғри қўйилса, у кунлик кесимда
+     * икки кунга тушиб қолиши ёки умуман йўқолиши мумкин — ва
+     * ҳоким «ойликда 5 та, кунликда 4 та» деб кўрарди.
+     */
+    nomi: 'Битта воқеа учала кесимда ҳам БИР МАРТА саналади',
+    tekshir: () => {
+      const b = new Date();
+      const sana = [new Date(b.getFullYear(), b.getMonth(), b.getDate(), 12)];
+      const jami = (d: ReturnType<typeof dinamikaHisobla>) =>
+        d.reduce((s, n) => s + n.yangiXatlov, 0);
+      return (
+        jami(dinamikaHisobla(sana, [], [], 'kun')) === 1 &&
+        jami(dinamikaHisobla(sana, [], [], 'oy')) === 1 &&
+        jami(dinamikaHisobla(sana, [], [], 'yil')) === 1
+      );
+    },
+  },
+  {
+    nomi: 'Кунлик кесимда бугунги воқеа ОХИРГИ нуқтада туради',
+    tekshir: () => {
+      const b = new Date();
+      const sana = [new Date(b.getFullYear(), b.getMonth(), b.getDate(), 12)];
+      const d = dinamikaHisobla(sana, [], [], 'kun');
+      return d[d.length - 1].yangiXatlov === 1;
+    },
+  },
+  {
+    nomi: 'Йиллик кесимда жорий йил ОХИРГИ нуқтада туради',
+    tekshir: () => {
+      const d = dinamikaHisobla([new Date()], [], [], 'yil');
+      return d[d.length - 1].oy === String(new Date().getFullYear());
+    },
+  },
+  {
+    /*
+     * Кунлик кесимда 30 кундан эски воқеа ОҚИМГА тушмайди,
+     * аммо ТЎПЛАНГАН рақамда кўринади — у ҳақиқатан мавжуд.
+     */
+    nomi: 'Кунликда эски воқеа оқимга тушмайди, тўпланганда кўринади',
+    tekshir: () => {
+      const d = dinamikaHisobla([oyOldin(3)], [], [], 'kun');
+      return d.every((n) => n.yangiXatlov === 0) && d[0].xatlovXonadon === 1;
+    },
+  },
+  {
+    nomi: 'Айният ҳар кесимда сақланади: ўзгариш = аниқланган − жойлашган',
+    tekshir: () => {
+      const a = [oyOldin(0, 5), oyOldin(0, 6)];
+      const j = [oyOldin(0, 7)];
+      return (['kun', 'oy', 'yil'] as const).every((davr) =>
+        dinamikaHisobla([], a, j, davr).every(
+          (n) => n.ishsizOzgarishi === n.yangiAniqlangan - n.yangiJoylashgan
+        )
+      );
+    },
+  },
+
+  /* ── URL дан келган қиймат ── */
+  {
+    nomi: 'Нотўғри давр — ойликка тушади, қуламайди',
+    tekshir: () =>
+      davrOqi('xato') === 'oy' && davrOqi(null) === 'oy' && davrOqi(undefined) === 'oy',
+  },
+  {
+    nomi: 'Тўғри давр ўқилади',
+    tekshir: () => davrOqi('kun') === 'kun' && davrOqi('yil') === 'yil' && davrOqi('oy') === 'oy',
   },
 ];
 

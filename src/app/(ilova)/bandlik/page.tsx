@@ -4,12 +4,13 @@ import { redirect } from 'next/navigation';
 import { ArrowRight, GraduationCap, Plane, Target, UserCheck } from 'lucide-react';
 import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { tahlilOl } from '@/lib/tahlil';
+import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
+import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
@@ -40,8 +41,13 @@ function moslikIzohi(m: Moslik, tr: (matn: string) => string): string {
   return qatorlar.map(tr).join('\n');
 }
 
-export default async function BandlikSahifasi() {
+export default async function BandlikSahifasi({
+  searchParams,
+}: {
+  searchParams: { davr?: string };
+}) {
   const tr = matnchi();
+  const davr = davrOqi(searchParams.davr);
 
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
@@ -140,7 +146,7 @@ export default async function BandlikSahifasi() {
       where: { ...filtr, takliflar: { has: 'Xorijga mehnat migratsiyasi' } },
     }),
 
-    tahlilOl(filtr.mahallaId),
+    tahlilOl(filtr.mahallaId, davr),
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId),
 
@@ -270,7 +276,10 @@ export default async function BandlikSahifasi() {
           Rahbar hisobotni shu yerdan oladi va hokimga ko'rsatadi -
           aynan shu ish oqimi uchun tugma sahifa boshida turadi.
         */}
-        <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
+        <div className="flex flex-wrap items-center gap-3">
+          <DavrTanlash joriy={davr} />
+          <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
+        </div>
       </div>
 
       {/*
@@ -309,7 +318,7 @@ export default async function BandlikSahifasi() {
         устун юқорига кетган бўлса, сабабини ойлик оқим
         диаграммасидан ўша ернинг ўзида топади.
       */}
-      <DinamikaBloglari dinamika={t.dinamika} qamrovNomi="Хатирчи тумани" />
+      <DinamikaBloglari dinamika={t.dinamika} davr={davr} qamrovNomi="Хатирчи тумани" />
 
       {/*
         ── IT-ШАҲАРЧА ВАУЧЕРИ ──
