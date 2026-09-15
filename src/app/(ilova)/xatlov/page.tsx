@@ -14,6 +14,7 @@ import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
+import { UlanishBlogi } from '@/components/telegram/ulanish-blogi';
 import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
 
 /*
@@ -46,7 +47,7 @@ export default async function XatlovlarSahifasi({
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [xatlovlar, mahalla, tahlil, vHisob, vNavbat] = await Promise.all([
+  const [xatlovlar, mahalla, tahlil, vHisob, vNavbat, men] = await Promise.all([
     prisma.household.findMany({
       where: {
         ...filtr,
@@ -92,6 +93,11 @@ export default async function XatlovlarSahifasi({
     filtr.mahallaId ? tahlilOl(filtr.mahallaId, davr) : null,
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId, 20),
+    /* Telegram уланганми — фақат шу ходимнинг ўз ҳолати */
+    prisma.user.findUnique({
+      where: { id: sessiya.userId },
+      select: { telegramChatId: true, telegramSana: true },
+    }),
   ]);
 
   const yuborilgan = xatlovlar.filter((x) => x.holati !== 'QORALAMA');
@@ -214,6 +220,18 @@ export default async function XatlovlarSahifasi({
           qamrovNomi={`${mahalla.nomiKirill} МФЙ`}
         />
       )}
+
+      {/*
+        ── TELEGRAM ──
+
+        Ходим кун бўйи саҳифани очиб ўтирмайди — у дала ишида.
+        Уласа, мос эълон чиққанда хабар ЎЗИ боради.
+      */}
+      <UlanishBlogi
+        ulangan={Boolean(men?.telegramChatId)}
+        ulanganSana={men?.telegramSana ? formatDate(men.telegramSana).split(',')[0] : null}
+        botNomi={process.env.TELEGRAM_BOT_NOMI ?? null}
+      />
 
       {/*
         ── ТАКРОРЛАНГАН ФУҚАРОЛАР ──

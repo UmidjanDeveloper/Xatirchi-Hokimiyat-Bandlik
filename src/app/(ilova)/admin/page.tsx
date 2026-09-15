@@ -12,6 +12,7 @@ import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
+import { XabarHolati } from '@/components/telegram/xabar-holati';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
 /*
@@ -153,6 +154,13 @@ export default async function AdminSahifasi({
         белги қўйиляпти-ю, ваучер берилмаяпти.
       */}
       <VaucherNavbati navbat={vNavbat} hisob={vHisob} qamrovNomi="Хатирчи тумани" bera={false} />
+
+      {/*
+        Telegram хабарномаси — жимгина ишламай қолиши мумкин:
+        токен эскиради, бот блокланади. Ходим буни айтмайди —
+        у хабар кутилганини ҳам билмайди.
+      */}
+      <XabarHolati />
 
       {/*
         Sun'iy intellekt ulanishi.

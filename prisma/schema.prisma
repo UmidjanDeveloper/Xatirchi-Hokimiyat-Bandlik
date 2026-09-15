@@ -88,6 +88,25 @@ model User {
   /// bo'lsa xodim o'z parolini qo'ygan va saqlangani ESKIRGAN.
   parolAlmashtirilsin Boolean @default(true)
 
+  // ── TELEGRAM ──
+
+  /// Telegram chat ID - xabar aynan shu raqamga yuboriladi.
+  ///
+  /// Xodim o'zi bog'laydi: ilovadan bir martalik kod oladi va
+  /// uni botga yuboradi. Administrator qo'lda kirita olmaydi -
+  /// noto'g'ri raqam kiritilsa, xabar BEGONA odamga ketardi.
+  telegramChatId String? @unique
+
+  /// Qachon bog'langani - xodim "bog'langanmi?" degan savolga
+  /// javob ko'rishi uchun
+  telegramSana DateTime?
+
+  /// Bog'lash uchun bir martalik kod. Ishlatilgach tozalanadi.
+  telegramKodi String? @unique
+
+  /// Kod qachon berilgani - eskirgan kod qabul qilinmaydi
+  telegramKodiVaqti DateTime?
+
   oxirgiKirish DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -97,6 +116,7 @@ model User {
   topshiriqlar  ActionPlan[]
   auditYozuvlar AuditLog[]
   itVaucherlar  ItVaucher[]
+  xabarlar      Xabarnoma[]
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -678,6 +698,83 @@ model ActionPlan {
   @@index([muddat, holati])
   @@index([householdId])
   @@index([ishsizId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  XABARNOMA - TELEGRAM
+// ─────────────────────────────────────────────────────────────
+
+/// Xabar nima haqida
+enum XabarTuri {
+  /// Mahallaga mos bo'sh ish o'rni e'loni chiqdi
+  YANGI_ISH_ORNI
+  /// IT-shaharcha vaucherini kutayotgan fuqaro bor
+  VAUCHER_KUTMOQDA
+  /// Chora-tadbir muddati yaqinlashdi yoki o'tdi
+  TOPSHIRIQ_MUDDATI
+  /// Bog'lashni tasdiqlash
+  ULANISH
+}
+
+/// Xabarning yo'li
+enum XabarHolati {
+  /// Navbatda, hali yuborilmagan
+  KUTILMOQDA
+  /// Telegram qabul qildi
+  YUBORILDI
+  /// Yuborib bo'lmadi - sababi `xatoMatni` da
+  XATO
+  /// Bekor qilindi (xodim bog'lanishni uzdi, e'lon yopildi...)
+  BEKOR
+}
+
+/// Telegram orqali yuboriladigan xabar - NAVBAT va JURNAL.
+///
+/// ── Nega jadval kerak, to'g'ridan-to'g'ri yuborilmaydi ──
+///
+/// Telegram ishlamay turishi mumkin: server javob bermaydi,
+/// internet uziladi, bot bloklanadi. Agar xabar to'g'ridan-
+/// to'g'ri yuborilsa, u shunchaki YO'QOLADI va hech kim
+/// bilmaydi - xodim esa "menga xabar kelmadi" deb aytmaydi,
+/// chunki u xabar kutilganini ham bilmaydi.
+///
+/// Navbat jadvali buni ko'rsatadi: administrator panelida
+/// "12 ta xabar yuborilmadi" deb turadi va sababi ham yozilgan.
+///
+/// ── Nega matn saqlanadi ──
+///
+/// Xabar yuborilgandan keyin ham matni qoladi: "xodimga nima
+/// deb yozgan edik" degan savolga javob kerak bo'ladi.
+model Xabarnoma {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  turi   XabarTuri
+  holati XabarHolati @default(KUTILMOQDA)
+
+  /// Yuboriladigan matn - Telegram HTML formatida
+  matn String
+
+  /// Nechta marta urinildi. Uch martadan keyin to'xtaydi:
+  /// bot bloklangan bo'lsa, cheksiz urinish foydasiz.
+  urinishlar Int @default(0)
+
+  /// Nega yuborilmagani - administrator shuni o'qiydi
+  xatoMatni String?
+
+  yuborilganSana DateTime?
+
+  /// Nima haqida - yozuvga qaytish uchun
+  bogliqTuri String?
+  bogliqId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([holati, createdAt])
+  @@index([userId, createdAt])
 }
 
 // ─────────────────────────────────────────────────────────────

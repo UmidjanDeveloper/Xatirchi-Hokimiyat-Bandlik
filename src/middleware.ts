@@ -20,8 +20,31 @@ import { SESSION_COOKIE } from '@/lib/sessiya-nomi';
  * ============================================================
  */
 
-/** Sessiyasiz ochiladigan yo'llar */
-const OCHIQ = ['/kirish', '/api/auth/kirish'];
+/**
+ * Sessiyasiz ochiladigan yo'llar.
+ *
+ * ── Telegram yo'llari nega bu yerda ──
+ *
+ * Telegram serverida bizning cookie yo'q va bo'lishi ham
+ * mumkin emas. Shuning uchun webhook sessiya bilan
+ * himoyalanmaydi - u TELEGRAM NING O'Z mexanizmi bilan
+ * himoyalanadi: `secret_token` sarlavhada qaytadi va route
+ * ichida tekshiriladi.
+ *
+ * Xuddi shunday, Vercel Cron ham cookie yubormaydi: u
+ * `CRON_SECRET` bilan kiradi va bu ham route ichida
+ * tekshiriladi.
+ *
+ * Ikkovi ham shu yerga qo'shilmasa, middleware ularni
+ * login sahifasiga yo'naltirardi va integratsiya JIMGINA
+ * ishlamasdi: Telegram 200 olardi, xabar esa kelmasdi.
+ */
+const OCHIQ = [
+  '/kirish',
+  '/api/auth/kirish',
+  '/api/telegram/webhook',
+  '/api/telegram/navbat',
+];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

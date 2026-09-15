@@ -5,6 +5,7 @@ import { jurnal, talabQil } from '@/lib/api-auth';
 import { mahallagaRuxsat } from '@/lib/auth';
 import { KASB_YONALISHI, qiymatlar } from '@/lib/constants';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
+import { ishOrniXabarlari } from '@/lib/ish-orni-xabari';
 
 const Yangi = z.object({
   mahallaId: z.string().cuid(),
@@ -43,5 +44,25 @@ export async function POST(request: Request) {
   });
 
   await jurnal(q.sessiya.userId, 'YARATISH', { obyektTuri: 'Vacancy', obyektId: v.id });
+
+  /*
+   * ── ХАБАРНОМА ──
+   *
+   * Эълон киритилиши билан мос маҳаллаларнинг ходимларига
+   * хабар навбатга қўйилади. Илгари эълон базага тушар ва
+   * ходим уни ФАҚАТ сайтга кирганда кўрарди — амалда эса у
+   * кирмасди ва эълон ўз-ўзидан эскирарди.
+   *
+   * Сақлашдан КЕЙИН ва алоҳида: хабар ясашда хато бўлса ҳам,
+   * эълон сақланиб қолиши керак. Бандлик ходими эълонни
+   * киритди — унинг иши тугади.
+   */
+  try {
+    await ishOrniXabarlari(v.id);
+  } catch (e) {
+    /* Хабар кетмаса ҳам эълон жойида қолади — фақат ёзиб қўямиз */
+    console.error("Иш ўрни хабарномасини навбатга қўйиб бўлмади:", e);
+  }
+
   return NextResponse.json({ ok: true, id: v.id });
 }
