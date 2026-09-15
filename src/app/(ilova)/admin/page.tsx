@@ -7,6 +7,8 @@ import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { AiHolati } from '@/components/admin/ai-holati';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
+import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
@@ -39,7 +41,7 @@ export default async function AdminSahifasi() {
   if (!sessiya) redirect('/kirish');
   if (sessiya.rol !== 'ADMIN') redirect('/');
 
-  const [xodimlar, mahallalar, jurnal, statistika, tahlil] = await Promise.all([
+  const [xodimlar, mahallalar, jurnal, statistika, tahlil, vHisob, vNavbat] = await Promise.all([
     prisma.user.findMany({
       orderBy: [{ faol: 'desc' }, { rol: 'asc' }, { fullName: 'asc' }],
       select: {
@@ -71,6 +73,8 @@ export default async function AdminSahifasi() {
       prisma.vacancy.count({ where: { faol: true } }),
     ]),
     tahlilOl(),
+    vaucherHisobi(),
+    vaucherNavbati(undefined, 10),
   ]);
 
   const [xonadon, ishsiz, topshiriq, ishOrni] = statistika;
@@ -120,6 +124,14 @@ export default async function AdminSahifasi() {
         <h2 className="text-sm font-bold text-ink">{tr('Ходимлар (')}{xodimlar.length})</h2>
         <XodimBoshqaruvi xodimlar={xodimlar} mahallalar={mahallalar} />
       </section>
+
+      {/*
+        IT-шаҳарча ваучерлари — администраторда ҳам.
+        Занжир техник жиҳатдан ишлаяптими деган саволга
+        жавоб шу ерда: навбат ўсиб бораётган бўлса, демак
+        белги қўйиляпти-ю, ваучер берилмаяпти.
+      */}
+      <VaucherNavbati navbat={vNavbat} hisob={vHisob} qamrovNomi="Хатирчи тумани" bera={false} />
 
       {/*
         Sun'iy intellekt ulanishi.

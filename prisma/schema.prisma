@@ -96,6 +96,7 @@ model User {
   suhbatlar     UnemployedPerson[]
   topshiriqlar  ActionPlan[]
   auditYozuvlar AuditLog[]
+  itVaucherlar  ItVaucher[]
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -158,10 +159,11 @@ model Mahalla {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  xodimlar   User[]
-  xonadonlar Household[]
-  ishsizlar  UnemployedPerson[]
-  ishOrinlar Vacancy[]
+  xodimlar     User[]
+  xonadonlar   Household[]
+  ishsizlar    UnemployedPerson[]
+  ishOrinlar   Vacancy[]
+  itVaucherlar ItVaucher[]
 
   @@index([nomi])
 }
@@ -565,14 +567,21 @@ model UnemployedPerson {
   /// bandi bor, lekin u SUHBAT natijasi - bandlik mutaxassisi
   /// to'ldiradi. Bu maydon esa XATLOV paytida, mahalla xodimi
   /// eshik oldida belgilaydi: fuqaro IT o'rganmoqchi ekan va
-  /// vaucher haqida shu yerda aytildi.
+  /// IT-shaharchaga yo'naltirilsin.
   ///
-  /// Ikkovi bir xil emas: birinchisi "nima qilish kerak", bu esa
-  /// "nima qilindi". Vaucher berilgan-u kursga bormagan odam
-  /// shu farq orqali ko'rinadi.
-  itShaharchaVaucheri Boolean  @default(false)
-  imtiyozEhtiyoji     Boolean  @default(false)
-  imtiyozTuri         String[]
+  /// Bu ISTAK, vaucherning o'zi emas. Haqiqiy vaucher `ItVaucher`
+  /// jadvalida - raqami, yo'nalishi va holati bilan. Ikkovi
+  /// ataylab ajratilgan: bu yerda `true` turgan-u `ItVaucher`
+  /// yozuvi yo'q odam - aynan ZANJIR UZILGAN joyi. Bandlik
+  /// paneli shu ro'yxatni ko'rsatadi.
+  itShaharchaVaucheri Boolean @default(false)
+
+  /// Berilgan IT-shaharcha vaucherlari. Odatda bitta, lekin
+  /// birinchisi bekor bo'lib ikkinchisi berilishi mumkin -
+  /// shuning uchun ro'yxat.
+  itVaucherlar    ItVaucher[]
+  imtiyozEhtiyoji Boolean     @default(false)
+  imtiyozTuri     String[]
 
   // ── 5. Bandlikni ta'minlash bo'yicha takliflar ──
   takliflar   String[]
@@ -665,6 +674,84 @@ model ActionPlan {
   @@index([masulTashkilot, holati])
   @@index([muddat, holati])
   @@index([householdId])
+  @@index([ishsizId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  IT-SHAHARCHA VAUCHERI
+// ─────────────────────────────────────────────────────────────
+
+/// Vaucherning yo'li: berildi -> o'qimoqda -> tugatdi -> ishga
+/// joylashdi. Ikki chiqish yo'li ham bor va ular YASHIRILMAYDI:
+/// hokim uchun eng muhim raqam "vaucher berildi, natija yo'q".
+enum ItVaucherHolati {
+  /// Vaucher yozildi, fuqaro hali kursni boshlamagan
+  BERILDI
+  /// Kursda o'qiyapti
+  OQIMOQDA
+  /// Kursni tugatdi, sertifikat oldi
+  TUGATDI
+  /// Kasb bo'yicha ishga joylashdi yoki o'z ishini boshladi
+  ISHGA_JOYLASHDI
+  /// Boshladi, lekin tashlab ketdi - sababi izohda
+  TASHLAB_KETDI
+  /// Bekor qilindi (fuqaro voz kechdi, guruh ochilmadi...)
+  BEKOR_QILINDI
+}
+
+/// IT-shaharchada TEKINGA kasb o'rganish uchun beriladigan
+/// vaucher.
+///
+/// Nega alohida jadval, `UnemployedPerson` dagi bitta belgi
+/// yetmaydi:
+///
+///   - Belgi faqat "ha" deydi. Hokimning savoli esa boshqa:
+///     "nechta vaucher berdik, nechtasi kursni tugatdi,
+///     nechtasi ishga joylashdi va nechtasi bekorga ketdi".
+///   - Yo'nalish kerak: sun'iy intellektga talab ko'pmi yoki
+///     dizaynga - keyingi guruh shunga qarab ochiladi.
+///   - Sana kerak: vaucher berilgandan keyin odam olti oy
+///     qimirlamasa, bu KO'RINISHI kerak.
+///
+/// `mahallaId` ataylab takrorlanadi (fuqaroda ham bor): 70 ta
+/// mahalla xodimi faqat o'zinikini ko'rishi shart, va bu
+/// cheklov bitta ustunda, so'rovning o'zida turgani xavfsizroq
+/// bo'ladi - qo'shimcha JOIN unutilib qolmaydi.
+model ItVaucher {
+  id     String          @id @default(cuid())
+  /// Qog'ozdagi vaucher raqami: IT-2026-0001
+  raqami String          @unique
+  holati ItVaucherHolati @default(BERILDI)
+
+  ishsizId String
+  ishsiz   UnemployedPerson @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
+
+  mahallaId String
+  mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
+
+  /// `IT_YONALISHI` katalogidan. Fuqaroning o'z so'zi
+  /// `organmoqchiKasb` da qoladi - bu esa shu istak qaysi
+  /// guruhga tushishi.
+  yonalish       String
+  /// "Boshqa" tanlanganda yoziladi
+  boshqaYonalish String?
+
+  berilganSana    DateTime  @default(now())
+  boshlanganSana  DateTime?
+  tugatganSana    DateTime?
+  ishgaKirganSana DateTime?
+
+  /// Nima bo'lgani - ayniqsa tashlab ketgan va bekor qilinganda
+  izoh String?
+
+  bergangaId String
+  bergan     User   @relation(fields: [bergangaId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mahallaId, holati])
+  @@index([holati, berilganSana])
   @@index([ishsizId])
 }
 

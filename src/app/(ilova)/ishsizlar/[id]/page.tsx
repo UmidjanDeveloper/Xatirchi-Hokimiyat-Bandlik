@@ -11,6 +11,7 @@ import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 import { SuhbatFormasi, type SuhbatHolati } from '@/components/ishsiz/suhbat-formasi';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
+import { VaucherBlogi } from '@/components/it-vaucher/vaucher-blogi';
 import { ChoraHolati } from '@/components/chora/chora-holati';
 import { orinlarniTop, nomzodMaydonlari } from '@/lib/moslashtirish';
 import { MoslikNishoni } from '@/components/ish-orni/moslik-nishoni';
@@ -46,6 +47,17 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
       household: { select: { id: true, manzil: true, oilaBoshligi: true } },
       mutaxassis: { select: { fullName: true } },
       topshiriqlar: { orderBy: { muddat: 'asc' } },
+      /*
+       * IT-shaharcha vaucherlari - eng yangisi birinchi.
+       *
+       * Odatda bitta bo'ladi. Lekin birinchisi bekor qilinib
+       * ikkinchisi berilishi mumkin, shuning uchun ro'yxat
+       * sifatida saqlanadi va bu yerda AMALDAGISI ajratiladi.
+       */
+      itVaucherlar: {
+        orderBy: { berilganSana: 'desc' },
+        include: { bergan: { select: { fullName: true } } },
+      },
       vacancy: {
         select: {
           id: true,
@@ -83,6 +95,15 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
     bandlikIshi(sessiya.rol) && !p.vacancyId && p.holati !== 'TASDIQLANDI'
       ? await orinlarniTop(nomzodMaydonlari(p))
       : [];
+
+  /*
+   * AMALDAGI vaucher - bekor qilingan va tashlab ketilgani
+   * hisobga olinmaydi. Ular tarixda qoladi, lekin odam
+   * yangisini olishi mumkin bo'lishi kerak.
+   */
+  const amaldagiVaucher =
+    p.itVaucherlar.find((v) => v.holati !== 'BEKOR_QILINDI' && v.holati !== 'TASHLAB_KETDI') ??
+    null;
 
   const boshlangich: SuhbatHolati = {
     fish: p.fish,
@@ -357,6 +378,39 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
         ))}
         {bandlikIshi(sessiya.rol) && <ChoraQoshish ishsizId={p.id} />}
       </section>
+
+      {/*
+        ── IT-ШАҲАРЧА ВАУЧЕРИ ──
+
+        Занжирнинг УЧИНЧИ ҳалқаси. Биринчиси — хатлов (маҳалла
+        ходими «IT ўрганмоқчи» деб белгилайди), иккинчиси —
+        бандлик панелидаги навбат, учинчиси мана шу: ваучер
+        рақам ва йўналиш билан берилади, кейин ҳолати
+        кузатилади.
+
+        Илгари биринчи ҳалқа бор эди, қолгани йўқ: белги
+        қўйиларди ва шу билан тугарди.
+      */}
+      <VaucherBlogi
+        ishsizId={p.id}
+        istagiBor={p.itShaharchaVaucheri}
+        organmoqchiKasb={p.organmoqchiKasb}
+        bera={bandlikIshi(sessiya.rol)}
+        vaucher={
+          amaldagiVaucher
+            ? {
+                id: amaldagiVaucher.id,
+                raqami: amaldagiVaucher.raqami,
+                holati: amaldagiVaucher.holati,
+                yonalish: amaldagiVaucher.yonalish,
+                boshqaYonalish: amaldagiVaucher.boshqaYonalish,
+                berilganSana: amaldagiVaucher.berilganSana,
+                izoh: amaldagiVaucher.izoh,
+                berganNomi: amaldagiVaucher.bergan.fullName,
+              }
+            : null
+        }
+      />
 
       {/* ── Suhbat anketasi ── */}
       {bandlikIshi(sessiya.rol) ? (

@@ -21,6 +21,8 @@ import {
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
+import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -50,8 +52,10 @@ export default async function PanelSahifasi() {
    * ҳақида савол чиқса, шу рўйхатдан танлаб алоҳида ҳисобот
    * олади.
    */
-  const [t, mahallalar] = await Promise.all([
+  const [t, vHisob, vNavbat, mahallalar] = await Promise.all([
     tahlilOl(filtr.mahallaId),
+    vaucherHisobi(filtr.mahallaId),
+    vaucherNavbati(filtr.mahallaId, 10),
     filtr.mahallaId
       ? Promise.resolve([])
       : prisma.mahalla.findMany({
@@ -222,6 +226,24 @@ export default async function PanelSahifasi() {
               </div>
             </section>
           )}
+
+          {/*
+            ── IT-ШАҲАРЧА ВАУЧЕРИ ──
+
+            Ҳокимнинг саволи «нечта ваучер бердик» эмас эди:
+            «ваучер иш бердими» эди. Шунинг учун бу ерда фақат
+            берилган сон эмас, НАТИЖА ҳам турибди — нечтаси
+            курсни тугатди ва нечтаси ишга жойлашди.
+
+            Пастдаги рўйхат — ҳали ваучер олмаганлар. Ҳоким
+            йиғилишда шу рақамни бандлик марказидан сўрайди.
+          */}
+          <VaucherNavbati
+            navbat={vNavbat}
+            hisob={vHisob}
+            qamrovNomi="Хатирчи тумани"
+            bera={false}
+          />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <KursTalabiBlogi kurslar={t.kursTalabi} />

@@ -365,8 +365,17 @@ export async function hisobotOl(sorov: HisobotSorovi): Promise<Hisobot> {
     if (m) bolimlar.push(m);
   }
 
-  // 3. Фуқаро профили ва касб талаби
-  for (const kalit of ['fuqaro', 'kasb']) {
+  /*
+   * 3. Фуқаро профили, касб талаби ва IT-шаҳарча.
+   *
+   * IT-шаҳарча айнан касб талабидан КЕЙИН туради: иккови ҳам
+   * «одам нимани ўрганмоқчи» деган саволга жавоб беради,
+   * фарқи фақат йўлида. Туманда курс гуруҳ тўлишини кутади,
+   * IT-шаҳарчага эса битта одамни ҳам ҳозир юбориш мумкин —
+   * ва ҳисоботда бу иккови ёнма-ён турса, ҳоким фарқни
+   * дарҳол кўради.
+   */
+  for (const kalit of ['fuqaro', 'kasb', 'it-vaucher']) {
     const b = fuqarolar.bolimlar.find((x) => x.kalit === kalit);
     if (b) bolimlar.push(b);
   }

@@ -7,6 +7,8 @@ import { prisma } from '@/lib/prisma';
 import { tahlilOl } from '@/lib/tahlil';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
+import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
@@ -47,7 +49,8 @@ export default async function BandlikSahifasi() {
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [suhbatsiz, taklifsiz, ishOrinlari, istaklar, migratsiya, t, mahallalar] = await Promise.all([
+  const [suhbatsiz, taklifsiz, ishOrinlari, istaklar, migratsiya, t, vHisob, vNavbat, mahallalar] =
+    await Promise.all([
     // 1. Suhbat kutayotganlar - eng birinchi navbat
     prisma.unemployedPerson.findMany({
       where: { ...filtr, holati: 'ANIQLANDI' },
@@ -138,6 +141,8 @@ export default async function BandlikSahifasi() {
     }),
 
     tahlilOl(filtr.mahallaId),
+    vaucherHisobi(filtr.mahallaId),
+    vaucherNavbati(filtr.mahallaId),
 
     /*
      * Маҳаллалар рўйхати ҳисобот тугмалари учун: раҳбар туман
@@ -305,6 +310,23 @@ export default async function BandlikSahifasi() {
         диаграммасидан ўша ернинг ўзида топади.
       */}
       <DinamikaBloglari dinamika={t.dinamika} qamrovNomi="Хатирчи тумани" />
+
+      {/*
+        ── IT-ШАҲАРЧА ВАУЧЕРИ ──
+
+        Занжирнинг ИККИНЧИ ҳалқаси ва айнан шу ерда у узиларди:
+        маҳалла ходими «IT ўрганмоқчи» деб белгиларди, бандлик
+        марказида эса уни кўрадиган жой йўқ эди.
+
+        Раҳбар панелида турибди, чунки ваучер — молиявий
+        мажбурият ва уни марказ беради.
+      */}
+      <VaucherNavbati
+        navbat={vNavbat}
+        hisob={vHisob}
+        qamrovNomi="Хатирчи тумани"
+        bera
+      />
 
       {/* ── Moslashtirish taxtasi ── */}
       <section className="karta p-4 sm:p-5">

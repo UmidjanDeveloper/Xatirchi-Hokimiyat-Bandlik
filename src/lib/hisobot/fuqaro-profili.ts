@@ -30,6 +30,8 @@ import { TOPSHIRIQ_HOLATI } from '@/lib/chora-tadbir';
 import {
   BANDLIK_TAKLIFI,
   HAYDOVCHILIK_TOIFASI,
+  IT_VAUCHER_HOLATI,
+  IT_YONALISHI,
   ISHGA_TAYYORLIK,
   JINS,
   KASB_YONALISHI,
@@ -149,6 +151,9 @@ export async function fuqaroBolimlari(
     maoshJamlari,
     bandFaolOrin,
     elonOrqaliJoylashgan,
+    itVaucherHolatlari,
+    itVaucherYonalishlari,
+    itNavbatda,
   ] = await Promise.all([
     prisma.unemployedPerson.findMany({
       where: filtr,
@@ -247,6 +252,34 @@ export async function fuqaroBolimlari(
       where: {
         holati: { in: BAND_HOLATLAR },
         vacancy: mahallaId ? { mahallaId } : { is: {} },
+      },
+    }),
+
+    /*
+     * IT-ШАҲАРЧА ВАУЧЕРЛАРИ.
+     *
+     * Учта сўров: ҳолат кесимида, йўналиш кесимида ва
+     * НАВБАТДАГИЛАР сони — истаги бор-у ваучер ҳали
+     * берилмаганлар. Учинчиси энг муҳими: биринчи иккитаси
+     * «нима қилинди» деса, у «нима қилинмади» дейди.
+     */
+    prisma.itVaucher.groupBy({
+      by: ['holati'],
+      where: mahallaId ? { mahallaId } : {},
+      _count: true,
+    }),
+
+    prisma.itVaucher.groupBy({
+      by: ['yonalish'],
+      where: mahallaId ? { mahallaId } : {},
+      _count: true,
+    }),
+
+    prisma.unemployedPerson.count({
+      where: {
+        ...filtr,
+        itShaharchaVaucheri: true,
+        itVaucherlar: { none: { holati: { notIn: ['BEKOR_QILINDI', 'TASHLAB_KETDI'] } } },
       },
     }),
   ]);
@@ -421,7 +454,7 @@ export async function fuqaroBolimlari(
     const qoshimchaQatorlar: Qator[] = [
       { nomi: 'Касб-ҳунар ўрганишга эҳтиёж билдирган', qiymatlar: [son(kasbEhtiyoji), foiz(foizi(kasbEhtiyoji, jamiFuqaro))] },
       { nomi: 'Ҳайдовчилик гувоҳномаси бор', qiymatlar: [son(guvohnoma), foiz(foizi(guvohnoma, jamiFuqaro))] },
-      { nomi: 'IT-шаҳарча ваучери билан йўналтирилган', qiymatlar: [son(itVaucher), foiz(foizi(itVaucher, jamiFuqaro))] },
+      { nomi: 'IT-шаҳарчага йўналтирилиши белгиланган', qiymatlar: [son(itVaucher), foiz(foizi(itVaucher, jamiFuqaro))] },
       { nomi: 'Ногиронлиги бор', qiymatlar: [son(nogironlik), foiz(foizi(nogironlik, jamiFuqaro))] },
       { nomi: 'Имтиёзга эҳтиёжи бор', qiymatlar: [son(imtiyoz), foiz(foizi(imtiyoz, jamiFuqaro))] },
     ].filter((q) => q.qiymatlar[0] !== '0');
@@ -550,6 +583,140 @@ export async function fuqaroBolimlari(
           : undefined,
       });
     }
+  }
+
+  /* ── IT-шаҳарча ваучерлари ────────────────────────────────── */
+
+  /*
+   * Занжирнинг СЎНГГИ ҳалқаси: ҳоким натижани мана шу ердан
+   * кўради.
+   *
+   * Илгари бу бўлим йўқ эди — фақат «IT-шаҳарча ваучери билан
+   * йўналтирилган: 12» деган БИТТА қатор бор эди. Ундан
+   * билиб бўлмасди: ўша 12 таси ўқидими, тугатдими, ишга
+   * жойлашдими. Ҳоким «12 та» деган рақамга қараб қарор
+   * қабул қила олмайди.
+   *
+   * Энди тўрт савол ҳам жавоб топади:
+   *   1. Нечта ваучер берилди
+   *   2. Нечтаси натижа берди (тугатди ёки ишга жойлашди)
+   *   3. Қайси йўналишга талаб кўп (кейинги гуруҳ шунга)
+   *   4. Нечтаси ҲАЛИ КУТЯПТИ — занжир қаерда узилган
+   */
+  const itJami = itVaucherHolatlari.reduce((x, h) => x + h._count, 0);
+
+  if (itJami > 0 || itNavbatda > 0) {
+    const holatSoni = (h: string) =>
+      itVaucherHolatlari.find((x) => x.holati === h)?._count ?? 0;
+
+    const tugatgan = holatSoni('TUGATDI') + holatSoni('ISHGA_JOYLASHDI');
+    const joylashgan = holatSoni('ISHGA_JOYLASHDI');
+    const tashlagan = holatSoni('TASHLAB_KETDI');
+
+    const holatQatorlari: Qator[] = IT_VAUCHER_HOLATI.map((h) => ({
+      h,
+      n: holatSoni(h.qiymat),
+    }))
+      .filter((x) => x.n > 0)
+      .map((x) => ({
+        nomi: x.h.kirill,
+        qiymatlar: [son(x.n), foiz(foizi(x.n, itJami))],
+      }));
+
+    /* Диаграмма учун ХОМ сонлар, жадвал учун форматланган сатрлар */
+    const yonalishlar = [...itVaucherYonalishlari]
+      .sort((a, b) => b._count - a._count)
+      .map((y) => ({ nomi: kirillcha(IT_YONALISHI, y.yonalish), soni: y._count }));
+
+    const yonalishQatorlari: Qator[] = yonalishlar.map((y) => ({
+      nomi: y.nomi,
+      qiymatlar: [son(y.soni), foiz(foizi(y.soni, itJami))],
+    }));
+
+    const jadvallar: Jadval[] = [];
+
+    if (holatQatorlari.length) {
+      jadvallar.push({
+        sarlavha: 'Ваучерлар ҳолати',
+        izoh:
+          'Ваучер берилиши — бошланиши, натижа эмас. Курсни тугатган ва ишга жойлашган сатрлар ҳақиқий натижани кўрсатади.',
+        ustunlar: [
+          { sarlavha: 'Ҳолат' },
+          { sarlavha: 'Сони', raqamli: true, eni: 22 },
+          { sarlavha: 'Улуши', raqamli: true, eni: 22 },
+        ],
+        qatorlar: holatQatorlari,
+      });
+    }
+
+    if (yonalishQatorlari.length) {
+      jadvallar.push({
+        sarlavha: 'Йўналишлар кесимида',
+        izoh: 'Кейинги гуруҳ қайси йўналишда очилиши керак — шу жадвалдан кўринади.',
+        ustunlar: [
+          { sarlavha: 'Йўналиш' },
+          { sarlavha: 'Ваучер', raqamli: true, eni: 22 },
+          { sarlavha: 'Улуши', raqamli: true, eni: 22 },
+        ],
+        qatorlar: yonalishQatorlari,
+      });
+    }
+
+    bolimlar.push({
+      kalit: 'it-vaucher',
+      sarlavha: 'IT-шаҳарча ваучерлари',
+      varaqNomi: 'IT-шаҳарча',
+      kirish:
+        'Фуқаро IT йўналишини ўрганмоқчи бўлса, уни туманда курс гуруҳи тўлишини кутишга қолдирмасдан, ваучер билан IT-шаҳарчага йўналтириш мумкин — ўқиш ТЕКИН ва битта одам ҳам юборилади. Бу бўлим ваучер берилгандан кейин НИМА БЎЛГАНИНИ кўрсатади.',
+      korsatkichlar: [
+        { nomi: 'Берилган ваучер', qiymat: son(itJami) },
+        {
+          nomi: 'Курсни тугатди',
+          qiymat: son(tugatgan),
+          izoh: itJami > 0 ? `берилганларнинг ${foiz(foizi(tugatgan, itJami))} и` : undefined,
+        },
+        {
+          nomi: 'Касб бўйича ишга жойлашди',
+          qiymat: son(joylashgan),
+          izoh: itJami > 0 ? `берилганларнинг ${foiz(foizi(joylashgan, itJami))} и` : undefined,
+        },
+        {
+          /*
+           * Энг муҳим кўрсаткич ва у ЯШИРИЛМАЙДИ.
+           *
+           * Маҳалла ходими «IT ўрганмоқчи» деб белгилаган,
+           * аммо бандлик маркази ҳали ваучер бермаган
+           * фуқаролар. Бу рақам ўсиб бораётган бўлса,
+           * занжир ишламаяпти.
+           */
+          nomi: 'Ваучер кутмоқда',
+          qiymat: son(itNavbatda),
+          izoh: itNavbatda > 0 ? 'йўналтирилган, аммо ваучер ҳали берилмаган' : undefined,
+        },
+        ...(tashlagan > 0
+          ? [
+              {
+                nomi: 'Ўқишни ташлаб кетди',
+                qiymat: son(tashlagan),
+                izoh: 'сабаблари тизимда ҳар бир ваучер остида ёзилган',
+              },
+            ]
+          : []),
+      ],
+      jadvallar,
+      diagrammalar: yonalishlar.length
+        ? [
+            {
+              turi: 'gorizontal',
+              sarlavha: 'IT йўналишлари — ваучер сони',
+              nomlar: yonalishlar.slice(0, 10).map((y) => y.nomi),
+              qatorlar: [
+                { nomi: 'Ваучер', qiymatlar: yonalishlar.slice(0, 10).map((y) => y.soni) },
+              ],
+            },
+          ]
+        : undefined,
+    });
   }
 
   /* ── Чора-тадбирлар ───────────────────────────────────────── */

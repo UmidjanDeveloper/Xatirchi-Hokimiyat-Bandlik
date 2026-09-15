@@ -9,6 +9,8 @@ import { formatDate, percent } from '@/lib/utils';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { MahallaOrinlari } from '@/components/ish-orni/mahalla-orinlari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
+import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
 
@@ -37,7 +39,7 @@ export default async function XatlovlarSahifasi() {
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [xatlovlar, mahalla, tahlil] = await Promise.all([
+  const [xatlovlar, mahalla, tahlil, vHisob, vNavbat] = await Promise.all([
     prisma.household.findMany({
       where: {
         ...filtr,
@@ -81,6 +83,8 @@ export default async function XatlovlarSahifasi() {
      * туман бўйича оғир сўров юритишнинг кераги йўқ.
      */
     filtr.mahallaId ? tahlilOl(filtr.mahallaId) : null,
+    vaucherHisobi(filtr.mahallaId),
+    vaucherNavbati(filtr.mahallaId, 20),
   ]);
 
   const yuborilgan = xatlovlar.filter((x) => x.holati !== 'QORALAMA');
@@ -195,6 +199,24 @@ export default async function XatlovlarSahifasi() {
           qamrovNomi={`${mahalla.nomiKirill} МФЙ`}
         />
       )}
+
+      {/*
+        ── IT-ШАҲАРЧА ВАУЧЕРЛАРИ ──
+
+        Маҳалла ходими ЎЗ маҳалласидагиларни кўради: ким
+        ваучер кутяпти, ким ўқияпти, ким ишга жойлашди.
+
+        Нега ходимга керак: белгини у қўйган, натижани эса
+        кўрмасди. Энди у фуқарога «ваучерингиз тайёр, бандлик
+        марказига боринг» дея олади — қўнғироқни бандлик
+        маркази қилишини кутиб ўтирмасдан.
+      */}
+      <VaucherNavbati
+        navbat={vNavbat}
+        hisob={vHisob}
+        qamrovNomi={mahalla ? `${mahalla.nomiKirill} МФЙ` : 'Хатирчи тумани'}
+        bera={false}
+      />
 
       {/*
         ── БЎШ ИШ ЎРИНЛАРИ ТАҚСИМОТИ ──

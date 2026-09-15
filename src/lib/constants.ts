@@ -454,7 +454,41 @@ export const IT_SOZLARI = [
   'ахборот технология',
   'sun’iy intellekt',
   "sun'iy intellekt",
+  // Apostrofsiz ham yoziladi - xodim shoshib tursa qo'ymaydi
+  'suniy intellekt',
   'сунъий интеллект',
+  'суний интеллект',
+
+  /*
+   * Quyidagilar `IT_YONALISHI` katalogidagi yo'nalishlar.
+   *
+   * Ular ham shu yerda turishi SHART: fuqaro "kiberxavfsizlik
+   * o'rganmoqchiman" desa, xodim shuni yozadi va tizim uni IT
+   * deb tanimasa, vaucher bloki umuman ochilmaydi. Xato
+   * ko'rinmaydi - shunchaki savol chiqmaydi, xodim esa nega
+   * chiqmaganini bilmaydi.
+   *
+   * `scripts/it-vaucher-sinov.ts` katalogdagi har bir
+   * yo'nalish shu ro'yxat orqali tanilishini tekshiradi.
+   */
+  'mobil ilova',
+  'мобил илова',
+  'kiberxavfsizlik',
+  'кибархавфсизлик',
+  'киберхавфсизлик',
+  'kiber',
+  'кибер',
+  "ma'lumotlar tahlili",
+  'ma’lumotlar tahlili',
+  'malumotlar tahlili',
+  'маълумотлар таҳлили',
+  'маълумотлар тахлили',
+  'smm',
+  'смм',
+  'raqamli marketing',
+  'рақамли маркетинг',
+  '1c',
+  '1с',
 ];
 
 /**
@@ -473,6 +507,71 @@ export function itYonalishimi(matn: string | null | undefined): boolean {
   return IT_SOZLARI.filter((w) => w !== 'it').some((w) => past.includes(w));
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  IT-SHAHARCHA VAUCHERI
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * IT-shaharchada o'qitiladigan yo'nalishlar.
+ *
+ * Nega erkin matn emas: fuqaro "kompyuter o'rganmoqchi" deb
+ * aytadi, xodim shuni yozadi va hisobotda o'ttiz xil yozuv
+ * paydo bo'ladi ("komputer", "компьютер", "dasturchilik"...).
+ * Hokim esa "qaysi yo'nalishga eng ko'p talab bor" degan
+ * savolga javob olishi kerak - bu esa faqat ro'yxatdan chiqadi.
+ *
+ * Fuqaroning o'z so'zi yo'qolmaydi: u `organmoqchiKasb` da
+ * qoladi, bu yerda esa shu istak QAYSI guruhga tushishi
+ * belgilanadi.
+ */
+export const IT_YONALISHI = v(
+  ['Suniy intellekt', 'Сунъий интеллект'],
+  ['Dasturlash', 'Дастурлаш'],
+  ['Mobil ilovalar', 'Мобил иловалар'],
+  ['Web-dizayn', 'Веб-дизайн'],
+  ['Grafik dizayn', 'График дизайн'],
+  ['Kiberxavfsizlik', 'Киберхавфсизлик'],
+  ["Ma'lumotlar tahlili", 'Маълумотлар таҳлили'],
+  ['SMM va raqamli marketing', 'SMM ва рақамли маркетинг'],
+  ['1C va buxgalteriya dasturlari', '1C ва бухгалтерия дастурлари'],
+  ['Kompyuter savodxonligi', 'Компьютер саводхонлиги'],
+  ['Boshqa', 'Бошқа йўналиш']
+);
+
+/**
+ * Vaucher holatlari - bazadagi `ItVaucherHolati` enum bilan
+ * BIR XIL tartibda. Yo'l boshidan oxirigacha:
+ * berildi -> o'qimoqda -> tugatdi -> ishga joylashdi.
+ *
+ * Ikki chiqish yo'li ham bor: tashlab ketdi va bekor qilindi.
+ * Ular yashirilmaydi - aksincha, hokim uchun eng muhim raqam
+ * shu: vaucher berildi, lekin natija chiqmadi.
+ */
+export const IT_VAUCHER_HOLATI = v(
+  ['BERILDI', 'Ваучер берилди'],
+  ['OQIMOQDA', 'Ўқимоқда'],
+  ['TUGATDI', 'Курсни тугатди'],
+  ['ISHGA_JOYLASHDI', 'Ишга жойлашди'],
+  ['TASHLAB_KETDI', 'Ўқишни ташлаб кетди'],
+  ['BEKOR_QILINDI', 'Бекор қилинди']
+);
+
+/** Holat rangi - nishon va diagramma uchun */
+export const IT_VAUCHER_KORINISHI: Record<string, 'kut' | 'ish' | 'ok' | 'xato'> = {
+  BERILDI: 'kut',
+  OQIMOQDA: 'ish',
+  TUGATDI: 'ok',
+  ISHGA_JOYLASHDI: 'ok',
+  TASHLAB_KETDI: 'xato',
+  BEKOR_QILINDI: 'xato',
+};
+
+/**
+ * Natija chiqqan holatlar - "vaucher bekorga ketmadi" degani.
+ * Hisobotda samaradorlik shu ikkovining ulushidan hisoblanadi.
+ */
+export const IT_VAUCHER_NATIJASI = ['TUGATDI', 'ISHGA_JOYLASHDI'] as const;
 
 // ─────────────────────────────────────────────────────────────
 //  CHET EL: VALYUTA VA SHAHARLAR
