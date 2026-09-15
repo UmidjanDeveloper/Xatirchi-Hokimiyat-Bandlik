@@ -48,3 +48,6 @@ yarn-error.log*
 # Boshlang'ich parollar ro'yxati - seed yaratadi, git'ga hech qachon tushmasin
 mfy-parollar.txt
 *-parollar.txt
+
+# Vaqtinchalik brauzer sinov skriptlari - repoga tushmasin
+_tmp-*
