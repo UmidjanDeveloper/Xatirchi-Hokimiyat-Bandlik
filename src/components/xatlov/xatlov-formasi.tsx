@@ -585,6 +585,19 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
     if (h.passivDaromadTurlari.includes('Boshqa') && h.passivDaromadIzohi.trim().length < 3) {
       xt.passivDaromadIzohi = '«Бошқа» белгиланди — қайси восита кераклигини ёзинг';
     }
+    /*
+     * Ҳар бир танланган восита учун МИҚДОР мажбурий.
+     *
+     * Миқдорсиз банд таъминот режасида «товуқ сўраган: 84
+     * хонадон» бўлиб қолади ва ундан нечта товуқ сотиб олиш
+     * кераклиги чиқмайди.
+     */
+    for (const tur of h.passivDaromadTurlari) {
+      const soni = h.passivDaromadSonlari[tur];
+      if (soni === '' || soni == null || Number(soni) < 1) {
+        xt[`passivSoni.${tur}`] = 'Қанча кераклигини киритинг';
+      }
+    }
   }
 
   /*
@@ -675,6 +688,12 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
  */
 function xatoQadami(xatolar: Record<string, string>): number {
   const kalitlar = Object.keys(xatolar);
+
+  // `passivSoni.Tovuq` kabi kalitlar xulosa qadamiga tegishli
+  if (kalitlar.some((k) => k.startsWith('passivSoni.'))) {
+    const i = QADAMLAR.findIndex((q) => q.maydonlar.some((m) => m === 'passivDaromadTurlari'));
+    if (i >= 0) return i;
+  }
 
   // `ishsiz.0.fish` kabi kalitlar shaxslar qadamiga tegishli
   if (kalitlar.some((k) => k.startsWith('ishsiz.'))) {

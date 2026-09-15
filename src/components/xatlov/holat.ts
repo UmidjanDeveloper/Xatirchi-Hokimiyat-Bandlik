@@ -156,6 +156,8 @@ export interface XatlovHolati {
   // X. Xulosa
   passivDaromadIstagi: boolean | null;
   passivDaromadTurlari: string[];
+  /** Восита → миқдор. Бўш сатр — ҳали киритилмаган */
+  passivDaromadSonlari: Record<string, Raqam>;
   passivDaromadIzohi: string;
 
   infratuzilmaMuammolari: string[];
@@ -305,6 +307,7 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
 
     passivDaromadIstagi: null,
     passivDaromadTurlari: [],
+    passivDaromadSonlari: {},
     passivDaromadIzohi: '',
 
     infratuzilmaMuammolari: [],
@@ -389,6 +392,17 @@ export function yuborishUchun(h: XatlovHolati) {
       issiqxonaTalabi: j(x.issiqxonaTalabi),
       ijaraYer: j(x.ijaraYer),
       passivDaromadIstagi: j(x.passivDaromadIstagi),
+      /*
+       * Миқдорлар: бўш сатрлар ташлаб юборилади ва фақат
+       * ТАНЛАНГАН воситаларники қолади. Акс ҳолда ходим
+       * воситани белгилаб, кейин фикридан қайтса, базада
+       * эгасиз миқдор қолиб кетарди.
+       */
+      passivDaromadSonlari: Object.fromEntries(
+        Object.entries(x.passivDaromadSonlari)
+          .filter(([tur, son]) => son !== '' && x.passivDaromadTurlari.includes(tur))
+          .map(([tur, son]) => [tur, Number(son)])
+      ),
 
       jamiAzo: r(x.jamiAzo),
       bolalarSoni: r(x.bolalarSoni),

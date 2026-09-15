@@ -275,6 +275,17 @@ export const XonadonSxemasi = z.object({
   // X. Passiv daromad
   passivDaromadIstagi: z.boolean().default(false),
   passivDaromadTurlari: koptanlov(PASSIV_DAROMAD_TURI),
+  /*
+   * Ҳар бир восита учун миқдор: `{ "Tovuq": 100 }`.
+   *
+   * Калит каталог қийматига боғланмаган (`z.record`), чунки
+   * рўйхат ўзгаради ва эски ёзувдаги калит янги каталогда
+   * бўлмаслиги мумкин — ўшанда бутун хатлов рад этилиб
+   * қолмаслиги керак.
+   */
+  passivDaromadSonlari: z
+    .record(z.string().max(60), z.coerce.number().int().min(0).max(100_000))
+    .default({}),
   passivDaromadIzohi: matn(500),
 
   // XI. Mahalla infratuzilmasi

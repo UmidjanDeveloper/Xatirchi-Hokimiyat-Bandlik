@@ -11,6 +11,7 @@ import {
   DAROMAD_MANBAI,
   HAYDOVCHILIK_TOIFASI,
   INFRATUZILMA_MUAMMOSI,
+  PASSIV_BIRLIGI,
   PASSIV_DAROMAD_TURI,
   VALYUTA,
   ICHIMLIK_SUVI,
@@ -404,8 +405,18 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
         <Bolim raqam="X" sarlavha={tr("Пассив даромад имконияти")}>
           <div className="sm:col-span-2">
             <Qator
-              nomi={tr("Қайси йўл билан")}
-              qiymat={q(x.passivDaromadTurlari.map((y) => tr(kirillcha(PASSIV_DAROMAD_TURI, y))))}
+              nomi={tr("Қайси восита керак")}
+              qiymat={q(
+                x.passivDaromadTurlari.map((y) => {
+                  // Миқдор `Json` да: `{ "Tovuq": 100 }`
+                  const m = x.passivDaromadSonlari as Record<string, unknown> | null;
+                  const soni = m && typeof m === 'object' ? m[y] : null;
+                  const nomi = tr(kirillcha(PASSIV_DAROMAD_TURI, y));
+                  return typeof soni === 'number' && soni > 0
+                    ? `${nomi} — ${soni.toLocaleString('ru-RU')} ${tr(PASSIV_BIRLIGI[y] ?? 'дона')}`
+                    : nomi;
+                })
+              )}
             />
           </div>
           {x.passivDaromadIzohi && (

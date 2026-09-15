@@ -28,6 +28,7 @@ import {
   CHET_EL_DAVLATI,
   CHORVA_TURI,
   INFRATUZILMA_MUAMMOSI,
+  PASSIV_BIRLIGI,
   PASSIV_DAROMAD_TURI,
   DAROMAD_MANBAI,
   GAZ_TURI,
@@ -205,6 +206,7 @@ export async function xonadonBolimlari(
     // Passiv daromad va infratuzilma
     passivDaromad,
     passivTurlari,
+    passivSonXom,
     infratuzilma,
     infratuzilmaXonadon,
     chorvaBosh,
@@ -320,6 +322,16 @@ export async function xonadonBolimlari(
     // Пассив даромад
     prisma.household.count({ where: { ...filtr, passivDaromadIstagi: true } }),
     massivSanoq({ ...filtr, passivDaromadIstagi: true }, 'passivDaromadTurlari', PASSIV_DAROMAD_TURI),
+    /*
+     * Миқдорлар `Json` да, шунинг учун SQL да қўшиб бўлмайди:
+     * хом ёзувлар олиниб, шу ерда жамланади. Пассив даромад
+     * сўраганлар сони хатловдан ўтганларнинг бир қисми, ва ҳар
+     * ёзувдан фақат битта кичик обект ўқилади.
+     */
+    prisma.household.findMany({
+      where: { ...filtr, passivDaromadIstagi: true },
+      select: { passivDaromadSonlari: true },
+    }),
 
     // Маҳалла инфратузилмаси
     massivSanoq(filtr, 'infratuzilmaMuammolari', INFRATUZILMA_MUAMMOSI),
@@ -645,13 +657,50 @@ export async function xonadonBolimlari(
    * тушмасди. Пассив даромад ўшаларга тегишли рақам.
    */
   if (passivDaromad > 0) {
-    const jadval = sanoqJadvali(
-      'Қайси восита сўралган',
-      'Бу рўйхат тўғридан-тўғри таъминот режаси: битта оила бир нечта воситани кўрсатиши мумкин',
-      'Восита',
-      passivTurlari,
-      passivDaromad
-    );
+    /*
+     * ЖАМИ МИҚДОР — таъминот режасининг асосий рақами.
+     *
+     * «Товуқ сўраган: 84 хонадон» деган рақамдан нечта товуқ
+     * сотиб олиш кераклиги чиқмайди. Йиғинди эса тўғридан-тўғри
+     * буюртмага айланади.
+     */
+    const miqdor = new Map<string, number>();
+    for (const r of passivSonXom) {
+      const m = r.passivDaromadSonlari;
+      if (!m || typeof m !== 'object' || Array.isArray(m)) continue;
+      for (const [tur, son] of Object.entries(m as Record<string, unknown>)) {
+        if (typeof son !== 'number' || son <= 0) continue;
+        miqdor.set(tur, (miqdor.get(tur) ?? 0) + son);
+      }
+    }
+    /* Каталог кирилл номидан лотин қийматига қайтариш */
+    const qiymatNomi = new Map(PASSIV_DAROMAD_TURI.map((v) => [v.kirill, v.qiymat]));
+
+    const jadval: Jadval | null = passivTurlari.length
+      ? {
+          sarlavha: 'Қайси восита сўралган',
+          izoh: 'Бу рўйхат тўғридан-тўғри таъминот режаси: «жами миқдор» устуни — сотиб олиш керак бўлган сон',
+          ustunlar: [
+            { sarlavha: 'Восита' },
+            { sarlavha: 'Хонадон', raqamli: true, eni: 24 },
+            { sarlavha: 'Улуши', raqamli: true, eni: 20 },
+            { sarlavha: 'Жами миқдор', raqamli: true, eni: 30 },
+          ],
+          qatorlar: passivTurlari.map((t) => {
+            const qiymat = qiymatNomi.get(t.nomi) ?? t.nomi;
+            const jamiSoni = miqdor.get(qiymat) ?? 0;
+            const birlik = PASSIV_BIRLIGI[qiymat] ?? 'дона';
+            return {
+              nomi: t.nomi,
+              qiymatlar: [
+                son(t.soni),
+                foiz(foizi(t.soni, passivDaromad)),
+                jamiSoni > 0 ? `${son(jamiSoni)} ${birlik}` : '—',
+              ],
+            };
+          }),
+        }
+      : null;
 
     bolimlar.push({
       kalit: 'passiv-daromad',

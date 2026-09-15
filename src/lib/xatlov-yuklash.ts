@@ -162,6 +162,18 @@ export async function xatlovniYukla(
 
     passivDaromadIstagi: x.passivDaromadIstagi,
     passivDaromadTurlari: x.passivDaromadTurlari ?? [],
+    /*
+     * Миқдорлар `Json` да сақланади, шунинг учун тури текширилади:
+     * эски ёзувда бу устун бўш бўлиши мумкин.
+     */
+    passivDaromadSonlari:
+      x.passivDaromadSonlari && typeof x.passivDaromadSonlari === 'object'
+        ? Object.fromEntries(
+            Object.entries(x.passivDaromadSonlari as Record<string, unknown>)
+              .filter(([, v]) => typeof v === 'number')
+              .map(([k, v]) => [k, v as number])
+          )
+        : {},
     passivDaromadIzohi: t(x.passivDaromadIzohi),
 
     infratuzilmaMuammolari: x.infratuzilmaMuammolari ?? [],

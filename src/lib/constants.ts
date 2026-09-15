@@ -613,14 +613,21 @@ export function shaharlarRoyxati(davlatlar: string[]): Variant[] {
  * variantini yozadi: takrorlanaveradigan javob keyingi yil
  * ro'yxatga qo'shiladi.
  *
+ * MIQDOR katalogda YO'Q va bu ataylab. Ilgari "100 ta tovuq"
+ * deb yozilgan edi - ya'ni miqdorni tuman oldindan belgilab
+ * qo'ygan bo'lardi. Amalda esa bitta oilaga 20 ta tovuq yetadi,
+ * boshqasida esa katta hovli bor va 300 tasini boqa oladi.
+ * Shuning uchun har bir vosita miqdorsiz turadi va sonini
+ * FUQARONING o'zi aytadi (`passivDaromadSonlari`).
+ *
  * Emoji ATAYLAB yo'q: hisobot PDF shrifti (shrift-yasa.py)
  * faqat kirill, lotin va raqamga qisqartirilgan va emoji unda
  * bo'sh kvadrat bo'lib chiqardi.
  */
 export const PASSIV_DAROMAD_TURI = v(
   ['Quyosh paneli', 'Қуёш панели'],
-  ['100 ta tovuq', '100 та товуқ'],
-  ['1 ta sigir', '1 та сигир'],
+  ['Tovuq', 'Товуқ'],
+  ['Sigir', 'Сигир'],
   ['Kichik issiqxona', 'Кичик иссиқхона'],
   ['Koʻchatchilik', 'Кўчатчилик'],
   ['Tikuv mashinasi', 'Тикув машинаси'],
@@ -630,6 +637,28 @@ export const PASSIV_DAROMAD_TURI = v(
   ['Qoʻy-echki mini-fermasi', 'Қўй-эчки мини-фермаси'],
   ['Boshqa', 'Бошқа']
 );
+
+/**
+ * Har bir vosita uchun o'lchov birligi.
+ *
+ * Miqdor bo'lgani uchun birlik ham kerak: "Товуқ: 100" ni
+ * xodim "100 бош" deb o'qishi, "Асбоб-ускуна: 2" ni esa
+ * "2 комплект" deb o'qishi kerak. Birliksiz son ta'minot
+ * ro'yxatida ikki xil tushuniladi.
+ */
+export const PASSIV_BIRLIGI: Record<string, string> = {
+  'Quyosh paneli': 'дона',
+  Tovuq: 'бош',
+  Sigir: 'бош',
+  'Kichik issiqxona': 'дона',
+  'Koʻchatchilik': 'туп',
+  'Tikuv mashinasi': 'дона',
+  'Muzlatkich ijarasi': 'дона',
+  'Asbob-uskuna ijarasi': 'комплект',
+  'Kichik savdo nuqtasi': 'дона',
+  'Qoʻy-echki mini-fermasi': 'бош',
+  Boshqa: 'дона',
+};
 
 // ─────────────────────────────────────────────────────────────
 //  MAHALLA INFRATUZILMASI

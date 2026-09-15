@@ -22,10 +22,12 @@ import {
   MOLIYA_TURI,
   INFRATUZILMA_MUAMMOSI,
   OILADAGI_ORNI,
+  PASSIV_BIRLIGI,
   PASSIV_DAROMAD_TURI,
   UY_HOLATI,
   VALYUTA,
   itYonalishimi,
+  kirillcha,
   shaharlarRoyxati,
 } from '@/lib/constants';
 import {
@@ -1578,10 +1580,46 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
                 ozgardi={(q) => {
                   yangila('passivDaromadTurlari', q);
                   if (!q.includes('Boshqa')) yangila('passivDaromadIzohi', '');
+                  // Белгиси олинган воситанинг миқдори ҳам тушади
+                  yangila(
+                    'passivDaromadSonlari',
+                    Object.fromEntries(
+                      Object.entries(h.passivDaromadSonlari).filter(([t]) => q.includes(t))
+                    )
+                  );
                 }}
                 xato={x(xatolar, 'passivDaromadTurlari')}
               />
             </ToliqKeng>
+
+            {/*
+              ── МИҚДОР ──
+
+              Ҳар бир танланган восита учун алоҳида майдон.
+              Миқдорни каталогга ёзиб қўйиб бўлмайди: битта
+              оилага 20 та товуқ етади, иккинчисида катта ҳовли
+              бор ва 300 тасини боқа олади.
+
+              Ҳисобот шу сонларни ҚЎШАДИ: «нечта оила товуқ
+              сўраган» дан ташқари «жами нечта товуқ керак»
+              деган рақам чиқади — таъминот режаси айнан
+              ўшандан тузилади.
+            */}
+            {h.passivDaromadTurlari.map((tur) => (
+              <RaqamMaydoni
+                key={tur}
+                yorliq={`${tr(kirillcha(PASSIV_DAROMAD_TURI, tur))} — ${tr('қанча керак')}`}
+                majburiy
+                min={1}
+                max={100000}
+                qiymat={h.passivDaromadSonlari[tur] ?? ''}
+                ozgardi={(q) =>
+                  yangila('passivDaromadSonlari', { ...h.passivDaromadSonlari, [tur]: q })
+                }
+                birlik={tr(PASSIV_BIRLIGI[tur] ?? 'дона')}
+                xato={x(xatolar, `passivSoni.${tur}`)}
+              />
+            ))}
 
             {/*
               «Бошқа» белгиланса, фуқаронинг ЎЗ варианти
