@@ -253,15 +253,38 @@ export interface MahallaOrni {
     householdId: string | null;
     moslik: Moslik;
   }[];
+  /**
+   * Эълон АЙНАН шу маҳаллада очилганми.
+   *
+   * Керак, чунки ўз маҳалласидаги эълон мос одам топилмаса
+   * ҳам кўрсатилади — ва ходимга нега рўйхат бўшлигини
+   * айтиш учун шу белги керак бўлади.
+   */
+  ozMahallasi: boolean;
 }
 
 /**
  * Маҳалла ходими учун: «менинг маҳалламдаги фуқароларга қайси
  * бўш иш ўринлари тўғри келади».
  *
- * Тўлган эълонлар чиқарилади ва мос одами бўлмаган эълонлар ҳам
- * кўрсатилмайди: ходимга «сизга тегишлиси йўқ» деган узун
- * рўйхатни варақлатишнинг маъноси йўқ.
+ * Тўлган эълонлар чиқарилади.
+ *
+ * ── Мос одам топилмаганда ──
+ *
+ * БОШҚА маҳалладаги эълон кўрсатилмайди: ходимга «сизга
+ * тегишлиси йўқ» деган узун рўйхатни варақлатишнинг маъноси
+ * йўқ — 70 та маҳалланинг эълони бор.
+ *
+ * ЎЗ маҳалласидаги эълон эса ҲАР ДОИМ кўрсатилади, мос одам
+ * топилмаса ҳам. Сабаби: занжир айнан шу ерда узиларди.
+ * Раҳбар эълон киритарди, тизим маҳалладаги биронта фуқарони
+ * 45% чегарадан ўтказа олмасди — ва ходим ўз маҳалласида
+ * иш ўрни очилганини УМУМАН билмасди. Ҳолбуки ходим тизим
+ * билмаган нарсани билади: ким ҳақиқатан ишлашга тайёр,
+ * кимнинг қариндоши ўша корхонада ишлайди.
+ *
+ * Бундай эълон рўйхатда «мос одам топилмади» изоҳи билан
+ * туради — сохта номзод ўйлаб топилмайди.
  */
 export async function mahallaOrinlari(
   mahallaId: string,
@@ -316,13 +339,17 @@ export async function mahallaOrinlari(
       .filter((x) => x.moslik.ball >= chegara && !x.moslik.tosiq)
       .sort((a, b) => b.moslik.ball - a.moslik.ball);
 
-    if (mos.length === 0) continue;
+    const ozMahallasi = o.mahallaId === mahallaId;
+
+    /* Бошқа маҳалладаги эълон фақат мос одам бўлса кўрсатилади */
+    if (mos.length === 0 && !ozMahallasi) continue;
 
     const { ornlarSoni: _o, talablar: _t, ...orinMaydonlari } = o;
     natija.push({
       orin: orinMaydonlari,
       hisob,
       nomzodlar: mos.slice(0, nomzodChegarasi),
+      ozMahallasi,
     });
   }
 
@@ -331,13 +358,20 @@ export async function mahallaOrinlari(
    * кўп бўлганлари. Бошқа маҳалладаги иш ҳам бўлади, лекин
    * ходим аввал ёнидагисини кўрсин.
    */
+  /** Энг юқори балл — номзоди йўқ эълон учун нол */
+  const engYuqori = (x: MahallaOrni) => x.nomzodlar[0]?.moslik.ball ?? 0;
+
   return natija
     .sort((a, b) => {
-      const aOz = a.orin.mahallaId === mahallaId;
-      const bOz = b.orin.mahallaId === mahallaId;
-      if (aOz !== bOz) return aOz ? -1 : 1;
+      if (a.ozMahallasi !== b.ozMahallasi) return a.ozMahallasi ? -1 : 1;
       if (b.nomzodlar.length !== a.nomzodlar.length) return b.nomzodlar.length - a.nomzodlar.length;
-      return b.nomzodlar[0].moslik.ball - a.nomzodlar[0].moslik.ball;
+      /*
+       * Номзоди йўқ эълонда `nomzodlar[0]` ҳам йўқ. Илгари
+       * бу ерда тўғридан-тўғри `[0].moslik.ball` ўқиларди —
+       * шундай эълон рўйхатга тушиши билан саҳифа қулаган
+       * бўларди.
+       */
+      return engYuqori(b) - engYuqori(a);
     })
     .slice(0, orinChegarasi);
 }

@@ -26,11 +26,17 @@ import { mahallaOrinlari } from '@/lib/taqsimot';
  *  ўша маҳалланинг ўзиники ва ходим уни аллақачон танийди —
  *  бу янги маълумот эмас, фақат бир жойга йиғилгани.
  *
- *  ── Нега бўш бўлса ҳам кўрсатилади ──
+ *  ── Мос одам топилмаганда ──
  *
- *  Кўрсатилмайди. Эълон йўқ бўлса ёки ҳеч бир фуқаро мос
- *  келмаса, блок УМУМАН чиқмайди: ходимга ҳар кирганда бўш
- *  карточка кўрсатиш ишончни камайтиради.
+ *  БОШҚА маҳалладаги эълон кўрсатилмайди: ходимга ҳар
+ *  кирганда бўш карточка кўрсатиш ишончни камайтиради.
+ *
+ *  ЎЗ маҳалласидаги эълон эса кўрсатилади — «мос одам
+ *  топилмади» изоҳи билан. Илгари у ҳам яширилар эди ва
+ *  занжир шу ерда узиларди: раҳбар эълон киритарди, тизим
+ *  чегарадан ўтадиган одам топа олмасди, ходим эса ўз
+ *  маҳалласида иш ўрни борлигини умуман билмасди. Ҳолбуки
+ *  ходим тизим билмаган нарсани билади.
  * ============================================================
  */
 export async function MahallaOrinlari({ mahallaId }: { mahallaId: string }) {
@@ -53,7 +59,7 @@ export async function MahallaOrinlari({ mahallaId }: { mahallaId: string }) {
       </div>
 
       <div className="space-y-3">
-        {royxat.map(({ orin, hisob, nomzodlar }) => (
+        {royxat.map(({ orin, hisob, nomzodlar, ozMahallasi }) => (
           <div key={orin.id} className="rounded-md border border-line p-3.5">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
@@ -79,9 +85,26 @@ export async function MahallaOrinlari({ mahallaId }: { mahallaId: string }) {
             )}
 
             <div className="mt-3 space-y-1.5 border-t border-line pt-3">
-              <p className="text-xs font-medium text-ink-muted">
-                {tr('Сизнинг маҳаллангиздан мос келадиганлар:')}
-              </p>
+              {nomzodlar.length === 0 && ozMahallasi ? (
+                /*
+                  Сохта номзод ўйлаб топилмайди. Тизим ҳеч кимни
+                  чегарадан ўтказа олмаган бўлса, шуни айтади —
+                  ва қарорни ходимга қолдиради. У маҳалладаги
+                  одамларни рўйхатдан яхшироқ билади.
+                */
+                <>
+                  <p className="text-xs font-medium text-warn">
+                    {tr('Тизим мос фуқаро топа олмади')}
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-ink-faint">
+                    {tr('Эълон СИЗНИНГ маҳаллангизда очилган, шунинг учун кўрсатиляпти. Рўйхатдаги касб ва истаклар бу иш ўрнига тўғри келмади — аммо сиз одамларни рўйхатдан яхшироқ биласиз. Тўғри келадиган фуқаро бўлса, бандлик марказига ўзингиз йўналтиринг.')}
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs font-medium text-ink-muted">
+                  {tr('Сизнинг маҳаллангиздан мос келадиганлар:')}
+                </p>
+              )}
               {nomzodlar.map((n) => {
                 const k = MOSLIK_KORINISHI[n.moslik.daraja];
                 const ichi = (
