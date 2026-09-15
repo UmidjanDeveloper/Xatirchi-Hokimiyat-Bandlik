@@ -10,6 +10,9 @@ import {
   CHET_EL_DAVLATI,
   DAROMAD_MANBAI,
   HAYDOVCHILIK_TOIFASI,
+  INFRATUZILMA_MUAMMOSI,
+  PASSIV_DAROMAD_TURI,
+  VALYUTA,
   ICHIMLIK_SUVI,
   ISH_TURI_ISTAGI,
   KAMBAGALLIK_SABABI,
@@ -247,7 +250,33 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
       {x.chetElMehnati && (
         <Bolim raqam="II-Б" sarlavha={tr("Чет элдаги меҳнат")}>
           <Qator nomi={tr("Чет элда ишлаётганлар")} qiymat={q(x.chetElIshchilar)} />
-          <Qator nomi={tr("Ойига юборадиган пул")} qiymat={q(x.chetElOylikPul)} />
+          <Qator
+            nomi={tr("Ойига юборадиган пул")}
+            qiymat={
+              x.chetElOylikPul == null
+                ? '—'
+                : `${Number(x.chetElOylikPul).toLocaleString('ru-RU')} ${tr(
+                    kirillcha(VALYUTA, x.chetElValyuta ?? 'UZS')
+                  )}`
+            }
+          />
+          {/* Сўмдаги қиймат алоҳида: ҳисобот айнан ундан ўқийди */}
+          {x.chetElValyuta && x.chetElValyuta !== 'UZS' && (
+            <Qator nomi={tr("Сўмда (ҳисобот учун)")} qiymat={q(x.chetElOylikPulSom)} />
+          )}
+          <div className="sm:col-span-2">
+            <Qator
+              nomi={tr("Шаҳар(лар)")}
+              qiymat={q([
+                ...x.chetElShaharlari.map((sh) => {
+                  // Қиймат «давлат|шаҳар» кўринишида сақланади
+                  const [, nomi] = sh.split('|');
+                  return nomi ?? sh;
+                }),
+                ...(x.chetElBoshqaShahar ? [x.chetElBoshqaShahar] : []),
+              ])}
+            />
+          </div>
           <div className="sm:col-span-2">
             <Qator
               nomi={tr("Давлат(лар)")}
@@ -369,6 +398,45 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
           {tahrirlashMumkin && <ChoraQoshish householdId={x.id} />}
         </div>
       </Bolim>
+
+      {/* ── X. Пассив даромад ── */}
+      {x.passivDaromadIstagi && (
+        <Bolim raqam="X" sarlavha={tr("Пассив даромад имконияти")}>
+          <div className="sm:col-span-2">
+            <Qator
+              nomi={tr("Қайси йўл билан")}
+              qiymat={q(x.passivDaromadTurlari.map((y) => tr(kirillcha(PASSIV_DAROMAD_TURI, y))))}
+            />
+          </div>
+          {x.passivDaromadIzohi && (
+            <div className="sm:col-span-2">
+              <Qator nomi={tr("Изоҳ")} qiymat={x.passivDaromadIzohi} />
+            </div>
+          )}
+        </Bolim>
+      )}
+
+      {/* ── XI. Маҳалла инфратузилмаси ── */}
+      {(x.infratuzilmaMuammolari.length > 0 || x.infratuzilmaIzohi) && (
+        <Bolim raqam="XI" sarlavha={tr("Маҳалладаги инфратузилма муаммолари")}>
+          <div className="sm:col-span-2">
+            <Qator
+              nomi={tr("Етишмайдиган инфратузилма")}
+              qiymat={q([
+                ...x.infratuzilmaMuammolari
+                  .filter((y) => y !== 'Boshqa')
+                  .map((y) => tr(kirillcha(INFRATUZILMA_MUAMMOSI, y))),
+                ...(x.infratuzilmaBoshqa ? [x.infratuzilmaBoshqa] : []),
+              ])}
+            />
+          </div>
+          {x.infratuzilmaIzohi && (
+            <div className="sm:col-span-2">
+              <Qator nomi={tr("Фуқаронинг изоҳи")} qiymat={x.infratuzilmaIzohi} />
+            </div>
+          )}
+        </Bolim>
+      )}
 
       {x.umumiyXulosa && (
         <section className="karta p-4 sm:p-5">

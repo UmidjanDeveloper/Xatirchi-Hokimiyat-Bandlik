@@ -192,14 +192,26 @@ export function PulMaydoni({
   majburiy,
   qiymat,
   ozgardi,
+  birlik,
 }: AsosMaydon & {
   qiymat: number | '' | null;
   ozgardi: (q: number | '') => void;
+  /**
+   * Valyuta belgisi - berilmasa "сўм".
+   *
+   * Deyarli hamma pul maydoni so'mda, shuning uchun odatiy
+   * qiymat o'sha. Lekin chet eldan keladigan pul dollar yoki
+   * yevroda bo'lishi mumkin va maydon ichida "сўм" deb turishi
+   * xodimni chalg'itardi: u raqamni so'mga o'girib yozishga
+   * urinardi va natijada ikki marta o'girilgan son chiqardi.
+   */
+  birlik?: string;
 }) {
   const { t: tr } = useAlifbo();
 
   const id = useId();
   const son = typeof qiymat === 'number' ? qiymat : null;
+  const belgi = birlik ?? 'сўм';
 
   return (
     <div className="space-y-1.5">
@@ -218,11 +230,11 @@ export function PulMaydoni({
           className={`${kiritishSinf} raqam pr-14 ${xato ? 'maydon-xato' : 'border-line'}`}
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint">
-          {tr('сўм')}
+          {tr(belgi)}
         </span>
       </div>
       {son !== null && son > 0 && (
-        <p className="raqam text-xs text-ink-faint">{son.toLocaleString('ru-RU')} {tr('сўм')}</p>
+        <p className="raqam text-xs text-ink-faint">{son.toLocaleString('ru-RU')} {tr(belgi)}</p>
       )}
       <Xato xato={xato} />
     </div>

@@ -50,6 +50,9 @@ export interface XatlovHolati {
   telefon: string;
   jamiAzo: Raqam;
   bolalarSoni: Raqam;
+  bolalar0_3Yosh: Raqam;
+  bolalar3_17Yosh: Raqam;
+  bolalar18Yoshdan: Raqam;
 
   // I. Mehnat va bandlik
   mehnatgaLayoqatli: Raqam;
@@ -71,6 +74,7 @@ export interface XatlovHolati {
   moliyaTuri: string[];
   talabQilinganMablag: Raqam;
   mablagYonalishi: string[];
+  mablagYonalishiBoshqa: string;
 
   // II-B. Chet elda mehnat
   chetElMehnati: boolean | null;
@@ -78,6 +82,9 @@ export interface XatlovHolati {
   chetElDavlatlari: string[];
   chetElBoshqaDavlat: string;
   chetElOylikPul: Raqam;
+  chetElValyuta: string | null;
+  chetElShaharlari: string[];
+  chetElBoshqaShahar: string;
 
   // III. Daromad
   oylikDaromad: Raqam;
@@ -118,6 +125,7 @@ export interface XatlovHolati {
   nogironlikIzoh: string;
   nogironShaxslar: ShaxsQatori[];
   yolgizKeksa: boolean | null;
+  yolgizKeksaShaxslar: ShaxsQatori[];
   parvarishgaMuhtoj: boolean | null;
   parvarishIzoh: string;
   parvarishShaxslar: ShaxsQatori[];
@@ -133,6 +141,9 @@ export interface XatlovHolati {
   ekinMaydoni: Raqam;
   chorvaBor: boolean | null;
   chorvaTurlari: string[];
+  yirikShoxliSoni: Raqam;
+  maydaShoxliSoni: Raqam;
+  parrandaSoni: Raqam;
   hunarmandBor: boolean | null;
   hunarTurlari: string[];
   hunarmandchilik: string;
@@ -143,6 +154,14 @@ export interface XatlovHolati {
   ijaraYerMaydoni: Raqam;
 
   // X. Xulosa
+  passivDaromadIstagi: boolean | null;
+  passivDaromadTurlari: string[];
+  passivDaromadIzohi: string;
+
+  infratuzilmaMuammolari: string[];
+  infratuzilmaBoshqa: string;
+  infratuzilmaIzohi: string;
+
   umumiyXulosa: string;
 
   // Rozilik va imzo
@@ -189,6 +208,9 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     telefon: '',
     jamiAzo: '',
     bolalarSoni: '',
+    bolalar0_3Yosh: '',
+    bolalar3_17Yosh: '',
+    bolalar18Yoshdan: '',
 
     mehnatgaLayoqatli: '',
     ishlaydiganlar: '',
@@ -208,12 +230,16 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     moliyaTuri: [],
     talabQilinganMablag: '',
     mablagYonalishi: [],
+    mablagYonalishiBoshqa: '',
 
     chetElMehnati: null,
     chetElIshchilar: '',
     chetElDavlatlari: [],
     chetElBoshqaDavlat: '',
     chetElOylikPul: '',
+    chetElValyuta: 'UZS',
+    chetElShaharlari: [],
+    chetElBoshqaShahar: '',
 
     oylikDaromad: '',
     daromadManbalari: [],
@@ -251,6 +277,7 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     nogironlikIzoh: '',
     nogironShaxslar: [],
     yolgizKeksa: null,
+    yolgizKeksaShaxslar: [],
     parvarishgaMuhtoj: null,
     parvarishIzoh: '',
     parvarishShaxslar: [],
@@ -264,6 +291,9 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     ekinMaydoni: '',
     chorvaBor: null,
     chorvaTurlari: [],
+    yirikShoxliSoni: '',
+    maydaShoxliSoni: '',
+    parrandaSoni: '',
     hunarmandBor: null,
     hunarTurlari: [],
     hunarmandchilik: '',
@@ -272,6 +302,14 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     issiqxonaMaydoni: '',
     ijaraYer: null,
     ijaraYerMaydoni: '',
+
+    passivDaromadIstagi: null,
+    passivDaromadTurlari: [],
+    passivDaromadIzohi: '',
+
+    infratuzilmaMuammolari: [],
+    infratuzilmaBoshqa: '',
+    infratuzilmaIzohi: '',
 
     umumiyXulosa: '',
 
@@ -350,6 +388,7 @@ export function yuborishUchun(h: XatlovHolati) {
       hunarmandBor: j(x.hunarmandBor),
       issiqxonaTalabi: j(x.issiqxonaTalabi),
       ijaraYer: j(x.ijaraYer),
+      passivDaromadIstagi: j(x.passivDaromadIstagi),
 
       jamiAzo: r(x.jamiAzo),
       bolalarSoni: r(x.bolalarSoni),
@@ -363,6 +402,12 @@ export function yuborishUchun(h: XatlovHolati) {
       talabQilinganMablag: r(x.talabQilinganMablag),
       chetElIshchilar: r(x.chetElIshchilar),
       chetElOylikPul: r(x.chetElOylikPul),
+      bolalar0_3Yosh: r(x.bolalar0_3Yosh),
+      bolalar3_17Yosh: r(x.bolalar3_17Yosh),
+      bolalar18Yoshdan: r(x.bolalar18Yoshdan),
+      yirikShoxliSoni: r(x.yirikShoxliSoni),
+      maydaShoxliSoni: r(x.maydaShoxliSoni),
+      parrandaSoni: r(x.parrandaSoni),
       oylikDaromad: r(x.oylikDaromad),
       maktabgachaYoshdagi: r(x.maktabgachaYoshdagi),
       maktabgachaQamrovda: r(x.maktabgachaQamrovda),

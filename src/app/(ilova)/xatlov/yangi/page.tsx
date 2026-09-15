@@ -33,7 +33,7 @@ export default async function YangiXatlov() {
       <div>
         <h1 className="sahifa-sarlavha">{tr('Хонадонни хатловдан ўтказиш')}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {tr('Камбағал оилаларни хатловдан ўтказиш сўровномаси — 11 бўлим')}
+          {tr('Камбағал оилаларни хатловдан ўтказиш сўровномаси — 13 бўлим')}
         </p>
       </div>
 

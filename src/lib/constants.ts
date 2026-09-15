@@ -472,3 +472,186 @@ export function itYonalishimi(matn: string | null | undefined): boolean {
   if (sozlar.includes('it') || sozlar.includes('ит')) return true;
   return IT_SOZLARI.filter((w) => w !== 'it').some((w) => past.includes(w));
 }
+
+
+// ─────────────────────────────────────────────────────────────
+//  CHET EL: VALYUTA VA SHAHARLAR
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Pul o'tkazmasi valyutasi.
+ *
+ * Xodim odatda oila aytgan raqamni yozadi, oila esa qaysi pulda
+ * olsa shunda aytadi: Rossiyadan rubl, Koreyadan dollar,
+ * Polshadan yevro. Ilgari hamma raqam "so'm" deb yozilardi va
+ * hisobotda 500 (dollar) bilan 5 000 000 (so'm) bir ustunga
+ * qo'shilib ketardi.
+ */
+export const VALYUTA = v(
+  ['UZS', 'сўм'],
+  ['USD', 'АҚШ доллари'],
+  ['EUR', 'евро']
+);
+
+/**
+ * Hisobot uchun kurs — 1 birlik necha so'm.
+ *
+ * Kurs kodda TURADI va bu ataylab: hisobot har safar bir xil
+ * raqam berishi kerak, aks holda o'tgan oygi hujjat bilan
+ * bugungi hujjat bir-biriga to'g'ri kelmaydi. Kurs sezilarli
+ * o'zgarganda bu yer yangilanadi va o'zgarish tarixda ko'rinadi.
+ *
+ * Manba: Markaziy bank, 2026-yil sentyabr.
+ */
+export const VALYUTA_KURSI: Record<string, number> = {
+  UZS: 1,
+  USD: 12_600,
+  EUR: 13_800,
+};
+
+/** Kiritilgan summani so'mga keltiradi */
+export function somga(summa: number | bigint | null, valyuta: string | null): number {
+  if (summa == null) return 0;
+  return Math.round(Number(summa) * (VALYUTA_KURSI[valyuta ?? 'UZS'] ?? 1));
+}
+
+/**
+ * Har davlat bo'yicha eng ko'p boriladigan shaharlar.
+ *
+ * Shahar NEGA kerak: "Rossiyada 340 kishi" degan raqamdan chora
+ * chiqmaydi. "Moskvada 120, Sankt-Peterburgda 45" esa chiqadi —
+ * konsullik, mehnat migratsiyasi agentligi va diaspora bilan
+ * ishlash aynan shahar darajasida bo'ladi.
+ *
+ * Ro'yxatda yo'q shahar uchun har davlatda "Boshqa" bor.
+ */
+export const CHET_EL_SHAHRI: Record<string, Variant[]> = {
+  Rossiya: v(
+    ['Moskva', 'Москва'], ['Sankt-Peterburg', 'Санкт-Петербург'],
+    ['Novosibirsk', 'Новосибирск'], ['Yekaterinburg', 'Екатеринбург'],
+    ['Qozon', 'Қозон'], ['Samara', 'Самара'], ['Krasnoyarsk', 'Красноярск'],
+    ['Tyumen', 'Тюмен'], ['Surgut', 'Сургут'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  'Qozogʻiston': v(
+    ['Almati', 'Алмати'], ['Ostona', 'Остона'], ['Shimkent', 'Шимкент'],
+    ['Aqtau', 'Ақтау'], ['Atirau', 'Атирау'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  'Janubiy Koreya': v(
+    ['Seul', 'Сеул'], ['Busan', 'Бусан'], ['Incheon', 'Инчхон'],
+    ['Ansan', 'Ансан'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  Turkiya: v(
+    ['Istanbul', 'Истанбул'], ['Anqara', 'Анқара'], ['Izmir', 'Измир'],
+    ['Antaliya', 'Анталия'], ['Bursa', 'Бурса'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  BAA: v(
+    ['Dubay', 'Дубай'], ['Abu-Dabi', 'Абу-Даби'], ['Sharja', 'Шаржа'],
+    ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  'Saudiya Arabistoni': v(
+    ['Ar-Riyod', 'Ар-Риёд'], ['Jidda', 'Жидда'], ['Makka', 'Макка'],
+    ['Madina', 'Мадина'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  Polsha: v(
+    ['Varshava', 'Варшава'], ['Krakov', 'Краков'], ['Vrotslav', 'Вроцлав'],
+    ['Gdansk', 'Гданьск'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  Germaniya: v(
+    ['Berlin', 'Берлин'], ['Myunxen', 'Мюнхен'], ['Gamburg', 'Гамбург'],
+    ['Frankfurt', 'Франкфурт'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  Yaponiya: v(
+    ['Tokio', 'Токио'], ['Osaka', 'Осака'], ['Nagoya', 'Нагоя'],
+    ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  'Buyuk Britaniya': v(
+    ['London', 'Лондон'], ['Manchester', 'Манчестер'],
+    ['Birmingem', 'Бирмингем'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+  AQSH: v(
+    ['Nyu-York', 'Нью-Йорк'], ['Chikago', 'Чикаго'], ['Los-Anjeles', 'Лос-Анжелес'],
+    ['Filadelfiya', 'Филаделфия'], ['Boshqa shahar', 'Бошқа шаҳар']
+  ),
+};
+
+/** Tanlangan davlatlarga tegishli shaharlar ro'yxati */
+export function shaharlarRoyxati(davlatlar: string[]): Variant[] {
+  const out: Variant[] = [];
+  const korilgan = new Set<string>();
+  for (const d of davlatlar) {
+    for (const sh of CHET_EL_SHAHRI[d] ?? []) {
+      // Bir nechta davlatda bir xil nom bo'lsa (masalan "Boshqa
+      // shahar") ikki marta chiqmasin - qiymat davlat bilan
+      // birlashtiriladi.
+      const kalit = `${d}|${sh.qiymat}`;
+      if (korilgan.has(kalit)) continue;
+      korilgan.add(kalit);
+      out.push({ qiymat: kalit, kirill: `${sh.kirill}` });
+    }
+  }
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PASSIV DAROMAD
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Passiv daromad yo'nalishlari.
+ *
+ * Ish o'rni va tadbirkorlikdan FARQLI uchinchi yo'l: oila
+ * kundalik mehnatsiz daromad olishi. Yoshi katta, sog'lig'i
+ * yaxshi bo'lmagan yoki bola parvarishi bilan band a'zolar
+ * uchun ko'pincha yagona real imkoniyat — ularni ishga
+ * joylashtirib bo'lmaydi, lekin mulkini ishlatish mumkin.
+ */
+export const PASSIV_DAROMAD_TURI = v(
+  ['Uy-joyni ijaraga berish', 'Уй-жойни ижарага бериш'],
+  ['Doʻkon yoki bino ijarasi', 'Дўкон ёки бино ижараси'],
+  ['Yerni ijaraga berish', 'Ерни ижарага бериш'],
+  ['Texnika yoki asbob ijarasi', 'Техника ёки асбоб ижараси'],
+  ['Avtomobil ijarasi', 'Автомобиль ижараси'],
+  ['Bank depoziti', 'Банк депозити'],
+  ['Qimmatli qogʻozlar', 'Қимматли қоғозлар'],
+  ['Ulush qoʻshib sherikchilik', 'Улуш қўшиб шерикчилик'],
+  ['Onlayn kontent va reklama', 'Онлайн контент ва реклама'],
+  ['Boshqa', 'Бошқа']
+);
+
+// ─────────────────────────────────────────────────────────────
+//  MAHALLA INFRATUZILMASI
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Mahalladagi infratuzilma muammolari.
+ *
+ * Anketaning qolgan hamma bo'limi XONADON haqida: shu oilada
+ * gaz bormi, shu oilaning daromadi qancha. Lekin oilani
+ * kambag'allikdan chiqarishga to'sqinlik qiladigan narsa
+ * ko'pincha xonadonda emas, KO'CHADA turadi: yo'l yo'q va
+ * mahsulot bozorga chiqmaydi; bog'cha yo'q va ayol ishga
+ * chiqolmaydi; internet yo'q va masofadan ishlash mumkin emas.
+ *
+ * Bu ro'yxat 40 000 xonadondan yig'ilganda tuman uchun tayyor
+ * investitsiya rejasiga aylanadi: qaysi mahallada nechta oila
+ * aynan shu narsani ko'rsatgan.
+ */
+export const INFRATUZILMA_MUAMMOSI = v(
+  ['Ichki yoʻllar', 'Ички йўллар'],
+  ['Ichimlik suvi tarmogʻi', 'Ичимлик суви тармоғи'],
+  ['Tabiiy gaz tarmogʻi', 'Табиий газ тармоғи'],
+  ['Elektr tarmogʻi va kuchlanish', 'Электр тармоғи ва кучланиш'],
+  ['Koʻcha yoritish', 'Кўча ёритиш'],
+  ['Kanalizatsiya', 'Канализация'],
+  ['Sugʻorish tarmogʻi va zovur', 'Суғориш тармоғи ва зовур'],
+  ['Koʻprik va oʻtish joyi', 'Кўприк ва ўтиш жойи'],
+  ['Bogʻcha', 'Боғча'],
+  ['Maktab', 'Мактаб'],
+  ['Oilaviy poliklinika yoki FVP', 'Оилавий поликлиника ёки ФВП'],
+  ['Internet va aloqa', 'Интернет ва алоқа'],
+  ['Jamoat transporti', 'Жамоат транспорти'],
+  ['Sport va bolalar maydonchasi', 'Спорт ва болалар майдончаси'],
+  ['Chiqindi chiqarish', 'Чиқинди чиқариш'],
+  ['Savdo shoxobchasi yoki bozor', 'Савдо шохобчаси ёки бозор'],
+  ['Boshqa', 'Бошқа']
+);

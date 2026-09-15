@@ -5,6 +5,7 @@ import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { Plus, Trash2, UserPlus, Users } from 'lucide-react';
 import {
   CHET_EL_DAVLATI,
+  CHET_EL_SHAHRI,
   CHORVA_TURI,
   DAROMAD_MANBAI,
   GAZ_TURI,
@@ -19,9 +20,13 @@ import {
   MABLAG_YONALISHI,
   MALUMOT,
   MOLIYA_TURI,
+  INFRATUZILMA_MUAMMOSI,
   OILADAGI_ORNI,
+  PASSIV_DAROMAD_TURI,
   UY_HOLATI,
+  VALYUTA,
   itYonalishimi,
+  shaharlarRoyxati,
 } from '@/lib/constants';
 import {
   BelgiMaydoni,
@@ -167,6 +172,50 @@ export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
         birlik={tr("киши")}
         xato={x(xatolar, 'bolalarSoni')}
       />
+
+      {/*
+        ── ЁШ ГУРУҲЛАРИ ──
+
+        «12 та бола» деган рақамдан чора чиқмайди. 0-3 ёшдаги
+        бола онасини уйда ушлаб туради — унга боғча ўрни керак.
+        3-17 боғча ва мактаб қамрови масаласи. 18 дан катта
+        фарзанд эса аслида ИШСИЗ ФУҚАРО ва бандлик марказининг
+        иши — у «бола» устунида яшириниб қолмаслиги керак.
+      */}
+      <RaqamMaydoni
+        yorliq={tr("Шундан: 0—3 ёшда")}
+        majburiy
+        izoh={tr("Боғча ёшига етмаган — она уйда банд бўлади")}
+        qiymat={h.bolalar0_3Yosh}
+        ozgardi={(q) => yangila('bolalar0_3Yosh', q)}
+        max={20}
+        birlik={tr("бола")}
+        xato={x(xatolar, 'bolalar0_3Yosh')}
+      />
+
+      <RaqamMaydoni
+        yorliq={tr("Шундан: 3—17 ёшда")}
+        majburiy
+        izoh={tr("Боғча ва мактаб қамрови шу гуруҳга тегишли")}
+        qiymat={h.bolalar3_17Yosh}
+        ozgardi={(q) => yangila('bolalar3_17Yosh', q)}
+        max={30}
+        birlik={tr("бола")}
+        xato={x(xatolar, 'bolalar3_17Yosh')}
+      />
+
+      <ToliqKeng>
+        <RaqamMaydoni
+          yorliq={tr("18 ёшдан катта фарзандлар")}
+          majburiy
+          izoh={tr("Улар «бола» эмас — ишсиз бўлса, VII қадамда алоҳида ёзилади")}
+          qiymat={h.bolalar18Yoshdan}
+          ozgardi={(q) => yangila('bolalar18Yoshdan', q)}
+          max={30}
+          birlik={tr("киши")}
+          xato={x(xatolar, 'bolalar18Yoshdan')}
+        />
+      </ToliqKeng>
     </Bolim>
   );
 }
@@ -365,9 +414,32 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
                 yorliq={tr("Маблағни сарфлаш йўналиши")}
                 variantlar={MABLAG_YONALISHI}
                 qiymatlar={h.mablagYonalishi}
-                ozgardi={(q) => yangila('mablagYonalishi', q)}
+                ozgardi={(q) => {
+                  yangila('mablagYonalishi', q);
+                  if (!q.includes('Boshqa')) yangila('mablagYonalishiBoshqa', '');
+                }}
               />
             </div>
+
+            {/*
+              «Бошқа» танланиб, нимаси ёзилмаса — банд ҳисоботда
+              «Бошқа: 47 хонадон» бўлиб чиқади ва ундан ҳеч
+              қандай қарор чиқмайди. Бу рақам туман бюджет
+              режасига тўғридан-тўғри кирар экан, у аниқ бўлиши
+              шарт.
+            */}
+            {h.mablagYonalishi.includes('Boshqa') && (
+              <ToliqKeng>
+                <MatnMaydoni
+                  yorliq={tr("«Бошқа» — маблағ қайси йўналишга сарфланади")}
+                  izoh={tr("Аниқ ёзинг: бу рақам туман бюджет режасига киради")}
+                  majburiy
+                  qiymat={h.mablagYonalishiBoshqa}
+                  ozgardi={(q) => yangila('mablagYonalishiBoshqa', q)}
+                  xato={x(xatolar, 'mablagYonalishiBoshqa')}
+                />
+              </ToliqKeng>
+            )}
           </>
         )}
       </Bolim>
@@ -380,7 +452,7 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
         аслида ҳар ой Россиядан бир неча миллион сўм келиб туради.
       */}
       <Bolim
-        raqam="II-Б"
+        raqam={tr("II-Б")}
         sarlavha={tr("Чет элдаги меҳнат ва пул ўтказмаси")}
         izoh={tr("Оила аъзоси чет элда ишласа, ундан келадиган пул ҳам оила даромади ҳисобланади.")}
       >
@@ -417,13 +489,34 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
               birlik={tr("киши")}
             />
 
+            {/*
+              ── ВАЛЮТА ──
+
+              Оила қайси пулда олса шунда айтади: Россиядан
+              кўпинча доллар, Польшадан евро. Илгари ҳаммаси
+              «сўм» деб ёзиларди ва ҳисоботда 500 (доллар) билан
+              5 000 000 (сўм) бир устунга қўшилиб кетарди.
+
+              Сақлашда қиймат сўмга келтирилиб ҳам ёзилади —
+              ҳисобот ўшандан ўқийди.
+            */}
             <PulMaydoni
               yorliq={tr("Ойига оилага юборадиган пул")}
-              izoh={tr("Тахминий миқдор — сўмда. Доллар бўлса, жорий курс бўйича ҳисобланади.")}
+              izoh={tr("Оила айтган миқдор — валютасини пастда белгиланг")}
               majburiy
               qiymat={h.chetElOylikPul}
               ozgardi={(q) => yangila('chetElOylikPul', q)}
+              birlik={VALYUTA.find((v) => v.qiymat === h.chetElValyuta)?.kirill}
               xato={x(xatolar, 'chetElOylikPul')}
+            />
+
+            <TanlovMaydoni
+              yorliq={tr("Қайси валютада")}
+              majburiy
+              variantlar={VALYUTA}
+              qiymat={h.chetElValyuta}
+              ozgardi={(q) => yangila('chetElValyuta', q)}
+              xato={x(xatolar, 'chetElValyuta')}
             />
 
             <ToliqKeng>
@@ -441,8 +534,33 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
               />
             </ToliqKeng>
 
-            {h.chetElDavlatlari.includes('Boshqa') && (
+            {/*
+              ── ШАҲАРЛАР ──
+
+              «Россияда 340 киши» деган рақамдан чора чиқмайди.
+              «Москвада 120, Сургутда 45» эса чиқади: консуллик,
+              меҳнат миграцияси агентлиги ва диаспора билан иш
+              айнан ШАҲАР даражасида юритилади.
+
+              Рўйхат ФАҚАТ белгиланган давлатлар бўйича очилади —
+              70 та шаҳарни бирдан кўрсатиш ходимни чалғитарди.
+            */}
+            {shaharlarRoyxati(h.chetElDavlatlari.filter((d) => CHET_EL_SHAHRI[d])).length > 0 && (
               <ToliqKeng>
+                <KopTanlovMaydoni
+                  yorliq={tr("Қайси шаҳар(лар)да")}
+                  izoh={tr("Аниқ шаҳар маълум бўлса белгиланг — билмаса, бўш қолдиринг")}
+                  variantlar={shaharlarRoyxati(
+                    h.chetElDavlatlari.filter((d) => CHET_EL_SHAHRI[d])
+                  )}
+                  qiymatlar={h.chetElShaharlari}
+                  ozgardi={(q) => yangila('chetElShaharlari', q)}
+                />
+              </ToliqKeng>
+            )}
+
+            {h.chetElDavlatlari.includes('Boshqa') && (
+              <>
                 <MatnMaydoni
                   yorliq={tr("«Бошқа давлат» — қайси давлат")}
                   izoh={tr("Рўйхатда йўқ давлат номини ёзинг.")}
@@ -451,7 +569,15 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
                   ozgardi={(q) => yangila('chetElBoshqaDavlat', q)}
                   xato={x(xatolar, 'chetElBoshqaDavlat')}
                 />
-              </ToliqKeng>
+
+                <MatnMaydoni
+                  yorliq={tr("Ўша давлатда қайси шаҳар")}
+                  izoh={tr("Билмаса бўш қолдиринг")}
+                  qiymat={h.chetElBoshqaShahar}
+                  ozgardi={(q) => yangila('chetElBoshqaShahar', q)}
+                  xato={x(xatolar, 'chetElBoshqaShahar')}
+                />
+              </>
             )}
           </>
         )}
@@ -734,9 +860,32 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
           yorliq={tr("Ёлғиз яшовчи кекса(лар) мавжудми")}
           majburiy
           qiymat={h.yolgizKeksa}
-          ozgardi={(q) => yangila('yolgizKeksa', q)}
+          ozgardi={(q) => {
+            yangila('yolgizKeksa', q);
+            // «Йўқ»га қайтарилса рўйхат тозаланади. Иккита
+            // чақирув ХАВФСИЗ: `yangila` функционал `setH`
+            // ишлатади ва калитлар ҳар хил.
+            if (!q) yangila('yolgizKeksaShaxslar', []);
+          }}
           xato={x(xatolar, 'yolgizKeksa')}
         />
+
+        {/*
+          Ногиронлик ва парваришдаги каби — ИСМ сўралади.
+          «Ҳа, бор» деган белгидан «Инсон» маркази ҳеч кимни
+          топа олмайди: рўйхат исмсиз бўлса, уни қайта йиғиш
+          учун яна эшикма-эшик юриш керак бўлади.
+        */}
+        {h.yolgizKeksa && (
+          <ToliqKeng>
+            <ShaxsRoyxati
+              yorliq={tr("Ёлғиз яшовчи кексалар")}
+              izoh={tr("Ҳар бири учун Ф.И.Ш. ва оиладаги ўрни")}
+              qatorlar={h.yolgizKeksaShaxslar}
+              ozgardi={(q) => yangila('yolgizKeksaShaxslar', q)}
+            />
+          </ToliqKeng>
+        )}
 
         <HaYoqMaydoni
           yorliq={tr("Парваришга муҳтож шахс(лар) мавжудми")}
@@ -859,16 +1008,74 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
         </ToliqKeng>
 
         {h.chorvaBor && (
-          <ToliqKeng>
-            <KopTanlovMaydoni
-              yorliq={tr("Қайси турлари")}
-              izoh={tr("Бир нечтасини белгилаш мумкин")}
-              variantlar={CHORVA_TURI}
-              qiymatlar={h.chorvaTurlari}
-              ozgardi={(q) => yangila('chorvaTurlari', q)}
-              xato={x(xatolar, 'chorvaTurlari')}
-            />
-          </ToliqKeng>
+          <>
+            <ToliqKeng>
+              <KopTanlovMaydoni
+                yorliq={tr("Қайси турлари")}
+                majburiy
+                izoh={tr("Бир нечтасини белгилаш мумкин")}
+                variantlar={CHORVA_TURI}
+                qiymatlar={h.chorvaTurlari}
+                ozgardi={(q) => {
+                  yangila('chorvaTurlari', q);
+                  // Белгиланмаган турнинг сони ҳам тушади
+                  if (!q.includes('Yirik shoxli')) yangila('yirikShoxliSoni', '');
+                  if (!q.includes('Mayda shoxli')) yangila('maydaShoxliSoni', '');
+                  if (!q.includes('Parranda')) yangila('parrandaSoni', '');
+                }}
+                xato={x(xatolar, 'chorvaTurlari')}
+              />
+            </ToliqKeng>
+
+            {/*
+              ── БОШ СОНИ ──
+
+              «Чорваси бор» белгисидан режа чиқмайди: 2 та товуқ
+              ҳам, 40 та қорамол ҳам бир хил кўринади. Субсидия,
+              ем-хашак ёрдами ва сут йиғиш пункти очиш қарори
+              эса айнан бош сонига қараб чиқарилади.
+
+              Майдон фақат ЎША тур белгиланганда очилади.
+            */}
+            {h.chorvaTurlari.includes('Yirik shoxli') && (
+              <RaqamMaydoni
+                yorliq={tr("Йирик шохли — бош сони")}
+                majburiy
+                min={1}
+                max={500}
+                qiymat={h.yirikShoxliSoni}
+                ozgardi={(q) => yangila('yirikShoxliSoni', q)}
+                birlik={tr("бош")}
+                xato={x(xatolar, 'yirikShoxliSoni')}
+              />
+            )}
+
+            {h.chorvaTurlari.includes('Mayda shoxli') && (
+              <RaqamMaydoni
+                yorliq={tr("Майда шохли — бош сони")}
+                majburiy
+                min={1}
+                max={2000}
+                qiymat={h.maydaShoxliSoni}
+                ozgardi={(q) => yangila('maydaShoxliSoni', q)}
+                birlik={tr("бош")}
+                xato={x(xatolar, 'maydaShoxliSoni')}
+              />
+            )}
+
+            {h.chorvaTurlari.includes('Parranda') && (
+              <RaqamMaydoni
+                yorliq={tr("Парранда — бош сони")}
+                majburiy
+                min={1}
+                max={10000}
+                qiymat={h.parrandaSoni}
+                ozgardi={(q) => yangila('parrandaSoni', q)}
+                birlik={tr("бош")}
+                xato={x(xatolar, 'parrandaSoni')}
+              />
+            )}
+          </>
         )}
 
         <ToliqKeng>
@@ -1320,7 +1527,126 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
 
   return (
     <>
-      <Bolim raqam="XI" sarlavha={tr("Хулоса")}>
+      {/*
+        ── ПАССИВ ДАРОМАД ──
+
+        Иш ўрни ва тадбиркорликдан ФАРҚЛИ учинчи йўл.
+
+        Оилада ёши катта, соғлиғи заиф ёки бола парвариши билан
+        банд аъзо бўлади — уни ишга жойлаштириб бўлмайди ва у
+        ҳар қандай бандлик рўйхатида «имконсиз» бўлиб туради.
+        Лекин мулкини ишлатиш мумкин: бўш хонани, дўконни, ерни
+        ижарага бериш. Бу савол айнан ўшаларни кўринадиган
+        қилади.
+      */}
+      <Bolim
+        raqam="X"
+        sarlavha={tr("Пассив даромад имконияти")}
+        izoh={tr("Меҳнатсиз, мавжуд мулк ёки жамғарма ҳисобига даромад. Ишга жойлаштириб бўлмайдиган аъзоси бор оила учун кўпинча ягона реал йўл.")}
+      >
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq={tr("Оила пассив даромад олишни истайдими")}
+            majburiy
+            qiymat={h.passivDaromadIstagi}
+            ozgardi={(q) => {
+              yangila('passivDaromadIstagi', q);
+              if (!q) {
+                yangila('passivDaromadTurlari', []);
+                yangila('passivDaromadIzohi', '');
+              }
+            }}
+            xato={x(xatolar, 'passivDaromadIstagi')}
+          />
+        </ToliqKeng>
+
+        {h.passivDaromadIstagi && (
+          <>
+            <ToliqKeng>
+              <KopTanlovMaydoni
+                yorliq={tr("Қайси йўл билан")}
+                izoh={tr("Оилада мавжуд имконият бўйича — бир нечтасини белгилаш мумкин")}
+                majburiy
+                variantlar={PASSIV_DAROMAD_TURI}
+                qiymatlar={h.passivDaromadTurlari}
+                ozgardi={(q) => yangila('passivDaromadTurlari', q)}
+                xato={x(xatolar, 'passivDaromadTurlari')}
+              />
+            </ToliqKeng>
+
+            <ToliqKeng>
+              <MatnMaydoni
+                yorliq={tr("Изоҳ — нимаси бор ва нима тўсқинлик қиляпти")}
+                izoh={tr("Масалан: «бўш хона бор, лекин таъмир керак» ёки «ер бор, ҳужжати йўқ»")}
+                koptator
+                majburiy={h.passivDaromadTurlari.includes('Boshqa')}
+                qiymat={h.passivDaromadIzohi}
+                ozgardi={(q) => yangila('passivDaromadIzohi', q)}
+                xato={x(xatolar, 'passivDaromadIzohi')}
+              />
+            </ToliqKeng>
+          </>
+        )}
+      </Bolim>
+
+      {/*
+        ── МАҲАЛЛА ИНФРАТУЗИЛМАСИ ──
+
+        Анкетанинг қолган ҳамма бўлими ХОНАДОН ҳақида: шу оилада
+        газ борми, шу оиланинг даромади қанча.
+
+        Аммо оилани камбағалликдан чиқаришга тўсқинлик қиладиган
+        нарса кўпинча хонадонда эмас, КЎЧАДА туради: йўл йўқ —
+        маҳсулот бозорга чиқмайди; боғча йўқ — аёл ишга
+        чиқолмайди; интернет йўқ — масофадан ишлаш мумкин эмас.
+
+        40 000 хонадондан йиғилганда бу туман учун тайёр
+        инвестиция режаси бўлади: қайси маҳаллада нечта оила
+        айнан шу нарсани кўрсатган.
+      */}
+      <Bolim
+        raqam="XI"
+        sarlavha={tr("Маҳалладаги зарурий инфратузилма ва муаммолар")}
+        izoh={tr("Фуқаронинг ЎЗ сўзи билан: маҳаллада нима етишмайди. Бу бўлим хонадон эмас, КЎЧА ҳақида.")}
+      >
+        <ToliqKeng>
+          <KopTanlovMaydoni
+            yorliq={tr("Маҳаллада қайси инфратузилма етишмайди ёки ярамайди")}
+            izoh={tr("Оила кўрсатган ҳамма муаммони белгиланг. Йўқ бўлса — бўш қолдиринг.")}
+            variantlar={INFRATUZILMA_MUAMMOSI}
+            qiymatlar={h.infratuzilmaMuammolari}
+            ozgardi={(q) => {
+              yangila('infratuzilmaMuammolari', q);
+              if (!q.includes('Boshqa')) yangila('infratuzilmaBoshqa', '');
+            }}
+          />
+        </ToliqKeng>
+
+        {h.infratuzilmaMuammolari.includes('Boshqa') && (
+          <ToliqKeng>
+            <MatnMaydoni
+              yorliq={tr("«Бошқа» — қайси муаммо")}
+              izoh={tr("Рўйхатда йўқ муаммони ёзинг. Битта муаммо такрорланаверса, у рўйхатга қўшилади.")}
+              majburiy
+              qiymat={h.infratuzilmaBoshqa}
+              ozgardi={(q) => yangila('infratuzilmaBoshqa', q)}
+              xato={x(xatolar, 'infratuzilmaBoshqa')}
+            />
+          </ToliqKeng>
+        )}
+
+        <ToliqKeng>
+          <MatnMaydoni
+            yorliq={tr("Фуқаронинг изоҳи — ўз сўзи билан")}
+            izoh={tr("Аниқ жой ва ҳолатни ёзинг: «Навоий кўчасининг 300 метри йўқ», «боғчада навбат 2 йил»")}
+            koptator
+            qiymat={h.infratuzilmaIzohi}
+            ozgardi={(q) => yangila('infratuzilmaIzohi', q)}
+          />
+        </ToliqKeng>
+      </Bolim>
+
+      <Bolim raqam="XII" sarlavha={tr("Хулоса")}>
         <ToliqKeng>
           <MatnMaydoni
             yorliq={tr("Оиланинг камбағалликдан чиқарилиши бўйича умумий хулоса")}
@@ -1344,7 +1670,7 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
         неча марта келиб тўлдириши мумкин ва имзо охирида,
         фуқаронинг ўзи олдида қўйилади.
       */}
-      <Bolim raqam="XII" sarlavha={tr("Розилик ва имзо")}>
+      <Bolim raqam="XIII" sarlavha={tr("Розилик ва имзо")}>
         <ToliqKeng>
           <div className="space-y-4">
             <div className="quti-ogoh text-xs leading-relaxed">
@@ -1436,6 +1762,9 @@ export const QADAMLAR = [
       'telefon',
       'jamiAzo',
       'bolalarSoni',
+      'bolalar0_3Yosh',
+      'bolalar3_17Yosh',
+      'bolalar18Yoshdan',
     ],
   },
   {
@@ -1466,6 +1795,9 @@ export const QADAMLAR = [
       'chetElDavlatlari',
       'chetElBoshqaDavlat',
       'chetElOylikPul',
+      'chetElValyuta',
+      'chetElBoshqaShahar',
+      'mablagYonalishiBoshqa',
     ],
   },
   {
@@ -1511,7 +1843,21 @@ export const QADAMLAR = [
       'hunarmandchilik',
       'issiqxonaMaydoni',
       'ijaraYerMaydoni',
+      'yirikShoxliSoni',
+      'maydaShoxliSoni',
+      'parrandaSoni',
     ],
   },
-  { nomi: 'Хулоса ва имзо', komponent: QadamXulosa, maydonlar: ['rozilikBerdi', 'imzoYoli'] },
+  {
+    nomi: 'Хулоса ва имзо',
+    komponent: QadamXulosa,
+    maydonlar: [
+      'passivDaromadIstagi',
+      'passivDaromadTurlari',
+      'passivDaromadIzohi',
+      'infratuzilmaBoshqa',
+      'rozilikBerdi',
+      'imzoYoli',
+    ],
+  },
 ] as const;

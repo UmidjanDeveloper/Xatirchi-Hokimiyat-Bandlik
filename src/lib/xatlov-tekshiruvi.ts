@@ -50,6 +50,9 @@ export interface XatlovRaqamlari {
   ishsizlarSoni?: number | null;
   bogchaKutayotganAyollar?: number | null;
 
+  bolalar0_3Yosh?: number | null;
+  bolalar3_17Yosh?: number | null;
+  bolalar18Yoshdan?: number | null;
   maktabgachaYoshdagi?: number | null;
   maktabgachaQamrovda?: number | null;
   maktabYoshdagi?: number | null;
@@ -115,6 +118,34 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
    * allaqachon xato qilgandek. Majburiy maydonlar yuborish
    * paytida tekshiriladi.
    */
+
+  /*
+   * ── ЁШ ГУРУҲЛАРИ БУТУНГА МОС КЕЛСИНМИ ──
+   *
+   * 0-3 ва 3-17 иккови ҳам 18 ёшгача, яъни уларнинг йиғиндиси
+   * «болалар сони» дан ошиб кетмаслиги керак. 18 дан катта
+   * фарзанд эса болалар ичига КИРМАЙДИ — у алоҳида ҳисобланади
+   * ва бу текширувга аралашмайди.
+   *
+   * Тенг бўлмаслиги МУМКИН: ходим болалар сонини билиб, ёш
+   * тақсимотини аниқлаштиролмаган бўлиши мумкин. Шунинг учун
+   * ошиб кетиши — ХАТО, кам бўлиши — ОГОҲЛАНТИРИШ.
+   */
+  const yosh0_3 = n(d.bolalar0_3Yosh);
+  const yosh3_17 = n(d.bolalar3_17Yosh);
+  const yoshJami = yosh0_3 + yosh3_17;
+
+  if (yoshJami > bolalar) {
+    xato(
+      'bolalar0_3Yosh',
+      `Ёш гуруҳлари йиғиндиси ${yoshJami} та, болалар сони эса ${bolalar} та. Улар ошиб кетмаслиги керак.`
+    );
+  } else if (bolalar > 0 && yoshJami > 0 && yoshJami < bolalar) {
+    ogoh(
+      'bolalar3_17Yosh',
+      `${bolalar} та боладан ${yoshJami} тасининг ёш гуруҳи кўрсатилган. Қолгани қайси гуруҳга киришини аниқланг.`
+    );
+  }
 
   if (bolalar > jami) {
     xato(
@@ -362,7 +393,7 @@ export function yuborishgaTayyormi(
       hisobot.xatolar.push({
         maydon: 'rozilikBerdi',
         xabar:
-          'Фуқаро маълумотлари йиғилишига розилик бермаган. XII бўлимдаги белгини фуқаронинг ўзи олдида белгиланг.',
+          'Фуқаро маълумотлари йиғилишига розилик бермаган. XIII бўлимдаги белгини фуқаронинг ўзи олдида белгиланг.',
       });
     }
 
@@ -377,7 +408,7 @@ export function yuborishgaTayyormi(
       hisobot.xatolar.push({
         maydon: 'imzoYoli',
         xabar:
-          'Имзо қўйилмаган ёки тўлиқ эмас. XII бўлимдаги майдонга фуқаро ЎЗ имзосини чизиши керак.',
+          'Имзо қўйилмаган ёки тўлиқ эмас. XIII бўлимдаги майдонга фуқаро ЎЗ имзосини чизиши керак.',
       });
     }
   }

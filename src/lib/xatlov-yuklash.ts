@@ -28,6 +28,33 @@ export async function xatlovniYukla(
   const t = (v: string | null | undefined): string => v ?? '';
   const p = (v: bigint | null | undefined): number | '' => (v == null ? '' : Number(v));
 
+  /**
+   * Shaxslar ro'yxatini (`Json`) forma qatorlariga aylantiradi.
+   *
+   * DIQQAT: ilgari bu YO'Q edi va nogironlik hamda parvarish
+   * ro'yxatlari tahrirlashda UMUMAN yuklanmasdi. Ya'ni xodim
+   * saqlangan xatlovni ochib, bitta vergulni tuzatib qayta
+   * yuborsa, bazadagi ismlar RO'YXATI O'CHIB KETARDI — ekranda
+   * esa hech qanday ogohlantirish chiqmasdi.
+   *
+   * `qatorId` faqat brauzerda, React ro'yxatni qayta chizganda
+   * kerak; bazada uning o'rni yo'q, shuning uchun shu yerda
+   * yangidan beriladi.
+   */
+  const shaxslar = (v: unknown): XatlovHolati['nogironShaxslar'] => {
+    if (!Array.isArray(v)) return [];
+    return v
+      .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+      .map((r, i) => ({
+        qatorId: `yuklandi-${i}-${Math.random().toString(36).slice(2, 7)}`,
+        fish: typeof r.fish === 'string' ? r.fish : '',
+        orni: typeof r.orni === 'string' ? r.orni : '',
+        orniIzoh: typeof r.orniIzoh === 'string' ? r.orniIzoh : '',
+        guruhi: typeof r.guruhi === 'string' ? r.guruhi : null,
+      }))
+      .filter((r) => r.fish.trim().length > 0);
+  };
+
   const holat: XatlovHolati = {
     ...bosHolat(x.mahallaId),
 
@@ -40,6 +67,9 @@ export async function xatlovniYukla(
     telefon: t(x.telefon),
     jamiAzo: s(x.jamiAzo),
     bolalarSoni: s(x.bolalarSoni),
+    bolalar0_3Yosh: s(x.bolalar0_3Yosh),
+    bolalar3_17Yosh: s(x.bolalar3_17Yosh),
+    bolalar18Yoshdan: s(x.bolalar18Yoshdan),
 
     mehnatgaLayoqatli: s(x.mehnatgaLayoqatli),
     ishlaydiganlar: s(x.ishlaydiganlar),
@@ -59,12 +89,16 @@ export async function xatlovniYukla(
     moliyaTuri: x.moliyaTuri,
     talabQilinganMablag: p(x.talabQilinganMablag),
     mablagYonalishi: x.mablagYonalishi,
+    mablagYonalishiBoshqa: t(x.mablagYonalishiBoshqa),
 
     chetElMehnati: x.chetElMehnati,
     chetElIshchilar: s(x.chetElIshchilar),
     chetElDavlatlari: x.chetElDavlatlari,
     chetElBoshqaDavlat: t(x.chetElBoshqaDavlat),
     chetElOylikPul: p(x.chetElOylikPul),
+    chetElValyuta: x.chetElValyuta ?? 'UZS',
+    chetElShaharlari: x.chetElShaharlari ?? [],
+    chetElBoshqaShahar: t(x.chetElBoshqaShahar),
 
     oylikDaromad: p(x.oylikDaromad),
     daromadManbalari: x.daromadManbalari,
@@ -97,9 +131,12 @@ export async function xatlovniYukla(
 
     nogironlikBor: x.nogironlikBor,
     nogironlikIzoh: t(x.nogironlikIzoh),
+    nogironShaxslar: shaxslar(x.nogironShaxslar),
     yolgizKeksa: x.yolgizKeksa,
+    yolgizKeksaShaxslar: shaxslar(x.yolgizKeksaShaxslar),
     parvarishgaMuhtoj: x.parvarishgaMuhtoj,
     parvarishIzoh: t(x.parvarishIzoh),
+    parvarishShaxslar: shaxslar(x.parvarishShaxslar),
     boshqaMuhtojlar: t(x.boshqaMuhtojlar),
 
     hujjatlarToliq: x.hujjatlarToliq,
@@ -110,6 +147,9 @@ export async function xatlovniYukla(
     ekinMaydoni: s(x.ekinMaydoni),
     chorvaBor: x.chorvaBor,
     chorvaTurlari: x.chorvaTurlari ?? [],
+    yirikShoxliSoni: s(x.yirikShoxliSoni),
+    maydaShoxliSoni: s(x.maydaShoxliSoni),
+    parrandaSoni: s(x.parrandaSoni),
     hunarmandBor: x.hunarmandBor,
     hunarTurlari: x.hunarTurlari ?? [],
     hunarmandchilik: t(x.hunarmandchilik),
@@ -119,6 +159,14 @@ export async function xatlovniYukla(
     ijaraYer: x.ijaraYer,
     ijaraYerMaydoni: s(x.ijaraYerMaydoni),
 
+
+    passivDaromadIstagi: x.passivDaromadIstagi,
+    passivDaromadTurlari: x.passivDaromadTurlari ?? [],
+    passivDaromadIzohi: t(x.passivDaromadIzohi),
+
+    infratuzilmaMuammolari: x.infratuzilmaMuammolari ?? [],
+    infratuzilmaBoshqa: t(x.infratuzilmaBoshqa),
+    infratuzilmaIzohi: t(x.infratuzilmaIzohi),
 
     umumiyXulosa: t(x.umumiyXulosa),
 

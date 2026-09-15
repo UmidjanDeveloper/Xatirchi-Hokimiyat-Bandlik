@@ -216,6 +216,16 @@ model Household {
   jamiAzo     Int
   bolalarSoni Int @default(0)
 
+  /// Bolalarning yosh guruhlari.
+  ///
+  /// «12 ta bola» degan raqamdan chora chiqmaydi: 0-3 yosh bola
+  /// onasini uyda ushlab turadi, 3-17 yosh bog'cha va maktab
+  /// masalasi, 18 dan katta farzand esa aslida ISHSIZ FUQARO va
+  /// bandlik markazining ishi. Uchtasiga uch xil chora kerak.
+  bolalar0_3Yosh   Int @default(0)
+  bolalar3_17Yosh  Int @default(0)
+  bolalar18Yoshdan Int @default(0)
+
   // ── I. MEHNAT VA BANDLIK ──
   mehnatgaLayoqatli       Int  @default(0)
   ishlaydiganlar          Int  @default(0)
@@ -235,13 +245,15 @@ model Household {
   bandlikTakliflari  String?
 
   // ── II. TADBIRKORLIK VA KREDIT-SUBSIDIYA ──
-  tadbirkorlikIstagi  Boolean  @default(false)
-  tadbirkorlikSohasi  String[]
-  moliyaEhtiyoji      Boolean  @default(false)
-  moliyaTuri          String[]
+  tadbirkorlikIstagi    Boolean  @default(false)
+  tadbirkorlikSohasi    String[]
+  moliyaEhtiyoji        Boolean  @default(false)
+  moliyaTuri            String[]
   /// So'mda. Byudjet rejasiga to'g'ridan-to'g'ri kiradigan raqam.
-  talabQilinganMablag BigInt?
-  mablagYonalishi     String[]
+  talabQilinganMablag   BigInt?
+  mablagYonalishi       String[]
+  /// «Бошқа» танланганда — қайси йўналиш экани
+  mablagYonalishiBoshqa String?
 
   // ── II-B. CHET ELDA MEHNAT MIGRATSIYASI ──
   //
@@ -264,6 +276,27 @@ model Household {
   /// Aynan YUBORILADIGAN summa so'raladi, chet eldagi maosh
   /// emas: oila byudjetiga kirib keladigan pul shu.
   chetElOylikPul     BigInt?
+
+  /// Пул қайси валютада айтилган: UZS | USD | EUR.
+  ///
+  /// Оила қайси пулда олса шунда айтади: Россиядан рубль,
+  /// Кореядан доллар. Илгари ҳаммаси «сўм» деб ёзиларди ва
+  /// ҳисоботда 500 (доллар) билан 5 000 000 (сўм) бир устунга
+  /// қўшилиб кетарди.
+  chetElValyuta String?
+
+  /// Ҳисобот учун СЎМГА келтирилган қиймат.
+  ///
+  /// Сақлаш пайтида ҳисобланади ва ўшанда қотиб қолади: акс
+  /// ҳолда курс ўзгарган куни ўтган ойги ҳужжатдаги рақам ҳам
+  /// ўзгариб кетарди ва иккита ҳужжат бир-бирига тўғри
+  /// келмасди.
+  chetElOylikPulSom BigInt?
+
+  /// Қайси шаҳарларда — «давлат|шаҳар» кўринишида
+  chetElShaharlari   String[]
+  /// «Бошқа давлат» танланганда — шаҳар номи
+  chetElBoshqaShahar String?
 
   // ── III. DAROMAD ──
   oylikDaromad         BigInt?
@@ -315,7 +348,14 @@ model Household {
   parvarishIzoh     String?
   /// Parvarishga muhtoj shaxslar - nogironlik bilan bir xil shakl
   parvarishShaxslar Json?
-  boshqaMuhtojlar   String?
+
+  /// Ёлғиз яшовчи кексалар — ким экани.
+  ///
+  /// Ногиронлик ва парвариш каби: «ҳа, бор» деган белгидан
+  /// «Инсон» маркази ҳеч кимни топа олмайди. Исм ва оиладаги
+  /// ўрни ёзилса, рўйхат тўғридан-тўғри ишга киради.
+  yolgizKeksaShaxslar Json?
+  boshqaMuhtojlar     String?
 
   // ── VIII. HUJJATLASHTIRISH ──
   hujjatlarToliq  Boolean @default(true)
@@ -341,7 +381,16 @@ model Household {
   chorvaBor     Boolean  @default(false)
   /// 'Йирик шохли', 'Майда шохли', 'Парранда' - bir nechtasi
   chorvaTurlari String[]
-  chorvachilik  String?
+
+  /// Чорва БОШ сони — тур бўйича.
+  ///
+  /// «Чорваси бор» деган белгидан режа чиқмайди: 2 та товуқ ҳам,
+  /// 40 та қорамол ҳам бир хил кўринади. Субсидия ва ем-хашак
+  /// ёрдами эса айнан бош сонига қараб берилади.
+  yirikShoxliSoni Int?
+  maydaShoxliSoni Int?
+  parrandaSoni    Int?
+  chorvachilik    String?
 
   hunarmandBor     Boolean  @default(false)
   /// Tayyor variantlar ro'yxatidan tanlanadi
@@ -354,7 +403,37 @@ model Household {
   ijaraYer         Boolean  @default(false)
   ijaraYerMaydoni  Float?
 
-  // ── X. XULOSA ──
+  // ── X. PASSIV DAROMAD ──
+
+  /// Оила пассив даромадга тайёрми.
+  ///
+  /// Иш ўрни ва тадбиркорликдан ФАРҚЛИ учинчи йўл. Ёши катта,
+  /// соғлиғи заиф ёки бола парвариши билан банд аъзони ишга
+  /// жойлаштириб бўлмайди — лекин мулкини ишлатиш мумкин.
+  passivDaromadIstagi  Boolean  @default(false)
+  passivDaromadTurlari String[]
+  /// «Бошқа» танланганда ёки қўшимча изоҳ
+  passivDaromadIzohi   String?
+
+  // ── XI. MAHALLA INFRATUZILMASI ──
+
+  /// Маҳалладаги инфратузилма муаммолари.
+  ///
+  /// Анкетанинг қолган ҳамма бўлими ХОНАДОН ҳақида. Аммо оилани
+  /// камбағалликдан чиқаришга тўсқинлик қиладиган нарса кўпинча
+  /// хонадонда эмас, КЎЧАДА туради: йўл йўқ — маҳсулот бозорга
+  /// чиқмайди; боғча йўқ — аёл ишга чиқолмайди; интернет йўқ —
+  /// масофадан ишлаш мумкин эмас.
+  ///
+  /// 40 000 хонадондан йиғилганда бу туман учун тайёр
+  /// инвестиция режаси бўлади.
+  infratuzilmaMuammolari String[]
+  /// «Бошқа» танланганда — қайси муаммо
+  infratuzilmaBoshqa     String?
+  /// Фуқаронинг ўз сўзи билан изоҳ
+  infratuzilmaIzohi      String?
+
+  // ── XII. XULOSA ──
   umumiyXulosa String?
 
   /// Tayyorlangan tavsiya - JSON matn sifatida:

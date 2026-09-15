@@ -408,6 +408,9 @@ function sonlar(h: XatlovHolati): XatlovRaqamlari {
   return {
     jamiAzo: s(h.jamiAzo),
     bolalarSoni: s(h.bolalarSoni),
+    bolalar0_3Yosh: s(h.bolalar0_3Yosh),
+    bolalar3_17Yosh: s(h.bolalar3_17Yosh),
+    bolalar18Yoshdan: s(h.bolalar18Yoshdan),
     mehnatgaLayoqatli: s(h.mehnatgaLayoqatli),
     ishlaydiganlar: s(h.ishlaydiganlar),
     davlatKorxonada: s(h.davlatKorxonada),
@@ -500,6 +503,9 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
     ['maktabYoshdagi', 'Мактаб ёшидаги болалар сонини киритинг (бўлмаса 0)'],
     ['maktabQamrovda', 'Мактабга қатнайдиганлар сонини киритинг (бўлмаса 0)'],
     ['oylikDaromad', 'Оиланинг ойлик даромадини киритинг (даромади бўлмаса 0)'],
+    ['bolalar0_3Yosh', '0—3 ёшдаги болалар сонини киритинг (бўлмаса 0)'],
+    ['bolalar3_17Yosh', '3—17 ёшдаги болалар сонини киритинг (бўлмаса 0)'],
+    ['bolalar18Yoshdan', '18 ёшдан катта фарзандлар сонини киритинг (бўлмаса 0)'],
   ];
 
   if (h.jamiAzo === '' || h.jamiAzo < 1) {
@@ -545,10 +551,57 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
     ['hunarmandBor', 'Ҳунармандчилик борлигини сўранг'],
     ['issiqxonaTalabi', 'Иссиқхонага талабни сўранг'],
     ['ijaraYer', 'Ижара ер борлигини сўранг'],
+    ['passivDaromadIstagi', 'Пассив даромад истагини сўранг'],
   ];
 
   for (const [kalit, xabar] of haYoq) {
     if (h[kalit] === null) xt[kalit] = xabar;
+  }
+
+  /*
+   * ── «БОШҚА» ТАНЛАНСА, НИМАСИ ЁЗИЛСИН ──
+   *
+   * «Бошқа: 47 хонадон» деган банддан ҳеч қандай қарор
+   * чиқмайди. Маблағ йўналиши туман бюджет режасига
+   * тўғридан-тўғри киради, шунинг учун у аниқ бўлиши шарт.
+   */
+  if (h.mablagYonalishi.includes('Boshqa') && h.mablagYonalishiBoshqa.trim().length < 3) {
+    xt.mablagYonalishiBoshqa = 'Маблағ қайси йўналишга сарфланишини ёзинг';
+  }
+  if (h.infratuzilmaMuammolari.includes('Boshqa') && h.infratuzilmaBoshqa.trim().length < 3) {
+    xt.infratuzilmaBoshqa = 'Қайси муаммо эканини ёзинг';
+  }
+
+  /*
+   * ── ПАССИВ ДАРОМАД ──
+   * «Ҳа» босилса, қайси йўл экани кўрсатилиши керак — акс
+   * ҳолда «истайди» деган белгидан кейин ҳеч ким ҳеч нима
+   * қила олмайди.
+   */
+  if (h.passivDaromadIstagi) {
+    if (h.passivDaromadTurlari.length === 0) {
+      xt.passivDaromadTurlari = 'Камида битта йўлни белгиланг';
+    }
+    if (h.passivDaromadTurlari.includes('Boshqa') && h.passivDaromadIzohi.trim().length < 3) {
+      xt.passivDaromadIzohi = '«Бошқа» танланди — изоҳда нимани назарда тутганини ёзинг';
+    }
+  }
+
+  /*
+   * ── ЧОРВА БОШ СОНИ ──
+   * Тур белгиланди-ю сони ёзилмаса, субсидия ҳисоби чиқмайди.
+   */
+  if (h.chorvaBor) {
+    const chorva: [string, keyof XatlovHolati, string][] = [
+      ['Yirik shoxli', 'yirikShoxliSoni', 'Йирик шохли бош сонини киритинг'],
+      ['Mayda shoxli', 'maydaShoxliSoni', 'Майда шохли бош сонини киритинг'],
+      ['Parranda', 'parrandaSoni', 'Парранда бош сонини киритинг'],
+    ];
+    for (const [tur, kalit, xabar] of chorva) {
+      if (h.chorvaTurlari.includes(tur) && (h[kalit] === '' || Number(h[kalit]) < 1)) {
+        xt[kalit] = xabar;
+      }
+    }
   }
 
   /*
@@ -571,6 +624,9 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
     }
     if (h.chetElOylikPul === '') {
       xt.chetElOylikPul = 'Ойига юборадиган пулни киритинг (юбормаса 0 ёзинг)';
+    }
+    if (!h.chetElValyuta) {
+      xt.chetElValyuta = 'Қайси валютада эканини белгиланг';
     }
   }
 

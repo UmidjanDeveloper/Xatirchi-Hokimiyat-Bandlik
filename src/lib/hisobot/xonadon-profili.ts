@@ -27,6 +27,8 @@ import { prisma } from '@/lib/prisma';
 import {
   CHET_EL_DAVLATI,
   CHORVA_TURI,
+  INFRATUZILMA_MUAMMOSI,
+  PASSIV_DAROMAD_TURI,
   DAROMAD_MANBAI,
   GAZ_TURI,
   HUNAR_TURI,
@@ -35,6 +37,7 @@ import {
   MABLAG_YONALISHI,
   MOLIYA_TURI,
   UY_HOLATI,
+  kirillcha,
 } from '@/lib/constants';
 import type { Bolim, Jadval, Qator } from './turlar';
 import { foiz, foizi, maydon, pul, raqamga, son } from './format';
@@ -198,6 +201,13 @@ export async function xonadonBolimlari(
     chetElJamlar,
     chetElDavlatlari,
     chetElBoshqaDavlatlar,
+    chetElShaharXom,
+    // Passiv daromad va infratuzilma
+    passivDaromad,
+    passivTurlari,
+    infratuzilma,
+    infratuzilmaXonadon,
+    chorvaBosh,
   ] = await Promise.all([
     prisma.household.aggregate({
       where: filtr,
@@ -278,9 +288,9 @@ export async function xonadonBolimlari(
     prisma.household.count({ where: { ...filtr, chetElMehnati: true } }),
     prisma.household.aggregate({
       where: { ...filtr, chetElMehnati: true },
-      _sum: { chetElIshchilar: true, chetElOylikPul: true },
-      _avg: { chetElOylikPul: true },
-      _count: { chetElOylikPul: true },
+      _sum: { chetElIshchilar: true, chetElOylikPulSom: true },
+      _avg: { chetElOylikPulSom: true },
+      _count: { chetElOylikPulSom: true },
     }),
     massivSanoq({ ...filtr, chetElMehnati: true }, 'chetElDavlatlari', CHET_EL_DAVLATI),
     /*
@@ -293,6 +303,32 @@ export async function xonadonBolimlari(
       by: ['chetElBoshqaDavlat'],
       where: { ...filtr, chetElMehnati: true, chetElBoshqaDavlat: { not: null } },
       _count: true,
+    }),
+
+    /*
+     * ШАҲАРЛАР — эркин рўйхат.
+     *
+     * Қиймат «давлат|шаҳар» кўринишида сақланади, шунинг учун
+     * каталог бўйича санаб бўлмайди: хом рўйхат олиниб, шу
+     * ерда гуруҳланади.
+     */
+    prisma.household.findMany({
+      where: { ...filtr, chetElMehnati: true, chetElShaharlari: { isEmpty: false } },
+      select: { chetElShaharlari: true },
+    }),
+
+    // Пассив даромад
+    prisma.household.count({ where: { ...filtr, passivDaromadIstagi: true } }),
+    massivSanoq({ ...filtr, passivDaromadIstagi: true }, 'passivDaromadTurlari', PASSIV_DAROMAD_TURI),
+
+    // Маҳалла инфратузилмаси
+    massivSanoq(filtr, 'infratuzilmaMuammolari', INFRATUZILMA_MUAMMOSI),
+    prisma.household.count({ where: { ...filtr, infratuzilmaMuammolari: { isEmpty: false } } }),
+
+    // Чорва бош сони
+    prisma.household.aggregate({
+      where: { ...filtr, chorvaBor: true },
+      _sum: { yirikShoxliSoni: true, maydaShoxliSoni: true, parrandaSoni: true },
     }),
   ]);
 
@@ -482,9 +518,18 @@ export async function xonadonBolimlari(
    */
   if (chetElXonadon > 0) {
     const ishchilar = chetElJamlar._sum.chetElIshchilar ?? 0;
-    const jamiPul = raqamga(chetElJamlar._sum.chetElOylikPul as unknown as bigint | null);
-    const ortachaPul = raqamga(chetElJamlar._avg.chetElOylikPul as unknown as bigint | null);
-    const pulKorsatgan = chetElJamlar._count.chetElOylikPul ?? 0;
+    /*
+     * ПУЛ СЎМДА ҲИСОБЛАНАДИ.
+     *
+     * Илгари `chetElOylikPul` тўғридан-тўғри қўшиларди — ҳолбуки
+     * унда доллар ҳам, сўм ҳам бор. 500 (доллар) билан
+     * 5 000 000 (сўм) бир устунга қўшилса, натижа маъносиз
+     * бўлади. Энди сақлаш пайтида сўмга келтирилган устун
+     * ўқилади.
+     */
+    const jamiPul = raqamga(chetElJamlar._sum.chetElOylikPulSom as unknown as bigint | null);
+    const ortachaPul = raqamga(chetElJamlar._avg.chetElOylikPulSom as unknown as bigint | null);
+    const pulKorsatgan = chetElJamlar._count.chetElOylikPulSom ?? 0;
 
     const jadvallar: Jadval[] = [];
 
@@ -502,6 +547,29 @@ export async function xonadonBolimlari(
       .map((g) => ({ nomi: (g.chetElBoshqaDavlat ?? '').trim(), soni: g._count }))
       .filter((x) => x.nomi.length > 0)
       .sort((a, b) => b.soni - a.soni);
+
+    /* Шаҳарлар кесими — «давлат|шаҳар» қийматидан гуруҳланади */
+    const shaharXarita = new Map<string, number>();
+    for (const r of chetElShaharXom) {
+      for (const sh of r.chetElShaharlari) {
+        const [davlat, nomi] = sh.split('|');
+        if (!nomi) continue;
+        const kalit = `${kirillcha(CHET_EL_DAVLATI, davlat)} — ${nomi}`;
+        shaharXarita.set(kalit, (shaharXarita.get(kalit) ?? 0) + 1);
+      }
+    }
+    const shaharlar = [...shaharXarita.entries()]
+      .map(([nomi, soni]) => ({ nomi, soni }))
+      .sort((a, b) => b.soni - a.soni);
+
+    const shaharJadvali = sanoqJadvali(
+      'Қайси шаҳарларда',
+      'Консуллик, меҳнат миграцияси агентлиги ва диаспора билан иш айнан ШАҲАР даражасида юритилади',
+      'Давлат ва шаҳар',
+      shaharlar,
+      chetElXonadon
+    );
+    if (shaharJadvali) jadvallar.push(shaharJadvali);
 
     if (boshqalar.length) {
       jadvallar.push({
@@ -556,6 +624,117 @@ export async function xonadonBolimlari(
               sarlavha: 'Давлатлар кесимида — хонадон сони',
               nomlar: chetElDavlatlari.map((x) => x.nomi),
               qatorlar: [{ nomi: 'Хонадон', qiymatlar: chetElDavlatlari.map((x) => x.soni) }],
+            },
+          ]
+        : undefined,
+    });
+  }
+
+  const yirik = chorvaBosh._sum.yirikShoxliSoni ?? 0;
+  const mayda = chorvaBosh._sum.maydaShoxliSoni ?? 0;
+  const parranda = chorvaBosh._sum.parrandaSoni ?? 0;
+
+  /* ── Passiv daromad ───────────────────────────────────────── */
+  /*
+   * Нега алоҳида бўлим.
+   *
+   * Иш ўрни ва тадбиркорликдан ФАРҚЛИ учинчи йўл. Оилада ёши
+   * катта, соғлиғи заиф ёки бола парвариши билан банд аъзо
+   * бўлади — уни ишга жойлаштириб бўлмайди. Ҳисоботда у фақат
+   * «ишсиз, лекин имконсиз» бўлиб турарди ва ҳеч қандай чорага
+   * тушмасди. Пассив даромад ўшаларга тегишли рақам.
+   */
+  if (passivDaromad > 0) {
+    const jadval = sanoqJadvali(
+      'Қайси йўл билан',
+      'Оилада мавжуд имконият бўйича — битта оила бир нечтасини кўрсатиши мумкин',
+      'Йўналиш',
+      passivTurlari,
+      passivDaromad
+    );
+
+    bolimlar.push({
+      kalit: 'passiv-daromad',
+      sarlavha: 'Пассив даромад имконияти',
+      varaqNomi: 'Пассив даромад',
+      kirish:
+        'Меҳнатсиз, мавжуд мулк ёки жамғарма ҳисобига даромад. Ишга жойлаштириб бўлмайдиган аъзоси бор оила учун кўпинча ягона реал йўл — шунинг учун бу рақам бандлик рақамидан алоҳида туради.',
+      korsatkichlar: [
+        {
+          nomi: 'Пассив даромадга тайёр хонадон',
+          qiymat: son(passivDaromad),
+          izoh: `хатловдан ўтганларнинг ${foiz(foizi(passivDaromad, jamiXonadon))}и`,
+          yonalish: 'kop-yaxshi',
+        },
+      ],
+      jadvallar: jadval ? [jadval] : undefined,
+      diagrammalar: passivTurlari.length
+        ? [
+            {
+              turi: 'gorizontal',
+              sarlavha: 'Пассив даромад йўналишлари — хонадон сони',
+              nomlar: passivTurlari.map((x) => x.nomi),
+              qatorlar: [{ nomi: 'Хонадон', qiymatlar: passivTurlari.map((x) => x.soni) }],
+            },
+          ]
+        : undefined,
+    });
+  }
+
+  /* ── Mahalla infratuzilmasi ───────────────────────────────── */
+  /*
+   * Нега бу бўлим ҳисоботнинг ЭНГ ҚИММАТЛИ қисми бўлиши мумкин.
+   *
+   * Қолган ҳамма бўлим ХОНАДОН ҳақида: шу оилада газ борми, шу
+   * оиланинг даромади қанча. Аммо оилани камбағалликдан
+   * чиқаришга тўсқинлик қиладиган нарса кўпинча хонадонда эмас,
+   * КЎЧАДА туради: йўл йўқ — маҳсулот бозорга чиқмайди; боғча
+   * йўқ — аёл ишга чиқолмайди.
+   *
+   * 40 000 хонадондан йиғилганда бу туман учун тайёр инвестиция
+   * режаси: қайси маҳаллада нечта оила айнан шуни кўрсатган.
+   */
+  if (infratuzilmaXonadon > 0) {
+    const jadval = sanoqJadvali(
+      'Қайси инфратузилма етишмайди',
+      'Битта хонадон бир нечта муаммони кўрсатиши мумкин, шунинг учун устунлар йиғиндиси хонадон сонидан кўп бўлади',
+      'Инфратузилма',
+      infratuzilma,
+      infratuzilmaXonadon
+    );
+
+    bolimlar.push({
+      kalit: 'infratuzilma',
+      sarlavha: 'Маҳалладаги инфратузилма муаммолари',
+      varaqNomi: 'Инфратузилма',
+      yangiSahifa: true,
+      kirish:
+        'Бу бўлим хонадон эмас, КЎЧА ҳақида. Фуқаролар ўзи кўрсатган муаммолар: йўл, сув, газ, боғча, интернет. Рўйхат туман инвестиция режасининг асоси бўлади — қайси маҳаллада нечта оила айнан шуни сўраган.',
+      korsatkichlar: [
+        {
+          nomi: 'Муаммо кўрсатган хонадон',
+          qiymat: son(infratuzilmaXonadon),
+          izoh: `хатловдан ўтганларнинг ${foiz(foizi(infratuzilmaXonadon, jamiXonadon))}и`,
+          yonalish: 'kam-yaxshi',
+        },
+        ...(infratuzilma.length
+          ? [
+              {
+                nomi: 'Энг кўп кўрсатилгани',
+                qiymat: infratuzilma[0].nomi,
+                izoh: `${son(infratuzilma[0].soni)} хонадон`,
+              },
+            ]
+          : []),
+      ],
+      jadvallar: jadval ? [jadval] : undefined,
+      diagrammalar: infratuzilma.length
+        ? [
+            {
+              turi: 'gorizontal',
+              sarlavha: 'Инфратузилма муаммолари — хонадон сони',
+              nomlar: infratuzilma.map((x) => x.nomi),
+              qatorlar: [{ nomi: 'Хонадон', qiymatlar: infratuzilma.map((x) => x.soni) }],
             },
           ]
         : undefined,
@@ -872,6 +1051,21 @@ export async function xonadonBolimlari(
       korsatkichlar: [
         ...(ekin > 0 ? [{ nomi: 'Жами экин майдони', qiymat: maydon(ekin), izoh: 'хатловдан ўтган хонадонларда' } as const] : []),
         { nomi: 'Чорва боқадиган хонадон', qiymat: son(chorvaBor), yonalish: 'kop-yaxshi' },
+        /*
+         * БОШ СОНИ — субсидия ва ем-хашак режасининг асоси.
+         * «Чорваси бор: 143 хонадон» деган рақамдан режа
+         * чиқмайди: 2 та товуқ ҳам, 40 та қорамол ҳам шу
+         * рақамга киради.
+         */
+        ...(yirik > 0
+          ? [{ nomi: 'Йирик шохли — жами', qiymat: `${son(yirik)} бош` } as const]
+          : []),
+        ...(mayda > 0
+          ? [{ nomi: 'Майда шохли — жами', qiymat: `${son(mayda)} бош` } as const]
+          : []),
+        ...(parranda > 0
+          ? [{ nomi: 'Парранда — жами', qiymat: `${son(parranda)} бош` } as const]
+          : []),
         { nomi: 'Ҳунарманд хонадон', qiymat: son(hunarmandBor), yonalish: 'kop-yaxshi' },
         { nomi: 'Иссиқхона талабгори', qiymat: son(issiqxona), yonalish: 'kop-yaxshi' },
       ],

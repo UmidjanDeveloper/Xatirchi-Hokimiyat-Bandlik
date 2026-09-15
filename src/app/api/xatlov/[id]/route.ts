@@ -39,6 +39,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     talabQilinganMablag: xonadon.talabQilinganMablag?.toString() ?? null,
     oylikDaromad: xonadon.oylikDaromad?.toString() ?? null,
     chetElOylikPul: xonadon.chetElOylikPul?.toString() ?? null,
+    chetElOylikPulSom: xonadon.chetElOylikPulSom?.toString() ?? null,
     ishsizlar: xonadon.ishsizlar.map((p) => ({
       ...p,
       kutilayotganMaosh: p.kutilayotganMaosh?.toString() ?? null,

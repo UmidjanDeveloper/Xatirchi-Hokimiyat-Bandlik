@@ -38,6 +38,9 @@ import {
   OILAVIY_HOLAT,
   BANDLIK_TAKLIFI,
   CHET_EL_DAVLATI,
+  INFRATUZILMA_MUAMMOSI,
+  PASSIV_DAROMAD_TURI,
+  VALYUTA,
   UY_HOLATI,
   qiymatlar,
 } from './constants';
@@ -151,6 +154,14 @@ export const XonadonSxemasi = z.object({
 
   jamiAzo: z.coerce.number().int().min(1).max(50),
   bolalarSoni: z.coerce.number().int().min(0).max(30).default(0),
+  /*
+   * Ёш гуруҳлари. «12 та бола» деган рақамдан чора чиқмайди:
+   * 0-3 ёш онани уйда ушлаб туради, 3-17 боғча ва мактаб
+   * масаласи, 18 дан катта фарзанд эса аслида ИШСИЗ ФУҚАРО.
+   */
+  bolalar0_3Yosh: son(20),
+  bolalar3_17Yosh: son(30),
+  bolalar18Yoshdan: son(30),
 
   // I. Mehnat va bandlik
   mehnatgaLayoqatli: son(40),
@@ -172,6 +183,7 @@ export const XonadonSxemasi = z.object({
   moliyaTuri: koptanlov(MOLIYA_TURI),
   talabQilinganMablag: summa,
   mablagYonalishi: koptanlov(MABLAG_YONALISHI),
+  mablagYonalishiBoshqa: matn(200),
 
   // II-B. Chet elda mehnat migratsiyasi
   chetElMehnati: z.boolean().default(false),
@@ -179,6 +191,14 @@ export const XonadonSxemasi = z.object({
   chetElDavlatlari: koptanlov(CHET_EL_DAVLATI),
   chetElBoshqaDavlat: matn(100),
   chetElOylikPul: summa,
+  chetElValyuta: tanlov(VALYUTA),
+  /*
+   * Шаҳар қиймати «давлат|шаҳар» кўринишида: битта «Бошқа
+   * шаҳар» ўн давлатда учрайди ва улар аралашиб кетмаслиги
+   * керак. Шунинг учун энумга боғланмайди.
+   */
+  chetElShaharlari: z.array(z.string().max(120)).max(30).default([]),
+  chetElBoshqaShahar: matn(100),
 
   // III. Daromad
   oylikDaromad: summa,
@@ -219,6 +239,7 @@ export const XonadonSxemasi = z.object({
   nogironlikIzoh: matn(500),
   nogironShaxslar: z.array(ShaxsSxemasi).max(15).default([]),
   yolgizKeksa: z.boolean().default(false),
+  yolgizKeksaShaxslar: z.array(ShaxsSxemasi).max(15).default([]),
   parvarishgaMuhtoj: z.boolean().default(false),
   parvarishIzoh: matn(500),
   parvarishShaxslar: z.array(ShaxsSxemasi).max(15).default([]),
@@ -234,6 +255,14 @@ export const XonadonSxemasi = z.object({
   ekinMaydoni: olchov,
   chorvaBor: z.boolean().default(false),
   chorvaTurlari: koptanlov(CHORVA_TURI),
+  /*
+   * Бош сони. «Чорваси бор» белгисидан режа чиқмайди: 2 та товуқ
+   * ҳам, 40 та қорамол ҳам бир хил кўринади — субсидия ва
+   * ем-хашак ёрдами эса айнан бош сонига қараб берилади.
+   */
+  yirikShoxliSoni: son(500),
+  maydaShoxliSoni: son(2000),
+  parrandaSoni: son(10000),
   hunarmandBor: z.boolean().default(false),
   hunarTurlari: koptanlov(HUNAR_TURI),
   hunarmandchilik: matn(500),
@@ -243,7 +272,17 @@ export const XonadonSxemasi = z.object({
   ijaraYer: z.boolean().default(false),
   ijaraYerMaydoni: olchov,
 
-  // X. Xulosa
+  // X. Passiv daromad
+  passivDaromadIstagi: z.boolean().default(false),
+  passivDaromadTurlari: koptanlov(PASSIV_DAROMAD_TURI),
+  passivDaromadIzohi: matn(500),
+
+  // XI. Mahalla infratuzilmasi
+  infratuzilmaMuammolari: koptanlov(INFRATUZILMA_MUAMMOSI),
+  infratuzilmaBoshqa: matn(200),
+  infratuzilmaIzohi: matn(1000),
+
+  // XII. Xulosa
   umumiyXulosa: matn(2000),
 
   // Rozilik va imzo

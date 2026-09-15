@@ -8,6 +8,7 @@ import { QoralamaSxemasi, YuborishSxemasi } from '@/lib/xatlov-sxema';
 import { takrorKaliti, yuborishgaTayyormi } from '@/lib/xatlov-tekshiruvi';
 import { yiliniAniqla } from '@/lib/xatlov-sxema';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
+import { somga } from '@/lib/constants';
 
 /** Ro'yxat so'rovi */
 const Sorov = z.object({
@@ -183,9 +184,29 @@ export async function POST(request: Request) {
     );
   }
 
+  /*
+   * ── ЧЕТ ЭЛ ПУЛИ СЎМГА КЕЛТИРИЛАДИ ──
+   *
+   * Ходим қайси валютада айтилган бўлса шуни ёзади: Россиядан
+   * рубль эмас, кўпинча доллар; Польшадан евро. Ҳисоботда эса
+   * улар бир устунга қўшилади — 500 (доллар) билан 5 000 000
+   * (сўм) аралашса, «ойига келадиган пул» рақами маъносиз
+   * бўлиб қолади.
+   *
+   * Курс СҲУ ЕРДА, сақлаш пайтида қўлланади ва натижа ёзиб
+   * қўйилади. Ҳисоблашни ҳисобот пайтига қолдирсак, курс
+   * ўзгарган куни ўтган ойги ҳужжатдаги рақам ҳам ўзгариб
+   * кетар ва иккита ҳужжат бир-бирига тўғри келмасди.
+   */
+  const chetElSom =
+    xonadon.chetElMehnati && xonadon.chetElOylikPul != null
+      ? somga(xonadon.chetElOylikPul, xonadon.chetElValyuta ?? 'UZS')
+      : null;
+
   const malumot = {
     ...xonadon,
     ...(tugilganYili == null ? {} : { tugilganYili }),
+    chetElOylikPulSom: chetElSom,
 
     /*
      * QORALAMA yarim to'ldirilgan bo'lishi MUMKIN - butun mazmuni

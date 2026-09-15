@@ -57,6 +57,7 @@ function Maslahat({
   birlik: string;
 }) {
   const t = useChartTheme();
+  const { t: tr } = useAlifbo();
   if (!active || !payload?.length) return null;
 
   return (
@@ -64,7 +65,8 @@ function Maslahat({
       className="rounded-md border px-3 py-2 text-xs shadow-md"
       style={{ background: t.tooltipBg, borderColor: t.tooltipBorder }}
     >
-      {label && <p className="mb-1 font-semibold text-ink">{label}</p>}
+      {/* Ой номи бу ерда ҳам ўгирилади — XAxis билан бир хил бўлсин */}
+      {label && <p className="mb-1 font-semibold text-ink">{tr(label)}</p>}
       {payload.map((q, i) => (
         <p key={i} className="flex items-center gap-2 text-ink-muted">
           <span
@@ -135,6 +137,14 @@ export function DinamikaChizigi({
           tick={{ fill: c.axisText, fontSize: 11 }}
           tickLine={false}
           axisLine={{ stroke: c.axisLine }}
+          /*
+            Ой номлари СЕРВЕРДА кириллда ҳосил бўлади («Окт 25»)
+            ва бу ерда алифбога ўгирилиши керак. Илгари улар
+            тўғридан-тўғри чизиларди: ходим лотинга ўтганда
+            бутун саҳифа лотин бўлар, фақат диаграмма ўқида
+            кирилл ойлар қолиб кетарди.
+          */
+          tickFormatter={(v: string) => tr(v)}
         />
         <YAxis
           tick={{ fill: c.axisText, fontSize: 11 }}
