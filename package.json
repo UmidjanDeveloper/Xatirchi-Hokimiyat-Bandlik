@@ -5,7 +5,7 @@
   "description": "Xatirchi tumani hokimiyati - aholi bandligi va kambag'allikni qisqartirish platformasi",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -18,7 +18,7 @@
     "tekshir": "tsx scripts/tekshir.ts",
     "ai-tekshir": "tsx scripts/ai-tekshir.ts",
     "sinov": "tsx scripts/alifbo-sinov.ts && tsx scripts/sana-sinov.ts && tsx scripts/moslik-sinov.ts && tsx scripts/tekshiruv-sinov.ts && tsx scripts/xulosa-sinov.ts && tsx scripts/pdf-sinov.ts && tsx scripts/navbat-sinov.ts && tsx scripts/dinamika-sinov.ts && tsx scripts/it-vaucher-sinov.ts && tsx scripts/tarix-sinov.ts && tsx scripts/dublikat-sinov.ts && tsx scripts/xabarnoma-sinov.ts",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+    "vercel-build": "npm run build"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

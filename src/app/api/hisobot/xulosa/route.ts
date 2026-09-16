@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { talabQil } from '@/lib/api-auth';
 import { aiXulosaSoraydi } from '@/lib/auth';
 import { hisobotOl } from '@/lib/hisobot/malumot';
+import { bazaXatosi } from '@/lib/baza-xatosi';
 import type { Qamrov } from '@/lib/hisobot/turlar';
 
 /**
@@ -68,22 +69,42 @@ export async function POST(request: Request) {
     qamrov = { turi: 'mahalla', mahallaId, nomiKirill: m.nomiKirill };
   }
 
-  const hisobot = await hisobotOl({
-    qamrov,
-    tayyorlagan: q.sessiya.fullName,
-    lotin: d.lotin,
-    /*
-     * Маҳалла ходими ва бандлик мутахассиси учун ФАҚАТ ҚОИДА.
-     * Улар кунда ўнлаб саҳифа очади ва ҳар бирида модел
-     * чақирилса, бюджет бир ҳафтада тугарди. Хулоса барибир
-     * чиқади — фақат белгиланган чегаралар бўйича.
-     */
-    aiXulosa: aiXulosaSoraydi(q.sessiya.rol),
-  });
+  /*
+   * Хато ЖИМ ЎТМАЙДИ.
+   *
+   * Илгари бу ерда `try` йўқ эди: база хато берса, Next.js бўш
+   * танали 500 қайтарарди ва экранда «Хулоса олинмади» деб
+   * турарди — сабабсиз. Ҳақиқий сабаб («базада устун йўқ»)
+   * фақат сервер журналида қоларди, ходим эса уни кўра олмасди.
+   */
+  try {
+    const hisobot = await hisobotOl({
+      qamrov,
+      tayyorlagan: q.sessiya.fullName,
+      lotin: d.lotin,
+      /*
+       * Маҳалла ходими ва бандлик мутахассиси учун ФАҚАТ ҚОИДА.
+       * Улар кунда ўнлаб саҳифа очади ва ҳар бирида модел
+       * чақирилса, бюджет бир ҳафтада тугарди. Хулоса барибир
+       * чиқади — фақат белгиланган чегаралар бўйича.
+       */
+      aiXulosa: aiXulosaSoraydi(q.sessiya.rol),
+    });
 
-  return NextResponse.json({
-    xulosa: hisobot.xulosa,
-    qamrovNomi: hisobot.qamrovNomi,
-    asos: hisobot.asos,
-  });
+    return NextResponse.json({
+      xulosa: hisobot.xulosa,
+      qamrovNomi: hisobot.qamrovNomi,
+      asos: hisobot.asos,
+    });
+  } catch (e) {
+    console.error('Хулоса тайёрлашда хато:', e);
+    return NextResponse.json(
+      {
+        xabar:
+          bazaXatosi(e) ??
+          'Хулоса тайёрлаб бўлмади. Қайта уриниб кўринг; такрорланса — администраторга айтинг.',
+      },
+      { status: 500 }
+    );
+  }
 }

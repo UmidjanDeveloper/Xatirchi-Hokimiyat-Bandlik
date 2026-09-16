@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { hisobotOl } from '@/lib/hisobot/malumot';
+import { bazaXatosi } from '@/lib/baza-xatosi';
 import type { Qamrov } from '@/lib/hisobot/turlar';
 
 /**
@@ -88,23 +89,42 @@ export async function POST(request: Request) {
     qamrov = { turi: 'mahalla', mahallaId, nomiKirill: m.nomiKirill };
   }
 
-  const hisobot = await hisobotOl({
-    qamrov,
-    tayyorlagan: q.sessiya.fullName,
-    lotin: d.lotin,
-    aiXulosa: d.ai,
-  });
-
   /*
-   * Ҳисобот олиниши журналга ёзилади. Ҳисобот йиғилишда
-   * тарқатилади ва кейин «бу рақамлар қайси кунга» деган савол
-   * чиқади — жавоб журналда туради.
+   * Хато ЖИМ ЎТМАЙДИ — сабаби экранда ёзилади.
+   *
+   * Илгари бу ерда `try` йўқ эди ва база хато берса, ходим
+   * фақат «Ҳисобот маълумоти олинмади» деган қизил ёзувни
+   * кўрарди. Сабаб сервер журналида қолиб кетарди.
    */
-  await jurnal(q.sessiya.userId, 'KORISH', {
-    obyektTuri: 'Hisobot',
-    obyektId: mahallaId ?? 'tuman',
-    izoh: `ҳисобот олинди: ${hisobot.qamrovNomi} · ${hisobot.bolimlar.length} бўлим · хулоса манбаи: ${hisobot.xulosa.manba}`,
-  });
+  try {
+    const hisobot = await hisobotOl({
+      qamrov,
+      tayyorlagan: q.sessiya.fullName,
+      lotin: d.lotin,
+      aiXulosa: d.ai,
+    });
 
-  return NextResponse.json(hisobot);
+    /*
+     * Ҳисобот олиниши журналга ёзилади. Ҳисобот йиғилишда
+     * тарқатилади ва кейин «бу рақамлар қайси кунга» деган савол
+     * чиқади — жавоб журналда туради.
+     */
+    await jurnal(q.sessiya.userId, 'KORISH', {
+      obyektTuri: 'Hisobot',
+      obyektId: mahallaId ?? 'tuman',
+      izoh: `ҳисобот олинди: ${hisobot.qamrovNomi} · ${hisobot.bolimlar.length} бўлим · хулоса манбаи: ${hisobot.xulosa.manba}`,
+    });
+
+    return NextResponse.json(hisobot);
+  } catch (e) {
+    console.error('Ҳисобот тайёрлашда хато:', e);
+    return NextResponse.json(
+      {
+        xabar:
+          bazaXatosi(e) ??
+          'Ҳисобот тайёрлаб бўлмади. Қайта уриниб кўринг; такрорланса — администраторга айтинг.',
+      },
+      { status: 500 }
+    );
+  }
 }

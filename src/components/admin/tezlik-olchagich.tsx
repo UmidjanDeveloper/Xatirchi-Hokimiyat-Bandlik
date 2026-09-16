@@ -24,6 +24,8 @@ interface Natija {
   sorovlar: { sanash: number; panel: number; panelXatosi: string | null };
   hajm: { xonadon: number; ishsiz: number; xodim: number };
   ulanish: { port: string | null; pulerdanmi: boolean; pgbouncer: boolean; chegara: string | null };
+  tuzilish: { joyidami: boolean; izoh: string | null };
+  migratsiya: { soni: number; oxirgisi: string | null };
   maslahatlar: string[];
 }
 
@@ -88,7 +90,7 @@ export function TezlikOlchagich() {
 
       {natija && (
         <div className="mt-4 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Olchov
               nomi={tr('Базага бориб-келиш')}
               qiymat={`${natija.baza.eng} ${tr('мс')}`}
@@ -100,6 +102,12 @@ export function TezlikOlchagich() {
               qiymat={`${natija.sorovlar.panel} ${tr('мс')}`}
               izoh={tr('ҳоким панели очилганда')}
               sinf={baho(natija.sorovlar.panel, 800, 2000)}
+            />
+            <Olchov
+              nomi={tr('База тузилиши')}
+              qiymat={natija.tuzilish.joyidami ? tr('мос') : tr('МОС ЭМАС')}
+              izoh={`${natija.migratsiya.soni} ${tr('миграция қўлланган')}`}
+              sinf={natija.tuzilish.joyidami ? 'text-ok' : 'text-danger'}
             />
             <Olchov
               nomi={tr('Уланиш')}
@@ -114,11 +122,17 @@ export function TezlikOlchagich() {
             {natija.hajm.ishsiz.toLocaleString('ru-RU')} {tr('ишсиз')},{' '}
             {natija.hajm.xodim.toLocaleString('ru-RU')} {tr('ходим')} ·{' '}
             {tr('уринишлар')}: {natija.baza.ping.join(', ')} {tr('мс')}
+            {natija.migratsiya.oxirgisi ? ` · ${tr('охиргиси')}: ${natija.migratsiya.oxirgisi}` : ''}
           </p>
 
           <div className="space-y-2">
             {natija.maslahatlar.map((m, i) => (
-              <p key={i} className="quti-ogoh text-xs leading-relaxed">
+              <p
+                key={i}
+                className={`text-xs leading-relaxed ${
+                  natija.tuzilish.joyidami || i > 0 ? 'quti-ogoh' : 'quti-xato'
+                }`}
+              >
                 {tr(m)}
               </p>
             ))}

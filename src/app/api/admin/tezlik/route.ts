@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { talabQil } from '@/lib/api-auth';
 import { prisma } from '@/lib/prisma';
 import { tahlilOl } from '@/lib/tahlil';
+import { tuzilishXatosimi } from '@/lib/baza-xatosi';
 
 /**
  * ============================================================
@@ -107,11 +108,63 @@ export async function GET() {
   const ulanish = ulanishHolati();
 
   /*
+   * ── БАЗА ТУЗИЛИШИ КОДГА МОС КЕЛАДИМИ ──
+   *
+   * 16-сентябрда ҳокимнинг панелида PDF ҳам, Excel ҳам, сунъий
+   * интеллект хулосаси ҳам ишламай қолди. Сабаби: янги код
+   * чиққан, аммо базага янги устун қўшилмаган — деплой пайтида
+   * миграция ишламаган.
+   *
+   * Буни билиш учун сервер журналини очиш керак эди. Энди эса
+   * администратор бир тугма босади.
+   *
+   * Текшириш усули оддий: код кутаётган ЭНГ ЯНГИ устунни
+   * сўраб кўрамиз. Йўқ бўлса — миграция қўлланмаган.
+   */
+  let tuzilish: { joyidami: boolean; izoh: string | null } = { joyidami: true, izoh: null };
+  try {
+    await prisma.household.aggregate({ _sum: { mehnatgaLayoqatsiz: true } });
+  } catch (e) {
+    if (tuzilishXatosimi(e)) {
+      tuzilish = {
+        joyidami: false,
+        izoh: 'Базада `Household.mehnatgaLayoqatsiz` устуни йўқ — деплой пайтида миграция ишламаган.',
+      };
+    } else {
+      throw e;
+    }
+  }
+
+  /* Қўлланган миграциялар сони — тахмин қилмасдан билиш учун */
+  let migratsiya: { soni: number; oxirgisi: string | null } = { soni: 0, oxirgisi: null };
+  try {
+    const qatorlar = await prisma.$queryRaw<{ migration_name: string }[]>`
+      SELECT migration_name FROM _prisma_migrations
+      WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
+      ORDER BY finished_at DESC
+    `;
+    migratsiya = { soni: qatorlar.length, oxirgisi: qatorlar[0]?.migration_name ?? null };
+  } catch {
+    /* Жадвал йўқ бўлса — база умуман тайёрланмаган */
+  }
+
+  /*
    * Хулоса — рақамга қараб АЙТИБ берилади. Администратор
    * миллисекундларни ўзи талқин қилиши шарт эмас.
    */
   const eng = Math.min(...ping);
   const maslahatlar: string[] = [];
+
+  /* Тузилиш хатоси ЭНГ ТЕПАДА туради — у сайтни ишдан чиқаради */
+  if (!tuzilish.joyidami) {
+    maslahatlar.push(
+      `${tuzilish.izoh} Шунинг учун PDF, Excel ва сунъий интеллект хулосаси ишламайди. ` +
+        'Тузатиш: Vercel да лойиҳани қайта деплой қилинг (Deployments → энг охиргиси → Redeploy) — ' +
+        'деплой пайтида миграция ўз-ўзидан қўлланади. Шошилинч бўлса, Supabase нинг SQL Editor ойнасида ' +
+        'қуйидагини бажаринг: ALTER TABLE "Household" ADD COLUMN IF NOT EXISTS "mehnatgaLayoqatsiz" INTEGER NOT NULL DEFAULT 0; ' +
+        'ALTER TABLE "HouseholdKesma" ADD COLUMN IF NOT EXISTS "mehnatgaLayoqatsiz" INTEGER NOT NULL DEFAULT 0;'
+    );
+  }
 
   if (!ulanish.pulerdanmi) {
     maslahatlar.push(
@@ -146,6 +199,8 @@ export async function GET() {
     sorovlar: { sanash: sanash.ms, panel: panel.ms, panelXatosi: panel.xato },
     hajm: { xonadon, ishsiz, xodim },
     ulanish,
+    tuzilish,
+    migratsiya,
     maslahatlar,
   });
 }
