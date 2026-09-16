@@ -138,19 +138,19 @@ export function DinamikaChizigi({
         <CartesianGrid stroke={c.axisLine} vertical={false} />
         <XAxis
           dataKey="yorliq"
-          tick={{ fill: c.axisText, fontSize: 11 }}
           tickLine={false}
           axisLine={{ stroke: c.axisLine }}
+          height={38}
           /*
-            Ой номлари СЕРВЕРДА кириллда ҳосил бўлади («Окт 25»)
-            ва бу ерда алифбога ўгирилиши керак. Илгари улар
+            Ой номлари СЕРВЕРДА кириллда ҳосил бўлади («Окт 2025»)
+            ва алифбога `OqBelgisi` ичида ўгирилади. Илгари улар
             тўғридан-тўғри чизиларди: ходим лотинга ўтганда
             бутун саҳифа лотин бўлар, фақат диаграмма ўқида
             кирилл ойлар қолиб кетарди.
           */
-          interval={davr === 'kun' ? 0 : 'preserveStartEnd'}
+          tick={<OqBelgisi rang={c.axisText} tr={tr} />}
+          interval={0}
           ticks={oqYorliqlari(dinamika, davr)}
-          tickFormatter={(v: string) => tr(v)}
         />
         <YAxis
           tick={{ fill: c.axisText, fontSize: 11 }}
@@ -211,6 +211,56 @@ function oqYorliqlari(dinamika: OylikNuqta[], davr: Davr): string[] | undefined 
     .map((n) => n.yorliq);
 }
 
+/**
+ * Ўқ ёрлиғи — ИККИ ҚАТОРДА.
+ *
+ * ── Нега керак бўлди ──
+ *
+ * Ёрлиқ бир қатор бўлганда «Окт 2025» тахминан 50px жой оларди,
+ * ўн икки ой учун эса ҳар бирига 35px тушади. Recharts
+ * устма-уст тушганини ўзи ташлаб кетади — ва айнан ЙИЛНИ
+ * кўтариб турган «Янв 2026» ни ташлади. Ўқда «Окт 2025, Дек,
+ * Фев…» қолиб, йил қаерда алмашгани умуман кўринмай қолди.
+ *
+ * Энди ой номи биринчи қаторда, йил эса иккинчисида ва хиралроқ
+ * туради. Ҳар ёрлиқ уч ҳарф эни билан чекланади — ҳеч нима
+ * ташланмайди, ҳеч нима устма-уст тушмайди.
+ *
+ * Кунлик кесимда ҳам шу ишлайди: «1 Сен» → тепада «1», остида
+ * «Сен».
+ */
+function OqBelgisi({
+  x,
+  y,
+  payload,
+  rang,
+  tr,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value?: string | number };
+  rang: string;
+  tr: (m: string) => string;
+}) {
+  const xom = String(payload?.value ?? '');
+  const bolimi = xom.indexOf(' ');
+  const birinchi = bolimi === -1 ? xom : xom.slice(0, bolimi);
+  const ikkinchi = bolimi === -1 ? '' : xom.slice(bolimi + 1);
+
+  return (
+    <g transform={`translate(${x ?? 0},${y ?? 0})`}>
+      <text textAnchor="middle" dy={12} fontSize={11} fill={rang}>
+        {tr(birinchi)}
+      </text>
+      {ikkinchi && (
+        <text textAnchor="middle" dy={24} fontSize={10} fill={rang} opacity={0.7}>
+          {tr(ikkinchi)}
+        </text>
+      )}
+    </g>
+  );
+}
+
 /** Ishorasi bilan: +12, −8, 0 */
 const ishorali = (n: number) => (n > 0 ? `+${raqam(n)}` : n < 0 ? `−${raqam(-n)}` : '0');
 
@@ -250,12 +300,26 @@ export function OqimUstunlari({
    * sababini ko'rsatadi. Rang bir xil bo'lsa, o'quvchi ma'noni
    * BIR MARTA o'rganadi va u ikkala grafikda ham ishlaydi.
    */
+  /*
+   * Серия номи ДАВРГА эргашади.
+   *
+   * Илгари у «Шу ойда хатловдан ўтган хонадон» деб қотирилган
+   * эди. Сарлавҳа эса даврга қараб алмашарди — натижада
+   * «Йиллик оқим» диаграммасининг остида «шу ОЙДА» деб турарди.
+   * Йиғилишда бундай зиддият дарҳол кўзга ташланади.
+   */
+  const XATLOV_NOMI: Record<Davr, string> = {
+    kun: 'Шу куни хатловдан ўтган хонадон',
+    oy: 'Шу ойда хатловдан ўтган хонадон',
+    yil: 'Шу йилда хатловдан ўтган хонадон',
+  };
+
   const seriyalar =
     tur === 'xatlov'
       ? [
           {
             kalit: 'yangiXatlov',
-            nomi: tr('Шу ойда хатловдан ўтган хонадон'),
+            nomi: tr(XATLOV_NOMI[davr]),
             rang: c.primary,
           },
         ]
@@ -306,12 +370,12 @@ export function OqimUstunlari({
           <CartesianGrid stroke={c.axisLine} vertical={false} />
           <XAxis
             dataKey="yorliq"
-            tick={{ fill: c.axisText, fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: c.axisLine }}
-            interval={davr === 'kun' ? 0 : 'preserveStartEnd'}
+            height={38}
+            tick={<OqBelgisi rang={c.axisText} tr={tr} />}
+            interval={0}
             ticks={oqYorliqlari(dinamika, davr)}
-            tickFormatter={(v: string) => tr(v)}
           />
           <YAxis
             tick={{ fill: c.axisText, fontSize: 11 }}
@@ -548,12 +612,12 @@ export function OsishUstunlari({
           <CartesianGrid stroke={c.axisLine} vertical={false} />
           <XAxis
             dataKey="yorliq"
-            tick={{ fill: c.axisText, fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: c.axisLine }}
-            interval={davr === 'kun' ? 0 : 'preserveStartEnd'}
+            height={38}
+            tick={<OqBelgisi rang={c.axisText} tr={tr} />}
+            interval={0}
             ticks={oqYorliqlari(malumot, davr)}
-            tickFormatter={(v: string) => tr(v)}
           />
           <YAxis
             tick={{ fill: c.axisText, fontSize: 11 }}

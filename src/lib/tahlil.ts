@@ -257,7 +257,24 @@ export function dinamikaHisobla(
       boshi = new Date(hozir.getFullYear(), hozir.getMonth() - i, 1);
       chegara = new Date(boshi.getFullYear(), boshi.getMonth() + 1, 1);
       kalit = oyKaliti(boshi);
-      yorliq = `${OY_NOMI[boshi.getMonth()]} ${String(boshi.getFullYear()).slice(-2)}`;
+      /*
+       * ЙИЛ ТЎЛИҚ ва ФАҚАТ ЎЗГАРГАН ЖОЙДА ёзилади.
+       *
+       * Илгари ҳар ойга йилнинг охирги икки рақами қўшиларди:
+       * «Сен 26». Ўн олтинчи сентябрда панелни очган одам уни
+       * «26-сентябрь» деб ўқиди — ва ҳақ эди: кунлик кесимда
+       * ёрлиқ АЙНАН шу тартибда, «16 Сен» бўлиб чиқади. Иккита
+       * диаграмма бир-бирининг кўзгуси бўлиб қолганди.
+       *
+       * Тўрт рақамли йилни кун деб ўқиб бўлмайди, шунинг учун
+       * «Окт 2025» ва «Янв 2026» тўлиқ ёзилади. Оралиқдаги
+       * ойларга йил керак эмас — у ўзгармаган ва ўқни
+       * ортиқча тўлдиради.
+       */
+      yorliq =
+        boshi.getMonth() === 0 || i === DAVR_UZUNLIGI.oy - 1
+          ? `${OY_NOMI[boshi.getMonth()]} ${boshi.getFullYear()}`
+          : OY_NOMI[boshi.getMonth()];
     }
 
     oraliqlar.push({ oy: kalit, yorliq, boshi, chegara });
