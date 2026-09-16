@@ -1727,17 +1727,6 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
         </ToliqKeng>
       </Bolim>
 
-      <Bolim raqam="XII" sarlavha={tr("Хулоса")}>
-        <ToliqKeng>
-          <MatnMaydoni
-            yorliq={tr("Оиланинг камбағалликдан чиқарилиши бўйича умумий хулоса")}
-            koptator
-            qiymat={h.umumiyXulosa}
-            ozgardi={(q) => yangila('umumiyXulosa', q)}
-          />
-        </ToliqKeng>
-      </Bolim>
-
       {/*
         ── РОЗИЛИК ВА ИМЗО ──
 
@@ -1751,7 +1740,7 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
         неча марта келиб тўлдириши мумкин ва имзо охирида,
         фуқаронинг ўзи олдида қўйилади.
       */}
-      <Bolim raqam="XIII" sarlavha={tr("Розилик ва имзо")}>
+      <Bolim raqam="XII" sarlavha={tr("Розилик ва имзо")}>
         <ToliqKeng>
           <div className="space-y-4">
             <div className="quti-ogoh text-xs leading-relaxed">

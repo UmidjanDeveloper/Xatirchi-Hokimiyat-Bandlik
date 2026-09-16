@@ -461,13 +461,6 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
         </Bolim>
       )}
 
-      {x.umumiyXulosa && (
-        <section className="karta p-4 sm:p-5">
-          <h2 className="mb-2 text-sm font-bold text-ink">{tr('Ходимнинг хулосаси')}</h2>
-          <p className="whitespace-pre-wrap text-sm text-ink-muted">{x.umumiyXulosa}</p>
-        </section>
-      )}
-
       {/*
         ── Тавсиялар ──
 

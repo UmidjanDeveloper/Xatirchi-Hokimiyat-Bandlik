@@ -181,7 +181,6 @@ export async function xatlovniYukla(
     infratuzilmaBoshqa: t(x.infratuzilmaBoshqa),
     infratuzilmaIzohi: t(x.infratuzilmaIzohi),
 
-    umumiyXulosa: t(x.umumiyXulosa),
 
     ishsizlar: x.ishsizlar.map((i) => ({
       qatorId: i.id,

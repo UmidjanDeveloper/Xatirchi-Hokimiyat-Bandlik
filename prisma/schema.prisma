@@ -484,7 +484,15 @@ model Household {
   /// Фуқаронинг ўз сўзи билан изоҳ
   infratuzilmaIzohi      String?
 
-  // ── XII. XULOSA ──
+  // ── ESKI: XII-BO'LIM «XULOSA» ──
+  //
+  // Anketadan OLIB TASHLANGAN (2026-yil 16-sentabr, hokimiyat
+  // talabi bilan). Mahalla xodimi bu katakni to'ldirmaydi va
+  // xonadon sahifasida ham ko'rsatilmaydi.
+  //
+  // Ustunning o'zi bazada QOLDIRILDI: unda ilgari kiritilgan
+  // yozuvlar bo'lishi mumkin va ularni o'chirish ma'lumot
+  // yo'qotish demakdir. Yangi yozuvlarda u doim bo'sh bo'ladi.
   umumiyXulosa String?
 
   /// Tayyorlangan tavsiya - JSON matn sifatida:

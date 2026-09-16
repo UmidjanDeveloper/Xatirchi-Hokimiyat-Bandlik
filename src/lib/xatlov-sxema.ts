@@ -295,7 +295,6 @@ export const XonadonSxemasi = z.object({
   infratuzilmaIzohi: matn(1000),
 
   // XII. Xulosa
-  umumiyXulosa: matn(2000),
 
   // Rozilik va imzo
   rozilikBerdi: z.boolean().default(false),

@@ -165,7 +165,6 @@ export interface XatlovHolati {
   infratuzilmaBoshqa: string;
   infratuzilmaIzohi: string;
 
-  umumiyXulosa: string;
 
   // Rozilik va imzo
   rozilikBerdi: boolean;
@@ -316,7 +315,6 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     infratuzilmaBoshqa: '',
     infratuzilmaIzohi: '',
 
-    umumiyXulosa: '',
 
     rozilikBerdi: false,
     imzoYoli: '',
@@ -451,7 +449,6 @@ export function yuborishUchun(h: XatlovHolati) {
       hujjatIzoh: m(x.hujjatIzoh),
       xizmatTosiqlari: m(x.xizmatTosiqlari),
       hunarmandchilik: m(x.hunarmandchilik),
-      umumiyXulosa: m(x.umumiyXulosa),
       // Bo'sh sana `null` - sxema uni `Date` ga o'giradi
       oilaBoshligiTugilganSana: x.oilaBoshligiTugilganSana || null,
       imzoYoli: m(x.imzoYoli),

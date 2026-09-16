@@ -164,6 +164,20 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
     []
   );
 
+  /**
+   * Хато устига босилганда — ўша катакка олиб боради.
+   *
+   * Икки иш қилади: керакли қадамни очади ва катакни қизил
+   * билан белгилайди. Белги кейинги ўзгаришда ўзи ўчади
+   * (`yangila` шуни қилади).
+   */
+  const xatogaOt = useCallback((maydon: string, xabar: string) => {
+    setXatolar((oldingi) => ({ ...oldingi, [maydon]: xabar }));
+    setQadam(xatoQadami({ [maydon]: xabar }));
+    /* Саҳифа тепасига қайтарамиз — катак кўринсин */
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // ── Jonli arifmetika tekshiruvi ──
   //
   // Xodim raqamni kiritayotganda darhol ko'radi, "Yuborish" tugmasini
@@ -403,13 +417,29 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
 
       {serverXatosi && <div className="quti-xato">{tr(serverXatosi)}</div>}
 
-      {/* ── Jonli arifmetika ogohlantirishlari ── */}
+      {/*
+        ── ХАТО УСТИГА БОСИБ ЎША КАТАККА ЎТИШ ──
+
+        Бу рўйхат ҲАР ҚАДАМДА кўринади, чунки текширув бутун
+        анкета бўйича ишлайди. Аммо хато кўпинча БОШҚА қадамда
+        бўлади: ходим 5-қадамда турибди, номувофиқлик эса
+        2-қадамдаги катакда.
+
+        Илгари бу ўлик матн эди. Ходим саккиз қадамни бирма-бир
+        очиб, қайси катак эканини ўзи қидириши керак эди — ва
+        топа олмай, хатловни ташлаб кетарди.
+
+        Энди ҳар қатор — тугма: босилса, ўша қадам очилади ва
+        катак қизил билан белгиланади.
+      */}
       {hisobot.xatolar.length > 0 && (
         <div className="quti-xato space-y-1.5">
           <p className="font-semibold">{tr('Рақамларда номувофиқлик:')}</p>
-          <ul className="list-inside list-disc space-y-1">
+          <ul className="space-y-1">
             {hisobot.xatolar.map((n, i) => (
-              <li key={i}>{tr(n.xabar)}</li>
+              <li key={i}>
+                <XatoQatori nuqson={n} tr={tr} otish={xatogaOt} />
+              </li>
             ))}
           </ul>
         </div>
@@ -418,9 +448,11 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       {hisobot.xatolar.length === 0 && hisobot.ogohlantirishlar.length > 0 && (
         <div className="quti-ogoh space-y-1.5">
           <p className="font-semibold">{tr('Эътибор беринг:')}</p>
-          <ul className="list-inside list-disc space-y-1">
+          <ul className="space-y-1">
             {hisobot.ogohlantirishlar.map((n, i) => (
-              <li key={i}>{tr(n.xabar)}</li>
+              <li key={i}>
+                <XatoQatori nuqson={n} tr={tr} otish={xatogaOt} />
+              </li>
             ))}
           </ul>
         </div>
@@ -606,6 +638,45 @@ function sonlar(h: XatlovHolati): XatlovRaqamlari {
 }
 
 /** Qoralama saqlash uchun kerakli eng kam maydonlar */
+/**
+ * Номувофиқлик қатори — босиладиган.
+ *
+ * Майдони маълум бўлса тугма бўлади ва ўша катакка олиб
+ * боради. Майдонсиз нуқсонлар ҳам бор (умумий огоҳлантириш) —
+ * улар оддий матн бўлиб қолади, чунки борадиган жой йўқ.
+ */
+function XatoQatori({
+  nuqson,
+  tr,
+  otish,
+}: {
+  nuqson: { maydon?: string; xabar: string };
+  tr: (m: string) => string;
+  otish: (maydon: string, xabar: string) => void;
+}) {
+  const matn = tr(nuqson.xabar);
+
+  if (!nuqson.maydon) {
+    return <span className="flex gap-2"><span aria-hidden="true">•</span>{matn}</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => otish(nuqson.maydon!, nuqson.xabar)}
+      className="flex w-full gap-2 text-left underline decoration-dotted underline-offset-4 transition-opacity hover:opacity-80"
+    >
+      <span aria-hidden="true">•</span>
+      <span className="min-w-0 flex-1">
+        {matn}
+        <span className="ml-1.5 whitespace-nowrap text-[11px] opacity-75">
+          ({tr('тузатиш учун босинг')})
+        </span>
+      </span>
+    </button>
+  );
+}
+
 function asosiyMaydonlarniTekshir(h: XatlovHolati): Record<string, string> {
   const xt: Record<string, string> = {};
 
