@@ -74,10 +74,23 @@ export function AiXulosa({
   const [xulosa, setXulosa] = useState<Xulosa | null>(null);
   const [yuklanmoqda, setYuklanmoqda] = useState(true);
   const [xato, setXato] = useState<string | null>(null);
+  /**
+   * Тугма БОСИЛГАНМИ — саҳифа очилганда автоматик юкланишдан
+   * фарқлаш учун.
+   *
+   * Иккови ҳар хил кўринади: автоматик юкланиш жимгина
+   * скелет кўрсатади, тугма босилса эса «Сунъий интеллект
+   * таҳлил қилмоқда» деб АЙТАДИ. Фойдаланувчи ўзи бошлаган
+   * ишнинг натижасини кўриши керак.
+   */
+  const [qoldaSoraldi, setQoldaSoraldi] = useState(false);
+  /** Хулоса қачон олингани — «AI 14:32 да таҳлил қилди» */
+  const [vaqti, setVaqti] = useState<string | null>(null);
 
   const ol = useCallback(
     async (qaytadan = false) => {
       setYuklanmoqda(true);
+      setQoldaSoraldi(qaytadan);
       setXato(null);
       try {
         const javob = await fetch('/api/hisobot/xulosa', {
@@ -92,6 +105,9 @@ export function AiXulosa({
         const d = await javob.json().catch(() => ({}));
         if (!javob.ok) throw new Error(d.xabar ?? tr('Хулоса олинмади'));
         setXulosa(d.xulosa as Xulosa);
+        setVaqti(
+          new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+        );
       } catch (e) {
         setXato(e instanceof Error ? e.message : tr('Хулоса олинмади'));
       } finally {
@@ -159,25 +175,60 @@ export function AiXulosa({
           <p className="mt-1 text-xs text-ink-faint">
             {tr(qamrovNomi)} ·{' '}
             {xulosa.manba === 'ai'
-              ? tr('сунъий интеллект таҳлили')
-              : tr('белгиланган чегаралар бўйича')}
+              ? vaqti
+                ? `${tr('сунъий интеллект')} ${vaqti} ${tr('да таҳлил қилди')}`
+                : tr('сунъий интеллект таҳлили')
+              : tr('белгиланган чегаралар бўйича ҳисобланди')}
           </p>
         </div>
 
+        {/*
+          ── Нега бу тугма кўзга ташланади ──
+
+          Хулоса саҳифа очилганда ЎЗИ юкланади — ҳоким ҳеч нима
+          босмасдан ҳам тавсияларни кўради. Аммо ўша пайтгача
+          тугма кулранг ва майда эди ва панелда AI борлиги
+          умуман билинмасди.
+
+          Энди у асосий тугма: «Сунъий интеллект билан таҳлил
+          қилиш». Босилганда кеш четлаб ўтилади ва янги таҳлил
+          сўралади — йиғилиш пайтида «ҳозир қайта ҳисоблайлик»
+          дейиш имконияти бўлади.
+        */}
         <button
           type="button"
           onClick={() => void ol(true)}
           disabled={yuklanmoqda}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+          className="tugma-asosiy flex shrink-0 items-center gap-2 rounded-md px-3.5 py-2 text-xs font-semibold"
         >
           {yuklanmoqda ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
           )}
-          {tr('Янгилаш')}
+          {yuklanmoqda
+            ? tr('Таҳлил қилинмоқда…')
+            : tr('Сунъий интеллект билан таҳлил қилиш')}
         </button>
       </div>
+
+      {/*
+        ── Тугма босилган пайт ──
+
+        Эски хулоса экранда туриб қолади (бўш экран кўрсатишдан
+        кўра яхши), аммо унинг УСТИДА янги таҳлил кетаётгани
+        айтилади. Акс ҳолда фойдаланувчи тугмани босиб, экран
+        ўзгармагач, «ишламади» деб ўйлайди.
+      */}
+      {yuklanmoqda && qoldaSoraldi && (
+        <div
+          className="flex items-center gap-2 border-b border-line bg-accent-soft px-5 py-2.5 text-xs font-medium text-accent"
+          role="status"
+        >
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          {tr('Сунъий интеллект маълумотни таҳлил қилмоқда — 10–20 сония…')}
+        </div>
+      )}
 
       {/*
         ── AI ЖАВОБ БЕРМАГАНИ ──
@@ -195,7 +246,7 @@ export function AiXulosa({
         <div className="quti-ogoh mx-5 mt-4 text-xs">
           <p className="font-semibold">{tr('Сунъий интеллект жавоб бермади')}</p>
           <p className="mt-1 leading-relaxed">
-            {tr('Қуйидаги хулоса белгиланган чегаралар бўйича ҳисобланган — у ҳам тўғри, аммо боғланишларни топмайди. «Янгилаш» ни босиб кўринг; такрорланса, «Бошқарув» саҳифасидаги AI блокидан калитни текширинг.')}
+            {tr('Қуйидаги хулоса белгиланган чегаралар бўйича ҳисобланган — у ҳам тўғри, аммо боғланишларни топмайди. Юқоридаги «Сунъий интеллект билан таҳлил қилиш» тугмасини босиб кўринг; такрорланса, «Бошқарув» саҳифасидаги AI блокидан калитни текширинг.')}
           </p>
         </div>
       )}
