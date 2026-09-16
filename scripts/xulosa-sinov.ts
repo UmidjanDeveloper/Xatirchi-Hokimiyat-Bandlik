@@ -22,6 +22,7 @@ const ASOS: XonadonDalili = {
   jamiAzo: 6,
   bolalarSoni: 3,
   mehnatgaLayoqatli: 3,
+  mehnatgaLayoqatsiz: 0,
   ishlaydiganlar: 1,
   ishsizlarSoni: 2,
   bogchaKutayotganAyollar: 0,

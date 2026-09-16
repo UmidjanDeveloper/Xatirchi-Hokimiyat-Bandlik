@@ -44,6 +44,8 @@ export interface XatlovRaqamlari {
   jamiAzo?: number | null;
   bolalarSoni?: number | null;
   mehnatgaLayoqatli?: number | null;
+  /** Иш ёшида, аммо ишлай олмайди — бандлик тенгламасига кирмайди */
+  mehnatgaLayoqatsiz?: number | null;
   ishlaydiganlar?: number | null;
   davlatKorxonada?: number | null;
   xususiySektorda?: number | null;
@@ -101,6 +103,7 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   const jami = n(d.jamiAzo);
   const bolalar = n(d.bolalarSoni);
   const layoqatli = n(d.mehnatgaLayoqatli);
+  const layoqatsiz = n(d.mehnatgaLayoqatsiz);
   const ishlaydi = n(d.ishlaydiganlar);
   const davlat = n(d.davlatKorxonada);
   const xususiy = n(d.xususiySektorda);
@@ -161,21 +164,40 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
     );
   }
 
-  // 18 yoshgacha bola mehnatga layoqatli emas, shuning uchun ikkalasi
-  // birgalikda xonadon a'zolaridan oshmasligi kerak.
-  if (bolalar + layoqatli > jami) {
+  /*
+   * 18 ёшгача бола меҳнатга лаёқатли эмас; меҳнатга лаёқатсиз
+   * одам ҳам лаёқатлилар ичида эмас. Учовининг йиғиндиси
+   * хонадон аъзоларидан ошиб кетолмайди — акс ҳолда битта
+   * одам икки марта саналган.
+   */
+  if (bolalar + layoqatli + layoqatsiz > jami) {
+    const yigindi = bolalar + layoqatli + layoqatsiz;
     xato(
       'mehnatgaLayoqatli',
-      `Болалар (${bolalar}) ва меҳнатга лаёқатлилар (${layoqatli}) жами ${bolalar + layoqatli} — бу хонадондаги ${jami} кишидан кўп`
+      layoqatsiz > 0
+        ? `Болалар (${bolalar}), меҳнатга лаёқатлилар (${layoqatli}) ва лаёқатсизлар (${layoqatsiz}) жами ${yigindi} — бу хонадондаги ${jami} кишидан кўп`
+        : `Болалар (${bolalar}) ва меҳнатга лаёқатлилар (${layoqatli}) жами ${yigindi} — бу хонадондаги ${jami} кишидан кўп`
     );
   }
 
   // ── I bo'lim: bandlik ────────────────────────────────────
 
+  /*
+   * Ишлайдиган ва ишсиз — иккови ҳам МЕҲНАТГА ЛАЁҚАТЛИ одам.
+   * Лаёқатсизлар бу тенгламага кирмайди.
+   *
+   * Хато матни энди ЙЎЛ ҲАМ КЎРСАТАДИ. Аввал у фақат
+   * «мос келмади» деб турарди ва дала ходими нима қилишни
+   * билмасди: хонадонда иш ёшидаги, аммо ишлай олмайдиган
+   * одам бор эди — уни «ишсиз» деб ёзарди ва анкета рад
+   * этарди. Энди хабарнинг ўзи «Меҳнатга лаёқатсизлар»
+   * катагини кўрсатади.
+   */
   if (ishlaydi + ishsiz > layoqatli) {
     xato(
       'ishsizlarSoni',
-      `Ишлайдиганлар (${ishlaydi}) ва ишсизлар (${ishsiz}) жами ${ishlaydi + ishsiz} — бу меҳнатга лаёқатлилар сонидан (${layoqatli}) кўп`
+      `Ишлайдиганлар (${ishlaydi}) ва ишсизлар (${ishsiz}) жами ${ishlaydi + ishsiz} — бу меҳнатга лаёқатлилар сонидан (${layoqatli}) кўп. ` +
+        `Агар улардан бири иш ёшида бўлса-ю, ишлай олмаса (ногиронлик, касаллик), уни «Меҳнатга лаёқатсизлар сони» катагига ёзинг — у ишсизлар қаторига кирмайди.`
     );
   }
 

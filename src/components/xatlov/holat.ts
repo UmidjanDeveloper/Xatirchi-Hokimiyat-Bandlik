@@ -56,6 +56,7 @@ export interface XatlovHolati {
 
   // I. Mehnat va bandlik
   mehnatgaLayoqatli: Raqam;
+  mehnatgaLayoqatsiz: Raqam;
   ishlaydiganlar: Raqam;
   davlatKorxonada: Raqam;
   xususiySektorda: Raqam;
@@ -215,6 +216,7 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     bolalar18Yoshdan: '',
 
     mehnatgaLayoqatli: '',
+    mehnatgaLayoqatsiz: '',
     ishlaydiganlar: '',
     davlatKorxonada: '',
     xususiySektorda: '',
@@ -407,6 +409,7 @@ export function yuborishUchun(h: XatlovHolati) {
       jamiAzo: r(x.jamiAzo),
       bolalarSoni: r(x.bolalarSoni),
       mehnatgaLayoqatli: r(x.mehnatgaLayoqatli),
+      mehnatgaLayoqatsiz: r(x.mehnatgaLayoqatsiz),
       ishlaydiganlar: r(x.ishlaydiganlar),
       davlatKorxonada: r(x.davlatKorxonada),
       xususiySektorda: r(x.xususiySektorda),

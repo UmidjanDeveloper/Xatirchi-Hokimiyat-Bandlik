@@ -31,6 +31,7 @@ export type KesmaManbai = Pick<
   | 'jamiAzo'
   | 'bolalarSoni'
   | 'mehnatgaLayoqatli'
+  | 'mehnatgaLayoqatsiz'
   | 'ishlaydiganlar'
   | 'ishsizlarSoni'
   | 'oylikDaromad'
@@ -287,6 +288,7 @@ export function kesmaYasa(
     bolalarSoni: x.bolalarSoni,
 
     mehnatgaLayoqatli: x.mehnatgaLayoqatli,
+    mehnatgaLayoqatsiz: x.mehnatgaLayoqatsiz,
     ishlaydiganlar: x.ishlaydiganlar,
     ishsizlarSoni: x.ishsizlarSoni,
 

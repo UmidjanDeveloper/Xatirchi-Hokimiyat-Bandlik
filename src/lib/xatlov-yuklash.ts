@@ -72,6 +72,7 @@ export async function xatlovniYukla(
     bolalar18Yoshdan: s(x.bolalar18Yoshdan),
 
     mehnatgaLayoqatli: s(x.mehnatgaLayoqatli),
+    mehnatgaLayoqatsiz: s(x.mehnatgaLayoqatsiz),
     ishlaydiganlar: s(x.ishlaydiganlar),
     davlatKorxonada: s(x.davlatKorxonada),
     xususiySektorda: s(x.xususiySektorda),

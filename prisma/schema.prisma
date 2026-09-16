@@ -251,6 +251,21 @@ model Household {
 
   // ── I. MEHNAT VA BANDLIK ──
   mehnatgaLayoqatli       Int  @default(0)
+  /// Mehnatga layoqatsizlar - ish yoshida, lekin ishlay olmaydi.
+  ///
+  /// Nega alohida ustun kerak bo'ldi: dalada shunday xonadon
+  /// chiqdi - ilgari nogironligi bor edi, hozir rasman yo'q,
+  /// lekin o'zini mehnatga layoqatsiz deb hisoblaydi va
+  /// ishlamaydi. Xodim uni `mehnatgaLayoqatli` dan chiqarib
+  /// tashladi va `ishsizlarSoni` ga qo'shdi - anketa esa
+  /// "ishlaydigan + ishsiz, mehnatga layoqatlilardan ko'p" deb
+  /// rad etdi. Odam bor, lekin uni yozadigan katak yo'q edi.
+  ///
+  /// Bu son `ishlaydiganlar + ishsizlarSoni <= mehnatgaLayoqatli`
+  /// qoidasiga KIRMAYDI: layoqatsiz odam ishsiz emas, chunki u
+  /// ish qidirmaydi. Bandlik markazi unga ish taklif qilmaydi -
+  /// unga ijtimoiy yordam kerak.
+  mehnatgaLayoqatsiz      Int  @default(0)
   ishlaydiganlar          Int  @default(0)
   /// Davlat korxonalarida band
   davlatKorxonada         Int  @default(0)
@@ -833,9 +848,10 @@ model HouseholdKesma {
   bolalarSoni Int @default(0)
 
   // ── Mehnat va bandlik ──
-  mehnatgaLayoqatli Int @default(0)
-  ishlaydiganlar    Int @default(0)
-  ishsizlarSoni     Int @default(0)
+  mehnatgaLayoqatli  Int @default(0)
+  mehnatgaLayoqatsiz Int @default(0)
+  ishlaydiganlar     Int @default(0)
+  ishsizlarSoni      Int @default(0)
 
   // ── Daromad ──
   oylikDaromad      BigInt?

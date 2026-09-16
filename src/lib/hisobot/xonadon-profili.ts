@@ -220,6 +220,7 @@ export async function xonadonBolimlari(
       where: filtr,
       _sum: {
         mehnatgaLayoqatli: true,
+        mehnatgaLayoqatsiz: true,
         ishlaydiganlar: true,
         davlatKorxonada: true,
         xususiySektorda: true,
@@ -349,6 +350,7 @@ export async function xonadonBolimlari(
   /* ── Oila tarkibi va mehnat salohiyati ────────────────────── */
   const jamiAzo = jamlar._sum.jamiAzo ?? 0;
   const layoqatli = mehnat._sum.mehnatgaLayoqatli ?? 0;
+  const layoqatsiz = mehnat._sum.mehnatgaLayoqatsiz ?? 0;
   const ishlaydigan = mehnat._sum.ishlaydiganlar ?? 0;
   const ishsiz = mehnat._sum.ishsizlarSoni ?? 0;
   const davlatda = mehnat._sum.davlatKorxonada ?? 0;
@@ -360,10 +362,21 @@ export async function xonadonBolimlari(
     sarlavha: 'Меҳнат ва бандлик',
     varaqNomi: 'Меҳнат ва бандлик',
     kirish:
-      'Хатловдан ўтган хонадонлардаги меҳнат салоҳияти. «Меҳнатга лаёқатли» — 16 ёшдан нафақа ёшига қадар бўлган оила аъзолари.',
+      'Хатловдан ўтган хонадонлардаги меҳнат салоҳияти. «Меҳнатга лаёқатли» — 16 ёшдан нафақа ёшига қадар бўлган оила аъзолари. «Меҳнатга лаёқатсиз» — шу ёшда, аммо ногиронлик ёки касаллик сабаб ишлай олмайдиганлар; улар ишсизлар қаторига кирмайди.',
     korsatkichlar: [
       { nomi: 'Хонадондаги аҳоли', qiymat: son(jamiAzo), izoh: `ўртача ${String(Math.round((jamlar._avg.jamiAzo ?? 0) * 10) / 10).replace('.', ',')} киши` },
       { nomi: 'Меҳнатга лаёқатли', qiymat: son(layoqatli), izoh: `аҳолининг ${foiz(foizi(layoqatli, jamiAzo))}и` },
+      /*
+        Меҳнатга лаёқатсизлар АЛОҲИДА қатор.
+        Улар ишсизлар ичида эмас: иш қидирмайди, шунинг учун
+        бандлик маркази уларга иш таклиф қилмайди. Уларга
+        ижтимоий ёрдам керак ва ҳокимга шу рақам керак.
+      */
+      {
+        nomi: 'Меҳнатга лаёқатсиз',
+        qiymat: son(layoqatsiz),
+        izoh: 'иш ёшида, аммо ишлай олмайди — ишсизлар қаторига кирмайди',
+      },
       {
         nomi: 'Иш билан банд',
         qiymat: son(ishlaydigan),

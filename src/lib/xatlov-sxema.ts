@@ -165,6 +165,7 @@ export const XonadonSxemasi = z.object({
 
   // I. Mehnat va bandlik
   mehnatgaLayoqatli: son(40),
+  mehnatgaLayoqatsiz: son(40),
   ishlaydiganlar: son(40),
   davlatKorxonada: son(40),
   xususiySektorda: son(40),

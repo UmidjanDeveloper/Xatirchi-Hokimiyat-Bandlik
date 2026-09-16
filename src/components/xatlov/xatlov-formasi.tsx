@@ -412,6 +412,7 @@ function sonlar(h: XatlovHolati): XatlovRaqamlari {
     bolalar3_17Yosh: s(h.bolalar3_17Yosh),
     bolalar18Yoshdan: s(h.bolalar18Yoshdan),
     mehnatgaLayoqatli: s(h.mehnatgaLayoqatli),
+    mehnatgaLayoqatsiz: s(h.mehnatgaLayoqatsiz),
     ishlaydiganlar: s(h.ishlaydiganlar),
     davlatKorxonada: s(h.davlatKorxonada),
     xususiySektorda: s(h.xususiySektorda),

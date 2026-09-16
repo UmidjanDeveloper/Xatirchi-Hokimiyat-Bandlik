@@ -30,6 +30,7 @@ const ASOS: KesmaManbai = {
   jamiAzo: 5,
   bolalarSoni: 2,
   mehnatgaLayoqatli: 3,
+  mehnatgaLayoqatsiz: 0,
   ishlaydiganlar: 0,
   ishsizlarSoni: 3,
   oylikDaromad: null,
@@ -62,6 +63,7 @@ const SINOVLAR: Sinov[] = [
     tekshir: () =>
       ball({
         mehnatgaLayoqatli: 3,
+        mehnatgaLayoqatsiz: 0,
         ishlaydiganlar: 3,
         oylikDaromad: BigInt(DAROMAD_MOLJALI * 5),
         yirikShoxliSoni: 5,

@@ -66,6 +66,7 @@ async function qaytaHisobla(prisma: PrismaClient): Promise<void> {
       jamiAzo: k.jamiAzo,
       bolalarSoni: k.bolalarSoni,
       mehnatgaLayoqatli: k.mehnatgaLayoqatli,
+      mehnatgaLayoqatsiz: 0,
       ishlaydiganlar: k.ishlaydiganlar,
       ishsizlarSoni: k.ishsizlarSoni,
       oylikDaromad: k.oylikDaromad,

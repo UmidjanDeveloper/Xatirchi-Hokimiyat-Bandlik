@@ -225,6 +225,7 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
         <Qator nomi={tr("Оиладаги умумий аъзолар")} qiymat={q(x.jamiAzo)} />
         <Qator nomi={tr("Болалар (18 ёшгача)")} qiymat={q(x.bolalarSoni)} />
         <Qator nomi={tr("Меҳнатга лаёқатлилар")} qiymat={q(x.mehnatgaLayoqatli)} />
+        <Qator nomi={tr("Меҳнатга лаёқатсизлар")} qiymat={q(x.mehnatgaLayoqatsiz)} />
         <Qator nomi={tr("Ишлайдиганлар")} qiymat={q(x.ishlaydiganlar)} />
         <Qator nomi={tr("Давлат корхоналарида")} qiymat={q(x.davlatKorxonada)} />
         <Qator nomi={tr("Хусусий секторда")} qiymat={q(x.xususiySektorda)} />

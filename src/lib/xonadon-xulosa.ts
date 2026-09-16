@@ -101,6 +101,7 @@ export interface XonadonDalili {
   jamiAzo: number;
   bolalarSoni: number;
   mehnatgaLayoqatli: number;
+  mehnatgaLayoqatsiz: number;
   ishlaydiganlar: number;
   ishsizlarSoni: number;
   bogchaKutayotganAyollar: number;
@@ -197,7 +198,10 @@ export function dalilnomaYasa(x: XonadonDalili): string {
 
   s.push('## Оила таркиби');
   s.push(`- Жами аъзо: ${x.jamiAzo}, шундан бола: ${x.bolalarSoni}`);
-  s.push(`- Меҳнатга лаёқатли: ${x.mehnatgaLayoqatli}, ишлайдиган: ${x.ishlaydiganlar}, ишсиз: ${x.ishsizlarSoni}`);
+  s.push(
+    `- Меҳнатга лаёқатли: ${x.mehnatgaLayoqatli}, ишлайдиган: ${x.ishlaydiganlar}, ишсиз: ${x.ishsizlarSoni}` +
+      (x.mehnatgaLayoqatsiz > 0 ? `, меҳнатга лаёқатсиз: ${x.mehnatgaLayoqatsiz}` : '')
+  );
   if (x.bogchaKutayotganAyollar > 0) {
     s.push(`- Боғча бўлса ишлашга тайёр аёл: ${x.bogchaKutayotganAyollar}`);
   }
@@ -703,6 +707,7 @@ export function xonadonDalili(x: XonadonYozuvi): XonadonDalili {
     jamiAzo: x.jamiAzo,
     bolalarSoni: x.bolalarSoni,
     mehnatgaLayoqatli: x.mehnatgaLayoqatli,
+    mehnatgaLayoqatsiz: x.mehnatgaLayoqatsiz,
     ishlaydiganlar: x.ishlaydiganlar,
     ishsizlarSoni: x.ishsizlarSoni,
     bogchaKutayotganAyollar: x.bogchaKutayotganAyollar,
