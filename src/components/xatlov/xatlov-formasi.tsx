@@ -39,6 +39,47 @@ interface Props {
 /** Brauzer xotirasidagi qoralama kaliti */
 const QORALAMA_ID = 'joriy-xatlov';
 
+/**
+ * Брауzer хотирасидаги қоралама.
+ *
+ * ── Нега `id` ҲАМ сақланади ──
+ *
+ * Илгари фақат форма ҳолати сақланарди. «Қоралама» тугмаси
+ * серверга ёзиб, ўша ёзувнинг `id` сини қайтарарди — аммо у
+ * хотирага тушмасди. Ходим «Янги хатлов» ни очганда эски
+ * ҳолат тикланар, `id` эса НОЛ бўларди: «Юбориш» босилганда
+ * тизим ИККИНЧИ хонадон яратарди. Бир оила базада икки марта
+ * пайдо бўларди.
+ *
+ * Энди `id` ҳам ёзилади ва «Давом эттириш» айнан ўша ёзувни
+ * янгилайди.
+ */
+interface Qoralama {
+  id: string | null;
+  holat: XatlovHolati;
+}
+
+/**
+ * Эски шакл билан ҳам ишлайди.
+ *
+ * Дала телефонларида ҲОЗИР тўлдирилаётган қораламалар бор ва
+ * улар эски шаклда — тўғридан-тўғри `XatlovHolati`. Янги код
+ * уларни ташлаб юбормаслиги керак.
+ */
+function qoralamaniOqi(): Qoralama | null {
+  const xom = qoralamaOqi<Qoralama | XatlovHolati>(QORALAMA_ID);
+  if (!xom) return null;
+  if (typeof xom === 'object' && 'holat' in xom && xom.holat) {
+    return xom as Qoralama;
+  }
+  return { id: null, holat: xom as XatlovHolati };
+}
+
+/** Қораламада ҳақиқий маълумот борми — бўш форма тикланмасин */
+function qoralamaTolami(q: Qoralama | null): boolean {
+  return Boolean(q && (q.holat?.manzil || q.holat?.oilaBoshligi));
+}
+
 export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
   const { t: tr } = useAlifbo();
 
@@ -70,30 +111,43 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
     };
   }, []);
 
-  // ── Brauzer xotirasidagi qoralamani tiklash ──
-  //
-  // Faqat YANGI xatlov uchun: mavjud yozuvni tahrirlayotganda
-  // serverdagi ma'lumot ustunroq, aks holda eski qoralama uni
-  // bosib ketishi mumkin.
+  /*
+    ── ТУГАЛЛАНМАГАН ҚОРАЛАМА ──
+
+    Илгари у ЖИМГИНА тикланарди. Натижа: ходим «Қоралама» ни
+    босиб, кейин «Янги хатлов» ни очса, олдинги хонадоннинг
+    маълумоти ўз-ўзидан қайтиб келарди — ва у буни кеч пайқаб,
+    янги оиланинг рақамларини эскисининг устига ёзиб юборарди.
+
+    Энди ҳеч нима ўз-ўзидан тикланмайди. Юқорида қути чиқади:
+    манзили ва вақти кўрсатилган ҳолда «Давом эттириш» ёки
+    «Янгидан бошлаш». Танловни ХОДИМ қилади.
+  */
+  const [kutayotganQoralama, setKutayotganQoralama] = useState<Qoralama | null>(null);
   const tiklandi = useRef(false);
   useEffect(() => {
     if (boshlangich || tiklandi.current) return;
     tiklandi.current = true;
 
-    const saqlangan = qoralamaOqi<XatlovHolati>(QORALAMA_ID);
-    if (saqlangan?.manzil || saqlangan?.oilaBoshligi) {
-      setH(saqlangan);
-    }
+    const saqlangan = qoralamaniOqi();
+    if (qoralamaTolami(saqlangan)) setKutayotganQoralama(saqlangan);
   }, [boshlangich]);
+
+  /*
+    Ходим танламагунича хотирага ЁЗМАЙМИЗ — акс ҳолда бўш
+    янги форма эски қораламани ўчириб юборарди.
+  */
+  const qoralamaKutmoqda = kutayotganQoralama !== null;
 
   // ── Har o'zgarishda brauzer xotirasiga yozish ──
   //
   // Server bilan aloqa yo'q bo'lsa ham xodim to'ldirgani yo'qolmaydi.
   useEffect(() => {
+    if (qoralamaKutmoqda) return;
     if (!h.manzil && !h.oilaBoshligi) return;
-    const ok = qoralamaSaqla(QORALAMA_ID, h);
+    const ok = qoralamaSaqla(QORALAMA_ID, { id, holat: h } satisfies Qoralama);
     setXotiraXatosi(!ok);
-  }, [h]);
+  }, [h, id, qoralamaKutmoqda]);
 
   const yangila = useCallback(
     <K extends keyof XatlovHolati>(kalit: K, qiymat: XatlovHolati[K]) => {
@@ -253,6 +307,62 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           ))}
         </div>
       </div>
+
+      {/*
+        ── ТУГАЛЛАНМАГАН ҚОРАЛАМА: ТАНЛОВ ──
+
+        Энг тепада, чунки ходим формани тўлдиришдан ОЛДИН
+        қарор қабул қилиши керак. Манзил ва вақт кўрсатилган:
+        «бу қайси хонадон эди» деган савол шу ерда ҳал бўлади.
+      */}
+      {kutayotganQoralama && (
+        <div className="quti-ogoh space-y-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0">
+              <p className="font-semibold">{tr('Тугалланмаган хатлов бор')}</p>
+              <p className="mt-1 leading-relaxed">
+                {tr('Бу телефонда охиригача юборилмаган анкета қолган:')}{' '}
+                <span className="font-medium">
+                  {tr(kutayotganQoralama.holat.oilaBoshligi || tr('исми ёзилмаган'))}
+                </span>
+                {kutayotganQoralama.holat.manzil ? ` · ${tr(kutayotganQoralama.holat.manzil)}` : ''}
+                {'. '}
+                {tr('Давом эттирасизми, ёки янги хонадондан бошлайсизми?')}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setH(kutayotganQoralama.holat);
+                setId(kutayotganQoralama.id);
+                setKutayotganQoralama(null);
+              }}
+              className="tugma-asosiy rounded-md px-3.5 py-2 text-xs font-semibold"
+            >
+              {tr('Тугалланмаганини давом эттириш')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                /*
+                  Эскисини ўчирамиз. Агар у серверга ҳам
+                  сақланган бўлса, «Хатловларим» рўйхатида
+                  турибди — йўқолмайди.
+                */
+                qoralamaOchir(QORALAMA_ID);
+                setKutayotganQoralama(null);
+              }}
+              className="rounded-md border border-line bg-surface px-3.5 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              {tr('Янги хонадондан бошлаш')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Holat xabarlari ── */}
       {!onlayn && (

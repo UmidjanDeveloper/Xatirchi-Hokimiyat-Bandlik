@@ -6,6 +6,7 @@ import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { AiHolati } from '@/components/admin/ai-holati';
+import { TezlikOlchagich } from '@/components/admin/tezlik-olchagich';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
@@ -171,6 +172,8 @@ export default async function AdminSahifasi({
         savolga javob kerak bo'ladi. Shu tugma javob beradi.
       */}
       <AiHolati />
+
+      <TezlikOlchagich />
 
       {/*
         Audit jurnali. Xatlov ma'lumotlari oila daromadi va sog'liq

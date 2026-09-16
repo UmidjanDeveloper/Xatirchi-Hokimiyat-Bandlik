@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { joriySessiya } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { AppShell } from '@/components/shell/app-shell';
+import { SessiyaQorovuli } from '@/components/shell/sessiya-qorovuli';
 import { AlifboProvider } from '@/components/alifbo/alifbo-provider';
 import { alifboServer } from '@/lib/alifbo-server';
 
@@ -19,6 +20,7 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
   const user = await prisma.user.findUnique({
     where: { id: sessiya.userId },
     select: {
+      username: true,
       fullName: true,
       rol: true,
       faol: true,
@@ -53,6 +55,14 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
         */
         mahallaNomi={user.mahalla?.nomiKirill}
       >
+        {/*
+          Бир браузерда битта cookie бўлади: иккинчи ойнада
+          бошқа ҳисобга кирилса, БУ ойнадаги сессия ҳам
+          алмашади. Қоровул шуни пайқаб, ишни давом эттиришга
+          йўл қўймайди — акс ҳолда амаллар бошқа одам номидан
+          бажарилиб кетарди.
+        */}
+        <SessiyaQorovuli username={user.username} />
         {children}
       </AppShell>
     </AlifboProvider>
