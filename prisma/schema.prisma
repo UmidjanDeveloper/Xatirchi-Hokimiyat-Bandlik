@@ -413,6 +413,34 @@ model Household {
   /// uchun ekin ekish mumkin bo'lgan qism kerak.
   ekinMaydoni    Float?
 
+  /// Томорқадан ҚАНЧАЛИК фойдаланилаётгани: 'Alo', 'Yaxshi',
+  /// 'Qoniqarli', 'Yomon'.
+  ///
+  /// ── Нега майдон сони етмайди ──
+  ///
+  /// «10 сотих ер бор» деган рақамдан ҳеч нарса чиқмайди: ўша
+  /// 10 сотих экилган ҳам, ташлаб қўйилган ҳам бўлиши мумкин.
+  /// Икковига мутлақо БОШҚА чора керак — биринчисига уруғлик ва
+  /// сув, иккинчисига эса аввало сабабини аниқлаш.
+  ///
+  /// ── Нега кейинги хатлов учун муҳим ──
+  ///
+  /// Бу баҳо хонадон тарихида сақланади. Кейинги йил ўша
+  /// хонадонга борилганда «ўтган сафар ёмон эди, ҳозир
+  /// қониқарли» деб КЎРСАТИШ мумкин бўлади. Яъни бу — берилган
+  /// ёрдам натижа бердими деган саволнинг ўлчови.
+  tomorqaFoydalanish String?
+
+  /// Томорқадан ТАШҚАРИ, фойдаланувдаги ер бормиз.
+  ///
+  /// Оилада кўпинча томорқадан бошқа ер ҳам бўлади: қариндошдан
+  /// қолган, маҳалладан ажратилган, вақтинча берилган. У
+  /// ижарага олинган ер эмас (у алоҳида сўралади) ва томорқа
+  /// ҳам эмас — лекин режалаштиришда ҳисобга олиниши керак,
+  /// чунки унда ҳам экин экса бўлади.
+  qoshimchaYerBor     Boolean @default(false)
+  qoshimchaYerMaydoni Float?
+
   /// Chorvachilik alohida savol bo'ldi: ilgari erkin matn edi va
   /// "bor", "yo'q", "2 ta sigir" kabi turli javoblar tushardi -
   /// ularni sanab bo'lmasdi.
@@ -874,6 +902,16 @@ model HouseholdKesma {
   maydaShoxliSoni Int?
   parrandaSoni    Int?
   tomorqaMaydoni  Float?
+  ekinMaydoni     Float?
+
+  /// Томорқадан фойдаланиш даражаси — ўша кундаги баҳо.
+  ///
+  /// Кесмада сақланишининг сабаби шу: кейинги йил ўша хонадонга
+  /// борилганда «ўтган сафар ёмон эди» деб КЎРСАТИШ мумкин
+  /// бўлсин. Берилган ёрдам натижа бердими — шундан билинади.
+  tomorqaFoydalanish String?
+
+  qoshimchaYerMaydoni Float?
 
   // ── Yashash sharoiti ──
   gaz          Boolean @default(false)
@@ -997,8 +1035,10 @@ model ItVaucher {
 enum VacancyYopilishi {
   /// Barcha o'rinlar band bo'ldi - avtomatik yopildi
   TOLDI
-  /// Xodim qo'li bilan yopdi (korxona voz kechdi, muddat o'tdi...)
+  /// Xodim qo'li bilan yopdi (korxona voz kechdi, fikridan qaytdi...)
   QOLDA
+  /// Amal qilish muddati tugadi - avtomatik yopildi
+  MUDDATI_TUGADI
 }
 
 model Vacancy {
@@ -1014,6 +1054,21 @@ model Vacancy {
   maosh       BigInt?
   talablar    String?
   telefon     String?
+
+  /// E'lon qachongacha kuchda. Muddat o'tgach e'lon o'z-o'zidan
+  /// yopiladi.
+  ///
+  /// ── Nega kerak bo'ldi ──
+  ///
+  /// Ilgari e'lon QO'LDA yopilmaguncha abadiy faol turardi.
+  /// Korxona fikridan qaytsa yoki o'rinni boshqa yo'l bilan
+  /// to'ldirsa, hech kim kelib e'lonni yopmasdi - va mahalla
+  /// xodimlari allaqachon o'lgan e'lon bo'yicha odam yuborib
+  /// yuraverardi. Fuqaro borib "bunday ish yo'q" deb qaytardi.
+  ///
+  /// Endi har e'lonning oxiri bor. Bo'sh qoldirilsa - muddatsiz,
+  /// lekin shakl o'zi bir oy qo'yib beradi.
+  amalQilishMuddati DateTime?
 
   faol           Boolean           @default(true)
   /// Nega yopilgani. `faol = false` bo'lganda to'ldiriladi.
@@ -1033,6 +1088,7 @@ model Vacancy {
 
   @@index([mahallaId, faol])
   @@index([yonalish, faol])
+  @@index([faol, amalQilishMuddati])
 }
 
 // ─────────────────────────────────────────────────────────────

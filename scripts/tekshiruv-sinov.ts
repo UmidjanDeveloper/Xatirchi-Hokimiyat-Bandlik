@@ -158,6 +158,46 @@ const SINOVLAR: Sinov[] = [
         ishsizlarSoni: 1,
       }).xatolar.length === 0,
   },
+
+  /* ── ТОМОРҚАДАН ФОЙДАЛАНИШ ── */
+  {
+    nomi: 'Томорқа бор-у баҳо қўйилмаган — хато',
+    tekshir: () =>
+      xatoBor(
+        { jamiAzo: 1, tomorqaBor: true, ekinMaydoni: 5, tomorqaFoydalanish: null },
+        'tomorqaFoydalanish'
+      ),
+  },
+  {
+    nomi: 'Баҳо қўйилса — хато йўқ',
+    tekshir: () =>
+      !xatoBor(
+        { jamiAzo: 1, tomorqaBor: true, ekinMaydoni: 5, tomorqaFoydalanish: 'Yomon' },
+        'tomorqaFoydalanish'
+      ),
+  },
+  {
+    nomi: 'Томорқа йўқ бўлса — баҳо сўралмайди',
+    tekshir: () =>
+      !xatoBor({ jamiAzo: 1, tomorqaBor: false, tomorqaFoydalanish: null }, 'tomorqaFoydalanish'),
+  },
+
+  /* ── ҚЎШИМЧА ЕР ── */
+  {
+    nomi: 'Қўшимча ер бор-у майдони ёзилмаган — хато',
+    tekshir: () =>
+      xatoBor({ jamiAzo: 1, qoshimchaYerBor: true, qoshimchaYerMaydoni: null }, 'qoshimchaYerMaydoni'),
+  },
+  {
+    nomi: 'Майдон ёзилган-у «ер йўқ» дейилган — хато',
+    tekshir: () =>
+      xatoBor({ jamiAzo: 1, qoshimchaYerBor: false, qoshimchaYerMaydoni: 8 }, 'qoshimchaYerMaydoni'),
+  },
+  {
+    nomi: 'Иккови ҳам тўғри — хато йўқ',
+    tekshir: () =>
+      !xatoBor({ jamiAzo: 1, qoshimchaYerBor: true, qoshimchaYerMaydoni: 8 }, 'qoshimchaYerMaydoni'),
+  },
 ];
 
 let xato = 0;

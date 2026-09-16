@@ -71,6 +71,9 @@ export interface XatlovRaqamlari {
   hunarTurlari?: string[] | null;
   hunarmandchilik?: string | null;
   ekinMaydoni?: number | null;
+  tomorqaFoydalanish?: string | null;
+  qoshimchaYerBor?: boolean | null;
+  qoshimchaYerMaydoni?: number | null;
   issiqxonaTalabi?: boolean | null;
   issiqxonaMaydoni?: number | null;
   ijaraYer?: boolean | null;
@@ -334,6 +337,20 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
   }
   if (!d.tomorqaBor && n(d.ekinMaydoni) > 0) {
     xato('ekinMaydoni', 'Экин майдони киритилган, лекин «ер йўқ» деб белгиланган');
+  }
+  /*
+   * Майдон сони ЕТМАЙДИ: ўша 10 сотих тўлиқ экилган ҳам,
+   * ташлаб қўйилган ҳам бўлиши мумкин. Баҳо кесмага тушади ва
+   * кейинги хатловда таққосланади — шунинг учун мажбурий.
+   */
+  if (d.tomorqaBor && !d.tomorqaFoydalanish) {
+    xato('tomorqaFoydalanish', 'Томорқадан фойдаланиш даражасини танланг');
+  }
+  if (d.qoshimchaYerBor && n(d.qoshimchaYerMaydoni) <= 0) {
+    xato('qoshimchaYerMaydoni', 'Қўшимча ер бор деб белгиланган — майдонини киритинг');
+  }
+  if (!d.qoshimchaYerBor && n(d.qoshimchaYerMaydoni) > 0) {
+    xato('qoshimchaYerMaydoni', 'Майдон киритилган, лекин «қўшимча ер йўқ» деб белгиланган');
   }
   if (d.issiqxonaTalabi && n(d.issiqxonaMaydoni) <= 0) {
     ogoh('issiqxonaMaydoni', 'Иссиқхона талаби бор — режалаштирилган майдонни киритинг');

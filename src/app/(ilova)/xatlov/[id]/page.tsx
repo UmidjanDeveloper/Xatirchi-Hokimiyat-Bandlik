@@ -24,6 +24,7 @@ import {
   MOLIYA_TURI,
   UY_HOLATI,
   kirillcha,
+  TOMORQA_FOYDALANISH,
 } from '@/lib/constants';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { TarixBlogi } from '@/components/xonadon/tarix-blogi';
@@ -371,6 +372,18 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
         <Qator
           nomi={tr("Томорқа")}
           qiymat={x.tomorqaBor ? tr(`${x.ekinMaydoni ?? 0} сотих экин майдони`) : tr('Йўқ')}
+        />
+        {x.tomorqaBor && (
+          <Qator
+            nomi={tr("Томорқадан фойдаланиш")}
+            qiymat={tr(kirillcha(TOMORQA_FOYDALANISH, x.tomorqaFoydalanish))}
+          />
+        )}
+        <Qator
+          nomi={tr("Қўшимча фойдаланувдаги ер")}
+          qiymat={
+            x.qoshimchaYerBor ? tr(`${x.qoshimchaYerMaydoni ?? 0} сотих`) : tr('Йўқ')
+          }
         />
         <Qator
           nomi={tr("Ижара ер")}

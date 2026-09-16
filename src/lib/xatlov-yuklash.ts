@@ -146,6 +146,9 @@ export async function xatlovniYukla(
 
     tomorqaBor: x.tomorqaBor,
     ekinMaydoni: s(x.ekinMaydoni),
+    tomorqaFoydalanish: x.tomorqaFoydalanish,
+    qoshimchaYerBor: x.qoshimchaYerBor,
+    qoshimchaYerMaydoni: s(x.qoshimchaYerMaydoni),
     chorvaBor: x.chorvaBor,
     chorvaTurlari: x.chorvaTurlari ?? [],
     yirikShoxliSoni: s(x.yirikShoxliSoni),

@@ -40,6 +40,9 @@ export type KesmaManbai = Pick<
   | 'maydaShoxliSoni'
   | 'parrandaSoni'
   | 'tomorqaMaydoni'
+  | 'ekinMaydoni'
+  | 'tomorqaFoydalanish'
+  | 'qoshimchaYerMaydoni'
   | 'gaz'
   | 'ichimlikSuvi'
   | 'uyHolati'
@@ -305,6 +308,15 @@ export function kesmaYasa(
     maydaShoxliSoni: x.maydaShoxliSoni,
     parrandaSoni: x.parrandaSoni,
     tomorqaMaydoni: x.tomorqaMaydoni,
+    ekinMaydoni: x.ekinMaydoni,
+    /*
+     * Томорқадан фойдаланиш баҳоси кесмада сақланади: келгуси
+     * йил ўша хонадонга борилганда «ўтган сафар ёмон эди, ҳозир
+     * қониқарли» деб КЎРСАТИШ мумкин бўлсин. Берилган ёрдам
+     * натижа бердими — жавоби шу ердан чиқади.
+     */
+    tomorqaFoydalanish: x.tomorqaFoydalanish,
+    qoshimchaYerMaydoni: x.qoshimchaYerMaydoni,
 
     gaz: x.gaz,
     ichimlikSuvi: x.ichimlikSuvi,
@@ -361,6 +373,26 @@ export interface Ozgarish {
 }
 
 /** Ikki kesmani taqqoslaydi. `avval` eskisi, `hozir` yangisi. */
+/**
+ * Томорқа баҳосини РАҚАМГА айлантиради.
+ *
+ * Таққослаш рақам устида ишлайди, баҳо эса сўз. Уни ўлчовга
+ * келтирмасак, «ўтган сафар ёмон эди, ҳозир қониқарли» деган
+ * ЭНГ МУҲИМ ўзгариш тарихда умуман кўринмай қоларди — ҳолбуки
+ * берилган ёрдам натижа бердими деган савол айнан шу.
+ */
+const TOMORQA_BALI: Record<string, number> = {
+  Yomon: 1,
+  Qoniqarli: 2,
+  Yaxshi: 3,
+  Alo: 4,
+};
+
+function tomorqaBali(baho: string | null): number | null {
+  if (!baho) return null;
+  return TOMORQA_BALI[baho] ?? null;
+}
+
 export function taqqosla(avval: HouseholdKesma, hozir: HouseholdKesma): Ozgarish[] {
   const son = (a: number | null, h: number | null, nomi: string, birlik: string, kopYaxshi: boolean): Ozgarish => ({
     nomi,
@@ -387,6 +419,15 @@ export function taqqosla(avval: HouseholdKesma, hozir: HouseholdKesma): Ozgarish
     son(avval.yirikShoxliSoni, hozir.yirikShoxliSoni, 'Йирик шохли чорва', 'бош', true),
     son(avval.maydaShoxliSoni, hozir.maydaShoxliSoni, 'Майда шохли чорва', 'бош', true),
     son(avval.parrandaSoni, hozir.parrandaSoni, 'Парранда', 'бош', true),
+    son(avval.ekinMaydoni, hozir.ekinMaydoni, 'Экин майдони', 'сотих', true),
+    son(
+      tomorqaBali(avval.tomorqaFoydalanish),
+      tomorqaBali(hozir.tomorqaFoydalanish),
+      'Томорқадан фойдаланиш',
+      'даража',
+      true
+    ),
+    son(avval.qoshimchaYerMaydoni, hozir.qoshimchaYerMaydoni, 'Қўшимча ер', 'сотих', true),
   ].filter((o) => o.farq !== 0 || o.nomi === 'Фаровонлик кўрсаткичи');
 }
 

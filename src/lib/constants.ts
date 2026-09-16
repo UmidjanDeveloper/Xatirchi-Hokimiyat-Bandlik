@@ -417,6 +417,34 @@ export const MASUL_TASHKILOT = v(
 );
 
 // ─────────────────────────────────────────────────────────────
+//  TOMORQADAN FOYDALANISH DARAJASI
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Tomorqa QANCHALIK ishlatilayotgani.
+ *
+ * ── Nega maydon soni yetmaydi ──
+ *
+ * "10 sotix yer bor" degan raqamdan reja chiqmaydi: o'sha 10
+ * sotix to'la ekilgan ham, yillab tashlab qo'yilgan ham bo'lishi
+ * mumkin. Ikkoviga MUTLAQO boshqa chora kerak - birinchisiga
+ * urug'lik va suv, ikkinchisiga esa avvalo sababini aniqlash.
+ *
+ * ── Nega to'rt daraja, ko'p emas ──
+ *
+ * Mahalla xodimi eshik oldida turib baho qo'yadi. O'nta darajali
+ * shkalada u har safar o'rtasini tanlab ketardi. To'rttasi esa
+ * ko'z bilan ajratiladi va "qoniqarli" bilan "yomon" orasida
+ * chegara aniq: birida hosil bor, ikkinchisida yo'q.
+ */
+export const TOMORQA_FOYDALANISH = v(
+  ['Alo', 'Аъло — ер тўлиқ экилган, ҳосил олинади'],
+  ['Yaxshi', 'Яхши — катта қисми экилган'],
+  ['Qoniqarli', 'Қониқарли — ярмигача экилган'],
+  ['Yomon', 'Ёмон — деярли ишлатилмайди, ташландиқ']
+);
+
+// ─────────────────────────────────────────────────────────────
 //  YORDAMCHILAR
 // ─────────────────────────────────────────────────────────────
 

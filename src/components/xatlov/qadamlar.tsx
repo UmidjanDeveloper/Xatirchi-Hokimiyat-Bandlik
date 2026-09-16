@@ -23,6 +23,7 @@ import {
   INFRATUZILMA_MUAMMOSI,
   OILADAGI_ORNI,
   PASSIV_BIRLIGI,
+  TOMORQA_FOYDALANISH,
   PASSIV_DAROMAD_TURI,
   UY_HOLATI,
   VALYUTA,
@@ -1011,16 +1012,71 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
         </ToliqKeng>
 
         {h.tomorqaBor && (
-          <RaqamMaydoni
-            yorliq={tr("Экин экиладиган майдон")}
-            izoh={tr("Уй турган жойни ҳисобламанг — фақат экин экса бўладиган қисми")}
+          <>
+            <RaqamMaydoni
+              yorliq={tr("Экин экиладиган майдон")}
+              izoh={tr("Уй турган жойни ҳисобламанг — фақат экин экса бўладиган қисми")}
+              majburiy
+              qiymat={h.ekinMaydoni}
+              ozgardi={(q) => yangila('ekinMaydoni', q)}
+              max={10000}
+              qadam={0.01}
+              birlik={tr("сотих")}
+              xato={x(xatolar, 'ekinMaydoni')}
+            />
+
+            {/*
+              Майдон сони ЕТМАЙДИ: ўша 10 сотих тўлиқ экилган
+              ҳам, йиллаб ташлаб қўйилган ҳам бўлиши мумкин.
+              Икковига бошқа-бошқа чора керак.
+
+              Баҳо кесмага ҳам тушади — кейинги йил ўша хонадонга
+              борилганда «ўтган сафар ёмон эди» деб кўрсатилади.
+            */}
+            <ToliqKeng>
+              <TanlovMaydoni
+                yorliq={tr("Томорқадан фойдаланиш даражаси")}
+                izoh={tr("Ер бор-йўқлиги эмас, ИШЛАТИЛАЁТГАНИ муҳим. Бу баҳо хонадон тарихида сақланади ва кейинги хатловда таққосланади.")}
+                majburiy
+                variantlar={TOMORQA_FOYDALANISH}
+                qiymat={h.tomorqaFoydalanish}
+                ozgardi={(q) => yangila('tomorqaFoydalanish', q)}
+                xato={x(xatolar, 'tomorqaFoydalanish')}
+              />
+            </ToliqKeng>
+          </>
+        )}
+
+        {/*
+          Томорқадан ТАШҚАРИ ер: қариндошдан қолган, маҳалладан
+          ажратилган, вақтинча берилган. Ижара эмас (у пастда
+          алоҳида сўралади), лекин унда ҳам экин экса бўлади —
+          демак режага киради.
+        */}
+        <ToliqKeng>
+          <HaYoqMaydoni
+            yorliq={tr("Қўшимча фойдаланувдаги ер майдони борми")}
+            izoh={tr("Томорқадан ташқари, оила фойдаланаётган бошқа ер")}
             majburiy
-            qiymat={h.ekinMaydoni}
-            ozgardi={(q) => yangila('ekinMaydoni', q)}
-            max={10000}
+            qiymat={h.qoshimchaYerBor}
+            ozgardi={(q) => {
+              yangila('qoshimchaYerBor', q);
+              if (!q) yangila('qoshimchaYerMaydoni', '');
+            }}
+            xato={x(xatolar, 'qoshimchaYerBor')}
+          />
+        </ToliqKeng>
+
+        {h.qoshimchaYerBor && (
+          <RaqamMaydoni
+            yorliq={tr("Қўшимча ер майдони")}
+            majburiy
+            qiymat={h.qoshimchaYerMaydoni}
+            ozgardi={(q) => yangila('qoshimchaYerMaydoni', q)}
+            max={100000}
             qadam={0.01}
             birlik={tr("сотих")}
-            xato={x(xatolar, 'ekinMaydoni')}
+            xato={x(xatolar, 'qoshimchaYerMaydoni')}
           />
         )}
 
@@ -1643,12 +1699,12 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
       */}
       <Bolim
         raqam="X"
-        sarlavha={tr("Пассив даромад воситаси")}
+        sarlavha={tr("Қўшимча даромад воситаси")}
         izoh={tr("Оилага қайси восита берилса, у доимий даромад топа олади. Ишга жойлаштириб бўлмайдиган аъзоси бор оила учун кўпинча ягона реал йўл.")}
       >
         <ToliqKeng>
           <HaYoqMaydoni
-            yorliq={tr("Оила пассив даромад олишни истайдими")}
+            yorliq={tr("Оила қўшимча даромад хоҳлайдими")}
             majburiy
             qiymat={h.passivDaromadIstagi}
             ozgardi={(q) => {
@@ -1971,6 +2027,9 @@ export const QADAMLAR = [
     komponent: QadamYerChorva,
     maydonlar: [
       'tomorqaBor',
+      'tomorqaFoydalanish',
+      'qoshimchaYerBor',
+      'qoshimchaYerMaydoni',
       'chorvaBor',
       'hunarmandBor',
       'issiqxonaTalabi',

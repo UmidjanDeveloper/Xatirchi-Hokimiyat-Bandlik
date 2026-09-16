@@ -43,6 +43,7 @@ import {
   VALYUTA,
   UY_HOLATI,
   qiymatlar,
+  TOMORQA_FOYDALANISH,
 } from './constants';
 
 /** Manfiy bo'lmagan butun son; bo'sh qiymat 0 ga aylanadi */
@@ -254,6 +255,9 @@ export const XonadonSxemasi = z.object({
   // IX. Tomorqa, yer, chorva
   tomorqaBor: z.boolean().default(false),
   ekinMaydoni: olchov,
+  tomorqaFoydalanish: tanlov(TOMORQA_FOYDALANISH),
+  qoshimchaYerBor: z.boolean().default(false),
+  qoshimchaYerMaydoni: olchov,
   chorvaBor: z.boolean().default(false),
   chorvaTurlari: koptanlov(CHORVA_TURI),
   /*
