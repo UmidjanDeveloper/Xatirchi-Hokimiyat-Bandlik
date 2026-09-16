@@ -197,21 +197,25 @@ export function choralarniHisobla(x: ChoraManbai): YangiChora[] {
 }
 
 /**
- * Yangi topshiriqlarni bazaga yozadi - TAKRORLAMASDAN.
+ * Bu xonadon uchun HALI YOZILMAGAN topshiriqlar.
  *
  * Xatlov tahrirlanib qayta yuborilishi mumkin. Har safar
  * yangi topshiriq yaratilsa, ro'yxat bir xil qatorlar bilan
- * to'lib ketardi va hokim haqiqiy ishni ko'rmasdi.
+ * to'lib ketardi va hokim haqiqiy ishni ko'rmasdi. Shuning
+ * uchun bor topshiriqlar `muammo` matni bo'yicha chiqarib
+ * tashlanadi.
  *
- * @returns nechta YANGI topshiriq yaratildi
+ * Yozishdan ajratib qo'yilgan, chunki bir martalik skript
+ * (`scripts/chora-toldirish.ts`) avval NIMA chiqishini
+ * ko'rsatadi, keyin yozadi - va ikkovi bir xil qoida bilan
+ * hisoblanishi shart.
  */
-export async function choralarniYoz(
+export async function yangiChoralar(
   tx: Prisma.TransactionClient,
-  manba: ChoraManbai,
-  yaratganId: string
-): Promise<number> {
+  manba: ChoraManbai
+): Promise<YangiChora[]> {
   const kerakli = choralarniHisobla(manba);
-  if (kerakli.length === 0) return 0;
+  if (kerakli.length === 0) return [];
 
   /* Shu xonadon bo'yicha ALLAQACHON bor topshiriqlar */
   const mavjud = await tx.actionPlan.findMany({
@@ -220,7 +224,20 @@ export async function choralarniYoz(
   });
   const bor = new Set(mavjud.map((m) => m.muammo));
 
-  const yangi = kerakli.filter((k) => !bor.has(k.muammo));
+  return kerakli.filter((k) => !bor.has(k.muammo));
+}
+
+/**
+ * Yangi topshiriqlarni bazaga yozadi - TAKRORLAMASDAN.
+ *
+ * @returns nechta YANGI topshiriq yaratildi
+ */
+export async function choralarniYoz(
+  tx: Prisma.TransactionClient,
+  manba: ChoraManbai,
+  yaratganId: string
+): Promise<number> {
+  const yangi = await yangiChoralar(tx, manba);
   if (yangi.length === 0) return 0;
 
   await tx.actionPlan.createMany({

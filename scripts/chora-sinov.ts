@@ -16,9 +16,26 @@
  * ============================================================
  */
 
-import { choralarniHisobla, type ChoraManbai } from '../src/lib/chora-yaratish';
+import type { Prisma } from '@prisma/client';
+import { choralarniHisobla, yangiChoralar, type ChoraManbai } from '../src/lib/chora-yaratish';
 
-type Sinov = { nomi: string; tekshir: () => boolean };
+type Sinov = { nomi: string; tekshir: () => boolean | Promise<boolean> };
+
+/**
+ * Базанинг ўрнига қўйиладиган сохта мижоз.
+ *
+ * Такрор аниқлаш қоидаси — эски хатловларни тўлдирадиган
+ * тугманинг бутун хавфсизлиги шунга таянади: тугма ўн марта
+ * босилса ҳам рўйхат бир хил қолиши керак. Шунинг учун у
+ * базасиз ҳам синалади.
+ */
+function soxtaBaza(mavjudMuammolar: string[]): Prisma.TransactionClient {
+  return {
+    actionPlan: {
+      findMany: async () => mavjudMuammolar.map((muammo) => ({ muammo })),
+    },
+  } as unknown as Prisma.TransactionClient;
+}
 
 /** Бўш хонадон — ҳар синов ўзига кераклисини қўшиб олади */
 function xonadon(ozgarish: Partial<ChoraManbai> = {}): ChoraManbai {
@@ -228,19 +245,66 @@ const SINOVLAR: Sinov[] = [
       return new Set(r.map((t) => t.muammo)).size === r.length;
     },
   },
+
+  /* ── ТАКРОР ЯРАТИЛМАСЛИГИ ── */
+  {
+    nomi: 'Базада ҳеч нарса йўқ — ҳаммаси янги',
+    tekshir: async () => {
+      const m = xonadon({ uzoqDavolanish: true, ishsizlar: [ishsiz()] });
+      return (await yangiChoralar(soxtaBaza([]), m)).length === 2;
+    },
+  },
+  {
+    nomi: 'Бор топшириқ ИККИНЧИ марта яратилмайди',
+    tekshir: async () => {
+      const m = xonadon({ uzoqDavolanish: true, ishsizlar: [ishsiz()] });
+      const hammasi = choralarniHisobla(m);
+      const qolgan = await yangiChoralar(soxtaBaza(hammasi.map((t) => t.muammo)), m);
+      return qolgan.length === 0;
+    },
+  },
+  {
+    nomi: 'Ярми бор бўлса — фақат етишмагани қайтади',
+    tekshir: async () => {
+      const m = xonadon({ uzoqDavolanish: true, ishsizlar: [ishsiz()] });
+      const hammasi = choralarniHisobla(m);
+      const qolgan = await yangiChoralar(soxtaBaza([hammasi[0].muammo]), m);
+      return qolgan.length === 1 && qolgan[0].muammo === hammasi[1].muammo;
+    },
+  },
+  {
+    nomi: 'Муаммосиз хонадонда база умуман сўралмайди',
+    tekshir: async () => {
+      let sorandi = false;
+      const baza = {
+        actionPlan: {
+          findMany: async () => {
+            sorandi = true;
+            return [];
+          },
+        },
+      } as unknown as Prisma.TransactionClient;
+      const natija = await yangiChoralar(baza, xonadon());
+      return natija.length === 0 && !sorandi;
+    },
+  },
 ];
 
-let xato = 0;
-for (const s of SINOVLAR) {
-  let ok = false;
-  try {
-    ok = s.tekshir();
-  } catch (e) {
-    ok = false;
-    console.log(`     xatolik: ${(e as Error).message}`);
+async function yurgiz() {
+  let xato = 0;
+  for (const s of SINOVLAR) {
+    let ok = false;
+    try {
+      ok = await s.tekshir();
+    } catch (e) {
+      ok = false;
+      console.log(`     xatolik: ${(e as Error).message}`);
+    }
+    if (!ok) xato++;
+    console.log(`${ok ? 'OK  ' : 'XATO'} ${s.nomi}`);
   }
-  if (!ok) xato++;
-  console.log(`${ok ? 'OK  ' : 'XATO'} ${s.nomi}`);
+  console.log(`\n${SINOVLAR.length - xato}/${SINOVLAR.length} o'tdi`);
+  process.exit(xato ? 1 : 0);
 }
-console.log(`\n${SINOVLAR.length - xato}/${SINOVLAR.length} o'tdi`);
-process.exit(xato ? 1 : 0);
+
+yurgiz();
