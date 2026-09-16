@@ -6,11 +6,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Sanani o'zbekcha formatda ko'rsatadi: 04.09.2026, 14:35 */
+/**
+ * Sanani o'zbekcha formatda ko'rsatadi: 04.09.2026, 14:35
+ *
+ * ── Nega Toshkent vaqti majburan qo'llanadi ──
+ *
+ * Bu funksiya SERVER komponentlarida ishlaydi, Vercel serveri esa
+ * UTC da yuradi. Ilgari u `getHours()` ni o'qirdi va natijada
+ * dalada soat 12:22 da kiritilgan xatlov ro'yxatda "07:22" bo'lib
+ * turardi — besh soat orqada. Xodim o'zi kiritgan yozuvni
+ * topolmasdi.
+ *
+ * O'zbekiston UTC+5 da va yozgi vaqtga o'tmaydi, shuning uchun
+ * aniq siljish yetarli: vaqtni surib, UTC qismlarini o'qiymiz.
+ * Shunda server ham, brauzer ham BIR XIL natija beradi.
+ */
 export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = toshkentVaqti(date);
+  if (Number.isNaN(d.getTime())) return '—';
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}, ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 
 /**
@@ -24,6 +39,18 @@ export function formatDate(date: Date | string): string {
  * ============================================================
  */
 const TOSHKENT = 5 * 60 * 60 * 1000;
+
+/**
+ * Sanani Toshkent mintaqasiga ko'chiradi.
+ *
+ * Qaytgan `Date` ning UTC qismlari (`getUTCHours` va boshqalar)
+ * Toshkent vaqtini beradi. Mahalliy qismlar (`getHours`) esa
+ * ENDI noto'g'ri — ularni o'qimang.
+ */
+export function toshkentVaqti(date: Date | string): Date {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return new Date(d.getTime() + TOSHKENT);
+}
 
 /** `YYYY-MM-DD` sanasining Toshkent vaqti bo'yicha boshlanishi */
 export function kunBoshi(day: string): Date {

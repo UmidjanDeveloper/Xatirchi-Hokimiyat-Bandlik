@@ -12,6 +12,8 @@
  * ============================================================
  */
 
+import { toshkentVaqti } from '@/lib/utils';
+
 const OYLAR_KIRILL = [
   'январ',
   'феврал',
@@ -42,18 +44,29 @@ const OYLAR_LOTIN = [
   'dekabr',
 ] as const;
 
+/*
+ * ── Вақт минтақаси ──
+ *
+ * Ҳисобот СЕРВЕРДА тайёрланади, Vercel сервери эса UTC да
+ * юради. Тошкентда соат 02:00 да олинган ҳисоботнинг
+ * муқовасида КЕЧАГИ сана турарди — ҳужжат эса ҳокимга
+ * борарди.
+ *
+ * `toshkentVaqti` вақтни суради, кейин UTC қисмлари ўқилади.
+ */
+
 /** «12 сентябр 2026 йил» ёки «12 sentabr 2026 yil» */
 export function sanaUzun(sana: string | Date, lotin: boolean): string {
-  const d = typeof sana === 'string' ? new Date(sana) : sana;
+  const d = toshkentVaqti(sana);
   if (Number.isNaN(d.getTime())) return '—';
-  const oy = (lotin ? OYLAR_LOTIN : OYLAR_KIRILL)[d.getMonth()];
-  return `${d.getDate()} ${oy} ${d.getFullYear()} ${lotin ? 'yil' : 'йил'}`;
+  const oy = (lotin ? OYLAR_LOTIN : OYLAR_KIRILL)[d.getUTCMonth()];
+  return `${d.getUTCDate()} ${oy} ${d.getUTCFullYear()} ${lotin ? 'yil' : 'йил'}`;
 }
 
 /** «12.09.2026» — колонтитул ва жадвал учун */
 export function sanaQisqa(sana: string | Date): string {
-  const d = typeof sana === 'string' ? new Date(sana) : sana;
+  const d = toshkentVaqti(sana);
   if (Number.isNaN(d.getTime())) return '—';
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
+  return `${p(d.getUTCDate())}.${p(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`;
 }
