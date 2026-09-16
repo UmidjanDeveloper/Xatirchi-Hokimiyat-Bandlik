@@ -93,6 +93,48 @@ const Tana = z.discriminatedUnion('turi', [
   z.object({ turi: z.literal('yakuniy'), id: z.string().cuid().nullish(), malumot: YuborishSxemasi }),
 ]);
 
+/**
+ * Zod хатосини ўзбекчага ўгиради.
+ *
+ * ── Нега керак ──
+ *
+ * Zod инглизча ёзади: «Expected 'Erkak' | 'Ayol', received null»
+ * ёки «String must contain at least 3 character(s)». Маҳалла
+ * ходими буни ўқий олмайди — у хонадон эшиги олдида турибди ва
+ * инглиз тилини билиши шарт эмас.
+ *
+ * Матн ҚИСҚА бўлиши керак: у катакнинг тагида, кичик ҳарфда
+ * чиқади. Шунинг учун «нима қилиш керак» дейилади, «нима
+ * кутилган эди» эмас.
+ */
+function zodniOgir(n: z.ZodIssue): string {
+  switch (n.code) {
+    case 'invalid_type':
+      /* null ёки undefined — яъни умуман тўлдирилмаган */
+      return n.received === 'null' || n.received === 'undefined'
+        ? 'Тўлдирилмаган'
+        : 'Нотўғри турдаги қиймат';
+
+    case 'invalid_enum_value':
+      return 'Рўйхатдан танланг';
+
+    case 'too_small':
+      if (n.type === 'string') return 'Жуда қисқа';
+      if (n.type === 'array') return 'Камида битта танланг';
+      return `Камида ${String(n.minimum)} бўлиши керак`;
+
+    case 'too_big':
+      if (n.type === 'string') return 'Жуда узун';
+      return `Кўпи билан ${String(n.maximum)} бўлиши мумкин`;
+
+    case 'invalid_string':
+      return 'Нотўғри ёзилган';
+
+    default:
+      return 'Нотўғри қиймат';
+  }
+}
+
 export async function POST(request: Request) {
   const q = await talabQil(['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN']);
   if (q instanceof NextResponse) return q;
@@ -100,8 +142,46 @@ export async function POST(request: Request) {
   const xom = await request.json().catch(() => null);
   const natija = Tana.safeParse(xom);
   if (!natija.success) {
+    /*
+     * ── ХАТО ҚАЙСИ МАЙДОНДА ЭКАНИ АЙТИЛАДИ ──
+     *
+     * Илгари бу ерда фақат «Маълумот нотўғри» деган қизил
+     * ёзув қайтарди. Тафсилот `flatten()` кўринишида ёнида
+     * борди, аммо форма уни ЎҚИМАСДИ: у бошқа шаклни —
+     * `{maydon, xabar}` рўйхатини кутади.
+     *
+     * Натижада дала ходими саккиз қадамли анкетада қизил
+     * қутини кўрар, лекин қайси катак хато эканини топа
+     * олмасди. Устига босиб ўтиш ҳам мумкин эмасди.
+     *
+     * Энди рўйхат форма кутган шаклда қайтади — форма ўша
+     * қадамга ўзи ўтади ва катакни белгилайди.
+     */
+    const xatolar = natija.error.issues.map((n) => ({
+      /*
+       * Йўл ичидан ОХИРГИ матнли бўлак олинади: танада
+       * маълумот `malumot.xonadon.jamiAzo` каби ичкарида
+       * туради, форма эса соф майдон номини кутади.
+       */
+      maydon: [...n.path].reverse().find((k) => typeof k === 'string') ?? 'umumiy',
+      xabar: zodniOgir(n),
+    }));
+
     return NextResponse.json(
-      { xabar: 'Ma‘lumot noto‘g‘ri', tafsilot: natija.error.flatten() },
+      {
+        /*
+         * Хабар матни ЎЗИ ЕТАРЛИ бўлиши керак эмас — қизил
+         * белги катакнинг ёнида туради ва форма ўша қадамга
+         * ўтади. Шунинг учун бу ерда фақат «қаерга қараш
+         * керак» дейилади.
+         */
+        xabar:
+          xatolar.length === 1
+            ? 'Битта катак тўлдирилмаган ёки нотўғри — у қизил билан белгиланди'
+            : `${xatolar.length} та катак тўлдирилмаган ёки нотўғри — улар қизил билан белгиланди`,
+        xatolar,
+        tafsilot: natija.error.flatten(),
+      },
       { status: 400 }
     );
   }

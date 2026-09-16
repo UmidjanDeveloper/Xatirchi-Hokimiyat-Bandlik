@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
+  ArrowLeft,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -192,6 +193,23 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       const natija = await javob.json().catch(() => ({}));
 
       if (!javob.ok) {
+        /*
+          ── ХАТО ҚАЙСИ КАТАКДА ЭКАНИ КЎРСАТИЛАДИ ──
+
+          Илгари бу ерда фақат қизил ёзув чиқарди: «Маълумот
+          нотўғри». Саккиз қадамли анкетада ходим қайси
+          катакни тузатишни ўзи қидириши керак эди — топа
+          олмасди ва хатловни ташлаб кетарди.
+
+          Якуний юборишда бу аллақачон тўғри ишларди; қоралама
+          сақлашда эса тушиб қолган экан.
+        */
+        if (Array.isArray(natija.xatolar)) {
+          const xt: Record<string, string> = {};
+          for (const n of natija.xatolar) xt[n.maydon] = n.xabar;
+          setXatolar(xt);
+          setQadam(xatoQadami(xt));
+        }
         setServerXatosi(natija.xabar ?? tr('Сақлаб бўлмади'));
         return;
       }
@@ -464,10 +482,41 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           {tr('Қоралама')}
         </button>
 
+        {/*
+          ── САҚЛАГАНДАН КЕЙИН ЧИҚИШ ──
+
+          Илгари бу ерда фақат яшил «Сақланди» ёзуви турарди.
+          Ходим қораламани сақлаб, ишни тўхтатмоқчи бўлса —
+          чиқадиган тугма йўқ эди. Ёнбардаги «Хатловларим» ни
+          топиш керак эди, телефонда эса у меню ичида яширин.
+
+          Энди ёнида тугма: босса, қораламалар рўйхатига
+          ўтади ва ёзуви ўша ерда туради.
+        */}
         {oxirgiSaqlash && (
-          <span className="flex items-center gap-1 text-xs text-ok">
-            <Check className="h-3.5 w-3.5" />
-            {tr('Сақланди')}
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-xs text-ok">
+              <Check className="h-3.5 w-3.5" />
+              {tr('Сақланди')}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                /*
+                  Хотирадаги нусха энди керак эмас: ёзув
+                  серверда турибди ва «Хатловларим» дан
+                  очилади. Акс ҳолда кейинги «Янги хатлов» да
+                  у яна сўралиб турарди.
+                */
+                qoralamaOchir(QORALAMA_ID);
+                router.push('/xatlov');
+                router.refresh();
+              }}
+              className="flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              {tr('Хатловларимга қайтиш')}
+            </button>
           </span>
         )}
 
