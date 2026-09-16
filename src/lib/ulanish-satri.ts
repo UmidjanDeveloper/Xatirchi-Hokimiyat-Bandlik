@@ -50,15 +50,6 @@ export function ulanishSatri(): string | undefined {
     const u = new URL(xom);
 
     /*
-     * Bitta nusxa — bitta ulanish. Standart qiymat (5-9) bu
-     * yerda foyda bermaydi: nusxa bir vaqtda bitta so'rovni
-     * bajaradi, qolgan ulanishlar shunchaki band turadi.
-     */
-    if (!u.searchParams.has('connection_limit')) {
-      u.searchParams.set('connection_limit', '1');
-    }
-
-    /*
      * Supabase puleri (6543-port) tranzaksiya rejimida ishlaydi
      * va tayyorlangan so'rovlarni qo'llab-quvvatlamaydi. Prisma
      * buni `pgbouncer=true` orqali biladi; aytilmasa, so'rovlar
@@ -67,6 +58,31 @@ export function ulanishSatri(): string | undefined {
     const pulerdanmi = u.port === '6543' || u.hostname.includes('pooler');
     if (pulerdanmi && !u.searchParams.has('pgbouncer')) {
       u.searchParams.set('pgbouncer', 'true');
+    }
+
+    /*
+     * ── ULANISHLAR SONI ──
+     *
+     * Ikki xil holat, ikki xil javob.
+     *
+     * TO'G'RIDAN-TO'G'RI ulanishda (5432) Postgres'ning o'zida
+     * ulanishlar kam — Supabase'ning bepul tarifida ~60 ta.
+     * Har funksiya nusxasi 5-9 tadan olsa, o'nta xodim ishlasa
+     * ular tugaydi. Shuning uchun bitta.
+     *
+     * PULER ORQALI esa aksincha. Puler minglab mijoz ulanishini
+     * bir nechta haqiqiy ulanishga yig'adi — cheklashning
+     * hojati yo'q. Bu yerda bittaga tushirish ZARAR qiladi:
+     * panel bir vaqtda to'qqizta so'rov yuboradi va ular
+     * NAVBATDA turadi. Baza bilan aloqa 463 ms bo'lsa,
+     * to'qqiztasi ketma-ket 5,5 soniyaga aylanadi — ishlab
+     * chiqarishda aynan shu bo'ldi.
+     *
+     * Beshta yetadi: panel so'rovlari parallel ketadi, puler
+     * esa bu yukni bemalol ko'taradi.
+     */
+    if (!u.searchParams.has('connection_limit')) {
+      u.searchParams.set('connection_limit', pulerdanmi ? '5' : '1');
     }
 
     return u.toString();

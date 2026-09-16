@@ -331,7 +331,66 @@ export function dinamikaHisobla(
   });
 }
 
+/**
+ * ============================================================
+ *  ПАНЕЛ МАЪЛУМОТИ — ҚИСҚА КЕШ
+ *
+ *  ── Нега керак бўлди ──
+ *
+ *  Ишлаб чиқаришда панел маълумоти 5,5 сонияда тайёрланарди.
+ *  Сабаби масофа: Vercel сервери билан Supabase базаси ҳар хил
+ *  минтақада ва битта сўров 463 мс кетади. Панел эса тўққизта
+ *  сўров юборади.
+ *
+ *  Масофани код билан қисқартириб бўлмайди — у созламада
+ *  тузатилади. Аммо ҲАР САФАР қайта сўрашнинг ҳожати ҳам йўқ:
+ *  панел — таҳлил экрани, ундаги рақамлар секундига
+ *  ўзгармайди.
+ *
+ *  ── Нега 45 сония ──
+ *
+ *  Ходим хатлов киритиб, дарҳол панелга ўтса, ўзгаришни кўриши
+ *  керак. Бир дақиқа кутиш «ишламади» деган таассурот беради.
+ *  Қирқ беш сония — йиғилишда сезилмайдиган, аммо такрор
+ *  очишларни бепул қиладиган оралиқ.
+ *
+ *  Кеш ҲАР НУСХАДА алоҳида: Vercel да функция нусхалари
+ *  бир-бирини кўрмайди. Шунинг учун бу «тезлаштиргич», «ягона
+ *  ҳақиқат манбаи» эмас — эскирган рақам кўрсатиш хавфи йўқ
+ *  даражада қисқа.
+ * ============================================================
+ */
+const KESH_MUDDATI_MS = 45 * 1000;
+
+const kesh = new Map<string, { vaqti: number; natija: TahlilNatijasi }>();
+
 export async function tahlilOl(
+  mahallaId?: string,
+  davr: Davr = 'oy'
+): Promise<TahlilNatijasi> {
+  const kalit = `${mahallaId ?? 'tuman'}|${davr}`;
+  const saqlangan = kesh.get(kalit);
+  if (saqlangan && Date.now() - saqlangan.vaqti < KESH_MUDDATI_MS) {
+    return saqlangan.natija;
+  }
+
+  const natija = await tahlilniHisobla(mahallaId, davr);
+  kesh.set(kalit, { vaqti: Date.now(), natija });
+
+  /*
+   * Калитлар кўп эмас: 70 маҳалла × 3 давр + туман. Аммо
+   * эскирганлари ётиб қолмасин — нусха узоқ яшаса, хотира
+   * беҳуда банд бўлади.
+   */
+  if (kesh.size > 250) {
+    const chegara = Date.now() - KESH_MUDDATI_MS;
+    for (const [k, v] of kesh) if (v.vaqti < chegara) kesh.delete(k);
+  }
+
+  return natija;
+}
+
+async function tahlilniHisobla(
   mahallaId?: string,
   davr: Davr = 'oy'
 ): Promise<TahlilNatijasi> {

@@ -37,25 +37,76 @@ import { tuzilishXatosimi } from '@/lib/baza-xatosi';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+/**
+ * AWS минтақаси — Vercel минтақаси мослиги.
+ *
+ * Supabase манзилида минтақа очиқ ёзилган бўлади:
+ * `aws-0-eu-central-1.pooler.supabase.com`. Vercel эса ўз
+ * қисқартмасини ишлатади. Маслаҳат АНИҚ бўлиши учун иккови
+ * шу ерда боғланади — «минтақани мослаштиринг» деб умумий гап
+ * айтишдан фойда йўқ.
+ */
+const VERCEL_MINTAQASI: Record<string, string> = {
+  'eu-central-1': 'fra1',
+  'eu-west-1': 'dub1',
+  'eu-west-2': 'lhr1',
+  'eu-west-3': 'cdg1',
+  'eu-north-1': 'arn1',
+  'us-east-1': 'iad1',
+  'us-east-2': 'cle1',
+  'us-west-1': 'sfo1',
+  'us-west-2': 'pdx1',
+  'ap-south-1': 'bom1',
+  'ap-southeast-1': 'sin1',
+  'ap-southeast-2': 'syd1',
+  'ap-northeast-1': 'hnd1',
+  'ap-northeast-2': 'icn1',
+  'sa-east-1': 'gru1',
+};
+
+/** Манзилдан минтақа номини ажратиб олади */
+function mintaqaniTop(hostname: string): string | null {
+  const m = hostname.match(
+    /\b((?:us|eu|ap|sa|ca|af|me)-(?:east|west|central|north|south|southeast|northeast|northwest|southwest)-\d)\b/
+  );
+  return m ? m[1] : null;
+}
+
 /** Уланиш сатридан фақат хавфсиз белгиларни ажратиб олади */
 function ulanishHolati(): {
   port: string | null;
   pulerdanmi: boolean;
   pgbouncer: boolean;
   chegara: string | null;
+  bazaMintaqasi: string | null;
+  kerakliVercel: string | null;
+  serverMintaqasi: string | null;
 } {
   const xom = process.env.DATABASE_URL ?? '';
   try {
     const u = new URL(xom);
+    const bazaMintaqasi = mintaqaniTop(u.hostname);
     return {
       port: u.port || null,
       /* Supabase пулери 6543-портда туради */
       pulerdanmi: u.port === '6543' || u.hostname.includes('pooler'),
       pgbouncer: u.searchParams.get('pgbouncer') === 'true',
       chegara: u.searchParams.get('connection_limit'),
+      bazaMintaqasi,
+      kerakliVercel: bazaMintaqasi ? (VERCEL_MINTAQASI[bazaMintaqasi] ?? null) : null,
+      /* Vercel функция қайси минтақада ишлаётганини ўзи айтади */
+      serverMintaqasi: process.env.VERCEL_REGION ?? null,
     };
   } catch {
-    return { port: null, pulerdanmi: false, pgbouncer: false, chegara: null };
+    return {
+      port: null,
+      pulerdanmi: false,
+      pgbouncer: false,
+      chegara: null,
+      bazaMintaqasi: null,
+      kerakliVercel: null,
+      serverMintaqasi: process.env.VERCEL_REGION ?? null,
+    };
   }
 }
 
@@ -177,14 +228,44 @@ export async function GET() {
   }
 
   if (eng > 150) {
-    maslahatlar.push(
-      `Базага бориб-келиш ${eng} мс. Бу узоқ: сервер билан база ҲАР ХИЛ минтақада бўлса шундай бўлади. Vercel лойиҳасининг минтақасини Supabase минтақасига мослаштиринг (Frankfurt — eu-central-1).`
-    );
+    /*
+     * Маслаҳат УМУМИЙ эмас, АНИҚ бўлсин: қайси минтақа, қайси
+     * файлга нима ёзиш керак. «Минтақани мослаштиринг» деган
+     * гапдан чора чиқмайди.
+     */
+    const qayerga = ulanish.kerakliVercel;
+    const qayerda = ulanish.serverMintaqasi;
+
+    if (qayerga && qayerda && qayerga !== qayerda) {
+      maslahatlar.push(
+        `Базага бориб-келиш ${eng} мс — жуда узоқ. Сабаби аниқ: база «${ulanish.bazaMintaqasi}» минтақасида, ` +
+          `Vercel функцияси эса «${qayerda}» да. Иккови орасидаги масофа ҳар сўровга шунча вақт қўшади. ` +
+          `Тузатиш: лойиҳадаги vercel.json га "regions": ["${qayerga}"] қаторини қўшиб, қайта деплой қилинг.`
+      );
+    } else if (qayerga) {
+      maslahatlar.push(
+        `Базага бориб-келиш ${eng} мс — жуда узоқ. База «${ulanish.bazaMintaqasi}» минтақасида. ` +
+          `vercel.json да "regions": ["${qayerga}"] турганига ишонч ҳосил қилинг.`
+      );
+    } else {
+      maslahatlar.push(
+        `Базага бориб-келиш ${eng} мс. Бу узоқ: сервер билан база ҲАР ХИЛ минтақада бўлса шундай бўлади. Vercel лойиҳасининг минтақасини Supabase минтақасига мослаштиринг.`
+      );
+    }
   }
 
   if (panel.ms > 2000) {
+    /*
+     * Панел тўққизта сўров юборади. Улар ПАРАЛЛЕЛ кетиши
+     * керак; агар ketma-ket кетса, вақт тўққиз баравар ошади.
+     * Чегара «1» бўлса — сабаб шу.
+     */
+    const chegara = ulanish.chegara;
     maslahatlar.push(
-      `Панел маълумоти ${panel.ms} мс да тайёрланяпти. Базадаги ёзувлар кўпайган — тезлик учун қўшимча индекс ёки кеш керак бўлади.`
+      chegara === '1'
+        ? `Панел маълумоти ${panel.ms} мс. Уланишлар чегараси «1» — панелнинг тўққизта сўрови навбатда турибди. ` +
+            'Пулер орқали ишлаганда чегара 5 бўлиши керак (кодда шундай қўйилган); созламадаги `connection_limit=1` ни олиб ташланг.'
+        : `Панел маълумоти ${panel.ms} мс да тайёрланяпти. Базадаги ёзувлар кўпайган — тезлик учун қўшимча индекс ёки кеш керак бўлади.`
     );
   }
 

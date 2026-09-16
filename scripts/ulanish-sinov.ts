@@ -52,17 +52,17 @@ function param(natija: string | undefined, nomi: string): string | null {
 const SINOVLAR: Sinov[] = [
   /* ── АСОСИЙ ҚОИДА ── */
   {
-    nomi: 'Уланишлар сони БИТТАГА чекланади',
+    nomi: 'Тўғридан-тўғри уланишда БИТТАГА чекланади',
     tekshir: () =>
       param(bilan('postgresql://u:p@db.example.com:5432/postgres'), 'connection_limit') === '1',
   },
   {
-    nomi: 'Пулер манзилида ҳам чекланади',
+    nomi: 'Пулер орқали эса БЕШТА — параллел сўровлар бўғилмасин',
     tekshir: () =>
       param(
         bilan('postgresql://u:p@aws-0-eu-central-1.pooler.supabase.com:6543/postgres'),
         'connection_limit'
-      ) === '1',
+      ) === '5',
   },
 
   /* ── ПУЛЕР БЕЛГИСИ ── */
