@@ -72,6 +72,43 @@ export function DinamikaBloglari({
 }) {
   const { t: tr } = useAlifbo();
 
+  /*
+    ── ҲАЛИ ҲЕЧ НИМА БЎЛМАГАН ҲОЛАТ ──
+
+    Хатлов бошланмаган туманда бешала диаграмма ҳам бўш
+    чиқади ва саҳифада кетма-кет БЕШТА бўш катак турарди —
+    ҳар бири «Ҳали маълумот йўқ» деб. Бу панелни синган
+    кўрсатади.
+
+    Шунинг учун ҳаммаси нол бўлса, бешта ўрнига БИТТА
+    ихчам карточка турибди: у ҳам ростини айтади, ҳам жойни
+    эгалламайди. Биринчи хонадон хатловдан ўтиши биланоқ
+    диаграммалар ўз-ўзидан қайтади.
+  */
+  const hechNima = dinamika.every(
+    (n) =>
+      n.xatlovXonadon === 0 &&
+      n.aniqlangan === 0 &&
+      n.joylashtirilgan === 0 &&
+      n.yangiXatlov === 0 &&
+      n.yangiAniqlangan === 0 &&
+      n.yangiJoylashgan === 0
+  );
+
+  if (hechNima) {
+    return (
+      <section className="karta p-4 sm:p-5">
+        <h2 className="text-sm font-bold text-ink">{tr('Ўсиш ва камайиш сурати')}</h2>
+        <p className="mt-1 text-xs text-ink-faint">
+          {tr(qamrovNomi)} · {tr(DAVR_NOMI[davr])}
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink-muted">
+          {tr('Динамика учун камида битта хатлов керак. Биринчи хонадон хатловдан ўтгач, бу ерда беш диаграмма пайдо бўлади: ўсиш-камайиш сурати, оқим ва тўпланиб бориш.')}
+        </p>
+      </section>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* ── 1. Асосийси: ўсиш ва камайиш сурати ── */}

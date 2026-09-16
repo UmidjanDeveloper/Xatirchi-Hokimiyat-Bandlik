@@ -693,6 +693,14 @@ export function MahallaUstunlari({ qamrov }: { qamrov: MahallaQamrovi[] }) {
 
   if (!qamrov.length) return <Bosh matn={tr('Ҳали маълумот йўқ')} />;
 
+  /*
+    Танланган кўрсаткич бўйича ҳамма нол бўлса, устунлар
+    кўринмайди ва диаграмма 70 та МФЙ номи ёзилган бўш
+    тўрдай чиқади. Ўшанда устунлар ўрнига бир қатор изоҳ
+    турсин — «синган» эмас, «ҳали йўқ» деб ўқилсин.
+  */
+  const hammasiNol = malumot.every((m) => m.qiymat === 0);
+
   return (
     <div className="space-y-3">
       {/* Boshqaruv bir qatorda, diagramma ustida */}
@@ -720,6 +728,11 @@ export function MahallaUstunlari({ qamrov }: { qamrov: MahallaQamrovi[] }) {
         </button>
       </div>
 
+      {hammasiNol ? (
+        <Bosh
+          matn={`${tr(joriy.nomi)} — ${tr('бўйича ҳали маълумот йўқ. Хатлов бошлангач шу ерда 10 та МФЙ солиштирилади.')}`}
+        />
+      ) : (
       <ResponsiveContainer width="100%" height={320}>
         <BarChart
           data={malumot}
@@ -756,6 +769,7 @@ export function MahallaUstunlari({ qamrov }: { qamrov: MahallaQamrovi[] }) {
           />
         </BarChart>
       </ResponsiveContainer>
+      )}
     </div>
   );
 }

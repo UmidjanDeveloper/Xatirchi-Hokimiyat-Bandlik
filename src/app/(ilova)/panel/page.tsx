@@ -84,215 +84,226 @@ export default async function PanelSahifasi({
         </div>
 
         {/*
-          Hisobot tugmalari sarlavha yonida - hokim sahifani
-          pastgacha aylantirmasdan topadi. Xatlov boshlanmagan
-          bo'lsa ko'rsatilmaydi: bo'sh hisobotning ma'nosi yo'q.
-        */}
-        {/*
           Давр танлаш ва ҳисобот тугмалари — сарлавҳа ёнида.
           Ҳоким саҳифани пастгача айлантирмасдан топади.
+
+          Ҳисобот тугмалари ХАТЛОВ БОШЛАНМАГАН ПАЙТДА ҲАМ
+          туради. Илгари яширилар эди — «бўш ҳисобот керак эмас»
+          деб. Аммо у бўш эмас: 70 та МФЙнинг база рақамлари,
+          рўйхатдаги ишсизлар ва қамров режаси ичида бор. Ҳоким
+          айнан шу бошланғич суратни йиғилишга олиб киради.
         */}
         <div className="flex flex-wrap items-center gap-3">
           <DavrTanlash joriy={davr} />
-          {bosh.xatlovXonadon > 0 && (
-            <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
-          )}
+          <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
         </div>
       </div>
 
       {/*
-        Bo'sh holat. Kelajak Egasi'da o'rganilgan dars: ma'lumot
-        yo'q bo'lsa, nol to'la diagrammalarni ko'rsatish hokimga
-        "tizim ishlamayapti" degan taassurot beradi. To'g'ri javob -
-        keyingi qadamni aytish.
+        ── ХАТЛОВ ҲАЛИ БОШЛАНМАГАН ──
+
+        Илгари бу ҳолатда БУТУН САҲИФА яширилар эди ва ўрнида
+        битта кулранг карточка турарди. Ният тўғри эди: нол
+        тўла диаграмма «тизим ишламаяпти» деган таассурот
+        беради.
+
+        Аммо натижа ундан ҳам ёмон чиқди. Ҳоким панелни очиб
+        БЎШ САҲИФА кўрди — на кўрсаткич, на сунъий интеллект,
+        на ҳисобот тугмаси. «Бу ерда ҳеч нима йўқ экан» деган
+        хулосага келди, ҳолбуки базада 70 та МФЙ, 40 377
+        хонадон ва 3 345 та ишсиз турибди.
+
+        Тўғри ечим — яширмаслик, балки РОСТИНИ АЙТИШ: панел
+        тўлиқ ишлайди, рақамлар ҳақиқий, фақат улар ҳозирча
+        база рўйхатидан, хатловдан эмас. Шу банер айнан шуни
+        айтади ва кейинги қадамни кўрсатади.
       */}
-      {bosh.xatlovXonadon === 0 ? (
-        <div className="karta p-8 text-center">
-          <p className="text-sm font-medium text-ink">{tr('Ҳали хатлов бошланмаган.')}</p>
-          <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-            {tr('Маҳалла еттилиги аъзолари хонадонларни хатловдан ўтказа бошлагач, бу саҳифада қамров, воронка ва тавсиялар пайдо бўлади. Рўйхатда')}{' '}
-            {raqam(bosh.bazaIshsiz)} {tr('та ишсиз фуқаро бор.')}
+      {bosh.xatlovXonadon === 0 && (
+        <div className="quti-ogoh text-sm">
+          <p className="font-semibold">{tr('Хатлов ҳали бошланмаган')}</p>
+          <p className="mt-1 leading-relaxed">
+            {tr('Қуйидаги барча рақамлар — база рўйхатидан:')} {raqam(bosh.bazaXonadon)}{' '}
+            {tr('хонадон ва')} {raqam(bosh.bazaIshsiz)}{' '}
+            {tr('та ишсиз фуқаро. Маҳалла еттилиги аъзолари хонадонларни хатловдан ўтказа бошлагач, қамров фоизи, воронка ва динамика тўла ишлайди.')}
           </p>
         </div>
-      ) : (
-        <>
-          {/* ── KPI ── */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi
-              ikonka={<House className="h-4 w-4" />}
-              nomi={tr("Хатловдан ўтган хонадон")}
-              qiymat={raqam(bosh.xatlovXonadon)}
-              izoh={tr(`${raqam(bosh.bazaXonadon)} тадан · ${percent(bosh.xatlovXonadon, bosh.bazaXonadon)}%`)}
-            />
-            <Kpi
-              ikonka={<Users className="h-4 w-4" />}
-              nomi={tr("Аниқланган ишсиз")}
-              qiymat={raqam(bosh.aniqlangan)}
-              izoh={tr(`Рўйхатда ${raqam(bosh.bazaIshsiz)} та · ${percent(bosh.aniqlangan, bosh.bazaIshsiz)}%`)}
-            />
-            <Kpi
-              ikonka={<Briefcase className="h-4 w-4" />}
-              nomi={tr("Жойлаштирилган")}
-              qiymat={raqam(bosh.joylashtirilgan)}
-              izoh={tr(`Аниқланганларнинг ${percent(bosh.joylashtirilgan, bosh.aniqlangan)}%`)}
-              yaxshi
-            />
-            <Kpi
-              ikonka={<TrendingUp className="h-4 w-4" />}
-              nomi={tr("Ишсизликка таъсир")}
-              qiymat={`${percent(bosh.joylashtirilgan, bosh.bazaIshsiz)}%`}
-              izoh={tr(`Рўйхатдаги ${raqam(bosh.bazaIshsiz)} тадан`)}
-            />
-          </div>
+      )}
 
-          {/*
-            ── Таҳлил хулосаси ──
+      {/* ── KPI ── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi
+          ikonka={<House className="h-4 w-4" />}
+          nomi={tr("Хатловдан ўтган хонадон")}
+          qiymat={raqam(bosh.xatlovXonadon)}
+          izoh={tr(`${raqam(bosh.bazaXonadon)} тадан · ${percent(bosh.xatlovXonadon, bosh.bazaXonadon)}%`)}
+        />
+        <Kpi
+          ikonka={<Users className="h-4 w-4" />}
+          nomi={tr("Аниқланган ишсиз")}
+          qiymat={raqam(bosh.aniqlangan)}
+          izoh={tr(`Рўйхатда ${raqam(bosh.bazaIshsiz)} та · ${percent(bosh.aniqlangan, bosh.bazaIshsiz)}%`)}
+        />
+        <Kpi
+          ikonka={<Briefcase className="h-4 w-4" />}
+          nomi={tr("Жойлаштирилган")}
+          qiymat={raqam(bosh.joylashtirilgan)}
+          izoh={tr(`Аниқланганларнинг ${percent(bosh.joylashtirilgan, bosh.aniqlangan)}%`)}
+          yaxshi
+        />
+        <Kpi
+          ikonka={<TrendingUp className="h-4 w-4" />}
+          nomi={tr("Ишсизликка таъсир")}
+          qiymat={`${percent(bosh.joylashtirilgan, bosh.bazaIshsiz)}%`}
+          izoh={tr(`Рўйхатдаги ${raqam(bosh.bazaIshsiz)} тадан`)}
+        />
+      </div>
 
-            Мижоз томонда юкланади: AI сўрови 10-20 секунд кетади
-            ва панел шу вақтда очилмай турмаслиги керак.
+      {/*
+        ── Таҳлил хулосаси ──
 
-            Қуйидаги «Тавсиялар» рўйхатидан фарқи бор ва иккиси
-            бир-бирини такрорламайди: бу блок ҲОЛАТНИ гап билан
-            тушунтиради ва қоида кўрмайдиган боғланишларни топади,
-            қуйидагиси эса аниқ чегараларга таянади ва ҳар бир
-            тавсияда БОСИЛАДИГАН ҲАВОЛА беради — ходим дарҳол
-            керакли рўйхатга ўтади.
-          */}
-          <AiXulosa qamrovNomi="Хатирчи тумани" />
+        Мижоз томонда юкланади: AI сўрови 10-20 секунд кетади
+        ва панел шу вақтда очилмай турмаслиги керак.
 
-          {/* ── Тавсиялар — чегаралар бўйича, ҳаволалар билан ── */}
-          {tavsiyalar.length > 0 && (
-            <section className="karta p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-ink">{tr('Аниқ чегаралар бўйича тавсиялар')}</h2>
-              <p className="mt-1 text-xs text-ink-faint">
-                {tr('Ҳар бир тавсия керакли рўйхатга олиб ўтади — устига босинг')}
-              </p>
+        Қуйидаги «Тавсиялар» рўйхатидан фарқи бор ва иккиси
+        бир-бирини такрорламайди: бу блок ҲОЛАТНИ гап билан
+        тушунтиради ва қоида кўрмайдиган боғланишларни топади,
+        қуйидагиси эса аниқ чегараларга таянади ва ҳар бир
+        тавсияда БОСИЛАДИГАН ҲАВОЛА беради — ходим дарҳол
+        керакли рўйхатга ўтади.
+      */}
+      <AiXulosa qamrovNomi="Хатирчи тумани" />
 
-              <div className="mt-4 space-y-2">
-                {tavsiyalar.map((tv, i) => {
-                  const k = DARAJA_KORINISHI[tv.daraja];
-                  const ichi = (
-                    <>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${k.sinf}`}
-                        >
-                          {tr(k.nomi)}
-                        </span>
-                        <span className="min-w-0 text-sm font-medium text-ink">
-                          {tr(tv.sarlavha)}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                        {tr(tv.dalil)}
-                      </p>
-                    </>
-                  );
+      {/* ── Тавсиялар — чегаралар бўйича, ҳаволалар билан ── */}
+      {tavsiyalar.length > 0 && (
+        <section className="karta p-4 sm:p-5">
+          <h2 className="text-sm font-bold text-ink">{tr('Аниқ чегаралар бўйича тавсиялар')}</h2>
+          <p className="mt-1 text-xs text-ink-faint">
+            {tr('Ҳар бир тавсия керакли рўйхатга олиб ўтади — устига босинг')}
+          </p>
 
-                  return tv.yol ? (
-                    <Link
-                      key={i}
-                      href={tv.yol}
-                      className="flex items-start gap-3 rounded-md border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface-muted"
+          <div className="mt-4 space-y-2">
+            {tavsiyalar.map((tv, i) => {
+              const k = DARAJA_KORINISHI[tv.daraja];
+              const ichi = (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${k.sinf}`}
                     >
-                      <span className="min-w-0 flex-1">{ichi}</span>
-                      <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-ink-faint" />
-                    </Link>
-                  ) : (
-                    <div key={i} className="rounded-md border border-line p-3">
-                      {ichi}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                      {tr(k.nomi)}
+                    </span>
+                    <span className="min-w-0 text-sm font-medium text-ink">
+                      {tr(tv.sarlavha)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                    {tr(tv.dalil)}
+                  </p>
+                </>
+              );
 
-          {/*
-            ── Ўсиш, камайиш ва динамика ──
-
-            Беш диаграмма бир блокда: сурат, ойлик оқим ва
-            тўпланиб бориш. Ҳокимга биринчи навбатда керагини
-            — «камайдими ёки ўсдими» — энг тепага қўйилган.
-          */}
-          <DinamikaBloglari
-            dinamika={t.dinamika}
-            davr={davr}
-            qamrovNomi="Хатирчи тумани"
-          />
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Voronka bosqichlar={t.voronka} bazaIshsiz={bosh.bazaIshsiz} />
-            <KechikkanlarBlogi kechikkanlar={t.kechikkanlar} />
+              return tv.yol ? (
+                <Link
+                  key={i}
+                  href={tv.yol}
+                  className="flex items-start gap-3 rounded-md border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface-muted"
+                >
+                  <span className="min-w-0 flex-1">{ichi}</span>
+                  <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-ink-faint" />
+                </Link>
+              ) : (
+                <div key={i} className="rounded-md border border-line p-3">
+                  {ichi}
+                </div>
+              );
+            })}
           </div>
+        </section>
+      )}
 
-          {/*
-            Ilgari bu yerda ikkita qisqa ro'yxat turardi. Ular
-            o'rnini bitta ustunli diagramma egalladi: ko'rsatkichni
-            ham, yo'nalishni ham tanlash mumkin, ya'ni o'sha ikki
-            ro'yxat ham, yana ikkitasi ham shu yerdan chiqadi.
-          */}
-          {!filtr.mahallaId && (
-            <section className="karta p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-ink">{tr('Маҳаллалар кесимида')}</h2>
-              <p className="mt-1 text-xs text-ink-faint">
-                {tr('Кўрсаткични танланг — 70 та МФЙ дан энг юқори ёки энг паст 10 таси чиқади')}
-              </p>
-              <div className="mt-4">
-                <MahallaUstunlari qamrov={t.qamrov} />
-              </div>
-            </section>
-          )}
+      {/*
+        ── Ўсиш, камайиш ва динамика ──
 
-          {/*
-            ── IT-ШАҲАРЧА ВАУЧЕРИ ──
+        Беш диаграмма бир блокда: сурат, ойлик оқим ва
+        тўпланиб бориш. Ҳокимга биринчи навбатда керагини
+        — «камайдими ёки ўсдими» — энг тепага қўйилган.
+      */}
+      <DinamikaBloglari
+        dinamika={t.dinamika}
+        davr={davr}
+        qamrovNomi="Хатирчи тумани"
+      />
 
-            Ҳокимнинг саволи «нечта ваучер бердик» эмас эди:
-            «ваучер иш бердими» эди. Шунинг учун бу ерда фақат
-            берилган сон эмас, НАТИЖА ҳам турибди — нечтаси
-            курсни тугатди ва нечтаси ишга жойлашди.
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Voronka bosqichlar={t.voronka} bazaIshsiz={bosh.bazaIshsiz} />
+        <KechikkanlarBlogi kechikkanlar={t.kechikkanlar} />
+      </div>
 
-            Пастдаги рўйхат — ҳали ваучер олмаганлар. Ҳоким
-            йиғилишда шу рақамни бандлик марказидан сўрайди.
-          */}
-          <VaucherNavbati
-            navbat={vNavbat}
-            hisob={vHisob}
-            qamrovNomi="Хатирчи тумани"
-            bera={false}
-          />
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <KursTalabiBlogi kurslar={t.kursTalabi} />
-            <ByudjetBlogi byudjet={t.byudjet} jamiTalab={t.jamiTalab} />
+      {/*
+        Ilgari bu yerda ikkita qisqa ro'yxat turardi. Ular
+        o'rnini bitta ustunli diagramma egalladi: ko'rsatkichni
+        ham, yo'nalishni ham tanlash mumkin, ya'ni o'sha ikki
+        ro'yxat ham, yana ikkitasi ham shu yerdan chiqadi.
+      */}
+      {!filtr.mahallaId && (
+        <section className="karta p-4 sm:p-5">
+          <h2 className="text-sm font-bold text-ink">{tr('Маҳаллалар кесимида')}</h2>
+          <p className="mt-1 text-xs text-ink-faint">
+            {tr('Кўрсаткични танланг — 70 та МФЙ дан энг юқори ёки энг паст 10 таси чиқади')}
+          </p>
+          <div className="mt-4">
+            <MahallaUstunlari qamrov={t.qamrov} />
           </div>
+        </section>
+      )}
 
-          {/* ── Toifalar ── */}
-          <section className="karta p-4 sm:p-5">
-            <h2 className="text-sm font-bold text-ink">{tr('Ишсизлар таркиби')}</h2>
-            <p className="mt-1 text-xs text-ink-faint">
-              {tr('Свод жадвалидаги тоифалар — алоҳида эътибор талаб қилади')}
-            </p>
-            <div className="mt-4 sm:max-w-md">
-              <ToifaDoirasi toifalar={t.toifalar} />
-            </div>
-          </section>
+      {/*
+        ── IT-ШАҲАРЧА ВАУЧЕРИ ──
 
-          {/* ── To'liq jadval ── */}
-          {!filtr.mahallaId && (
-            <section className="karta p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-ink">{tr('Барча маҳаллалар')}</h2>
-              <p className="mt-1 text-xs leading-relaxed text-ink-faint">
-                {tr('Диаграммалар тенденцияни кўрсатади, жадвал эса аниқ рақамни беради. Устун номини босиб саралаш мумкин.')}{' '}
-                <span className="text-warn">&#9650;</span>{' '}
-                {tr('белгиси — хатлов рўйхатдагидан кўпроқ ишсиз топган маҳалла.')}
-              </p>
-              <div className="mt-4">
-                <MahallalarJadvali qamrov={t.qamrov} />
-              </div>
-            </section>
-          )}
-        </>
+        Ҳокимнинг саволи «нечта ваучер бердик» эмас эди:
+        «ваучер иш бердими» эди. Шунинг учун бу ерда фақат
+        берилган сон эмас, НАТИЖА ҳам турибди — нечтаси
+        курсни тугатди ва нечтаси ишга жойлашди.
+
+        Пастдаги рўйхат — ҳали ваучер олмаганлар. Ҳоким
+        йиғилишда шу рақамни бандлик марказидан сўрайди.
+      */}
+      <VaucherNavbati
+        navbat={vNavbat}
+        hisob={vHisob}
+        qamrovNomi="Хатирчи тумани"
+        bera={false}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <KursTalabiBlogi kurslar={t.kursTalabi} />
+        <ByudjetBlogi byudjet={t.byudjet} jamiTalab={t.jamiTalab} />
+      </div>
+
+      {/* ── Toifalar ── */}
+      <section className="karta p-4 sm:p-5">
+        <h2 className="text-sm font-bold text-ink">{tr('Ишсизлар таркиби')}</h2>
+        <p className="mt-1 text-xs text-ink-faint">
+          {tr('Свод жадвалидаги тоифалар — алоҳида эътибор талаб қилади')}
+        </p>
+        <div className="mt-4 sm:max-w-md">
+          <ToifaDoirasi toifalar={t.toifalar} />
+        </div>
+      </section>
+
+      {/* ── To'liq jadval ── */}
+      {!filtr.mahallaId && (
+        <section className="karta p-4 sm:p-5">
+          <h2 className="text-sm font-bold text-ink">{tr('Барча маҳаллалар')}</h2>
+          <p className="mt-1 text-xs leading-relaxed text-ink-faint">
+            {tr('Диаграммалар тенденцияни кўрсатади, жадвал эса аниқ рақамни беради. Устун номини босиб саралаш мумкин.')}{' '}
+            <span className="text-warn">&#9650;</span>{' '}
+            {tr('белгиси — хатлов рўйхатдагидан кўпроқ ишсиз топган маҳалла.')}
+          </p>
+          <div className="mt-4">
+            <MahallalarJadvali qamrov={t.qamrov} />
+          </div>
+        </section>
       )}
     </div>
   );
