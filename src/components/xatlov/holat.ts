@@ -31,6 +31,14 @@ export interface IshsizQatori
    * `Date` ga o'giradi (`z.coerce.date()`).
    */
   tugilganSana: string;
+  /**
+   * «Бошқа» касб танланганми — ФАҚАТ форма учун.
+   *
+   * Серверга юборилмайди: у ерда `organmoqchiKasb` нинг ўзи
+   * етарли. Бу белги фақат матн катагини очиқ ушлаб туради,
+   * ходим ёзаётганда у ёпилиб қолмасин.
+   */
+  boshqaKasbmi?: boolean;
 }
 
 export interface XatlovHolati {
@@ -466,7 +474,11 @@ export function yuborishUchun(h: XatlovHolati) {
         .filter((p) => p.fish.trim() && p.orni)
         .map(({ qatorId: _q, ...p }) => ({ ...p, orniIzoh: m(p.orniIzoh), guruhi: null })),
     },
-    ishsizlar: ishsizlar.map(({ qatorId: _qatorId, ...p }) => ({
+    /*
+      `qatorId` ва `boshqaKasbmi` — ФАҚАТ форманинг ичидаги
+      белгилар. Серверда улар йўқ ва юборилмайди.
+    */
+    ishsizlar: ishsizlar.map(({ qatorId: _qatorId, boshqaKasbmi: _boshqa, ...p }) => ({
       ...p,
       telefon: m(p.telefon ?? ''),
       mutaxassisligi: m(p.mutaxassisligi ?? ''),

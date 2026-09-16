@@ -27,6 +27,9 @@ import {
   UY_HOLATI,
   VALYUTA,
   itYonalishimi,
+  itKasbimi,
+  ORGANMOQCHI_KASBLAR,
+  KASB_BOSHQA,
   kirillcha,
   shaharlarRoyxati,
 } from '@/lib/constants';
@@ -1210,6 +1213,23 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
 //  7-QADAM: ISHSIZLAR + XI. XULOSA
 // ═════════════════════════════════════════════════════════════
 
+/**
+ * Ёзилган касбдан ТАНЛОВ қийматини топади.
+ *
+ * Иккита ҳолат бор:
+ *   1. Рўйхатдан танланган — қиймат айнан рўйхатда бор.
+ *   2. «Бошқа» билан ёзилган — рўйхатда йўқ.
+ *
+ * Иккинчи ҳолатда танлов «Бошқа» да туради ва матн катаги
+ * очиқ қолади. Шу туфайли эски (эркин матнли) ёзувлар ҳам
+ * тўғри очилади: улар рўйхатда бўлмаса, «Бошқа» бўлиб
+ * кўринади ва йўқолмайди.
+ */
+function kasbTanlovi(kasb: string | null | undefined): string | null {
+  if (!kasb) return null;
+  return ORGANMOQCHI_KASBLAR.some((k) => k.qiymat === kasb) ? kasb : KASB_BOSHQA;
+}
+
 export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
   const { t: tr } = useAlifbo();
 
@@ -1446,23 +1466,69 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   />
                 </div>
 
+                {/*
+                  ── КАСБ: ЁЗИШ ЭМАС, ТАНЛАШ ──
+
+                  Илгари бу эркин матн эди ва базада «дастурчи»,
+                  «Дастурчи», «дастурлаш», «программист» бўлиб
+                  ёзиларди. Курс очиш қарори эса САНОҚҚА таянади
+                  — ҳар хил ёзилганини санаб бўлмайди.
+
+                  Рўйхат тепасида IT касблари туради: улар
+                  ваучер занжирини очади ва ходим уларни кўриб
+                  турсин.
+
+                  «Бошқа» танланса — эркин матн катаги очилади.
+                  Рўйхат ҳеч қачон тўлиқ бўлмайди ва фуқарони
+                  энг яқин нотўғри вариантга мажбурлаш
+                  маълумотни бузарди.
+                */}
                 {p.kasbHunarEhtiyoji && (
-                  <div className="sm:col-span-2">
-                    <MatnMaydoni
+                  <div className="sm:col-span-2 space-y-3">
+                    <TanlovMaydoni
                       yorliq={tr("Қайси касбни ўрганиш истаги бор")}
-                      izoh={tr("Аниқ касб ёзинг — курс очиш қарори шунга таянади")}
+                      izoh={tr("Рўйхатдан танланг — курс очиш қарори шу саноққа таянади")}
                       majburiy
-                      qiymat={p.organmoqchiKasb ?? ''}
+                      variantlar={ORGANMOQCHI_KASBLAR}
+                      qiymat={kasbTanlovi(p.organmoqchiKasb)}
                       ozgardi={(q) =>
                         qatorYangila(p.qatorId, {
-                          organmoqchiKasb: q,
-                          // IT бўлмай қолса, ваучер белгиси ҳам тушади
-                          ...(itYonalishimi(q) ? {} : { itShaharchaVaucheri: false }),
+                          /*
+                            «Бошқа» танланса, матн катаги бўш
+                            очилсин — эски танловнинг номи
+                            ичида қолиб кетмасин.
+                          */
+                          organmoqchiKasb: q === KASB_BOSHQA ? '' : (q ?? ''),
+                          boshqaKasbmi: q === KASB_BOSHQA,
+                          ...(q && itKasbimi(q) ? {} : { itShaharchaVaucheri: false }),
                         })
                       }
                       xato={x(xatolar, `ishsiz.${i}.organmoqchiKasb`)}
-                      placeholder={tr("масалан: пайвандчи, тикувчи, дастурчи")}
                     />
+
+                    {/*
+                      Матн катаги иккита ҳолатда очилади:
+                      ходим ҳозир «Бошқа» ни танлаганда, ва
+                      ЭСКИ ёзув очилганда — унда касб эркин
+                      матн бўлган ва рўйхатда йўқ.
+                    */}
+                    {(p.boshqaKasbmi ||
+                      kasbTanlovi(p.organmoqchiKasb) === KASB_BOSHQA) && (
+                      <MatnMaydoni
+                        yorliq={tr("Касб номини ёзинг")}
+                        izoh={tr("Аниқ ёзинг — бу ном ҳисоботга тушади")}
+                        majburiy
+                        qiymat={p.organmoqchiKasb ?? ''}
+                        ozgardi={(q) =>
+                          qatorYangila(p.qatorId, {
+                            organmoqchiKasb: q,
+                            /* Ёзилган матн IT бўлса — ваучер занжири барибир очилади */
+                            ...(itYonalishimi(q) ? {} : { itShaharchaVaucheri: false }),
+                          })
+                        }
+                        placeholder={tr("масалан: қувурчи, темирчи")}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -1477,7 +1543,8 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   Ходим буни билмаса, IT ўрганмоқчи одам «курс
                   гуруҳи тўлмади» деб ойлаб кутиб ўтираверади.
                 */}
-                {p.kasbHunarEhtiyoji && itYonalishimi(p.organmoqchiKasb) && (
+                {p.kasbHunarEhtiyoji &&
+                  (itKasbimi(p.organmoqchiKasb) || itYonalishimi(p.organmoqchiKasb)) && (
                   <div className="sm:col-span-2 space-y-2.5 rounded-md border border-accent bg-accent-soft p-3.5">
                     <p className="text-xs text-ink-muted">
                       {tr('Бу — IT йўналиши. Фуқарони туманда курс кутишга қолдирмасдан, IT-шаҳарча дастурига ВАУЧЕР билан йўналтириш мумкин: гуруҳ тўлиши шарт эмас, битта одам ҳам юборилади. Ваучерни бандлик маркази расмийлаштиради.')}

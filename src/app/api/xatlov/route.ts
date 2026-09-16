@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { kesmaSaqla } from '@/lib/xonadon-tarixi';
+import { choralarniYoz } from '@/lib/chora-yaratish';
 import { mahallaFiltri, mahallagaRuxsat } from '@/lib/auth';
 import { QoralamaSxemasi, YuborishSxemasi } from '@/lib/xatlov-sxema';
 import { takrorKaliti, yuborishgaTayyormi } from '@/lib/xatlov-tekshiruvi';
@@ -414,6 +415,47 @@ export async function POST(request: Request) {
             },
           });
         }
+
+        /*
+         * ── ЭҲТИЁЖ → ТОПШИРИҚ ──
+         *
+         * Хатлов якунланди. Анкетада «касб ўрганмоқчи»,
+         * «кредит керак», «бола мактабга бормайди» деган
+         * белгилар бор — улар шу ерда ТОПШИРИҚҚА айланади:
+         * масъул ташкилот ва муддат билан.
+         *
+         * Илгари бу халқа йўқ эди. Маълумот анкета ичида ётиб
+         * қоларди ва ҳоким «Чора-тадбирлар» саҳифасини очиб
+         * НОЛ кўрарди — ходимлар ишлаётган бўлса ҳам.
+         *
+         * Транзакция ичида: хонадон сақланиб, топшириқлар
+         * сақланмай қолса, занжир узилган бўларди.
+         */
+        const barchaIshsizlar = await tx.unemployedPerson.findMany({
+          where: { householdId: h.id },
+          select: {
+            id: true,
+            fish: true,
+            kasbHunarEhtiyoji: true,
+            organmoqchiKasb: true,
+            itShaharchaVaucheri: true,
+          },
+        });
+
+        await choralarniYoz(
+          tx,
+          {
+            id: h.id,
+            moliyaEhtiyoji: h.moliyaEhtiyoji,
+            talabQilinganMablag: h.talabQilinganMablag,
+            maktabYoshdagi: h.maktabYoshdagi,
+            maktabQamrovda: h.maktabQamrovda,
+            uzoqDavolanish: h.uzoqDavolanish,
+            nogironlikBor: h.nogironlikBor,
+            ishsizlar: barchaIshsizlar,
+          },
+          q.sessiya.userId
+        );
       }
 
       return h;
