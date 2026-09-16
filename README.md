@@ -666,6 +666,25 @@ joylashtirishda u qaytadan paydo bo'lib qolardi.
 > chegara taxminiy. Amaliy parol terish hujumini bu ham to'xtatadi;
 > qat'iy kafolat kerak bo'lsa — Upstash Redis ga o'tish mumkin.
 
+#### Mintaqa — server baza yonida turishi kerak
+
+`vercel.json` dagi `"regions": ["fra1"]` tasodifiy emas. Supabase
+bazasi **eu-central-1** (Frankfurt) da turibdi; Vercel esa standart
+holatda funksiyalarni **iad1** (Vashington) da ishga tushiradi.
+
+Oqibati o'lchangan: bazaga bir marta borib-kelish **464 ms**.
+Hokim paneli to'qqizta so'rov yuboradi — ya'ni har ochilishda
+besh yarim soniya, faqat masofa uchun. Xodimlar buni "sayt sekin"
+deb ko'rdi.
+
+Frankfurt'ga ko'chirilgach masofa bir necha millisekundga tushadi.
+
+**Baza boshqa mintaqaga ko'chirilsa**, bu qatorni ham yangilash
+kerak. Boshqaruv panelidagi "Tezlik o'lchovi" buni o'zi aytadi:
+u Supabase manzilidan mintaqani o'qiydi, Vercel'nikini
+`VERCEL_REGION` dan oladi va mos kelmasa aniq qaysi qatorni
+yozishni ko'rsatadi.
+
 #### Cron jadvali — bepul tarifda kuniga bir marta
 
 `vercel.json` dagi `crons` jadvali Vercel'ning **bepul (Hobby)**
