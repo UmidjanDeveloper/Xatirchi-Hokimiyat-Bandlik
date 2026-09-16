@@ -666,6 +666,25 @@ joylashtirishda u qaytadan paydo bo'lib qolardi.
 > chegara taxminiy. Amaliy parol terish hujumini bu ham to'xtatadi;
 > qat'iy kafolat kerak bo'lsa — Upstash Redis ga o'tish mumkin.
 
+#### Cron jadvali — bepul tarifda kuniga bir marta
+
+`vercel.json` dagi `crons` jadvali Vercel'ning **bepul (Hobby)**
+tarifida **kuniga bittadan tez-tez** bo'lishi mumkin emas. Agar
+`*/15 * * * *` kabi yozilsa, Vercel **deployni butunlay rad
+qiladi** — sayt eski nusxada qolib ketadi va bu hech qayerda
+ogohlantirish bo'lib chiqmaydi: dashboard'da shunchaki eski
+"Production Deployment" turaveradi.
+
+Bu bir marta sodir bo'lgan: 15 daqiqalik jadval yozilgach, beshta
+commit sayt­ga umuman chiqmadi.
+
+Shuning uchun jadval `0 3 * * *` (kuniga bir marta) qilib
+qo'yilgan, Telegram xabarlari esa **navbatga qo'yilishi bilanoq**
+yuboriladi (`navbatniDarhol`) — cron faqat zaxira.
+
+Pro tarifga o'tilsa, jadvalni tez-tez qilish mumkin; unda ham
+darhol yuborish saqlanib qolgani ma'qul.
+
 ---
 
 ## Xavfsizlik

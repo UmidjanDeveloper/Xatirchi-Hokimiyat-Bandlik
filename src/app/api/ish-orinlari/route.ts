@@ -6,6 +6,7 @@ import { mahallagaRuxsat } from '@/lib/auth';
 import { KASB_YONALISHI, qiymatlar } from '@/lib/constants';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
 import { ishOrniXabarlari } from '@/lib/ish-orni-xabari';
+import { navbatniDarhol } from '@/lib/xabarnoma';
 
 const Yangi = z.object({
   mahallaId: z.string().cuid(),
@@ -63,6 +64,22 @@ export async function POST(request: Request) {
     /* Хабар кетмаса ҳам эълон жойида қолади — фақат ёзиб қўямиз */
     console.error("Иш ўрни хабарномасини навбатга қўйиб бўлмади:", e);
   }
+
+  /*
+   * Навбатга қўйиш билан ЮБОРИШ бошқа-бошқа иш.
+   *
+   * Илгари юбориш фақат Vercel Cron га қолдирилган эди ва
+   * жадвал ҳар 15 дақиқада деб ёзилганди. Vercel нинг бепул
+   * тарифида эса cron КУНИГА БИР МАРТА ишлайди — яъни ходим
+   * эълонни эртаси куни оларди. Ундан ҳам ёмони: 15 дақиқалик
+   * жадвал туфайли ДЕПЛОЙНИНГ ЎЗИ рад этилиб, янги код сайтга
+   * умуман чиқмай қолди.
+   *
+   * Энди хабар шу заҳоти юборилади, cron эса захира бўлиб
+   * қолди. `navbatniDarhol` хатони ютади — эълон ҳар қандай
+   * ҳолатда сақланган.
+   */
+  await navbatniDarhol();
 
   return NextResponse.json({ ok: true, id: v.id });
 }
