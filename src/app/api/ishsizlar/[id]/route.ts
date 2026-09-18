@@ -140,6 +140,39 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     },
   });
 
+  /*
+   * ── ТЕКШИРУВ ТОПШИРИҒИНИ ЁПИШ ──
+   *
+   * Жойлаштиришда «3 ойдан кейин мустаҳкамланиши текширилсин»
+   * деган топшириқ яратилади. Фуқаро «Тасдиқланди» га ўтди —
+   * демак ўша текширув БАЖАРИЛДИ.
+   *
+   * Қўлда ёпилишини кутиб ўтирилса, бажарилган иш кечиккан
+   * топшириқлар рўйхатида қизил бўлиб тураверарди ва ҳоким
+   * ёлғон манзара кўрарди.
+   *
+   * Ҳолат ўзгаришидан КЕЙИН ва алоҳида: бу ерда хато бўлса
+   * ҳам, фуқаронинг ҳолати сақланиб қолиши керак.
+   */
+  if (yangiHolat === 'TASDIQLANDI' && mavjud.holati !== 'TASDIQLANDI') {
+    try {
+      await prisma.actionPlan.updateMany({
+        where: {
+          ishsizId: p.id,
+          muammo: { contains: 'мустаҳкамланиши текширилмаган' },
+          holati: { in: ['KUTILMOQDA', 'BAJARILMOQDA'] },
+        },
+        data: {
+          holati: 'BAJARILDI',
+          bajarilganSana: new Date(),
+          natijaIzohi: 'Фуқаро иш жойида мустаҳкамланди — ҳаёт сикли тасдиқланди',
+        },
+      });
+    } catch (e) {
+      console.error('mustahkamlash topshirigini yopib bolmadi', e);
+    }
+  }
+
   await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
     obyektTuri: 'UnemployedPerson',
     obyektId: p.id,

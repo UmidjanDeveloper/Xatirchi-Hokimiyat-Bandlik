@@ -235,7 +235,13 @@ export default async function PanelSahifasi({
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Voronka bosqichlar={t.voronka} bazaIshsiz={bosh.bazaIshsiz} />
+        <Voronka
+          bosqichlar={t.voronka}
+          bazaIshsiz={bosh.bazaIshsiz}
+          radEtgan={t.jami.radEtgan}
+          uzoqIshsiz={t.jami.uzoqIshsiz}
+          tekshiruvKutayotgan={t.jami.tekshiruvKutayotgan}
+        />
         <KechikkanlarBlogi kechikkanlar={t.kechikkanlar} />
       </div>
 

@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { mahallagaRuxsat } from '@/lib/auth';
 import { BAND_HOLATLAR, bekorQilingandagiHolat } from '@/lib/joylashtirish';
+import { elonKuchdami, odatiyMuddat } from '@/lib/elon-muddati';
+import { mustahkamlashChorasi } from '@/lib/chora-yaratish';
 
 /**
  * ============================================================
@@ -74,6 +76,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
             id: true,
             mahallaId: true,
             faol: true,
+            amalQilishMuddati: true,
             ornlarSoni: true,
             korxonaNomi: true,
             lavozim: true,
@@ -86,10 +89,29 @@ export async function POST(request: Request, { params }: { params: { id: string 
         if (!orin.faol) {
           return { xato: 'Эълон ёпилган — жойлаштириб бўлмайди', kod: 409 } as const;
         }
+        /*
+         * Муддати ўтган эълон базада ҳали `faol` бўлиши мумкин:
+         * кунлик тозалаш ҳали ишламаган. Одамни ўша ерга
+         * юбормаймиз — корхона аллақачон воз кечган бўлиши
+         * мумкин, фуқаро эса бекорга бориб қайтарди.
+         */
+        if (!elonKuchdami(orin)) {
+          return {
+            xato: 'Эълоннинг амал қилиш муддати тугаган. Муддатини узайтиринг ёки корхона билан боғланинг.',
+            kod: 409,
+          } as const;
+        }
 
         const odam = await tx.unemployedPerson.findUnique({
           where: { id: d.ishsizId },
-          select: { id: true, fish: true, mahallaId: true, holati: true, vacancyId: true },
+          select: {
+            id: true,
+            fish: true,
+            mahallaId: true,
+            holati: true,
+            vacancyId: true,
+            householdId: true,
+          },
         });
         if (!odam) return { xato: 'Фуқаро топилмади', kod: 404 } as const;
         if (!mahallagaRuxsat(q.sessiya, odam.mahallaId)) {
@@ -137,6 +159,38 @@ export async function POST(request: Request, { params }: { params: { id: string 
           await tx.vacancy.update({
             where: { id: orin.id },
             data: { faol: false, yopilishSababi: 'TOLDI', yopilganSana: new Date() },
+          });
+        }
+
+        /*
+         * ── ЗАНЖИРНИНГ ОХИРГИ ҲАЛҚАСИ ──
+         *
+         * Схемада «3 ойдан кейин текширилади» деб ёзилган эди,
+         * аммо у фақат ҚЎЛДА белгиланарди — яъни биров эслаб
+         * қолиши керак эди. Ҳеч ким эсламади ва одамлар
+         * тўртинчи ойдан бери «жойлаштирилди» да ётаверди.
+         *
+         * Энди жойлаштиришнинг ЎЗИ текширув топшириғини
+         * туғдиради. Муддат ўтса — кечиккан топшириқлар
+         * қаторига тушади ва ҳокимнинг панелида қизил кўринади.
+         *
+         * Такрор яратилмайди: муаммо матни бўйича танилади.
+         */
+        const kirganSana = d.ishgaKirganSana ?? new Date();
+        const mustahkamlash = mustahkamlashChorasi({
+          ishsizId: odam.id,
+          householdId: odam.householdId,
+          fish: odam.fish,
+          ishJoyi: orin.korxonaNomi,
+          ishgaKirganSana: kirganSana,
+        });
+        const borTopshiriq = await tx.actionPlan.findFirst({
+          where: { ishsizId: odam.id, muammo: mustahkamlash.muammo },
+          select: { id: true },
+        });
+        if (!borTopshiriq) {
+          await tx.actionPlan.create({
+            data: { ...mustahkamlash, yaratganId: q.sessiya.userId },
           });
         }
 
@@ -190,7 +244,14 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       async (tx) => {
         const orin = await tx.vacancy.findUnique({
           where: { id: params.id },
-          select: { id: true, mahallaId: true, ornlarSoni: true, faol: true, yopilishSababi: true },
+          select: {
+            id: true,
+            mahallaId: true,
+            ornlarSoni: true,
+            faol: true,
+            yopilishSababi: true,
+            amalQilishMuddati: true,
+          },
         });
         if (!orin) return { xato: 'Эълон топилмади', kod: 404 } as const;
         if (!mahallagaRuxsat(q.sessiya, orin.mahallaId)) {
@@ -228,7 +289,19 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         if (!orin.faol && orin.yopilishSababi === 'TOLDI') {
           await tx.vacancy.update({
             where: { id: orin.id },
-            data: { faol: true, yopilishSababi: null, yopilganSana: null },
+            data: {
+              faol: true,
+              yopilishSababi: null,
+              yopilganSana: null,
+              /*
+               * Қайта очилаётган эълоннинг муддати ўтиб кетган
+               * бўлиши мумкин — унда у очилиши биланоқ яна
+               * яширинарди. Янги муддат берамиз.
+               */
+              ...(elonKuchdami({ faol: true, amalQilishMuddati: orin.amalQilishMuddati })
+                ? {}
+                : { amalQilishMuddati: odatiyMuddat() }),
+            },
           });
         }
 

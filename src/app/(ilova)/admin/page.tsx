@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { matnchi } from '@/lib/alifbo-server';
 import { joriySessiya } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { FAOL_ELON } from '@/lib/elon-muddati';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
@@ -80,7 +81,7 @@ export default async function AdminSahifasi({
       prisma.household.count(),
       prisma.unemployedPerson.count(),
       prisma.actionPlan.count(),
-      prisma.vacancy.count({ where: { faol: true } }),
+      prisma.vacancy.count({ where: FAOL_ELON() }),
     ]),
     tahlilOl(undefined, davr),
     vaucherHisobi(),

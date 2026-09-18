@@ -3,12 +3,14 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { mahallagaRuxsat } from '@/lib/auth';
+import { tashkilotNormal } from '@/lib/masul-tashkilot';
 
 const Tahrir = z.object({
   holati: z.enum(['KUTILMOQDA', 'BAJARILMOQDA', 'BAJARILDI', 'BEKOR_QILINDI']).optional(),
   natijaIzohi: z.string().max(1000).nullish(),
   muddat: z.coerce.date().optional(),
-  masulTashkilot: z.string().min(2).max(100).optional(),
+  /* Ёзишда расмий рўйхатга келтирилади — кесим бўлинмасин */
+  masulTashkilot: z.string().min(2).max(100).transform(tashkilotNormal).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

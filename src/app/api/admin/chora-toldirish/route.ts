@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server';
 import { talabQil } from '@/lib/api-auth';
 import { prisma } from '@/lib/prisma';
 import { bazaXatosi } from '@/lib/baza-xatosi';
-import { choralarniYoz, yangiChoralar, type ChoraManbai } from '@/lib/chora-yaratish';
+import {
+  MUSTAHKAMLASH_KUN,
+  choralarniYoz,
+  mustahkamlashChorasi,
+  yangiChoralar,
+  type ChoraManbai,
+} from '@/lib/chora-yaratish';
+import { tashkilotNormal } from '@/lib/masul-tashkilot';
 
 /**
  * ============================================================
@@ -70,7 +77,7 @@ const TANLOV = {
  *
  * @param yozilsinmi `false` бўлса фақат санайди
  */
-async function yurgiz(yozilsinmi: boolean) {
+async function yurgiz(yozilsinmi: boolean, kimYaratdi: string) {
   const xonadonlar = await prisma.household.findMany({
     where: { holati: { not: 'QORALAMA' } },
     select: TANLOV,
@@ -97,7 +104,88 @@ async function yurgiz(yozilsinmi: boolean) {
     }
   }
 
-  return { tekshirilgan: xonadonlar.length, jami, xonadonSoni, tashkilotlar };
+  /*
+   * ── ЗАНЖИРНИНГ ОХИРГИ ҲАЛҚАСИ ──
+   *
+   * Аллақачон жойлаштирилган одамлар учун ҳам мустаҳкамлаш
+   * текшируви топшириғи яратилади. Улар зanjир уланишидан
+   * олдин жойлаштирилган ва ҳеч ким уларни текширмаган —
+   * тўртинчи ойдан бери «жойлаштирилди» да ётибди.
+   */
+  const joylashganlar = await prisma.unemployedPerson.findMany({
+    where: { holati: 'JOYLASHTIRILDI' },
+    select: {
+      id: true,
+      fish: true,
+      householdId: true,
+      ishJoyi: true,
+      ishgaKirganSana: true,
+      mahalla: { select: { xodimlar: { select: { id: true }, take: 1 } } },
+    },
+    orderBy: { ishgaKirganSana: 'asc' },
+  });
+
+  let mustahkamlashYangi = 0;
+  for (const odam of joylashganlar) {
+    const chora = mustahkamlashChorasi({
+      ishsizId: odam.id,
+      householdId: odam.householdId,
+      fish: odam.fish,
+      ishJoyi: odam.ishJoyi,
+      ishgaKirganSana: odam.ishgaKirganSana,
+    });
+
+    const bor = await prisma.actionPlan.findFirst({
+      where: { ishsizId: odam.id, muammo: chora.muammo },
+      select: { id: true },
+    });
+    if (bor) continue;
+
+    mustahkamlashYangi++;
+    if (!yozilsinmi) continue;
+
+    /*
+     * Ким яратган: шу маҳалланинг ходими. Аниқланмаса, амални
+     * бошлаган администратор.
+     */
+    const yaratganId = odam.mahalla.xodimlar[0]?.id ?? kimYaratdi;
+    await prisma.actionPlan.create({ data: { ...chora, yaratganId } });
+  }
+
+  /*
+   * ── МАСЪУЛ НОМЛАРИНИ БИР ХИЛЛАШТИРИШ ──
+   *
+   * Эски ёзувларда «Xalq ta’limi» ва «Ta'lim bo'limi» ёнма-ён
+   * турарди: битта бўлим, кесимда иккита қатор. Ҳоким 12 та
+   * кечикиш деб кўрарди, аслида 15 та эди.
+   */
+  const nomlar = await prisma.actionPlan.groupBy({
+    by: ['masulTashkilot'],
+    _count: true,
+  });
+  let tuzatilganNom = 0;
+  const nomOzgarishi: { eski: string; yangi: string; soni: number }[] = [];
+  for (const n of nomlar) {
+    const togrisi = tashkilotNormal(n.masulTashkilot);
+    if (togrisi === n.masulTashkilot) continue;
+    tuzatilganNom += n._count;
+    nomOzgarishi.push({ eski: n.masulTashkilot, yangi: togrisi, soni: n._count });
+    if (!yozilsinmi) continue;
+    await prisma.actionPlan.updateMany({
+      where: { masulTashkilot: n.masulTashkilot },
+      data: { masulTashkilot: togrisi },
+    });
+  }
+
+  return {
+    tekshirilgan: xonadonlar.length,
+    jami,
+    xonadonSoni,
+    tashkilotlar,
+    mustahkamlash: { tekshirilgan: joylashganlar.length, yangi: mustahkamlashYangi },
+    nomlar: { tuzatilgan: tuzatilganNom, ozgarishlar: nomOzgarishi },
+    mustahkamlashKun: MUSTAHKAMLASH_KUN,
+  };
 }
 
 /** Нечта топшириқ чиқишини САНАЙДИ — ёзмайди */
@@ -106,7 +194,7 @@ export async function GET() {
   if (q instanceof NextResponse) return q;
 
   try {
-    return NextResponse.json({ yozildimi: false, ...(await yurgiz(false)) });
+    return NextResponse.json({ yozildimi: false, ...(await yurgiz(false, q.sessiya.userId)) });
   } catch (e) {
     console.error('chora-toldirish GET', e);
     return NextResponse.json(
@@ -122,7 +210,7 @@ export async function POST() {
   if (q instanceof NextResponse) return q;
 
   try {
-    return NextResponse.json({ yozildimi: true, ...(await yurgiz(true)) });
+    return NextResponse.json({ yozildimi: true, ...(await yurgiz(true, q.sessiya.userId)) });
   } catch (e) {
     console.error('chora-toldirish POST', e);
     return NextResponse.json(

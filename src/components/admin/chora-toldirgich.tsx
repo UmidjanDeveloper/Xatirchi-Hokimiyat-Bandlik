@@ -38,6 +38,11 @@ interface Natija {
   jami: number;
   xonadonSoni: number;
   tashkilotlar: Record<string, number>;
+  /** Жойлаштирилгани 3 ойдан ошган-у текширилмаганлар */
+  mustahkamlash: { tekshirilgan: number; yangi: number };
+  /** «Ta'lim bo'limi» → «Xalq ta’limi» каби тузатишлар */
+  nomlar: { tuzatilgan: number; ozgarishlar: { eski: string; yangi: string; soni: number }[] };
+  mustahkamlashKun: number;
 }
 
 export function ChoraToldirgich() {
@@ -62,6 +67,10 @@ export function ChoraToldirgich() {
   }
 
   const tashkilotRoyxati = natija ? Object.entries(natija.tashkilotlar) : [];
+  /* Учта ишдан бирортаси борми — «ҳеч нарса йўқ» дейишдан олдин */
+  const ishBormi =
+    natija !== null &&
+    (natija.jami > 0 || natija.mustahkamlash.yangi > 0 || natija.nomlar.tuzatilgan > 0);
 
   return (
     <section className="karta p-4 sm:p-5">
@@ -99,19 +108,72 @@ export function ChoraToldirgich() {
 
       {natija && (
         <div className="mt-4 space-y-3">
-          {natija.jami === 0 ? (
+          {!ishBormi ? (
             <p className="quti-ogoh text-xs leading-relaxed">
-              {tr('Янги топшириқ йўқ')} — {natija.tekshirilgan} {tr('та хатлов текширилди')},{' '}
-              {tr('ҳаммасидан топшириқ аллақачон яратилган.')}
+              {tr('Қиладиган иш йўқ')} — {natija.tekshirilgan} {tr('та хатлов ва')}{' '}
+              {natija.mustahkamlash.tekshirilgan} {tr('та жойлаштириш текширилди')};{' '}
+              {tr('ҳаммаси аллақачон тартибда.')}
             </p>
           ) : (
             <>
-              <p className={`text-xs leading-relaxed ${natija.yozildimi ? 'quti-ok' : 'quti-ogoh'}`}>
-                {natija.yozildimi ? tr('Яратилди') : tr('Чиқади')}:{' '}
-                <span className="raqam font-bold">{natija.jami}</span> {tr('та топшириқ')},{' '}
-                <span className="raqam font-bold">{natija.xonadonSoni}</span>{' '}
-                {tr('та хонадон бўйича')} ({natija.tekshirilgan} {tr('та хатловдан')}).
-              </p>
+              {natija.jami > 0 && (
+                <p
+                  className={`text-xs leading-relaxed ${natija.yozildimi ? 'quti-ok' : 'quti-ogoh'}`}
+                >
+                  <b>{tr('Эҳтиёждан топшириқ')}</b> —{' '}
+                  {natija.yozildimi ? tr('яратилди') : tr('чиқади')}:{' '}
+                  <span className="raqam font-bold">{natija.jami}</span> {tr('та топшириқ')},{' '}
+                  <span className="raqam font-bold">{natija.xonadonSoni}</span>{' '}
+                  {tr('та хонадон бўйича')} ({natija.tekshirilgan} {tr('та хатловдан')}).
+                </p>
+              )}
+
+              {/*
+                ── ЗАНЖИРНИНГ ОХИРГИ ҲАЛҚАСИ ──
+
+                Схемада «3 ойдан кейин текширилади» деб ёзилган
+                эди, лекин фақат ҚЎЛДА белгиланарди. Ҳеч ким
+                эсламади ва одамлар тўртинчи ойдан бери
+                «жойлаштирилди» да ётаверди.
+              */}
+              {natija.mustahkamlash.yangi > 0 && (
+                <p
+                  className={`text-xs leading-relaxed ${natija.yozildimi ? 'quti-ok' : 'quti-ogoh'}`}
+                >
+                  <b>{tr('Мустаҳкамлаш текшируви')}</b> —{' '}
+                  {natija.yozildimi ? tr('яратилди') : tr('чиқади')}:{' '}
+                  <span className="raqam font-bold">{natija.mustahkamlash.yangi}</span>{' '}
+                  {tr('та топшириқ')}. {tr('Булар жойлаштирилган, аммо')}{' '}
+                  {natija.mustahkamlashKun} {tr('кундан кейин ишда қолгани ҳеч ким томонидан')}{' '}
+                  {tr('текширилмаган фуқаролар')} ({natija.mustahkamlash.tekshirilgan}{' '}
+                  {tr('тадан')}).
+                </p>
+              )}
+
+              {/*
+                ── МАСЪУЛ НОМЛАРИ ──
+
+                «Xalq ta’limi» билан «Ta'lim bo'limi» кесимда
+                икки ташкилот бўлиб турарди: ҳоким 12 та
+                кечикиш деб кўрарди, аслида 15 та эди.
+              */}
+              {natija.nomlar.tuzatilgan > 0 && (
+                <div
+                  className={`text-xs leading-relaxed ${natija.yozildimi ? 'quti-ok' : 'quti-ogoh'}`}
+                >
+                  <b>{tr('Масъул номлари')}</b> —{' '}
+                  {natija.yozildimi ? tr('тузатилди') : tr('тузатилади')}:{' '}
+                  <span className="raqam font-bold">{natija.nomlar.tuzatilgan}</span>{' '}
+                  {tr('та ёзув')}.
+                  <ul className="mt-1 space-y-0.5">
+                    {natija.nomlar.ozgarishlar.map((o) => (
+                      <li key={o.eski}>
+                        · {tr(o.eski)} → <b>{tr(o.yangi)}</b> ({o.soni} {tr('та')})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <ul className="space-y-1">
                 {tashkilotRoyxati.map(([nomi, soni]) => (
@@ -139,9 +201,7 @@ export function ChoraToldirgich() {
                   ) : (
                     <Play className="h-4 w-4" aria-hidden="true" />
                   )}
-                  {yuklanmoqda === 'yozish'
-                    ? tr('Яратилмоқда…')
-                    : `${tr('Шу')} ${natija.jami} ${tr('та топшириқни яратиш')}`}
+                  {yuklanmoqda === 'yozish' ? tr('Бажарилмоқда…') : tr('Шуларнинг ҳаммасини бажариш')}
                 </button>
               )}
 

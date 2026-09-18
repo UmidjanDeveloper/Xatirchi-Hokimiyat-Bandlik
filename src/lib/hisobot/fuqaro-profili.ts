@@ -24,6 +24,7 @@
 import type { Prisma } from '@prisma/client';
 import type { IshsizHolati, TopshiriqHolati } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { FAOL_ELON } from '@/lib/elon-muddati';
 import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 import { BAND_HOLATLAR } from '@/lib/joylashtirish';
 import { TOPSHIRIQ_HOLATI } from '@/lib/chora-tadbir';
@@ -210,20 +211,20 @@ export async function fuqaroBolimlari(
     }),
 
     prisma.vacancy.aggregate({
-      where: { faol: true, ...(mahallaId ? { mahallaId } : {}) },
+      where: { ...FAOL_ELON(), ...(mahallaId ? { mahallaId } : {}) },
       _sum: { ornlarSoni: true },
       _count: true,
     }),
 
     prisma.vacancy.groupBy({
       by: ['yonalish'],
-      where: { faol: true, ...(mahallaId ? { mahallaId } : {}) },
+      where: { ...FAOL_ELON(), ...(mahallaId ? { mahallaId } : {}) },
       _sum: { ornlarSoni: true },
       _count: true,
     }),
 
     prisma.vacancy.aggregate({
-      where: { faol: true, maosh: { not: null }, ...(mahallaId ? { mahallaId } : {}) },
+      where: { ...FAOL_ELON(), maosh: { not: null }, ...(mahallaId ? { mahallaId } : {}) },
       _avg: { maosh: true },
       _min: { maosh: true },
       _max: { maosh: true },
@@ -244,7 +245,7 @@ export async function fuqaroBolimlari(
     prisma.unemployedPerson.count({
       where: {
         holati: { in: BAND_HOLATLAR },
-        vacancy: { faol: true, ...(mahallaId ? { mahallaId } : {}) },
+        vacancy: { ...FAOL_ELON(), ...(mahallaId ? { mahallaId } : {}) },
       },
     }),
 

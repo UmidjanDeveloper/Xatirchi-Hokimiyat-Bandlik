@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { elonKuchdami, odatiyMuddat } from '@/lib/elon-muddati';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { mahallagaRuxsat } from '@/lib/auth';
 import { BAND_HOLATLAR } from '@/lib/joylashtirish';
@@ -64,13 +65,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const v = await prisma.vacancy.findUnique({
     where: { id: params.id },
-    select: { mahallaId: true, faol: true, ornlarSoni: true },
+    select: { mahallaId: true, faol: true, ornlarSoni: true, amalQilishMuddati: true },
   });
   if (!v) return NextResponse.json({ xabar: 'Иш ўрни топилмади' }, { status: 404 });
   if (!mahallagaRuxsat(q.sessiya, v.mahallaId)) {
     return NextResponse.json({ xabar: 'Ҳуқуқингиз йўқ' }, { status: 403 });
   }
-  if (v.faol) return NextResponse.json({ ok: true });
+  if (v.faol && elonKuchdami(v)) return NextResponse.json({ ok: true });
 
   const band = await prisma.unemployedPerson.count({
     where: { vacancyId: params.id, holati: { in: BAND_HOLATLAR } },
@@ -87,7 +88,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   await prisma.vacancy.update({
     where: { id: params.id },
-    data: { faol: true, yopilishSababi: null, yopilganSana: null },
+    data: {
+      faol: true,
+      yopilishSababi: null,
+      yopilganSana: null,
+      /* Муддати ўтган бўлса — янги муддат, акс ҳолда очилиши биланоқ яна яширинарди */
+      ...(elonKuchdami(v) ? {} : { amalQilishMuddati: odatiyMuddat() }),
+    },
   });
   await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
     obyektTuri: 'Vacancy',

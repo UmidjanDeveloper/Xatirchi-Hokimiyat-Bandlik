@@ -36,6 +36,17 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
   const [maosh, setMaosh] = useState<number | ''>('');
   const [telefon, setTelefon] = useState('');
   const [talablar, setTalablar] = useState('');
+  /*
+   * Эълоннинг охири. Ходим кўрсатмаса ҳам бир ой қўйиб
+   * берилади: илгари эълон ҚЎЛДА ёпилмагунча абадий турарди ва
+   * корхона воз кечганда ҳам рўйхатда қолиб, фуқаро бекорга
+   * бориб қайтарди.
+   */
+  const [muddat, setMuddat] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
   const [xato, setXato] = useState<string | null>(null);
   const [yuborilmoqda, setYuborilmoqda] = useState(false);
 
@@ -61,6 +72,7 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
           maosh: maosh === '' ? null : maosh,
           telefon: telefon.trim() || null,
           talablar: talablar.trim() || null,
+          amalQilishMuddati: muddat || null,
         }),
       });
       const natija = await javob.json().catch(() => ({}));
@@ -76,6 +88,11 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
       setMaosh('');
       setTelefon('');
       setTalablar('');
+      setMuddat(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        return d.toISOString().slice(0, 10);
+      });
       setOchiq(false);
 
       /*
@@ -241,6 +258,22 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
             onChange={(e) => setTelefon(e.target.value)}
             className={maydon}
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="v-muddat" className="text-sm font-medium text-ink">
+            {tr('Амал қилиш муддати')}
+          </label>
+          <input
+            id="v-muddat"
+            type="date"
+            value={muddat}
+            onChange={(e) => setMuddat(e.target.value)}
+            className={maydon}
+          />
+          <p className="text-[11px] text-ink-faint">
+            {tr('Шу кундан кейин эълон ўз-ўзидан ёпилади. Бўш қолдирилса — муддатсиз.')}
+          </p>
         </div>
 
         <div className="space-y-1.5 sm:col-span-2">

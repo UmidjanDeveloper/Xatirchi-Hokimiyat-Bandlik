@@ -2,6 +2,15 @@ import type { IshsizHolati } from '@prisma/client';
 import { prisma } from './prisma';
 import { kechikkanlarShartI } from './chora-tadbir';
 import { VORONKA } from '@/lib/ishsiz-holati';
+import { UZOQ_ISHSIZ } from '@/lib/uzoq-ishsizlik';
+import { MUSTAHKAMLASH_KUN } from '@/lib/chora-yaratish';
+
+/** Мустаҳкамлаш текшируви қачондан кечикади */
+function mustahkamlashChegarasi(hozir: Date): Date {
+  const d = new Date(hozir);
+  d.setDate(d.getDate() - MUSTAHKAMLASH_KUN);
+  return d;
+}
 
 /**
  * ============================================================
@@ -99,6 +108,22 @@ export interface TahlilNatijasi {
     aniqlangan: number;
     joylashtirilgan: number;
     radEtgan: number;
+    /**
+     * 12 ойдан ошиб ишсиз юрганлар.
+     *
+     * Икки ой олдин ишдан чиққан одам билан тўрт йилдан бери
+     * иш тополмаётган одам рўйхатда БИР ХИЛ кўринарди. Уларга
+     * бир хил чора ярамайди: биринчисига эълон кифоя,
+     * иккинчисига қайта ўқитиш ва субсидия керак.
+     */
+    uzoqIshsiz: number;
+    /**
+     * Жойлаштирилгани 3 ойдан ошган-у ҳали тасдиқланмаганлар.
+     *
+     * Занжирнинг охирги ҳалқаси. Булар ишда ҚОЛГАНМИ — ҳеч ким
+     * билмайди, чунки текширув қўлда бажарилиши керак эди.
+     */
+    tekshiruvKutayotgan: number;
   };
   voronka: VoronkaBosqichi[];
   qamrov: MahallaQamrovi[];
@@ -404,6 +429,8 @@ async function tahlilniHisobla(
     kechikkanlar,
     moliya,
     kurslar,
+    uzoqIshsiz,
+    tekshiruvKutayotgan,
     xatlovSanalari,
     aniqlanganSanalari,
     joylashganSanalari,
@@ -462,6 +489,27 @@ async function tahlilniHisobla(
       prisma.unemployedPerson.findMany({
         where: { ...mahallaFiltri, kasbHunarEhtiyoji: true, organmoqchiKasb: { not: null } },
         select: { organmoqchiKasb: true },
+      }),
+
+      /*
+       * Узоқ муддатли ишсизлар — энг заиф гуруҳ. Уларни
+       * АЛОҲИДА санаш керак, чунки воронкада улар бошқалар
+       * билан аралашиб кетади.
+       */
+      prisma.unemployedPerson.count({
+        where: { ...mahallaFiltri, ...UZOQ_ISHSIZ(hozir) },
+      }),
+
+      /*
+       * Мустаҳкамлаш текшируви кутилаётганлар: 3 ойдан ошган-у
+       * ҳали «Тасдиқланди» га ўтмаганлар.
+       */
+      prisma.unemployedPerson.count({
+        where: {
+          ...mahallaFiltri,
+          holati: 'JOYLASHTIRILDI',
+          ishgaKirganSana: { lte: mustahkamlashChegarasi(hozir) },
+        },
       }),
 
       /*
@@ -600,6 +648,8 @@ async function tahlilniHisobla(
       aniqlangan,
       joylashtirilgan,
       radEtgan,
+      uzoqIshsiz,
+      tekshiruvKutayotgan,
     },
     voronka,
     qamrov,

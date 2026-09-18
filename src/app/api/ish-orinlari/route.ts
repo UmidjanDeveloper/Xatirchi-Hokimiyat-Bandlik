@@ -17,6 +17,11 @@ const Yangi = z.object({
   maosh: z.coerce.number().int().min(0).max(100_000_000).nullish(),
   talablar: z.string().max(1000).nullish(),
   telefon: z.string().max(20).nullish(),
+  /*
+   * Эълоннинг охири. Бўш бўлса — муддатсиз (эски эълонлар шу
+   * тоифада қолади ва ўз-ўзидан йўқолиб кетмайди).
+   */
+  amalQilishMuddati: z.coerce.date().nullish(),
 });
 
 export async function POST(request: Request) {

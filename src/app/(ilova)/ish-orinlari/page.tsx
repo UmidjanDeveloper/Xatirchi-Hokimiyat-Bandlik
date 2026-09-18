@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { matnchi } from '@/lib/alifbo-server';
 import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { FAOL_ELON, qolganKun } from '@/lib/elon-muddati';
 import { formatDate, formatPhone } from '@/lib/utils';
 import { KASB_YONALISHI, kirillcha } from '@/lib/constants';
 import { orinHisobi } from '@/lib/joylashtirish';
@@ -36,7 +37,7 @@ export default async function IshOrinlariSahifasi() {
 
   const [royxat, yopilganlar, mahallalar] = await Promise.all([
     prisma.vacancy.findMany({
-      where: { ...filtr, faol: true },
+      where: { ...filtr, ...FAOL_ELON() },
       orderBy: { createdAt: 'desc' },
       include: { mahalla: { select: { nomiKirill: true } } },
     }),
@@ -141,6 +142,27 @@ export default async function IshOrinlariSahifasi() {
                     </>
                   )}
                   <span>{tr(v.mahalla.nomiKirill)}</span>
+                  {/*
+                    Муддат КАРТАДА туради: ходим одам юборишдан
+                    олдин кўрсин. Илгари эълоннинг охири умуман
+                    йўқ эди ва фуқаро аллақачон ўлган эълон
+                    бўйича бориб қайтарди.
+                  */}
+                  {(() => {
+                    const kun = qolganKun(v.amalQilishMuddati);
+                    if (kun === null) return null;
+                    const tigiz = kun <= 3;
+                    return (
+                      <>
+                        <span>·</span>
+                        <span className={tigiz ? 'font-semibold text-warn' : ''}>
+                          {kun <= 0
+                            ? tr('бугун тугайди')
+                            : `${tr('яна')} ${kun} ${tr('кун')}`}
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {v.yonalish && (
@@ -188,7 +210,9 @@ export default async function IshOrinlariSahifasi() {
                       {tr(v.mahalla.nomiKirill)} ·{' '}
                       {v.yopilishSababi === 'TOLDI'
                         ? `${tr('ўринлар тўлди')} (${h.band}/${h.jami})`
-                        : tr('қўлда ёпилган')}
+                        : v.yopilishSababi === 'MUDDATI_TUGADI'
+                          ? tr('муддати тугади')
+                          : tr('қўлда ёпилган')}
                       {v.yopilganSana
                         ? ` · ${formatDate(v.yopilganSana).split(',')[0]}`
                         : ''}

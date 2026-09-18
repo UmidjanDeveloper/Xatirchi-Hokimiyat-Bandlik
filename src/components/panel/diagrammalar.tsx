@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { VoronkaBosqichi, MahallaQamrovi } from '@/lib/tahlil';
 import { matnchi } from '@/lib/alifbo-server';
 import { ISHSIZ_HOLATI } from '@/lib/ishsiz-holati';
@@ -35,9 +36,18 @@ const pul = (som: number) =>
 export function Voronka({
   bosqichlar,
   bazaIshsiz,
+  radEtgan,
+  uzoqIshsiz,
+  tekshiruvKutayotgan,
 }: {
   bosqichlar: VoronkaBosqichi[];
   bazaIshsiz: number;
+  /** Воронкадан ЧИҚИБ кетганлар — босқич эмас, чиқиш йўли */
+  radEtgan?: number;
+  /** 12 ойдан ошиб ишсиз юрганлар */
+  uzoqIshsiz?: number;
+  /** Жойлаштирилгани 3 ойдан ошган-у тасдиқланмаганлар */
+  tekshiruvKutayotgan?: number;
 }) {
   const tr = matnchi();
 
@@ -83,7 +93,86 @@ export function Voronka({
           );
         })}
       </div>
+
+      {/*
+        ── ВОРОНКАДАН ТАШҚАРИДАГИ УЧ РАҚАМ ──
+
+        Воронка фақат ОЛДИНГА юрганларни кўрсатади. Ҳолбуки
+        ҳокимнинг «нега натижа кам?» деган саволига жавоб айнан
+        шу учтасида:
+
+        · «Рад этди» — ҳисобланарди, лекин ҳеч қайси саҳифада
+          КЎРИНМАСДИ. Воронкадан чиқиб кетган одам жимгина
+          йўқоларди.
+        · «12 ойдан ошган» — энг заиф гуруҳ, воронкада
+          бошқалар билан аралашиб кетган.
+        · «Текширув кутилмоқда» — жойлаштирилгани 3 ойдан
+          ошган-у ишда қолгани ҳали тасдиқланмаганлар.
+
+        Учови ҳам БОСИЛАДИ: рақамдан рўйхатга ўтилади.
+      */}
+      {(radEtgan !== undefined ||
+        uzoqIshsiz !== undefined ||
+        tekshiruvKutayotgan !== undefined) && (
+        <div className="mt-4 grid gap-2 border-t border-line pt-3 sm:grid-cols-3">
+          {radEtgan !== undefined && (
+            <VoronkaChetlashi
+              yol="/ishsizlar?holati=RAD_ETDI"
+              nomi={tr('Рад этди')}
+              izoh={tr('воронкадан чиқди')}
+              soni={radEtgan}
+              xavfli={radEtgan > 0}
+            />
+          )}
+          {uzoqIshsiz !== undefined && (
+            <VoronkaChetlashi
+              yol="/ishsizlar?uzoq=1"
+              nomi={tr('12 ойдан ошган')}
+              izoh={tr('энг заиф гуруҳ')}
+              soni={uzoqIshsiz}
+              xavfli={uzoqIshsiz > 0}
+            />
+          )}
+          {tekshiruvKutayotgan !== undefined && (
+            <VoronkaChetlashi
+              yol="/ishsizlar?tekshiruv=1"
+              nomi={tr('Текширув кутилмоқда')}
+              izoh={tr('3 ойдан ошди')}
+              soni={tekshiruvKutayotgan}
+              xavfli={tekshiruvKutayotgan > 0}
+            />
+          )}
+        </div>
+      )}
     </section>
+  );
+}
+
+/** Воронкадан ташқаридаги рақам — босилади */
+function VoronkaChetlashi({
+  yol,
+  nomi,
+  izoh,
+  soni,
+  xavfli,
+}: {
+  yol: string;
+  nomi: string;
+  izoh: string;
+  soni: number;
+  xavfli: boolean;
+}) {
+  return (
+    <Link
+      href={yol}
+      className="group rounded-md border border-line px-3 py-2 transition-colors hover:border-accent hover:bg-accent-soft"
+    >
+      <p className="text-[11px] font-medium text-ink-faint">{nomi}</p>
+      <p className={`raqam mt-0.5 text-lg font-bold ${xavfli ? 'text-warn' : 'text-ink'}`}>
+        {raqam(soni)}
+      </p>
+      <p className="text-[11px] text-ink-faint">{izoh}</p>
+    </Link>
   );
 }
 

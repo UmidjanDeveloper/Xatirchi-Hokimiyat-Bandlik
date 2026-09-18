@@ -1,9 +1,19 @@
 import Link from 'next/link';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
-import { ArrowRight, GraduationCap, Plane, Target, UserCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  ClipboardCheck,
+  GraduationCap,
+  Hourglass,
+  Plane,
+  Target,
+  UserCheck,
+  UserX,
+} from 'lucide-react';
 import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { FAOL_ELON } from '@/lib/elon-muddati';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
@@ -90,7 +100,7 @@ export default async function BandlikSahifasi({
     }),
 
     prisma.vacancy.findMany({
-      where: { ...filtr, faol: true },
+      where: { ...filtr, ...FAOL_ELON() },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -312,6 +322,47 @@ export default async function BandlikSahifasi({
       </div>
 
       {/*
+        ── ЗАНЖИРНИНГ ИККИ УЗИЛГАН ЖОЙИ ──
+
+        Иккови ҳам ҲИСОБЛАНАРДИ, лекин ҳеч қайси саҳифада
+        кўринмасди:
+
+        · 12 ойдан ошган ишсизлар — энг заиф гуруҳ, воронкада
+          бошқалар билан аралашиб кетган.
+        · Мустаҳкамлаш текшируви — «3 ойдан кейин текширилади»
+          деб ёзилган эди, аммо фақат қўлда белгиланарди ва
+          ҳеч ким эсламасди.
+
+        · Рад этганлар — воронкадан чиқиб кетган, «нега натижа
+          кам?» саволининг жавоби.
+      */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Kpi
+          ikonka={<Hourglass className="h-4 w-4" />}
+          nomi={tr("12 ойдан ошиб ишсиз")}
+          qiymat={t.jami.uzoqIshsiz}
+          xavfli={t.jami.uzoqIshsiz > 0}
+          yol="/ishsizlar?uzoq=1"
+          izoh={tr('энг заиф гуруҳ — аввал шулар чақирилсин')}
+        />
+        <Kpi
+          ikonka={<ClipboardCheck className="h-4 w-4" />}
+          nomi={tr("Мустаҳкамлаш текшируви")}
+          qiymat={t.jami.tekshiruvKutayotgan}
+          xavfli={t.jami.tekshiruvKutayotgan > 0}
+          yol="/ishsizlar?tekshiruv=1"
+          izoh={tr('жойлаштирилгани 3 ойдан ошди, тасдиқланмаган')}
+        />
+        <Kpi
+          ikonka={<UserX className="h-4 w-4" />}
+          nomi={tr("Таклифдан бош тортган")}
+          qiymat={t.jami.radEtgan}
+          yol="/ishsizlar?holati=RAD_ETDI"
+          izoh={tr('воронкадан чиқиб кетган')}
+        />
+      </div>
+
+      {/*
         ── Ўсиш ва камайиш сурати ──
 
         Раҳбарга ҳоким билан БИР ХИЛ диаграмма кўринади.
@@ -476,21 +527,46 @@ function Kpi({
   nomi,
   qiymat,
   xavfli,
+  yol,
+  izoh,
 }: {
   ikonka: React.ReactNode;
   nomi: string;
   qiymat: number;
   xavfli?: boolean;
+  /** Берилса — карта босилади ва рўйхатга олиб боради */
+  yol?: string;
+  izoh?: string;
 }) {
-  return (
-    <div className={`metric-card karta p-4 ${xavfli ? 'border-warn' : ''}`}>
+  const ichi = (
+    <>
       <div className={`flex items-center gap-2 ${xavfli ? 'text-warn' : 'text-ink-faint'}`}>
         {ikonka}
         <span className="text-xs font-medium">{nomi}</span>
       </div>
       <p className="raqam mt-2 text-2xl font-bold text-ink">{qiymat}</p>
-    </div>
+      {izoh && <p className="mt-0.5 text-[11px] leading-tight text-ink-faint">{izoh}</p>}
+    </>
   );
+
+  /*
+   * Рақам БОСИЛАДИГАН бўлиши керак: мутахассис «12 ойдан
+   * ошган 34 киши» ни кўриб, кимлар экани билмасдан нима
+   * қила олади? Илгари рақам чиқарди-ю, ортидан ҳеч нарса
+   * йўқ эди.
+   */
+  if (yol) {
+    return (
+      <Link
+        href={yol}
+        className={`metric-card karta karta-bosiladigan p-4 ${xavfli ? 'border-warn' : ''}`}
+      >
+        {ichi}
+      </Link>
+    );
+  }
+
+  return <div className={`metric-card karta p-4 ${xavfli ? 'border-warn' : ''}`}>{ichi}</div>;
 }
 
 interface NavbatOdami {

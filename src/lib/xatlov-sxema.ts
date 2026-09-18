@@ -45,6 +45,7 @@ import {
   qiymatlar,
   TOMORQA_FOYDALANISH,
 } from './constants';
+import { tashkilotNormal } from './masul-tashkilot';
 
 /** Manfiy bo'lmagan butun son; bo'sh qiymat 0 ga aylanadi */
 const son = (max = 100) =>
@@ -472,7 +473,18 @@ export const ChoraTadbirSxemasi = z
     muammo: z.string().min(5).max(500),
     sababi: matn(500),
     yechim: z.string().min(5).max(500),
-    masulTashkilot: z.string().min(2).max(100),
+    /*
+     * Масъул ном ЁЗИШДА расмий рўйхатга келтирилади.
+     *
+     * Илгари эркин матн эди ва кечикканлар кесими
+     * `groupBy('masulTashkilot')` билан ҳисоблангани учун
+     * «Xalq ta’limi» билан «Ta'lim bo'limi» ИККИ ТАШКИЛОТ
+     * бўлиб турарди. Ҳоким 12 та кечикиш деб кўрарди, аслида
+     * 15 та эди.
+     *
+     * Танилмагани «Бошқа» га тушади — йўқотилмайди.
+     */
+    masulTashkilot: z.string().min(2).max(100).transform(tashkilotNormal),
     muddat: z.coerce.date(),
   })
   .refine((d) => d.householdId || d.ishsizId, {

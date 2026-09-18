@@ -9,6 +9,15 @@ import { MALUMOT, kirillcha } from '@/lib/constants';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
+import { UZOQ_ISHSIZ, ishsizlikOylari, muddatMatni, uzoqIshsizmi } from '@/lib/uzoq-ishsizlik';
+import { MUSTAHKAMLASH_KUN } from '@/lib/chora-yaratish';
+
+/** Мустаҳкамлаш текшируви қачондан кечикади */
+function tekshiruvChegarasi(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - MUSTAHKAMLASH_KUN);
+  return d;
+}
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -26,7 +35,16 @@ const SAHIFA_HAJMI = 30;
 export default async function IshsizlarSahifasi({
   searchParams,
 }: {
-  searchParams: { holati?: string; mahalla?: string; q?: string; sahifa?: string };
+  searchParams: {
+    holati?: string;
+    mahalla?: string;
+    q?: string;
+    sahifa?: string;
+    /** `1` — фақат 12 ойдан ошиб ишсиз юрганлар */
+    uzoq?: string;
+    /** `1` — мустаҳкамлаш текшируви кечиккандар */
+    tekshiruv?: string;
+  };
 }) {
   const tr = matnchi();
 
@@ -42,8 +60,22 @@ export default async function IshsizlarSahifasi({
 
   const majburiy = mahallaFiltri(sessiya);
 
+  /*
+   * ── ҚЎШИМЧА КЕСИМЛАР ──
+   *
+   * Иккови ҳам панелдаги рақамдан келади: ҳоким рақамни босса,
+   * АЙНАН ўша одамлар рўйхати очилиши керак. Илгари рақам
+   * ҳисобланарди-ю, унга босиб бўлмасди.
+   */
+  const uzoqmi = searchParams.uzoq === '1';
+  const tekshiruvmi = searchParams.tekshiruv === '1';
+
   const where: Prisma.UnemployedPersonWhereInput = {
     ...majburiy,
+    ...(uzoqmi ? UZOQ_ISHSIZ() : {}),
+    ...(tekshiruvmi
+      ? { holati: 'JOYLASHTIRILDI', ishgaKirganSana: { lte: tekshiruvChegarasi() } }
+      : {}),
     ...(searchParams.mahalla && !majburiy.mahallaId
       ? { mahallaId: searchParams.mahalla }
       : {}),
@@ -74,6 +106,10 @@ export default async function IshsizlarSahifasi({
         malumoti: true,
         xohlaganIsh: true,
         mutaxassisligi: true,
+        /* Узоқ муддатли ишсизлик матнини ёзиш учун */
+        ishdanBoshaganSana: true,
+        ishgaKirganSana: true,
+        household: { select: { ishsizlikMuddatiOy: true } },
         mahalla: { select: { nomiKirill: true } },
       },
     }),
@@ -140,6 +176,50 @@ export default async function IshsizlarSahifasi({
         })}
       </div>
 
+      {/*
+        ── ВОРОНКАДАН ТАШҚАРИДАГИ ИККИ КЕСИМ ──
+
+        Воронка олдинга юрганларни кўрсатади. Бу иккови эса
+        ТИҚИЛИБ ҚОЛГАНЛАРНИ: 12 ойдан ошиб иш тополмаётганлар
+        ва жойлаштирилгани 3 ойдан ошган-у ишда қолгани
+        тасдиқланмаганлар.
+      */}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Link
+          href={uzoqmi ? '/ishsizlar' : '/ishsizlar?uzoq=1'}
+          className={`karta karta-bosiladigan flex items-center justify-between gap-3 p-3 ${
+            uzoqmi ? 'border-accent' : ''
+          }`}
+        >
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-ink">{tr('12 ойдан ошиб ишсиз')}</p>
+            <p className="mt-0.5 text-[11px] leading-tight text-ink-faint">
+              {tr('Энг заиф гуруҳ — ўз-ўзидан ишга жойлашиш эҳтимоли энг паст. Аввал шулар чақирилсин.')}
+            </p>
+          </div>
+          {uzoqmi && (
+            <span className="raqam shrink-0 text-lg font-bold text-warn">{jami}</span>
+          )}
+        </Link>
+
+        <Link
+          href={tekshiruvmi ? '/ishsizlar' : '/ishsizlar?tekshiruv=1'}
+          className={`karta karta-bosiladigan flex items-center justify-between gap-3 p-3 ${
+            tekshiruvmi ? 'border-accent' : ''
+          }`}
+        >
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-ink">{tr('Мустаҳкамлаш текшируви')}</p>
+            <p className="mt-0.5 text-[11px] leading-tight text-ink-faint">
+              {tr('Жойлаштирилгани 3 ойдан ошди, аммо ишда қолгани ҳали тасдиқланмаган.')}
+            </p>
+          </div>
+          {tekshiruvmi && (
+            <span className="raqam shrink-0 text-lg font-bold text-warn">{jami}</span>
+          )}
+        </Link>
+      </div>
+
       {/* ── Filtrlar ── */}
       <form className="karta flex flex-wrap gap-2 p-3" method="get">
         <input
@@ -192,6 +272,17 @@ export default async function IshsizlarSahifasi({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="truncate font-medium text-ink">{tr(p.fish)}</span>
                   <HolatNishoni holati={p.holati} />
+                  {/*
+                    Узоқ муддатли ишсизлик НИШОНИ. Рўйхатда икки
+                    ойлик ишсиз билан тўрт йиллик ишсиз бир хил
+                    кўринарди — ҳолбуки уларга бир хил чора
+                    ярамайди.
+                  */}
+                  {uzoqIshsizmi(p) && (
+                    <span className="rounded bg-warn-bg px-1.5 py-0.5 text-[10px] font-semibold text-warn">
+                      {tr(muddatMatni(ishsizlikOylari(p)))}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-0.5 truncate text-xs text-ink-faint">
                   {tr(p.mahalla.nomiKirill)} · {p.jinsi === 'Erkak' ? tr('Эркак') : tr('Аёл')}

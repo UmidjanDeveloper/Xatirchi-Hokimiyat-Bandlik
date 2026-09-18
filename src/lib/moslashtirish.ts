@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { FAOL_ELON } from './elon-muddati';
 import { BAND_HOLATLAR, orinHisobi, type OrinHisobi } from './joylashtirish';
 import {
   moslikBoyichaTartibla,
@@ -155,7 +156,7 @@ export async function orinlarniTop(
 ): Promise<OrinNatijasi[]> {
   const [orinlar, bandlar] = await Promise.all([
     prisma.vacancy.findMany({
-      where: { faol: true },
+      where: FAOL_ELON(),
       select: {
         id: true,
         korxonaNomi: true,

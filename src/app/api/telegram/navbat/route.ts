@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { talabQil } from '@/lib/api-auth';
 import { navbatniYubor, telegramSozlanganmi } from '@/lib/xabarnoma';
+import { prisma } from '@/lib/prisma';
+import { muddatiOtganlarniYop } from '@/lib/elon-muddati';
 
 /*
  * НАВБАТНИ ЮБОРИШ
@@ -52,15 +54,34 @@ async function ishga(request: Request, cronYolimi: boolean) {
     if (q instanceof NextResponse) return q;
   }
 
+  /*
+   * ── КУНЛИК ТОЗАЛАШ ──
+   *
+   * Telegram текширувидан ОЛДИН туради ва ҳар сафар бажарилади.
+   *
+   * Сабаби: Telegram созланмаган бўлса, йўл 503 билан
+   * қайтарди — ва муддати ўтган эълонлар ҳеч қачон
+   * ёпилмасди. Тозалаш хабарномага боғлиқ эмас.
+   *
+   * Хато бўлса ҳам йўл тўхтамайди: хабар юбориш тозалашдан
+   * муҳимроқ ва биттаси иккинчисини йиқитмаслиги керак.
+   */
+  let yopilganElon = 0;
+  try {
+    yopilganElon = await muddatiOtganlarniYop(prisma);
+  } catch (e) {
+    console.error('muddati otgan elonlarni yopib bolmadi', e);
+  }
+
   if (!telegramSozlanganmi()) {
     return NextResponse.json(
-      { ok: false, xabar: 'TELEGRAM_BOT_TOKEN созланмаган' },
+      { ok: false, yopilganElon, xabar: 'TELEGRAM_BOT_TOKEN созланмаган' },
       { status: 503 }
     );
   }
 
   const natija = await navbatniYubor();
-  return NextResponse.json({ ok: true, ...natija });
+  return NextResponse.json({ ok: true, yopilganElon, ...natija });
 }
 
 /**
