@@ -81,12 +81,27 @@ export function MatnMaydoni({
   koptator,
   placeholder,
   turi = 'text',
+  maxLength = 1000,
 }: AsosMaydon & {
   qiymat: string;
   ozgardi: (q: string) => void;
   koptator?: boolean;
   placeholder?: string;
   turi?: 'text' | 'tel';
+  /**
+   * Энг кўп неча белги ёзиш мумкин.
+   *
+   * ── Нега керак ──
+   *
+   * Сервер ҳар майдон учун чегара қўяди (`matn(500)` каби).
+   * Форма эса ЧЕКСИЗ ёзишга рухсат берарди: ходим узун изоҳ
+   * ёзади, «Юбориш» ни босади ва «Жуда узун» деган хатони
+   * ОЛДИНДАН эмас, ФАҚАТ юборгандан кейин кўради.
+   *
+   * Энди клавиатура чегарада тўхтайди — хато умуман юзага
+   * келмайди.
+   */
+  maxLength?: number;
 }) {
   const id = useId();
   return (
@@ -98,6 +113,7 @@ export function MatnMaydoni({
           value={qiymat}
           onChange={(e) => ozgardi(e.target.value)}
           rows={3}
+          maxLength={maxLength}
           placeholder={placeholder}
           className={`${kiritishSinf} ${xato ? 'maydon-xato' : 'border-line'} resize-y`}
         />
@@ -113,6 +129,7 @@ export function MatnMaydoni({
           inputMode={turi === 'tel' ? 'tel' : undefined}
           value={qiymat}
           onChange={(e) => ozgardi(e.target.value)}
+          maxLength={maxLength}
           placeholder={placeholder}
           className={`${kiritishSinf} ${xato ? 'maydon-xato' : 'border-line'}`}
         />

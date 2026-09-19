@@ -93,6 +93,8 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
   );
 
   const [xatolar, setXatolar] = useState<Record<string, string>>({});
+  /** Такрор хатловда — мавжуд ёзувнинг `id` си (ҳавола учун) */
+  const [mavjudId, setMavjudId] = useState<string | null>(null);
   const [serverXatosi, setServerXatosi] = useState<string | null>(null);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const [yuborilmoqda, setYuborilmoqda] = useState(false);
@@ -248,6 +250,12 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       setXatolar(toplangan);
       // Xato qaysi qadamda bo'lsa - o'shanga o'tamiz
       setQadam(xatoQadami(toplangan));
+      /*
+       * Ва ЮҚОРИГА сурамиз. Қадам алмашгани билан браузер
+       * скролли жойида қолади: ходим пастда туриб «яна ҳеч
+       * нарса бўлмади» деб ўйларди. Қизил қути эса тепада.
+       */
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -268,8 +276,11 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           for (const n of natija.xatolar) xt[n.maydon] = n.xabar;
           setXatolar(xt);
           setQadam(xatoQadami(xt));
+          if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+        setMavjudId(typeof natija.mavjudId === 'string' ? natija.mavjudId : null);
         setServerXatosi(natija.xabar ?? tr('Юбориб бўлмади'));
+        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
@@ -415,7 +426,24 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
         </div>
       )}
 
-      {serverXatosi && <div className="quti-xato">{tr(serverXatosi)}</div>}
+      {serverXatosi && (
+        <div className="quti-xato space-y-2">
+          <p>{tr(serverXatosi)}</p>
+          {/*
+            Такрор хатловда ходим тиқилиб қолмасин: мавжуд
+            ёзувга тўғридан-тўғри ўтади ва у ердан таҳрирлайди.
+          */}
+          {mavjudId && (
+            <a
+              href={`/xatlov/${mavjudId}`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-danger px-3 py-1.5 text-xs font-semibold text-danger transition-colors hover:bg-danger hover:text-white"
+            >
+              {tr('Мавжуд хатловни очиш')}
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+          )}
+        </div>
+      )}
 
       {/*
         ── ХАТО УСТИГА БОСИБ ЎША КАТАККА ЎТИШ ──
@@ -552,12 +580,40 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           </span>
         )}
 
+        {/*
+          ── ЮБОРИШ ТУГМАСИ ҲЕЧ ҚАЧОН ЎЧИРИЛМАЙДИ ──
+
+          Илгари `disabled` ичида `hisobot.xatolar.length > 0`
+          турарди. Яъни хато бўлса тугма ЖИСМОНАН ўчиб қоларди:
+          ходим босади — ҳеч нарса бўлмайди. На хабар, на
+          сакраш.
+
+          Изоҳ эса саҳифанинг ТЕПАСИДА эди. Телефонда ходим
+          пастда — тугманинг ёнида — туради ва тепадаги қизил
+          қутини КЎРМАЙДИ. Унинг учун бу «тугма бузуқ» дегани
+          эди. Даладан айнан шу шикоят келди.
+
+          Энди тугма босилади ва босилганда ЎЗИ айтади: хато
+          қайси қадамда экан — ўшанга ўтказади, юқорига суради
+          ва қизил билан белгилайди.
+        */}
+        {/*
+          Тугманинг ЁНИДАГИ огоҳлантириш: ходим телефонда пастда
+          туради ва тепадаги қизил қутини кўрмайди. Шу сабабли
+          нечта хато борлиги АЙНАН ШУ ЕРДА ҳам ёзилади.
+        */}
+        {oxirgi && hisobot.xatolar.length > 0 && (
+          <span className="text-xs font-medium text-warn">
+            {hisobot.xatolar.length} {tr('та катак тўлдирилмаган — босинг, кўрсатаман')}
+          </span>
+        )}
+
         <div className="ml-auto">
           {oxirgi ? (
             <button
               type="button"
               onClick={yakuniyYubor}
-              disabled={yuborilmoqda || hisobot.xatolar.length > 0}
+              disabled={yuborilmoqda}
               className="flex items-center gap-1.5 tugma-asosiy rounded-md px-5 py-2.5 text-sm font-semibold"
             >
               {yuborilmoqda ? (

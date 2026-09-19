@@ -80,6 +80,7 @@ export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
           ozgardi={(q) => yangila('manzil', q)}
           xato={x(xatolar, 'manzil')}
           placeholder={tr("Навоий кўчаси, 12-уй")}
+          maxLength={200}
         />
       </ToliqKeng>
 
@@ -89,6 +90,7 @@ export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
         qiymat={h.oilaBoshligi}
         ozgardi={(q) => yangila('oilaBoshligi', q)}
         xato={x(xatolar, 'oilaBoshligi')}
+        maxLength={100}
       />
 
       {/*
@@ -141,6 +143,7 @@ export function QadamXonadon({ h, yangila, xatolar }: QadamProps) {
         ozgardi={(q) => yangila('telefon', q)}
         xato={x(xatolar, 'telefon')}
         placeholder="+998 __ ___ __ __"
+        maxLength={20}
       />
 
       {/* Yosh va jinsga qarab bandlik imkoniyati haqida ogohlantirish */}
@@ -459,6 +462,7 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
                   qiymat={h.mablagYonalishiBoshqa}
                   ozgardi={(q) => yangila('mablagYonalishiBoshqa', q)}
                   xato={x(xatolar, 'mablagYonalishiBoshqa')}
+                  maxLength={200}
                 />
               </ToliqKeng>
             )}
@@ -590,6 +594,7 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
                   qiymat={h.chetElBoshqaDavlat}
                   ozgardi={(q) => yangila('chetElBoshqaDavlat', q)}
                   xato={x(xatolar, 'chetElBoshqaDavlat')}
+                  maxLength={100}
                 />
 
                 <MatnMaydoni
@@ -598,6 +603,7 @@ export function QadamTadbirkorlik({ h, yangila, xatolar }: QadamProps) {
                   qiymat={h.chetElBoshqaShahar}
                   ozgardi={(q) => yangila('chetElBoshqaShahar', q)}
                   xato={x(xatolar, 'chetElBoshqaShahar')}
+                  maxLength={100}
                 />
               </>
             )}
@@ -710,6 +716,7 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
           yorliq={tr("Жалб этилмаган бўлса — сабаби")}
           qiymat={h.togarakSababi}
           ozgardi={(q) => yangila('togarakSababi', q)}
+          maxLength={500}
         />
 
         <ToliqKeng>
@@ -717,6 +724,7 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
             yorliq={tr("Боғчага қамраб олинмаган бўлса — сабаби")}
             qiymat={h.maktabgachaQamrovsizSababi}
             ozgardi={(q) => yangila('maktabgachaQamrovsizSababi', q)}
+            maxLength={500}
           />
         </ToliqKeng>
       </Bolim>
@@ -741,6 +749,7 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
               qiymat={h.uzoqDavolanishIzoh}
               ozgardi={(q) => yangila('uzoqDavolanishIzoh', q)}
               xato={x(xatolar, 'uzoqDavolanishIzoh')}
+              maxLength={500}
             />
           </ToliqKeng>
         )}
@@ -757,12 +766,14 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
               yorliq={tr("Дори-дармон ёки тиббий буюмларга эҳтиёж")}
               qiymat={h.doriEhtiyoji}
               ozgardi={(q) => yangila('doriEhtiyoji', q)}
+              maxLength={500}
             />
 
             <MatnMaydoni
               yorliq={tr("Профилактик кўрик ёки реабилитацияга эҳтиёж")}
               qiymat={h.tibbiyXizmatEhtiyoji}
               ozgardi={(q) => yangila('tibbiyXizmatEhtiyoji', q)}
+              maxLength={500}
             />
 
             <MatnMaydoni
@@ -770,6 +781,7 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
               qiymat={h.oxirgiTibbiyKorik}
               ozgardi={(q) => yangila('oxirgiTibbiyKorik', q)}
               placeholder={tr("масалан: 2026 йил март")}
+              maxLength={100}
             />
           </>
         )}
@@ -937,6 +949,7 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
                 izoh={tr("Парваришчи оила аъзоси бўлса, у иш билан банд бўла олмайди — бу ҳам бандлик масаласи")}
                 qiymat={h.parvarishIzoh}
                 ozgardi={(q) => yangila('parvarishIzoh', q)}
+                maxLength={500}
               />
             </ToliqKeng>
           </>
@@ -961,6 +974,7 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
               yorliq={tr("Кимнинг қайси ҳужжати йўқ")}
               qiymat={h.hujjatIzoh}
               ozgardi={(q) => yangila('hujjatIzoh', q)}
+              maxLength={500}
             />
           </ToliqKeng>
         )}
@@ -1186,6 +1200,7 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
               qiymat={h.hunarmandchilik}
               ozgardi={(q) => yangila('hunarmandchilik', q)}
               xato={x(xatolar, 'hunarmandchilik')}
+              maxLength={500}
             />
           </ToliqKeng>
         )}
@@ -1366,6 +1381,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   qiymat={p.fish}
                   ozgardi={(q) => qatorYangila(p.qatorId, { fish: q })}
                   xato={x(xatolar, `ishsiz.${i}.fish`)}
+                  maxLength={100}
                 />
 
                 <MatnMaydoni
@@ -1374,6 +1390,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   qiymat={p.telefon ?? ''}
                   ozgardi={(q) => qatorYangila(p.qatorId, { telefon: q })}
                   xato={x(xatolar, `ishsiz.${i}.telefon`)}
+                  maxLength={20}
                 />
 
                 <TanlovMaydoni
@@ -1435,6 +1452,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   yorliq={tr("Мавжуд малака / мутахассислиги")}
                   qiymat={p.mutaxassisligi ?? ''}
                   ozgardi={(q) => qatorYangila(p.qatorId, { mutaxassisligi: q })}
+                  maxLength={200}
                 />
 
                 <RaqamMaydoni
@@ -1450,6 +1468,7 @@ export function QadamIshsizlar({ h, yangila, xatolar }: QadamProps) {
                   yorliq={tr("Қайси йўналишда ишлашни истайди")}
                   qiymat={p.xohlaganIsh ?? ''}
                   ozgardi={(q) => qatorYangila(p.qatorId, { xohlaganIsh: q })}
+                  maxLength={300}
                 />
 
                 <PulMaydoni
@@ -1772,6 +1791,7 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
                   qiymat={h.passivDaromadIzohi}
                   ozgardi={(q) => yangila('passivDaromadIzohi', q)}
                   xato={x(xatolar, 'passivDaromadIzohi')}
+                  maxLength={500}
                 />
               </ToliqKeng>
             )}
@@ -1821,6 +1841,7 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
               qiymat={h.infratuzilmaBoshqa}
               ozgardi={(q) => yangila('infratuzilmaBoshqa', q)}
               xato={x(xatolar, 'infratuzilmaBoshqa')}
+              maxLength={200}
             />
           </ToliqKeng>
         )}

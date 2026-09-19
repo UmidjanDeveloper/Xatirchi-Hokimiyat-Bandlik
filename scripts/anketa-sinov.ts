@@ -121,6 +121,65 @@ const SINOVLAR: Sinov[] = [
       return yoq.length === 0;
     },
   },
+
+  /* ══ ЮБОРИШ ТУГМАСИ ══ */
+  {
+    nomi: 'Юбориш тугмаси ҲЕЧ ҚАЧОН ўчирилмайди',
+    tekshir: () => {
+      /*
+       * Даладан келган асосий шикоятнинг сабаби шу эди:
+       * `disabled={... || hisobot.xatolar.length > 0}`. Хато
+       * бўлса тугма жисмонан ўчарди — ходим босади, ҳеч нарса
+       * бўлмайди, изоҳ эса саҳифанинг тепасида, телефон
+       * экранидан ташқарида.
+       */
+      const m = ASOS.match(/onClick=\{yakuniyYubor\}\s*\n\s*disabled=\{([^}]*)\}/);
+      if (!m) {
+        console.log('     юбориш тугмаси топилмади — текширув эскирган');
+        return false;
+      }
+      if (/xatolar/.test(m[1])) {
+        console.log(`     тугма ўчирилади: disabled={${m[1]}}`);
+        return false;
+      }
+      return true;
+    },
+  },
+  {
+    nomi: 'Босилганда юқорига суради — қизил қути кўринсин',
+    tekshir: () => ASOS.includes('window.scrollTo({ top: 0'),
+  },
+  {
+    nomi: 'Тугманинг ЁНИДА нечта хато борлиги ёзилади',
+    tekshir: () => ASOS.includes('та катак тўлдирилмаган — босинг'),
+  },
+
+  /* ══ МАТН УЗУНЛИГИ: форма ↔ сервер ══ */
+  {
+    nomi: 'Ҳар матн майдонининг чегараси сервернинг чегарасидан ошмайди',
+    tekshir: () => {
+      const SXEMA = readFileSync('src/lib/xatlov-sxema.ts', 'utf8');
+      const chegara = new Map<string, number>();
+      for (const m of SXEMA.matchAll(/^ {2}([a-zA-Z0-9_]+):\s*matn\((\d+)\)/gm))
+        chegara.set(m[1], Number(m[2]));
+      for (const m of SXEMA.matchAll(/^ {2}([a-zA-Z0-9_]+):\s*z\.string\(\)[^,\n]*?\.max\((\d+)\)/gm))
+        chegara.set(m[1], Number(m[2]));
+
+      const yomon: string[] = [];
+      for (const blok of FORMA.matchAll(/<MatnMaydoni\b(?:(?!\/>)[\s\S])*?\/>/g)) {
+        const b = blok[0];
+        const y = b.match(/yangila\('([a-zA-Z0-9_]+)'/);
+        if (!y) continue;
+        const server = chegara.get(y[1]);
+        if (server === undefined) continue;
+        const forma = b.match(/maxLength=\{(\d+)\}/);
+        const f = forma ? Number(forma[1]) : 1000;
+        if (f > server) yomon.push(`${y[1]}: форма ${f} > сервер ${server}`);
+      }
+      if (yomon.length) for (const v of yomon) console.log(`     ${v}`);
+      return yomon.length === 0;
+    },
+  },
 ];
 
 let xato = 0;

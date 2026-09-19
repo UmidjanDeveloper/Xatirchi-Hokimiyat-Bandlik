@@ -120,12 +120,20 @@ function zodniOgir(n: z.ZodIssue): string {
       return 'Рўйхатдан танланг';
 
     case 'too_small':
+      if (n.type === 'date') return 'Сана жуда эрта — текшириб кўринг';
       if (n.type === 'string') return 'Жуда қисқа';
       if (n.type === 'array') return 'Камида битта танланг';
       return `Камида ${String(n.minimum)} бўлиши керак`;
 
     case 'too_big':
       if (n.type === 'string') return 'Жуда узун';
+      /*
+       * Сана майдонларида `maximum` — хом Unix вақт белгиси.
+       * Ходимга «Кўпи билан 1789818655969 бўлиши мумкин» деб
+       * чиқарди — бу ҳеч нарса англатмайди ва одам нима
+       * қилишини билмай қолади.
+       */
+      if (n.type === 'date') return 'Сана келажакда бўлиши мумкин эмас';
       return `Кўпи билан ${String(n.maximum)} бўлиши мумкин`;
 
     case 'invalid_string':
@@ -500,10 +508,36 @@ export async function POST(request: Request) {
   } catch (e) {
     // Takror xatlov - `@@unique([mahallaId, takrorKaliti])`
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      /*
+       * ── ХОДИМГА ЧИҚИШ ЙЎЛИ БЕРАМИЗ ──
+       *
+       * Илгари бу ерда фақат «бу хонадон аллақачон хатловдан
+       * ўтган» деб ёзиларди. Ходим эса бутун анкетани
+       * тўлдирган ва энди тиқилиб қоларди: на сақлай олади,
+       * на мавжудини топа олади.
+       *
+       * Иккита ҳолат бўлади ва иккисида ҳам жавоб битта —
+       * МАВЖУД ЁЗУВНИ ОЧИШ:
+       *   · ростдан ҳам бошқа ходим аллақачон киритган;
+       *   · алоқа узилиб, биринчи юбориш аслида ўтиб кетган
+       *     ва ходим иккинчи марта босган.
+       *
+       * Шунинг учун ёзувнинг `id` си ҳам қайтарилади ва форма
+       * ундан ҳавола ясайди.
+       */
+      const mavjud = await prisma.household
+        .findFirst({
+          where: { mahallaId: xonadon.mahallaId, takrorKaliti: kalit },
+          select: { id: true, holati: true },
+        })
+        .catch(() => null);
+
       return NextResponse.json(
         {
           xabar:
             'Bu xonadon allaqachon xatlovdan o‘tgan. Shu manzil va oila boshlig‘i bo‘yicha yozuv mavjud.',
+          mavjudId: mavjud?.id ?? null,
+          mavjudHolati: mavjud?.holati ?? null,
         },
         { status: 409 }
       );
