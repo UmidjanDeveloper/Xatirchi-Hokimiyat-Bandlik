@@ -81,7 +81,18 @@ export interface XatlovRaqamlari {
   oylikDaromad?: number | bigint | null;
 
   nogironlikBor?: boolean | null;
-  nogironlikIzoh?: string | null;
+  /**
+   * Ногиронлиги бўлган шахслар рўйхатидаги қаторлар сони.
+   *
+   * Илгари бу ерда `nogironlikIzoh` — эркин матн турарди. Аммо
+   * формада у майдон УМУМАН чизилмасди: экранда шахслар рўйхати
+   * бор эди. Натижада ходим «Ҳа» ни белгилаб, рўйхатни
+   * тўлдирарди-ю, «Юбориш» тугмаси жимгина ишламай қоларди —
+   * хато кўринмайдиган майдонга ёзиларди.
+   *
+   * Энди текширув ЭКРАНДАГИ нарсага қарайди.
+   */
+  nogironShaxslarSoni?: number;
   uzoqDavolanish?: boolean | null;
   uzoqDavolanishIzoh?: string | null;
 }
@@ -361,8 +372,8 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
 
   // ── V va VII bo'lim: izoh talab qiladigan belgilar ───────
 
-  if (d.nogironlikBor && !d.nogironlikIzoh?.trim()) {
-    xato('nogironlikIzoh', 'Ногиронлиги бўлган шахс бор — ким эканини ва гуруҳини ёзинг');
+  if (d.nogironlikBor && (d.nogironShaxslarSoni ?? 0) === 0) {
+    xato('nogironShaxslar', 'Ногиронлиги бўлган шахс бор — кимлигини рўйхатга қўшинг');
   }
   if (d.uzoqDavolanish && !d.uzoqDavolanishIzoh?.trim()) {
     xato('uzoqDavolanishIzoh', 'Узоқ даволанишга муҳтож аъзо бор — ким эканини ва ташхисни ёзинг');

@@ -31,6 +31,7 @@ export function ShaxsRoyxati({
   qatorlar,
   ozgardi,
   guruhSora = false,
+  xato,
 }: {
   yorliq: string;
   izoh?: string;
@@ -38,6 +39,19 @@ export function ShaxsRoyxati({
   ozgardi: (yangi: ShaxsQatori[]) => void;
   /** Nogironlik guruhi so'ralsinmi (parvarishda kerak emas) */
   guruhSora?: boolean;
+  /**
+   * Хато матни — рўйхат БЎШ қолганда кўрсатилади.
+   *
+   * ── Нега қўшилди ──
+   *
+   * Далада шундай шикоят келди: «ногиронлиги бўлган шахсни
+   * белгиласа, охирида юбориш тугмаси босилмаяпти». Текширув
+   * ишларди, аммо хатони кўрсатадиган жой ЙЎҚ эди — бу
+   * компонент `xato` ни умуман қабул қилмасди.
+   *
+   * Ходим учун бу «тугма бузуқ» деган маънони берарди.
+   */
+  xato?: string;
 }) {
   const { t: tr } = useAlifbo();
 
@@ -49,9 +63,18 @@ export function ShaxsRoyxati({
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-sm font-medium text-ink">{yorliq}</p>
+        <p className="text-sm font-medium text-ink">
+          {yorliq}
+          {xato && <span className="ml-1 text-danger">*</span>}
+        </p>
         {izoh && <p className="mt-0.5 text-xs text-ink-faint">{izoh}</p>}
       </div>
+
+      {xato && (
+        <p className="quti-xato text-xs font-medium" role="alert">
+          {xato}
+        </p>
+      )}
 
       {qatorlar.map((q, i) => (
         <div key={q.qatorId} className="karta space-y-3 p-3.5">

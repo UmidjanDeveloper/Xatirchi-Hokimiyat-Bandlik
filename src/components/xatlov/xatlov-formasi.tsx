@@ -634,7 +634,7 @@ function sonlar(h: XatlovHolati): XatlovRaqamlari {
     oylikDaromad: s(h.oylikDaromad),
 
     nogironlikBor: h.nogironlikBor,
-    nogironlikIzoh: h.nogironlikIzoh,
+    nogironShaxslarSoni: h.nogironShaxslar.length,
     uzoqDavolanish: h.uzoqDavolanish,
     uzoqDavolanishIzoh: h.uzoqDavolanishIzoh,
   };
@@ -767,7 +767,6 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
    * жойида» бўлиб кўринарди.
    */
   const haYoq: [keyof XatlovHolati, string][] = [
-    ['kasbHunarIstagi', 'Касб-ҳунарга ўқиш истагини сўранг'],
     ['tadbirkorlikIstagi', 'Тадбиркорлик истагини сўранг'],
     ['moliyaEhtiyoji', 'Молиявий эҳтиёж борлигини сўранг'],
     ['chetElMehnati', 'Чет элда ишлаётган аъзо борлигини сўранг'],

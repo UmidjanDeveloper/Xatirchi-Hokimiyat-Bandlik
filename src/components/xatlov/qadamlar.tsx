@@ -13,10 +13,8 @@ import {
   HAYDOVCHILIK_TOIFASI,
   HUNAR_TURI,
   ICHIMLIK_SUVI,
-  ISH_TURI_ISTAGI,
   JINS,
   KAMBAGALLIK_SABABI,
-  KASB_YONALISHI,
   MABLAG_YONALISHI,
   MALUMOT,
   MOLIYA_TURI,
@@ -337,34 +335,25 @@ export function QadamMehnat({ h, yangila, xatolar }: QadamProps) {
           xato={x(xatolar, 'ishsizlikMuddatiOy')}
         />
 
-        <TanlovMaydoni
-          yorliq={tr("Иш турига бўлган истак")}
-          variantlar={ISH_TURI_ISTAGI}
-          qiymat={h.ishTuriIstagi}
-          ozgardi={(q) => yangila('ishTuriIstagi', q)}
-        />
+        {/*
+          ── ОЛИБ ТАШЛАНГАН УЧТА САВОЛ ──
 
-        <ToliqKeng>
-          <HaYoqMaydoni
-            yorliq={tr("Касб-ҳунар ёки тадбиркорликка ўқишни истайдими?")}
-            majburiy
-            qiymat={h.kasbHunarIstagi}
-            ozgardi={(q) => yangila('kasbHunarIstagi', q)}
-            xato={x(xatolar, 'kasbHunarIstagi')}
-          />
-        </ToliqKeng>
+          «Иш турига истак», «Касб-ҳунарга ўқишни истайдими?» ва
+          «Қайси йўналишга қизиқади?» шу ерда турарди.
 
-        {h.kasbHunarIstagi && (
-          <ToliqKeng>
-            <KopTanlovMaydoni
-              yorliq={tr("Қайси йўналишга қизиқади?")}
-              variantlar={KASB_YONALISHI}
-              qiymatlar={h.kasbHunarYonalishi}
-              ozgardi={(q) => yangila('kasbHunarYonalishi', q)}
-            />
-          </ToliqKeng>
-        )}
+          Учови ҳам ИШСИЗ ФУҚАРО анкетасида — аниқроқ шаклда —
+          қайтадан сўраларди: «Қайси йўналишда ишлашни истайди»,
+          «Касб-ҳунарга ўқиш истаги борми», «Қайси касбни
+          ўрганиш истаги бор» (31 та касб рўйхатидан).
 
+          Хонадон даражасидаги жавобдан чора чиқмасди: «бу
+          оилада кимдир ўқимоқчи» деган гап билан ҳеч кимни
+          курсга ёзиб бўлмайди. Фуқаро даражасидагиси эса
+          ваучер занжирини бевосита очади.
+
+          Устунлар базада қолди — эски хатловлардаги жавоблар
+          ҳисоботда кўринаверади.
+        */}
         <ToliqKeng>
           <MatnMaydoni
             yorliq={tr("Бандлигини таъминлаш бўйича аниқ таклиф(лар)")}
@@ -756,24 +745,34 @@ export function QadamBolalarSogliq({ h, yangila, xatolar }: QadamProps) {
           </ToliqKeng>
         )}
 
-        <MatnMaydoni
-          yorliq={tr("Дори-дармон ёки тиббий буюмларга эҳтиёж")}
-          qiymat={h.doriEhtiyoji}
-          ozgardi={(q) => yangila('doriEhtiyoji', q)}
-        />
+        {/*
+          Бу учтаси илгари ҲАР хонадондан сўраларди. Амалда улар
+          фақат узоқ даволанишга муҳтож аъзо бор оилада маъно
+          касб этади — қолган хонадонларда ходим учта бўш
+          майдонни бекорга босиб ўтарди.
+        */}
+        {h.uzoqDavolanish && (
+          <>
+            <MatnMaydoni
+              yorliq={tr("Дори-дармон ёки тиббий буюмларга эҳтиёж")}
+              qiymat={h.doriEhtiyoji}
+              ozgardi={(q) => yangila('doriEhtiyoji', q)}
+            />
 
-        <MatnMaydoni
-          yorliq={tr("Профилактик кўрик ёки реабилитацияга эҳтиёж")}
-          qiymat={h.tibbiyXizmatEhtiyoji}
-          ozgardi={(q) => yangila('tibbiyXizmatEhtiyoji', q)}
-        />
+            <MatnMaydoni
+              yorliq={tr("Профилактик кўрик ёки реабилитацияга эҳтиёж")}
+              qiymat={h.tibbiyXizmatEhtiyoji}
+              ozgardi={(q) => yangila('tibbiyXizmatEhtiyoji', q)}
+            />
 
-        <MatnMaydoni
-          yorliq={tr("Охирги тиббий кўрикдан ўтган вақти")}
-          qiymat={h.oxirgiTibbiyKorik}
-          ozgardi={(q) => yangila('oxirgiTibbiyKorik', q)}
-          placeholder={tr("масалан: 2026 йил март")}
-        />
+            <MatnMaydoni
+              yorliq={tr("Охирги тиббий кўрикдан ўтган вақти")}
+              qiymat={h.oxirgiTibbiyKorik}
+              ozgardi={(q) => yangila('oxirgiTibbiyKorik', q)}
+              placeholder={tr("масалан: 2026 йил март")}
+            />
+          </>
+        )}
       </Bolim>
     </>
   );
@@ -856,14 +855,6 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
           xato={x(xatolar, 'kanalizatsiya')}
         />
 
-        <ToliqKeng>
-          <MatnMaydoni
-            yorliq={tr("Мавжуд бошқа муаммолар")}
-            koptator
-            qiymat={h.boshqaMuammolar}
-            ozgardi={(q) => yangila('boshqaMuammolar', q)}
-          />
-        </ToliqKeng>
       </Bolim>
 
       <Bolim raqam="VII" sarlavha={tr("Ижтимоий ҳимояга муҳтож оила аъзолари")}>
@@ -885,6 +876,7 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
               qatorlar={h.nogironShaxslar}
               ozgardi={(q) => yangila('nogironShaxslar', q)}
               guruhSora
+              xato={x(xatolar, 'nogironShaxslar')}
             />
           </ToliqKeng>
         )}
@@ -973,14 +965,6 @@ export function QadamUyJoy({ h, yangila, xatolar }: QadamProps) {
           </ToliqKeng>
         )}
 
-        <ToliqKeng>
-          <MatnMaydoni
-            yorliq={tr("Ижтимоий хизматлардан фойдаланишдаги тўсиқлар")}
-            koptator
-            qiymat={h.xizmatTosiqlari}
-            ozgardi={(q) => yangila('xizmatTosiqlari', q)}
-          />
-        </ToliqKeng>
       </Bolim>
     </>
   );
@@ -1206,14 +1190,16 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
           </ToliqKeng>
         )}
 
-        <ToliqKeng>
-          <KopTanlovMaydoni
-            yorliq={tr("Ушбу йўналишларни ривожлантириш учун зарур кўмак")}
-            variantlar={MOLIYA_TURI}
-            qiymatlar={h.zarurKomak}
-            ozgardi={(q) => yangila('zarurKomak', q)}
-          />
-        </ToliqKeng>
+        {/*
+          «Ушбу йўналишларни ривожлантириш учун зарур кўмак»
+          олиб ташланди: у II-бўлимдаги «Қандай кўмак керак?»
+          саволининг айнан ўзи эди — бир хил рўйхат (MOLIYA_TURI),
+          бир хил маъно. Оила иккита жойда иккита ҳар хил жавоб
+          берарди ва қайси бири ҳақиқий экани номаълум қоларди.
+
+          II-бўлимдагиси қолдирилди, чунки унда миқдор ва
+          сарфлаш йўналиши ҳам бор.
+        */}
 
         <ToliqKeng>
           <HaYoqMaydoni
@@ -1842,7 +1828,7 @@ export function QadamXulosa({ h, yangila, xatolar }: QadamProps) {
         <ToliqKeng>
           <MatnMaydoni
             yorliq={tr("Фуқаронинг изоҳи — ўз сўзи билан")}
-            izoh={tr("Аниқ жой ва ҳолатни ёзинг: «Навоий кўчасининг 300 метри йўқ», «боғчада навбат 2 йил»")}
+            izoh={tr("Юқорида сўралмаган ҳар қандай муаммо шу ерга: маҳалладаги камчилик, уй-жой муаммоси, хизматлардан фойдаланишдаги тўсиқ. Аниқ жой ва ҳолат билан: «Навоий кўчасининг 300 метри йўқ», «боғчада навбат 2 йил».")}
             koptator
             qiymat={h.infratuzilmaIzohi}
             ozgardi={(q) => yangila('infratuzilmaIzohi', q)}
@@ -1964,7 +1950,6 @@ export const QADAMLAR = [
     nomi: 'Меҳнат ва бандлик',
     komponent: QadamMehnat,
     maydonlar: [
-      'kasbHunarIstagi',
       'mehnatgaLayoqatli',
       'ishlaydiganlar',
       'davlatKorxonada',

@@ -227,10 +227,21 @@ export async function POST(request: Request) {
    * шунинг учун ҳақиқий тўсиқ шу ерда.
    */
   if (turi === 'yakuniy') {
-    const hisobot = yuborishgaTayyormi(xonadon, ishsizlar.length, {
-      rozilikBerdi: xonadon.rozilikBerdi ?? false,
-      imzoYoli: xonadon.imzoYoli ?? '',
-    });
+    /*
+     * Ногиронлар рўйхатининг УЗУНЛИГИ алоҳида узатилади.
+     *
+     * Текширув сонлар устида ишлайди ва массивни ўқимайди.
+     * Буни узатмасак, браузер тўсарди-ю, сервер ўтказиб
+     * юборарди — яъни ҳақиқий тўсиқ бўлмасди.
+     */
+    const hisobot = yuborishgaTayyormi(
+      { ...xonadon, nogironShaxslarSoni: (xonadon.nogironShaxslar ?? []).length },
+      ishsizlar.length,
+      {
+        rozilikBerdi: xonadon.rozilikBerdi ?? false,
+        imzoYoli: xonadon.imzoYoli ?? '',
+      }
+    );
     if (!hisobot.ok) {
       return NextResponse.json(
         { xabar: 'Ma‘lumotlarda nomuvofiqlik bor', xatolar: hisobot.xatolar },
@@ -323,6 +334,24 @@ export async function POST(request: Request) {
      * ҳали йўқ.
      */
     ...(xonadon.imzoYoli ? { imzoVaqti: new Date() } : {}),
+
+    /*
+     * ── КАСБ ИСТАГИ ЭНДИ ҲИСОБЛАНАДИ ──
+     *
+     * Илгари хонадон даражасида алоҳида сўраларди: «Касб-ҳунар
+     * ёки тадбиркорликка ўқишни истайдими?». У савол олиб
+     * ташланди — чунки худди шу нарса ҳар бир ишсиз фуқародан
+     * АЛОҲИДА сўралади ва у ерда КИМ ўрганмоқчи экани ҳам,
+     * ҚАЙСИ касбни хоҳлагани ҳам ёзилади.
+     *
+     * Аммо устун базада қолди: кесма (хонадон тарихи) ва
+     * ҳисоботлар унга таянади. Шунинг учун у энди ишсизлар
+     * рўйхатидан ҳисоблаб қўйилади — маъноси ўзгармайди,
+     * ходим эса битта ортиқча савол босмайди.
+     */
+    ...(turi === 'yakuniy'
+      ? { kasbHunarIstagi: ishsizlar.some((p) => p.kasbHunarEhtiyoji) }
+      : {}),
   };
 
   try {
