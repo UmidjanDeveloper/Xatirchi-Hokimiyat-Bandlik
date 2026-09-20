@@ -76,7 +76,7 @@ function yosh(tugilgan: Date | null): number | null {
   return y >= 0 && y < 120 ? y : null;
 }
 
-/** Каталог тартибида сано — «Бошқа» оxирида йиғилади */
+/** Каталог тартибида сано — «Бошқа» охирида йиғилади */
 function katalogSanoq(
   qiymatlar: (string | null)[],
   katalog: { qiymat: string; kirill: string }[]

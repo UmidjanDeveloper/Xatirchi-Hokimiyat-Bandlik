@@ -21,7 +21,8 @@ import {
 import { ArrowDownUp, ChevronDown } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { useChartTheme } from '@/lib/chart-theme';
-import { DAVR_BIRLIGI, type Davr, type MahallaQamrovi, type OylikNuqta } from '@/lib/tahlil';
+import { DAVR_BIRLIGI, type Davr, type MahallaQamrovi } from '@/lib/davr-turlari';
+import type { OylikNuqta } from '@/lib/tahlil';
 
 /**
  * ============================================================

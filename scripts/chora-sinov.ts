@@ -16,7 +16,7 @@
  * ============================================================
  */
 
-import type { Prisma } from '@prisma/client';
+import type { Tranzaksiya } from '../src/lib/prisma';
 import { choralarniHisobla, yangiChoralar, type ChoraManbai } from '../src/lib/chora-yaratish';
 
 type Sinov = { nomi: string; tekshir: () => boolean | Promise<boolean> };
@@ -29,12 +29,12 @@ type Sinov = { nomi: string; tekshir: () => boolean | Promise<boolean> };
  * босилса ҳам рўйхат бир хил қолиши керак. Шунинг учун у
  * базасиз ҳам синалади.
  */
-function soxtaBaza(mavjudMuammolar: string[]): Prisma.TransactionClient {
+function soxtaBaza(mavjudMuammolar: string[]): Tranzaksiya {
   return {
     actionPlan: {
       findMany: async () => mavjudMuammolar.map((muammo) => ({ muammo })),
     },
-  } as unknown as Prisma.TransactionClient;
+  } as unknown as Tranzaksiya;
 }
 
 /** Бўш хонадон — ҳар синов ўзига кераклисини қўшиб олади */
@@ -283,7 +283,7 @@ const SINOVLAR: Sinov[] = [
             return [];
           },
         },
-      } as unknown as Prisma.TransactionClient;
+      } as unknown as Tranzaksiya;
       const natija = await yangiChoralar(baza, xonadon());
       return natija.length === 0 && !sorandi;
     },

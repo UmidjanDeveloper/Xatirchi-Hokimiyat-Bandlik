@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { IshsizHolati } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { SABAB_ENG_KAM, arxivgaRuxsat, fuqaroniArxivla } from '@/lib/arxiv';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { IshsizSxemasi } from '@/lib/xatlov-sxema';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
@@ -180,4 +181,68 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   });
 
   return NextResponse.json({ ok: true, holati: p.holati });
+}
+
+/**
+ * Fuqaroni arxivga olish.
+ *
+ * Xonadon joyida qoladi — faqat shu odam ro'yxatdan chiqadi.
+ * Odatda ikki sababdan: xato kiritilgan yoki takror yozilgan.
+ *
+ * O'chirilmaydi, arxivga olinadi: unga berilgan topshiriqlar,
+ * IT-vaucher va joylashtirish tarixi yo'qolmasin.
+ */
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const q = await talabQil(['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN']);
+  if (q instanceof NextResponse) return q;
+
+  const odam = await prisma.unemployedPerson.findUnique({
+    where: { id: params.id },
+    select: { mahallaId: true, fish: true, holati: true, vacancyId: true },
+  });
+  if (!odam) return NextResponse.json({ xabar: 'Фуқаро топилмади' }, { status: 404 });
+
+  const ruxsat = arxivgaRuxsat(q.sessiya.rol, q.sessiya.mahallaId, { mahallaId: odam.mahallaId });
+  if (!ruxsat.ok) return NextResponse.json({ xabar: ruxsat.xabar }, { status: 403 });
+
+  /*
+   * Эълонга жойлаштирилган фуқаро архивга олинмайди.
+   *
+   * Акс ҳолда иш ўрни БАНД бўлиб қоларди-ю, уни эгаллаган одам
+   * рўйхатдан йўқолар эди: ўрин на бўш, на тўла — ҳеч кимга
+   * таклиф қилинмайдиган «арвоҳ» ўрин.
+   */
+  if (odam.vacancyId) {
+    return NextResponse.json(
+      {
+        xabar:
+          'Фуқаро эълонга жойлаштирилган. Аввал жойлаштиришни бекор қилинг — шунда иш ўрни ҳам бўшайди.',
+      },
+      { status: 409 }
+    );
+  }
+
+  const tana = (await request.json().catch(() => ({}))) as { sabab?: unknown };
+  const sabab = typeof tana.sabab === 'string' ? tana.sabab.trim() : '';
+  if (sabab.length < SABAB_ENG_KAM) {
+    return NextResponse.json(
+      {
+        xabar: `Сабабни ёзинг — камида ${SABAB_ENG_KAM} белги.`,
+        maydon: 'sabab',
+      },
+      { status: 400 }
+    );
+  }
+
+  const natija = await prisma.$transaction((tx) =>
+    fuqaroniArxivla(tx, params.id, q.sessiya.userId, sabab)
+  );
+
+  await jurnal(q.sessiya.userId, 'OCHIRISH', {
+    obyektTuri: 'UnemployedPerson',
+    obyektId: params.id,
+    izoh: `Архивга олинди (${odam.fish}): ${sabab} · ${natija.topshiriqlar} топшириқ бекор қилинди`,
+  });
+
+  return NextResponse.json({ ok: true, ...natija });
 }

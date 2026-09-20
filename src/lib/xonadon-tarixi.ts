@@ -1,5 +1,5 @@
 import type { Household, HouseholdKesma, KesmaSababi, Prisma } from '@prisma/client';
-import { prisma } from './prisma';
+import { prisma, type Tranzaksiya } from './prisma';
 
 /**
  * ============================================================
@@ -339,7 +339,7 @@ export function kesmaYasa(
  * сақланмай қолиши мумкин — ва тарихда тешик пайдо бўларди.
  */
 export async function kesmaSaqla(
-  tx: Prisma.TransactionClient,
+  tx: Tranzaksiya,
   x: KesmaManbai,
   toliq: unknown,
   sababi?: KesmaSababi

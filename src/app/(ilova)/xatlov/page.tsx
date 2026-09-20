@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { OchirishTugmasi } from '@/components/arxiv/ochirish-tugmasi';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import { FileText, HousePlus, TriangleAlert, Users } from 'lucide-react';
@@ -296,11 +297,20 @@ export default async function XatlovlarSahifasi({
           {xatlovlar.map((x) => {
             const nishon = HOLAT_NISHONI[x.holati];
             return (
-              <Link
+              /*
+                Қатор ичида ИККИ амал бор: очиш ва ўчириш.
+                Тугмани `Link` ИЧИГА қўйиб бўлмайди — босилганда
+                иккови ҳам ишга тушарди ва ходим ўчиришни
+                тасдиқлагунча саҳифа алмашиб кетарди.
+              */
+              <div
                 key={x.id}
-                href={x.holati === 'QORALAMA' ? `/xatlov/${x.id}/tahrir` : `/xatlov/${x.id}`}
-                className="flex items-center gap-3 p-3.5 transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-surface-muted"
+                className="flex items-center gap-2 p-3.5 transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-surface-muted"
               >
+                <Link
+                  href={x.holati === 'QORALAMA' ? `/xatlov/${x.id}/tahrir` : `/xatlov/${x.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-3"
+                >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-medium text-ink">{tr(x.oilaBoshligi)}</span>
@@ -324,7 +334,17 @@ export default async function XatlovlarSahifasi({
                   </p>
                   <p className="mt-0.5 text-[11px] text-ink-faint">{formatDate(x.updatedAt)}</p>
                 </div>
-              </Link>
+                </Link>
+
+                <OchirishTugmasi
+                  turi="xonadon"
+                  id={x.id}
+                  nomi={`${x.oilaBoshligi} · ${x.manzil}`}
+                  qoralamami={x.holati === 'QORALAMA'}
+                  qayerga="/xatlov"
+                  kichik
+                />
+              </div>
             );
           })}
         </div>

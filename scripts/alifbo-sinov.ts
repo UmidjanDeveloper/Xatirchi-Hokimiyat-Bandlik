@@ -14,6 +14,8 @@
  *  керак.
  * ============================================================
  */
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { lotinga } from '../src/lib/alifbo';
 
 const SINOVLAR: [string, string][] = [
@@ -50,5 +52,49 @@ for (const [kirill, kutilgan] of SINOVLAR) {
   if (!ok) xato++;
   console.log(`${ok ? 'OK  ' : 'XATO'} ${kirill}  ->  ${natija}${ok ? '' : `   (kutilgan: ${kutilgan})`}`);
 }
-console.log(`\n${SINOVLAR.length - xato}/${SINOVLAR.length} o'tdi`);
+/*
+ * ── АРАЛАШ ЁЗУВ ТЕКШИРУВИ ──
+ *
+ * Кирилл сўз ичига тасодифан лотин ҳарфи тушиб қолиши — бу
+ * илова учун жиддий нуқсон тури. «Арxив» деб ёзилса (лотинча
+ * x билан), транслитерация уни буза олмайди ва экранда
+ * аралаш-қуралаш матн чиқади.
+ *
+ * Кўз билан фарқлаб бўлмайди: «х» ва «x» бир хил кўринади.
+ * Шунинг учун машина текширади.
+ */
+const KIRILL = 'абвгдежзийклмнопрстуфхцчшщъыьэюяёғқҳўАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯЁҒҚҲЎ';
+const ARALASH = new RegExp(`[${KIRILL}][A-Za-z]|[A-Za-z][${KIRILL}]`);
+
+/** Атайлаб аралаш ёзилган жойлар — белги тўпламлари */
+const ISTISNO = ['replace(/', 'RegExp', String.raw`\u00`, 'matchAll', 'test('];
+
+function fayllar(papka: string): string[] {
+  const royxat: string[] = [];
+  for (const nom of readdirSync(papka)) {
+    const yol = join(papka, nom);
+    if (statSync(yol).isDirectory()) royxat.push(...fayllar(yol));
+    else if (/\.tsx?$/.test(nom)) royxat.push(yol);
+  }
+  return royxat;
+}
+
+const aralashlar: string[] = [];
+for (const f of fayllar('src')) {
+  const satrlar = readFileSync(f, 'utf8').split('\n');
+  satrlar.forEach((q, i) => {
+    if (ISTISNO.some((x) => q.includes(x))) return;
+    if (ARALASH.test(q)) aralashlar.push(`${f}:${i + 1}  ${q.trim().slice(0, 70)}`);
+  });
+}
+
+if (aralashlar.length) {
+  console.log('\nXATO Кирилл сўз ичида лотин ҳарфи бор:');
+  for (const a of aralashlar) console.log(`     ${a}`);
+  xato++;
+} else {
+  console.log('OK   Кирилл сўзлар ичида лотин ҳарфи йўқ');
+}
+
+console.log(`\n${SINOVLAR.length + 1 - xato}/${SINOVLAR.length + 1} o'tdi`);
 process.exit(xato ? 1 : 0);

@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { CheckCircle2, Pencil, UserRound } from 'lucide-react';
 import { aiXulosaSoraydi, joriySessiya, mahallagaRuxsat } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { OchirishTugmasi } from '@/components/arxiv/ochirish-tugmasi';
 import { jurnal } from '@/lib/api-auth';
 import { formatDate, formatPhone } from '@/lib/utils';
 import {
@@ -128,13 +129,22 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
           </div>
 
           {tahrirlashMumkin && (
-            <Link
-              href={`/xatlov/${x.id}/tahrir`}
-              className="flex shrink-0 items-center gap-1.5 rounded-md border border-line px-3.5 py-2 text-sm font-medium text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
-            >
-              <Pencil className="h-4 w-4" />
-              {tr('Таҳрирлаш')}
-            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href={`/xatlov/${x.id}/tahrir`}
+                className="flex items-center gap-1.5 rounded-md border border-line px-3.5 py-2 text-sm font-medium text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+              >
+                <Pencil className="h-4 w-4" />
+                {tr('Таҳрирлаш')}
+              </Link>
+              <OchirishTugmasi
+                turi="xonadon"
+                id={x.id}
+                nomi={`${x.oilaBoshligi} · ${x.manzil}`}
+                qoralamami={x.holati === 'QORALAMA'}
+                qayerga="/xonadonlar"
+              />
+            </div>
           )}
         </div>
 

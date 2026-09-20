@@ -50,7 +50,7 @@
 import { envYukla } from './env-yukla';
 envYukla();
 
-import { PrismaClient } from '@prisma/client';
+import { prisma, type Tranzaksiya } from '../src/lib/prisma';
 import { choralarniYoz, yangiChoralar, type ChoraManbai } from '../src/lib/chora-yaratish';
 
 const YOZILSINMI = process.argv.includes('--yoz');
@@ -78,7 +78,6 @@ const TANLOV = {
 } as const;
 
 async function main() {
-  const prisma = new PrismaClient();
 
   /*
    * Қоралама олинмайди: у ҳали тугалланмаган анкета. Ундан
@@ -114,7 +113,7 @@ async function main() {
     if (chiqadi.length === 0) continue;
 
     if (YOZILSINMI) {
-      const yozildi = await prisma.$transaction((tx) => choralarniYoz(tx, manba, x.xodimId));
+      const yozildi = await prisma.$transaction((tx: Tranzaksiya) => choralarniYoz(tx, manba, x.xodimId));
       if (yozildi !== chiqadi.length) {
         console.log(`   ОГОҲЛАНТИРИШ: ${chiqadi.length} та кутилганди, ${yozildi} таси ёзилди`);
       }

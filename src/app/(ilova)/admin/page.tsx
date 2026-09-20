@@ -9,6 +9,7 @@ import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { AiHolati } from '@/components/admin/ai-holati';
 import { TezlikOlchagich } from '@/components/admin/tezlik-olchagich';
 import { ChoraToldirgich } from '@/components/admin/chora-toldirgich';
+import { ArxivRoyxati } from '@/components/admin/arxiv-royxati';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
@@ -178,6 +179,8 @@ export default async function AdminSahifasi({
       <TezlikOlchagich />
 
       <ChoraToldirgich />
+
+      <ArxivRoyxati />
 
       {/*
         Audit jurnali. Xatlov ma'lumotlari oila daromadi va sog'liq

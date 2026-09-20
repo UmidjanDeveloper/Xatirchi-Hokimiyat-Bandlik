@@ -556,6 +556,26 @@ model Household {
 
   /// Takror xatlovni aniqlash uchun kalit: mahalla + manzil + oila
   /// boshlig'i, apostrof va bo'shliqlarsiz normallashtirilgan.
+
+  // ── ARXIV ──
+  //
+  // Xatlov O'CHIRILMAYDI, arxivga olinadi.
+  //
+  // Sabab: `ActionPlan` va `HouseholdKesma` da `onDelete: Cascade`
+  // turibdi. Haqiqiy o'chirish xonadon bilan birga uning
+  // topshiriqlarini va butun tarixini ham jimgina yo'q qilardi —
+  // va uni hech narsa qaytara olmasdi. 72 ta xodim ishlaydigan
+  // tizimda bitta noto'g'ri bosish shunday oqibatga olib kelishi
+  // mumkin emas.
+  //
+  // Arxivdagi yozuv hech qayerda ko'rinmaydi: ro'yxatda ham,
+  // hisobotda ham, hokimning raqamlarida ham. Lekin administrator
+  // uni qaytara oladi.
+  /// Arxivga olingan sana. `null` — faol yozuv.
+  arxivSanasi DateTime?
+  arxivchiId  String?
+  arxivSababi String?
+
   takrorKaliti String
 
   createdAt DateTime @default(now())
@@ -568,6 +588,7 @@ model Household {
 
   /// Bir xonadonni ikki marta kiritish mumkin emas
   @@unique([mahallaId, takrorKaliti])
+  @@index([arxivSanasi])
   @@index([mahallaId, holati])
   @@index([xodimId])
   @@index([xatlovSanasi])
@@ -692,11 +713,21 @@ model UnemployedPerson {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ── ARXIV ──
+  //
+  // Fuqaro ham o'chirilmaydi, arxivga olinadi: unga berilgan
+  // topshiriqlar, IT-vaucher va joylashtirish tarixi yo'qolmasin.
+  /// Arxivga olingan sana. `null` — faol yozuv.
+  arxivSanasi DateTime?
+  arxivchiId  String?
+  arxivSababi String?
+
   topshiriqlar ActionPlan[]
 
   @@index([mahallaId, holati])
   @@index([holati])
   @@index([householdId])
+  @@index([arxivSanasi])
   @@index([mutaxassisId])
   @@index([vacancyId])
 }

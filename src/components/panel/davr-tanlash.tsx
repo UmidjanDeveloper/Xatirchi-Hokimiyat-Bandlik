@@ -4,7 +4,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
-import type { Davr } from '@/lib/tahlil';
+import type { Davr } from '@/lib/davr-turlari';
 
 /**
  * ============================================================

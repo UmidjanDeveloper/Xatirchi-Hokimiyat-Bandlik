@@ -2,7 +2,8 @@
 
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { DinamikaChizigi, OqimUstunlari, OsishUstunlari } from '@/components/panel/grafiklar';
-import { DAVR_NOMI, type Davr, type OylikNuqta } from '@/lib/tahlil';
+import { DAVR_NOMI, type Davr } from '@/lib/davr-turlari';
+import type { OylikNuqta } from '@/lib/tahlil';
 
 /**
  * ============================================================

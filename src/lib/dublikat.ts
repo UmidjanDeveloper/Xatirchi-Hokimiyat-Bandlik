@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { prisma } from './prisma';
+import { prisma, type Tranzaksiya } from './prisma';
 import { lotinga } from './alifbo';
 
 /**
@@ -148,7 +148,7 @@ function darajaAniqla(
  */
 export async function ozgaYozuvlar(
   ishsizId: string,
-  tx?: Prisma.TransactionClient
+  tx?: Tranzaksiya
 ): Promise<Dublikat | null> {
   const db = tx ?? prisma;
 

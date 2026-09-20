@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import type { Tranzaksiya } from './prisma';
 
 /**
  * ============================================================
@@ -96,7 +97,7 @@ export function odatiyMuddat(hozir: Date = new Date()): Date {
  * @returns нечта эълон ёпилди
  */
 export async function muddatiOtganlarniYop(
-  db: Prisma.TransactionClient,
+  db: Tranzaksiya,
   hozir: Date = new Date()
 ): Promise<number> {
   const natija = await db.vacancy.updateMany({

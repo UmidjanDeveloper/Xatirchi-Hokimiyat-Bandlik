@@ -369,7 +369,7 @@ export const m = (x: string): string | null => (x.trim() ? x.trim() : null);
  * Formada javobsiz savol `null` bo'lib turadi va yakuniy
  * yuborishda tekshiruv uni o'tkazmaydi. Lekin QORALAMA yarim
  * to'ldirilgan bo'lishi mumkin - butun mazmuni shu. Shuning
- * uchun simga chiqаётган qiymat har doim `boolean`: sxemada
+ * uchun simga чиқаётган qiymat har doim `boolean`: sxemada
  * bu maydonlar `z.boolean()` va `null` ni qabul qilmaydi,
  * qoralama saqlash esa tushunarsiz 400 xatosi bilan tugardi.
  */

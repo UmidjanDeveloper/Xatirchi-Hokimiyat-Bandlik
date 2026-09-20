@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { Prisma, XabarTuri } from '@prisma/client';
-import { prisma } from './prisma';
+import { prisma, type Tranzaksiya } from './prisma';
 
 /**
  * ============================================================
@@ -131,7 +131,7 @@ export interface YangiXabar {
  */
 export async function xabarQoshish(
   xabarlar: YangiXabar[],
-  tx?: Prisma.TransactionClient
+  tx?: Tranzaksiya
 ): Promise<number> {
   if (xabarlar.length === 0) return 0;
   const db = tx ?? prisma;

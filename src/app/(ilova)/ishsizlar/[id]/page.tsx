@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { jurnal } from '@/lib/api-auth';
 import { formatDate, formatPhone } from '@/lib/utils';
 import { BANDLIK_TAKLIFI, MALUMOT, MASUL_TASHKILOT, kirillcha } from '@/lib/constants';
+import { OchirishTugmasi } from '@/components/arxiv/ochirish-tugmasi';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 import { SuhbatFormasi, type SuhbatHolati } from '@/components/ishsiz/suhbat-formasi';
@@ -175,6 +176,21 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
                 <Phone className="h-3.5 w-3.5" />
                 <span className="raqam">{formatPhone(p.telefon)}</span>
               </a>
+            )}
+            {/*
+              Фуқарони ўчириш. Эълонга жойлаштирилган бўлса,
+              сервер рад этади ва сабабини айтади: аввал
+              жойлаштиришни бекор қилиш керак, акс ҳолда иш ўрни
+              «арвоҳ» бўлиб қолади — на бўш, на тўла.
+            */}
+            {sessiya.rol !== 'HOKIM' && (
+              <OchirishTugmasi
+                turi="fuqaro"
+                id={p.id}
+                nomi={`${p.fish} · ${p.mahalla.nomiKirill} МФЙ`}
+                qayerga="/ishsizlar"
+                kichik
+              />
             )}
           </div>
         </div>

@@ -2,6 +2,27 @@ import type { IshsizHolati } from '@prisma/client';
 import { prisma } from './prisma';
 import { kechikkanlarShartI } from './chora-tadbir';
 import { VORONKA } from '@/lib/ishsiz-holati';
+/*
+ * Давр турлари ва диаграмма интерфейслари АЛОҲИДА файлда —
+ * уларни браузердаги чизма компонентлари ҳам олади ва у файлда
+ * база йўқ. Бу ердан қайта экспорт қилинади: мавжуд импортлар
+ * ўзгармасин.
+ */
+import {
+  DAVR_UZUNLIGI,
+  type Davr,
+  type MahallaQamrovi,
+  type VoronkaBosqichi,
+} from '@/lib/davr-turlari';
+export {
+  DAVR_BIRLIGI,
+  DAVR_NOMI,
+  DAVR_UZUNLIGI,
+  davrOqi,
+  type Davr,
+  type MahallaQamrovi,
+  type VoronkaBosqichi,
+} from '@/lib/davr-turlari';
 import { UZOQ_ISHSIZ } from '@/lib/uzoq-ishsizlik';
 import { MUSTAHKAMLASH_KUN } from '@/lib/chora-yaratish';
 
@@ -25,30 +46,6 @@ function mustahkamlashChegarasi(hozir: Date): Date {
  *  aynan shuning uchun u platformaga import qilingan.
  * ============================================================
  */
-
-export interface VoronkaBosqichi {
-  holati: IshsizHolati;
-  soni: number;
-  /** Bazadagi ishsizlar sonidan foizi */
-  foiz: number;
-}
-
-export interface MahallaQamrovi {
-  id: string;
-  nomi: string;
-  nomiKirill: string;
-  /** Svod jadvalidagi ishsizlar soni - maxraj */
-  bazaIshsiz: number;
-  /** Xatlovda aniqlangan ishsizlar */
-  aniqlangan: number;
-  joylashtirilgan: number;
-  /** Aniqlanganlarning bazaga nisbati */
-  qamrovFoizi: number;
-  /** Joylashtirilganlarning bazaga nisbati */
-  natijaFoizi: number;
-  xatlovXonadon: number;
-  bazaXonadon: number;
-}
 
 /**
  * Bir oylik nuqta - chiziqli grafik shundan chiziladi.
@@ -185,33 +182,11 @@ const OY_NOMI = [
  *  уч жойда уч хил натижа чиқиб қолиши мумкин эди.
  * ============================================================
  */
-export type Davr = 'kun' | 'oy' | 'yil';
 
-/** Ҳар давр учун нечта нуқта чизилади */
-const DAVR_UZUNLIGI: Record<Davr, number> = {
-  kun: 30,
-  oy: 12,
-  yil: 5,
-};
 
-/** URL дан келган матнни хавфсиз давр қийматига айлантиради */
-export function davrOqi(xom?: string | null): Davr {
-  return xom === 'kun' || xom === 'yil' ? xom : 'oy';
-}
 
 /** Давр номи — саҳифа изоҳида кўринади */
-export const DAVR_NOMI: Record<Davr, string> = {
-  kun: 'Сўнгги 30 кун',
-  oy: 'Сўнгги 12 ой',
-  yil: 'Сўнгги 5 йил',
-};
 
-/** Бир нуқтанинг номи — «кун», «ой», «йил» */
-export const DAVR_BIRLIGI: Record<Davr, string> = {
-  kun: 'кун',
-  oy: 'ой',
-  yil: 'йил',
-};
 
 /** `2026-09` ko'rinishidagi kalit */
 function oyKaliti(d: Date): string {

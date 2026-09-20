@@ -40,7 +40,7 @@ import type { Prisma, IshsizHolati } from '@prisma/client';
 /** Шу ойдан ошса — узоқ муддатли ишсизлик */
 export const UZOQ_CHEGARA_OY = 12;
 
-/** Ҳали ишга жойлашмаган — воронканинг биринчи уч бosqичи */
+/** Ҳали ишга жойлашмаган — воронканинг биринчи уч босқичи */
 export const HALI_ISHSIZ: IshsizHolati[] = ['ANIQLANDI', 'SUHBAT_OTKAZILDI', 'TAKLIF_BERILDI'];
 
 export interface IshsizlikManbai {

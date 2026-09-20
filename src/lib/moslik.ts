@@ -341,7 +341,7 @@ export function moslikniHisobla(o: OrinMaydonlari, n: NomzodMaydonlari): Moslik 
   };
 }
 
-/** Номзодларни моcлиги бўйича тартиблайди — энг мос биринчи */
+/** Номзодларни мослиги бўйича тартиблайди — энг мос биринчи */
 export function moslikBoyichaTartibla<T>(
   royxat: T[],
   moslik: (x: T) => Moslik

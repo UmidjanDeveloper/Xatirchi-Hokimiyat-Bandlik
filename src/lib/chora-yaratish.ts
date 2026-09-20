@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import type { Tranzaksiya } from './prisma';
 import { itYonalishimi } from './constants';
 import { itKasbimi } from './constants';
 
@@ -278,7 +279,7 @@ export function mustahkamlashChorasi(p: JoylashganManbai): YangiChora {
  * hisoblanishi shart.
  */
 export async function yangiChoralar(
-  tx: Prisma.TransactionClient,
+  tx: Tranzaksiya,
   manba: ChoraManbai
 ): Promise<YangiChora[]> {
   const kerakli = choralarniHisobla(manba);
@@ -300,7 +301,7 @@ export async function yangiChoralar(
  * @returns nechta YANGI topshiriq yaratildi
  */
 export async function choralarniYoz(
-  tx: Prisma.TransactionClient,
+  tx: Tranzaksiya,
   manba: ChoraManbai,
   yaratganId: string
 ): Promise<number> {
