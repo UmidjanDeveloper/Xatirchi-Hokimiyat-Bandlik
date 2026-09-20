@@ -19,7 +19,7 @@
  */
 
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { arxivgaRuxsat, SABAB_ENG_KAM } from '../src/lib/arxiv';
 
 type Sinov = { nomi: string; tekshir: () => boolean };
@@ -152,6 +152,77 @@ const SINOVLAR: Sinov[] = [
       }
       if (yomon.length) for (const v of yomon) console.log(`     ${v}`);
       return yomon.length === 0;
+    },
+  },
+
+  /* ══ «O'CHIRILGANLAR» SAHIFASI ══ */
+  {
+    nomi: 'Sahifa bor va menyuda ko‘rinadi',
+    tekshir: () => {
+      const menyu = readFileSync('src/components/shell/navigatsiya.ts', 'utf8');
+      return (
+        menyu.includes("yol: '/ochirilganlar'") &&
+        existsSync('src/app/(ilova)/ochirilganlar/page.tsx')
+      );
+    },
+  },
+  {
+    nomi: 'Mahalla xodimi ham ko‘radi — xatoni O‘ZI tuzatsin',
+    tekshir: () => {
+      const menyu = readFileSync('src/components/shell/navigatsiya.ts', 'utf8');
+      const band = menyu.slice(menyu.indexOf("yol: '/ochirilganlar'"));
+      return band.slice(0, 260).includes("'YETTILIK'");
+    },
+  },
+  {
+    nomi: 'Hokim bu sahifaga kirmaydi — uning roli ko‘rish',
+    tekshir: () => {
+      const menyu = readFileSync('src/components/shell/navigatsiya.ts', 'utf8');
+      const band = menyu.slice(menyu.indexOf("yol: '/ochirilganlar'"));
+      const sahifa = readFileSync('src/app/(ilova)/ochirilganlar/page.tsx', 'utf8');
+      return (
+        !band.slice(0, 260).includes("'HOKIM'") &&
+        sahifa.includes("sessiya.rol === 'HOKIM'")
+      );
+    },
+  },
+  {
+    nomi: 'Qaytarish ham O‘CHIRISH bilan bir xil huquq talab qiladi',
+    tekshir: () => {
+      const yol = readFileSync('src/app/api/arxiv/route.ts', 'utf8');
+      return yol.includes('arxivgaRuxsat(') && yol.includes("talabQil(['YETTILIK'");
+    },
+  },
+
+  /* ══ XATLOV TAHRIRIDA DUBLIKAT BO'LMASIN ══ */
+  {
+    nomi: 'Xatlov tahrirlanganda arxivdagilar ham ko‘riladi — dublikat oldi olinadi',
+    tekshir: () => {
+      /*
+       * Bu nuqson arxiv qo'shilganda paydo bo'ldi: oddiy mijoz
+       * arxivdagi fuqaroni ko'rmaydi, demak anketada ismi turgan
+       * odam "yangi" deb hisoblanib, IKKINCHI marta yaratilardi.
+       */
+      const yol = readFileSync('src/app/api/xatlov/route.ts', 'utf8');
+      const bolak = yol.slice(yol.indexOf('const mavjudlar'), yol.indexOf('const kelganNomlar'));
+      return bolak.includes('xomPrisma');
+    },
+  },
+  {
+    nomi: 'Ro‘yxatdan chiqarilgan fuqaro O‘CHIRILMAYDI, arxivga olinadi',
+    tekshir: () => {
+      const yol = readFileSync('src/app/api/xatlov/route.ts', 'utf8');
+      return (
+        !yol.includes('unemployedPerson.deleteMany') &&
+        yol.includes('arxivlanadiganlar')
+      );
+    },
+  },
+  {
+    nomi: 'Ismi anketaga QAYTSA — fuqaro tiriladi, yangisi yaratilmaydi',
+    tekshir: () => {
+      const yol = readFileSync('src/app/api/xatlov/route.ts', 'utf8');
+      return yol.includes('tiriltiriladiganlar');
     },
   },
 ];

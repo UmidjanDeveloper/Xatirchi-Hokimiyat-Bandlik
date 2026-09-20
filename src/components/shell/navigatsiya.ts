@@ -80,6 +80,19 @@ export const MENYU: MenyuBandi[] = [
     rollar: ['BANDLIK_RAHBAR'],
   },
   {
+    /*
+     * «Ўчирилганлар» — хатони ҚИЛГАН одам уни ЎЗИ тузатсин.
+     *
+     * Маҳалла ходими адашиб ўчирса, администраторга қўнғироқ
+     * қилиб, тушунтириб, кутиб ўтирмасин: шу ердан бир босишда
+     * қайтаради. Ҳоким кирмайди — унинг роли кўриш.
+     */
+    yol: '/ochirilganlar',
+    nomi: 'Ўчирилганлар',
+    ikonka: 'Archive',
+    rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+  },
+  {
     yol: '/admin',
     nomi: 'Бошқарув',
     ikonka: 'Settings',

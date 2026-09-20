@@ -192,6 +192,87 @@ export async function xonadonniQaytar(householdId: string): Promise<{ ishsizlar:
   return { ishsizlar: ishsizlar.count };
 }
 
+/**
+ * Arxivdagi yozuvlar — kim so'rasa, o'shanga tegishlisi.
+ *
+ * Mahalla xodimi faqat O'Z mahallasinikini ko'radi: bu qoida
+ * butun tizim bo'ylab bir xil va shu yerda ham buzilmaydi.
+ *
+ * `xomPrisma` ishlatiladi — oddiy mijoz arxivdagini umuman
+ * ko'rmaydi.
+ */
+export async function arxivRoyxati(mahallaId?: string | null) {
+  const filtr = mahallaId ? { mahallaId } : {};
+  const [xonadonlar, fuqarolar] = await Promise.all([
+    xomPrisma.household.findMany({
+      where: { arxivSanasi: { not: null }, ...filtr },
+      orderBy: { arxivSanasi: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        manzil: true,
+        oilaBoshligi: true,
+        holati: true,
+        mahallaId: true,
+        arxivSanasi: true,
+        arxivSababi: true,
+        mahalla: { select: { nomiKirill: true } },
+        arxivchiId: true,
+      },
+    }),
+    /*
+     * Хонадони билан бирга архивга тушганлар АЛОҲИДА
+     * кўрсатилмайди: хонадон қайтарилса, улар ҳам ўзи қайтади.
+     * Акс ҳолда рўйхат бир нарсанинг иккита нусхаси билан
+     * тўлиб кетарди.
+     */
+    xomPrisma.unemployedPerson.findMany({
+      where: {
+        arxivSanasi: { not: null },
+        ...filtr,
+        OR: [{ householdId: null }, { household: { arxivSanasi: null } }],
+      },
+      orderBy: { arxivSanasi: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        fish: true,
+        mahallaId: true,
+        arxivSanasi: true,
+        arxivSababi: true,
+        mahalla: { select: { nomiKirill: true } },
+        arxivchiId: true,
+      },
+    }),
+  ]);
+
+  /*
+   * Кимнинг ўчиргани АЛОҲИДА сўров билан олинади.
+   *
+   * Схемага `arxivchi` алоқасини қўшиш мумкин эди, лекин у
+   * ишлаб турган базада янги чекловни талаб қиларди. Битта
+   * қўшимча сўров арзонроқ ва хавфсизроқ.
+   */
+  const idlar = [
+    ...new Set(
+      [...xonadonlar, ...fuqarolar].map((r) => r.arxivchiId).filter((x): x is string => Boolean(x))
+    ),
+  ];
+  const xodimlar = idlar.length
+    ? await xomPrisma.user.findMany({
+        where: { id: { in: idlar } },
+        select: { id: true, fullName: true },
+      })
+    : [];
+  const ism = new Map(xodimlar.map((x) => [x.id, x.fullName]));
+  const qosh = <T extends { arxivchiId: string | null }>(r: T) => ({
+    ...r,
+    arxivchi: r.arxivchiId ? (ism.get(r.arxivchiId) ?? null) : null,
+  });
+
+  return { xonadonlar: xonadonlar.map(qosh), fuqarolar: fuqarolar.map(qosh) };
+}
+
 /** Bitta fuqaroni arxivdan qaytaradi */
 export async function fuqaroniQaytar(ishsizId: string): Promise<void> {
   await xomPrisma.unemployedPerson.update({

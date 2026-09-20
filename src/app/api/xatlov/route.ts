@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
+import { prisma, xomPrisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { kesmaSaqla } from '@/lib/xonadon-tarixi';
 import { choralarniYoz } from '@/lib/chora-yaratish';
@@ -404,25 +404,70 @@ export async function POST(request: Request) {
             .replace(/\s+/g, ' ')
             .trim();
 
-        const mavjudlar = await tx.unemployedPerson.findMany({
+        /*
+         * ── АРХИВДАГИЛАР ҲАМ КЎРИЛАДИ ──
+         *
+         * Оддий мижоз архивдаги фуқарони УМУМАН кўрмайди. Агар
+         * шу ерда ҳам кўрмасак, анкетада исми турган архивдаги
+         * одам «янги» деб ҳисобланиб, ДУБЛИКАТ яратиларди.
+         *
+         * Шунинг учун бу ерда `xomPrisma` ишлатилади — фақат
+         * ўқиш учун ва фақат шу хонадон доирасида.
+         */
+        const mavjudlar = await xomPrisma.unemployedPerson.findMany({
           where: { householdId: h.id },
-          select: { id: true, fish: true, holati: true },
+          select: { id: true, fish: true, holati: true, arxivSanasi: true },
         });
 
         const kelganNomlar = new Set(ishsizlar.map((p) => nomKaliti(p.fish)));
 
-        // Ro'yxatdan chiqarilganlar - faqat hali suhbat bo'lmaganlari
-        const ochiriladiganlar = mavjudlar
-          .filter((m) => m.holati === 'ANIQLANDI' && !kelganNomlar.has(nomKaliti(m.fish)))
+        /*
+         * Рўйхатдан чиқарилганлар — фақат ҳали суҳбат
+         * бўлмаганлари. Улар ЎЧИРИЛМАЙДИ, архивга олинади:
+         * ходим адашиб ўчирса, «Ўчирилганлар» бўлимидан
+         * қайтарилади.
+         */
+        const arxivlanadiganlar = mavjudlar
+          .filter(
+            (m) =>
+              m.holati === 'ANIQLANDI' && !m.arxivSanasi && !kelganNomlar.has(nomKaliti(m.fish))
+          )
           .map((m) => m.id);
 
-        if (ochiriladiganlar.length > 0) {
-          await tx.unemployedPerson.deleteMany({ where: { id: { in: ochiriladiganlar } } });
+        if (arxivlanadiganlar.length > 0) {
+          await tx.unemployedPerson.updateMany({
+            where: { id: { in: arxivlanadiganlar } },
+            data: {
+              arxivSanasi: new Date(),
+              arxivchiId: q.sessiya.userId,
+              arxivSababi: 'Хатлов таҳрирланганда рўйхатдан чиқарилди',
+            },
+          });
         }
 
+        /*
+         * Архивдаги одамнинг исми анкетага ҚАЙТСА — у тирилади.
+         * Ходим уни қайта ёзган, демак хонадонда бор.
+         */
+        const tiriltiriladiganlar = mavjudlar
+          .filter((m) => m.arxivSanasi && kelganNomlar.has(nomKaliti(m.fish)))
+          .map((m) => m.id);
+
+        if (tiriltiriladiganlar.length > 0) {
+          await tx.unemployedPerson.updateMany({
+            where: { id: { in: tiriltiriladiganlar } },
+            data: { arxivSanasi: null, arxivchiId: null, arxivSababi: null },
+          });
+        }
+
+        /*
+         * Сақланиб қолганлар: архивга кетмаганлари ва
+         * тирилтирилганлари. Уларнинг исми яна яратилмайди.
+         */
         const saqlanganNomlar = new Set(
           mavjudlar
-            .filter((m) => !ochiriladiganlar.includes(m.id))
+            .filter((m) => !arxivlanadiganlar.includes(m.id))
+            .filter((m) => !m.arxivSanasi || tiriltiriladiganlar.includes(m.id))
             .map((m) => nomKaliti(m.fish))
         );
 
