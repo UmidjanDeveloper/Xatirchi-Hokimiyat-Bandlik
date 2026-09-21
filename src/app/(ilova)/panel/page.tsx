@@ -1,7 +1,17 @@
 import Link from 'next/link';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
-import { ArrowRight, Briefcase, House, TrendingUp, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  Baby,
+  Briefcase,
+  Coins,
+  GraduationCap,
+  House,
+  Plane,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
 import { joriySessiya, mahallaFiltri, tahlilKoradi } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
@@ -22,6 +32,8 @@ import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
+import { BolimlarPaneli } from '@/components/panel/bolimlar-paneli';
+import { bolimlarTahlili } from '@/lib/bolimlar-tahlili';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 
@@ -37,6 +49,14 @@ export function generateMetadata() {
 }
 
 const raqam = (n: number) => n.toLocaleString('ru-RU');
+
+/** Йирик сумма — «12,4 млн» кўринишида: панелда ўн хонали рақам ўқилмайди */
+const pul = (som: number) =>
+  som >= 1_000_000_000
+    ? `${(som / 1_000_000_000).toFixed(1)} млрд`
+    : som >= 1_000_000
+      ? `${(som / 1_000_000).toFixed(1)} млн`
+      : raqam(som);
 
 export default async function PanelSahifasi({
   searchParams,
@@ -58,8 +78,17 @@ export default async function PanelSahifasi({
    * ҳақида савол чиқса, шу рўйхатдан танлаб алоҳида ҳисобот
    * олади.
    */
-  const [t, vHisob, vNavbat, mahallalar] = await Promise.all([
+  const [t, b, vHisob, vNavbat, mahallalar] = await Promise.all([
     tahlilOl(filtr.mahallaId, davr),
+    /*
+     * Хатлов бўлимлари бўйича жамланма.
+     *
+     * Алоҳида модулда ва алоҳида сўровда: юқоридаги `tahlilOl`
+     * бандлик занжири ҳақида, бу эса оила ҳаётининг қолган ўн
+     * икки бўлими ҳақида. Иккови ёнма-ён ишлайди — панел
+     * кутиш вақти ошмайди.
+     */
+    bolimlarTahlili(filtr.mahallaId),
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId, 10),
     filtr.mahallaId
@@ -157,6 +186,53 @@ export default async function PanelSahifasi({
           izoh={tr(`Рўйхатдаги ${raqam(bosh.bazaIshsiz)} тадан`)}
         />
       </div>
+
+      {/*
+        ── ХАТЛОВДАН ЧИҚҚАН АСОСИЙ РАҚАМЛАР ──
+
+        Юқоридаги тўртта кўрсаткич бандлик ҳақида. Булар эса
+        оиланинг ўзи ҳақида ва айнан шу саволлар йиғилишда
+        биринчи бўлиб берилади: «неча бола бор», «нечта одам
+        чет элда», «қанча пул кириб келяпти».
+
+        Ҳар бири пастдаги тўлиқ бўлимга олиб ўтади.
+      */}
+      {b.xonadon > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi
+            ikonka={<Baby className="h-4 w-4" />}
+            nomi={tr('0 — 3 ёшдаги бола')}
+            qiymat={raqam(b.oila.bolalar0_3)}
+            izoh={tr(`${raqam(b.oila.bolalar0_3 + b.oila.bolalar3_17)} та бола 17 ёшгача`)}
+            yol="#bolim-oila"
+          />
+          <Kpi
+            ikonka={<GraduationCap className="h-4 w-4" />}
+            nomi={tr('Боғча ва мактабдан ташқарида')}
+            qiymat={raqam(
+              Math.max(0, b.talim.maktabgachaYoshdagi - b.talim.maktabgachaQamrovda) +
+                Math.max(0, b.talim.maktabYoshdagi - b.talim.maktabQamrovda)
+            )}
+            izoh={tr('та бола қамровга олинмаган')}
+            yol="#bolim-talim"
+          />
+          <Kpi
+            ikonka={<Plane className="h-4 w-4" />}
+            nomi={tr('Чет элда')}
+            qiymat={raqam(b.chetEl.ishchi)}
+            izoh={tr(`${raqam(b.chetEl.oila)} та оиладан`)}
+            yol="#bolim-chet-el"
+          />
+          <Kpi
+            ikonka={<Coins className="h-4 w-4" />}
+            nomi={tr('Чет элдан ойига')}
+            qiymat={tr(`${pul(b.chetEl.oylikSom)} сўм`)}
+            izoh={tr(`Йилига ${pul(b.chetEl.oylikSom * 12)} сўм`)}
+            yaxshi
+            yol="#bolim-chet-el"
+          />
+        </div>
+      )}
 
       {/*
         ── Таҳлил хулосаси ──
@@ -297,6 +373,16 @@ export default async function PanelSahifasi({
         </div>
       </section>
 
+      {/*
+        ── ХАТЛОВ БЎЛИМЛАРИ ──
+
+        Анкета ўн икки бўлимдан иборат ва ҳар бири бу ерда ўз
+        рақами билан туради: боладан томорқагача. Юқоридаги
+        блоклар «ишсизлик камаяптими» саволига жавоб беради,
+        булар эса «туман қандай яшаяпти» саволига.
+      */}
+      <BolimlarPaneli b={b} qamrovNomi="Хатирчи тумани" />
+
       {/* ── To'liq jadval ── */}
       {!filtr.mahallaId && (
         <section className="karta p-4 sm:p-5">
@@ -321,15 +407,18 @@ function Kpi({
   qiymat,
   izoh,
   yaxshi,
+  yol,
 }: {
   ikonka: React.ReactNode;
   nomi: string;
   qiymat: string;
   izoh: string;
   yaxshi?: boolean;
+  /** Берилса — карточка босилади ва тўлиқ бўлимга олиб ўтади */
+  yol?: string;
 }) {
-  return (
-    <div className="metric-card karta p-4">
+  const ichi = (
+    <>
       <div className="flex items-center gap-2 text-ink-faint">
         {ikonka}
         <span className="text-xs font-medium">{nomi}</span>
@@ -338,7 +427,20 @@ function Kpi({
         {qiymat}
       </p>
       <p className="mt-0.5 text-xs text-ink-faint">{izoh}</p>
-    </div>
+    </>
   );
+
+  if (yol) {
+    return (
+      <a
+        href={yol}
+        className="metric-card karta block p-4 transition-colors hover:border-accent hover:bg-accent-soft"
+      >
+        {ichi}
+      </a>
+    );
+  }
+
+  return <div className="metric-card karta p-4">{ichi}</div>;
 }
 
