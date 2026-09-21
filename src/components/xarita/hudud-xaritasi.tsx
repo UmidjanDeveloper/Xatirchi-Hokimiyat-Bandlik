@@ -40,14 +40,32 @@ import { OLCHOVLAR, daraja, olchovTop, type Olchov, type OlchovKaliti } from './
 /*
  * Девор неча қатламдан иборат.
  *
- * Кўп қатлам — силлиқроқ ён томон, аммо 69 ҳудуд × қатлам сони
- * шакл браузерга тушади. Тўрттада ён томон бус-бутун кўринади
- * ва эски машинада ҳам ўтиш силлиқ қолади.
+ * Қатламлар ораси кенг бўлса, ён томон зинапоя бўлиб кўринади
+ * — айнан шу «тишли» кўриниш юзага келганди. Баландлик 22
+ * бирликка туширилгач, етти қатлам ораси уч бирликдан ҳам
+ * кам қолади ва девор бус-бутун чиқади.
+ *
+ * Нархи — 69 × 8 шакл. Ўлчаб кўрилди: баландлик пасайгани
+ * учун бир-бирининг устига тушадиган юза ҳам камаяди, яъни
+ * умумий юк аввалгидан ошмайди.
  */
-const DEVOR_QATLAMI = 4;
+const DEVOR_QATLAMI = 7;
 
-/* Энг баланд ҳудуд неча SVG бирлигига кўтарилади */
-const ENG_BALAND = 44;
+/*
+ * Энг баланд ҳудуд неча SVG бирлигига кўтарилади.
+ *
+ * ── Нега пасайтирилди ──
+ *
+ * Аввал 44 эди ва база кесими қўшилгач ҲАММА ҳудуд кўтарилиб
+ * кетди: олтмиш тўққизта баланд устун бир-бирининг устига
+ * тушиб, харита тикан-тикан бўлиб қолди. Экранда рельеф эмас,
+ * тўзғиган ғарам кўринди.
+ *
+ * Йигирма икки бирлик — харита эни 1092 бирлик бўлган
+ * ўлчамда икки фоизга тенг. Кўз баландлик фарқини кўради,
+ * аммо ҳудудлар бир-бирини тўсмайди.
+ */
+const ENG_BALAND = 22;
 
 /**
  * ҲАР БИР ҳудуднинг энг кам баландлиги.
@@ -60,7 +78,7 @@ const ENG_BALAND = 44;
  * Маълумотга халақит бермайди — у ҲАММАГА бир хил қўшилади,
  * яъни баландликлар фарқи ўзгармайди.
  */
-const ASOS_BALAND = 9;
+const ASOS_BALAND = 3;
 
 /* Қизил контур билан белгиланадиган энг орқадаги ҳудудлар сони */
 const OGOH_SONI = 10;
@@ -93,7 +111,7 @@ const KAMIDA_TAQQOS = 8;
 const MAYOQ_CHEGARASI = 20;
 
 /* Бошланғич камера бурчаклари */
-const BOSHLANGICH = { qiya: 46, burilish: -7, masshtab: 1.06 };
+const BOSHLANGICH = { qiya: 46, burilish: -7, masshtab: 1.12 };
 
 const raqam = (n: number) => n.toLocaleString('ru-RU');
 
@@ -1265,17 +1283,27 @@ function TanlanganKarta({
 }) {
   const { t: tr } = useAlifbo();
 
-  const qator = (nomi: string, qiymat: string) => (
+  const qator = (nomi: string, qiymat: string, kuchli = false) => (
     <div className="flex items-baseline justify-between gap-2 border-b border-line py-1.5 last:border-0">
       <span className="text-[11px] text-ink-muted">{tr(nomi)}</span>
-      <span className="raqam shrink-0 text-xs font-semibold text-ink">{qiymat}</span>
+      <span
+        className={`raqam shrink-0 text-xs font-semibold ${kuchli ? 'text-accent-deep' : 'text-ink'}`}
+      >
+        {qiymat}
+      </span>
     </div>
+  );
+
+  const bolimSarlavhasi = (matn: string) => (
+    <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+      {tr(matn)}
+    </p>
   );
 
   return (
     <div className="rounded-md border border-accent bg-accent-soft/40 p-3">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-ink">
+        <h3 className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-bold text-ink">
           <span className="truncate">{tr(q.nomiKirill)}</span>
           {boshlangan ? (
             <span className="xarita-nishon-faol shrink-0">{tr('хатлов кетмоқда')}</span>
@@ -1292,14 +1320,49 @@ function TanlanganKarta({
         </button>
       </div>
 
-      <div className="mt-2">
-        {qator('Хатлов қамрови', `${raqam(q.xatlovXonadon)} / ${raqam(q.bazaXonadon)} · ${q.qamrovFoizi}%`)}
-        {qator('Аниқланган ишсиз', raqam(q.aniqlangan))}
-        {qator('Ишга жойлашган', `${raqam(q.joylashtirilgan)} · ${q.natijaFoizi}%`)}
-        {qator('Рўйхатда турибди', raqam(q.ishsizQoldiq))}
-        {qator('17 ёшгача бола', raqam(q.bolalar17))}
-        {qator('Чет элда', raqam(q.chetElIshchi))}
+      {/*
+        ── БАЗА РАҚАМЛАРИ ──
+
+        Улар ҲАР ДОИМ бор: ҳокимликнинг свод жадвалидан келган
+        ва хатловга боғлиқ эмас.
+
+        Аввал карточкада фақат хатлов рақамлари турарди. Хатлов
+        бошланмаган МФЙ босилганда олтита сатрнинг олтитаси ҳам
+        нол чиқарди — одам «ишламаяпти» деб ўйлайди, ҳолбуки
+        ўша маҳалла ҳақида айтадиган гап бор эди: 595 хонадон,
+        34 та ишсиз рўйхатда.
+      */}
+      {bolimSarlavhasi('База — свод жадвалидан')}
+      <div>
+        {qator('Аҳоли', raqam(q.bazaAholi))}
+        {qator('Хонадон', raqam(q.bazaXonadon))}
+        {qator('Рўйхатдаги ишсиз', raqam(q.bazaIshsiz), true)}
       </div>
+
+      {bolimSarlavhasi('Хатлов натижаси')}
+      {boshlangan ? (
+        <div>
+          {qator(
+            'Хатлов қамрови',
+            `${raqam(q.xatlovXonadon)} / ${raqam(q.bazaXonadon)} · ${q.qamrovFoizi}%`,
+            true
+          )}
+          {qator('Аниқланган ишсиз', raqam(q.aniqlangan))}
+          {qator('Ишга жойлашган', `${raqam(q.joylashtirilgan)} · ${q.natijaFoizi}%`)}
+          {qator('Рўйхатда турибди', raqam(q.ishsizQoldiq))}
+          {qator('17 ёшгача бола', raqam(q.bolalar17))}
+          {qator('Чет элда', raqam(q.chetElIshchi))}
+        </div>
+      ) : (
+        /*
+         * Олтита нол ўрнига битта рост гап. Нол — ўлчов
+         * натижаси, бу эса ўлчов ҳали қилинмагани.
+         */
+        <p className="mt-1 rounded border border-line bg-surface px-2 py-2 text-[11px] leading-relaxed text-ink-muted">
+          {tr('Бу МФЙ да хатлов ҳали бошланмаган.')}{' '}
+          {tr('Хатлов бошлангач шу ерда қамров, аниқланган ишсизлар, ишга жойлашганлар, болалар ва чет элдагилар рақами чиқади.')}
+        </p>
+      )}
 
       {havolalar && (
         <div className="mt-2 flex flex-wrap gap-1.5">

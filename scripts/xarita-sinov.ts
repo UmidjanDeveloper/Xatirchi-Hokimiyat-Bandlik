@@ -410,6 +410,58 @@ const SINOVLAR: Sinov[] = [
       KOMPONENT_KODI.includes('radialGradient'),
   },
 
+  {
+    nomi: 'Танланган МФЙ карточкасида БАЗА рақамлари ҳам бор',
+    tekshir: () => {
+      /*
+       * Аввал карточкада фақат хатлов рақамлари турарди ва
+       * хатлов бошланмаган МФЙ босилганда олтита сатрнинг
+       * олтитаси ҳам нол чиқарди — «ишламаяпти» деган
+       * таассурот. Ҳолбуки ўша маҳалла ҳақида айтадиган гап
+       * бор эди: 595 хонадон, 34 та ишсиз рўйхатда.
+       */
+      return (
+        KOMPONENT.includes("qator('Аҳоли'") &&
+        KOMPONENT.includes("qator('Хонадон'") &&
+        KOMPONENT.includes("qator('Рўйхатдаги ишсиз'") &&
+        KOMPONENT.includes("bolimSarlavhasi('База — свод жадвалидан')")
+      );
+    },
+  },
+  {
+    nomi: 'Хатлов бошланмаган бўлса, олтита нол ўрнига битта рост гап',
+    tekshir: () =>
+      KOMPONENT.includes('Бу МФЙ да хатлов ҳали бошланмаган.') &&
+      KOMPONENT_KODI.includes('{boshlangan ? ('),
+  },
+  {
+    nomi: 'Харитадан ва рўйхатдан босиш БИР ХИЛ карточкани очади',
+    tekshir: () => {
+      /* Иккови ҳам айнан битта ҳолатни ўзгартиради */
+      const xaritadan = KOMPONENT_KODI.includes('onClick={() => !yakka && setTanlangan(');
+      const royxatdan = KOMPONENT_KODI.includes('bos={() => setTanlangan(q.hududId)}');
+      const bitta = (KOMPONENT_KODI.match(/<TanlanganKarta/g) ?? []).length === 1;
+      return xaritadan && royxatdan && bitta;
+    },
+  },
+  {
+    nomi: 'Рельеф юмшоқ — ҳудудлар бир-бирини тўсмайди',
+    tekshir: () => {
+      /*
+       * База кесими қўшилгач ҳамма ҳудуд кўтарилиб кетди ва
+       * 69 та баланд устун бир-бирининг устига тушиб, харита
+       * тикан-тикан бўлиб қолди.
+       */
+      const eng = KOMPONENT_KODI.match(/const ENG_BALAND = (\d+);/);
+      const qatlam = KOMPONENT_KODI.match(/const DEVOR_QATLAMI = (\d+);/);
+      if (!eng || !qatlam) return false;
+      const balandlik = Number(eng[1]);
+      const oraliq = balandlik / Number(qatlam[1]);
+      /* Қатламлар ораси уч бирликдан кенг бўлса — девор зинапоя бўлиб кўринади */
+      return balandlik <= 26 && oraliq <= 3.5;
+    },
+  },
+
   /* ══ РЎЙХАТ ВА ҚИДИРУВ ══ */
   {
     nomi: 'Рўйхатда БАРЧА МФЙ бор — ўнталик эмас',
