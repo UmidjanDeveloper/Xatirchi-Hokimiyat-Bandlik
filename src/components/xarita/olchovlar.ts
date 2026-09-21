@@ -19,6 +19,8 @@ import type { XaritaQatori } from '@/lib/xarita/xarita-malumoti';
  */
 
 export type OlchovKaliti =
+  | 'bazaIshsiz'
+  | 'aholi'
   | 'qamrov'
   | 'natija'
   | 'ishsiz'
@@ -57,12 +59,52 @@ export interface Olchov {
    * маънога эга эмас.
    */
   baholanadi: boolean;
+  /**
+   * Ўлчов БАЗА рўйхатидан оладими.
+   *
+   * ── Нега бу фарқ муҳим ──
+   *
+   * Хатловдан келадиган ўлчовда (қамров, болалар, чет эл) иш
+   * бошланмаган МФЙ да маълумот ЙЎҚ — у кулранг туради. Бугун
+   * хатлов фақат бир жойда кетмоқда, шунинг учун ўша
+   * хаританинг 68 та шакли оппоқ бўлиб қолди. Тўғри, аммо
+   * қараб бўлмайди.
+   *
+   * База ўлчовларида эса ҳамма 70 та МФЙ нинг рақами
+   * ҳокимликнинг свод жадвалидан келган ва биринчи кундан
+   * бери мавжуд. Улар харитани тўлиқ бўяйди — ва бу безак
+   * эмас: «қайси МФЙ да ишсиз кўп» деган савол хатловдан
+   * олдин ҳам, кейин ҳам ўринли.
+   */
+  bazaviy: boolean;
 }
 
 /** `1 234` кўринишида */
 const son = (n: number) => n.toLocaleString('ru-RU');
 
 export const OLCHOVLAR: Olchov[] = [
+  {
+    kalit: 'bazaIshsiz',
+    nomi: 'Рўйхатдаги ишсизлар',
+    izoh: 'Ҳокимлик свод жадвалидан — хатловдан олдинги ҳолат',
+    foiz: () => null,
+    hajm: (q) => q.bazaIshsiz,
+    matn: (q) => `${son(q.bazaIshsiz)} та ишсиз рўйхатда`,
+    kopYaxshi: false,
+    baholanadi: false,
+    bazaviy: true,
+  },
+  {
+    kalit: 'aholi',
+    nomi: 'Аҳоли',
+    izoh: 'МФЙ нинг ҳажми — қайси маҳалла катта, қайси кичик',
+    foiz: () => null,
+    hajm: (q) => q.bazaAholi,
+    matn: (q) => `${son(q.bazaAholi)} аҳоли · ${son(q.bazaXonadon)} хонадон`,
+    kopYaxshi: true,
+    baholanadi: false,
+    bazaviy: true,
+  },
   {
     kalit: 'qamrov',
     nomi: 'Хатлов қамрови',
@@ -72,6 +114,7 @@ export const OLCHOVLAR: Olchov[] = [
     matn: (q) => `${son(q.xatlovXonadon)} / ${son(q.bazaXonadon)} хонадон`,
     kopYaxshi: true,
     baholanadi: true,
+    bazaviy: false,
   },
   {
     kalit: 'natija',
@@ -82,6 +125,7 @@ export const OLCHOVLAR: Olchov[] = [
     matn: (q) => `${son(q.joylashtirilgan)} / ${son(q.aniqlangan)} фуқаро`,
     kopYaxshi: true,
     baholanadi: true,
+    bazaviy: false,
   },
   {
     kalit: 'ishsiz',
@@ -96,6 +140,7 @@ export const OLCHOVLAR: Olchov[] = [
     matn: (q) => `${son(q.ishsizQoldiq)} киши рўйхатда`,
     kopYaxshi: false,
     baholanadi: true,
+    bazaviy: false,
   },
   {
     kalit: 'bolalar',
@@ -107,6 +152,7 @@ export const OLCHOVLAR: Olchov[] = [
     matn: (q) => `${son(q.bolalar17)} та бола`,
     kopYaxshi: true,
     baholanadi: false,
+    bazaviy: false,
   },
   {
     kalit: 'chetEl',
@@ -117,6 +163,7 @@ export const OLCHOVLAR: Olchov[] = [
     matn: (q) => `${son(q.chetElIshchi)} фуқаро чет элда`,
     kopYaxshi: true,
     baholanadi: false,
+    bazaviy: false,
   },
 ];
 

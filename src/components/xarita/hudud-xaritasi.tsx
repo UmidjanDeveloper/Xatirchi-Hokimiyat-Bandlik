@@ -49,6 +49,19 @@ const DEVOR_QATLAMI = 4;
 /* Энг баланд ҳудуд неча SVG бирлигига кўтарилади */
 const ENG_BALAND = 44;
 
+/**
+ * ҲАР БИР ҳудуднинг энг кам баландлиги.
+ *
+ * Маълумоти йўқ МФЙ текис ётарди ва харита оппоқ қоғозга
+ * айланиб қоларди — 68 та ясси шакл, биттаси кўтарилган.
+ * Асос баландлиги ҳаммасини ердан кўтаради: ён томонлари
+ * кўринади, соя тушади ва харита рельефга ўхшайди.
+ *
+ * Маълумотга халақит бермайди — у ҲАММАГА бир хил қўшилади,
+ * яъни баландликлар фарқи ўзгармайди.
+ */
+const ASOS_BALAND = 9;
+
 /* Қизил контур билан белгиланадиган энг орқадаги ҳудудлар сони */
 const OGOH_SONI = 10;
 
@@ -106,6 +119,15 @@ const qidiruvKaliti = (nom: string): string =>
  */
 const boshlanganmi = (q: XaritaQatori): boolean => q.xatlovXonadon > 0;
 
+/**
+ * Шу ўлчов бўйича бу МФЙ да маълумот борми.
+ *
+ * База ўлчовида — ҳар доим бор (свод жадвали биринчи кундан
+ * тўла). Хатлов ўлчовида — фақат иш бошланган жойда.
+ */
+const malumotBormi = (q: XaritaQatori, olchov: Olchov): boolean =>
+  olchov.bazaviy || boshlanganmi(q);
+
 /** Сақланган созлама калити */
 const SOZLAMA = 'xarita-uch-olchov';
 
@@ -136,7 +158,23 @@ export function HududXaritasi({
 }: HududXaritasiProps) {
   const { t: tr } = useAlifbo();
 
-  const [olchovKaliti, setOlchov] = useState<OlchovKaliti>('qamrov');
+  /*
+   * ── БОШЛАНҒИЧ ЎЛЧОВ ──
+   *
+   * Хатлов энди бошланган пайтда «қамров» харитасида 68 та
+   * шакл бўш бўлади ва панел оппоқ қоғоздек очилади. Шунинг
+   * учун иш саккизтадан кам МФЙ да кетаётган бўлса, харита
+   * БАЗА кесими билан очилади — у биринчи кундан тўла ва
+   * ҳокимга керакли саволга жавоб беради: ишсиз қаерда кўп.
+   *
+   * Қамров бир босишда очилади ва иш ёйилгач ўзи бошланғичга
+   * айланади.
+   */
+  const boshlanganSoni = useMemo(() => qatorlar.filter(boshlanganmi).length, [qatorlar]);
+
+  const [olchovKaliti, setOlchov] = useState<OlchovKaliti>(() =>
+    boshlanganSoni >= KAMIDA_TAQQOS ? 'qamrov' : 'bazaIshsiz'
+  );
   const [tanlangan, setTanlangan] = useState<string | null>(null);
   const [qidiruv, setQidiruv] = useState('');
   const [faol, setFaol] = useState<string | null>(null);
@@ -413,7 +451,7 @@ export function HududXaritasi({
        * иккисини ҳам бузади. Энди у нейтрал кулранг ва
        * легендада «хатлов бошланмаган» деб турибди.
        */
-      if (!boshlanganmi(q)) continue;
+      if (!malumotBormi(q, olchov)) continue;
       const d = daraja(q, olchov, engKattaHajm);
       if (d !== null) qiymatlar.push({ id: q.hududId, d });
     }
@@ -450,14 +488,16 @@ export function HududXaritasi({
   /** Баландлик — ҳажмга нисбатан */
   const balandlik = useCallback(
     (q?: XaritaQatori): number => {
-      if (!q || engKattaHajm <= 0 || !uch) return 0;
+      if (!uch) return 0;
+      if (!q) return ASOS_BALAND;
+      if (engKattaHajm <= 0 || !malumotBormi(q, olchov)) return ASOS_BALAND;
       /*
        * Квадрат илдиз: битта улкан маҳалла қолганларини
        * текислаб юбормасин. Тўғри нисбатда энг каттаси 58,
        * ўртачаси эса 3-4 бирлик бўлиб, фарқи кўринмай қоларди.
        */
       const nisbat = Math.sqrt(Math.max(0, olchov.hajm(q)) / engKattaHajm);
-      return Math.round(nisbat * ENG_BALAND);
+      return ASOS_BALAND + Math.round(nisbat * ENG_BALAND);
     },
     [olchov, engKattaHajm, uch]
   );
@@ -484,9 +524,18 @@ export function HududXaritasi({
     };
 
     const ishlagan = qatorlar.filter(boshlanganmi).sort(solishtir);
+    /*
+     * База кесимида «бошланмаган» МФЙ ларнинг ҳам рақами бор,
+     * шунинг учун улар ҳам қиймат бўйича сараланади. Хатлов
+     * кесимида эса рақами йўқ — алифбо тартиби қолади.
+     */
     const boshlanmagan = qatorlar
       .filter((q) => !boshlanganmi(q))
-      .sort((a, b) => a.nomiKirill.localeCompare(b.nomiKirill, 'ru'));
+      .sort(
+        olchov.bazaviy
+          ? solishtir
+          : (a, b) => a.nomiKirill.localeCompare(b.nomiKirill, 'ru')
+      );
 
     return { ishlagan, boshlanmagan };
   }, [qatorlar, olchov]);
@@ -697,19 +746,34 @@ export function HududXaritasi({
                   */}
                   <pattern
                     id="xarita-panjara"
-                    width="42"
-                    height="42"
+                    width="38"
+                    height="38"
                     patternUnits="userSpaceOnUse"
                   >
                     <path
-                      d="M42 0H0V42"
+                      d="M38 0H0V38"
                       fill="none"
                       stroke="var(--accent)"
-                      strokeWidth="0.7"
-                      opacity="0.16"
+                      strokeWidth="0.8"
+                      opacity="0.22"
                     />
                   </pattern>
+
+                  <radialGradient id="xarita-yoruglik" cx="50%" cy="46%" r="62%">
+                    <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.14" />
+                    <stop offset="60%" stopColor="var(--accent)" stopOpacity="0.05" />
+                    <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+                  </radialGradient>
                 </defs>
+
+                <rect
+                  className="xarita-yoruglik"
+                  x={CHEGARA.x - 120}
+                  y={CHEGARA.y - 120}
+                  width={CHEGARA.eni + 240}
+                  height={CHEGARA.boyi + 240}
+                  fill="url(#xarita-yoruglik)"
+                />
 
                 <rect
                   className="xarita-panjara"
@@ -724,6 +788,7 @@ export function HududXaritasi({
                   const q = xarita.get(h.id);
                   const yakka = yakkaRejim && h.id !== yolqinHudud;
                   const qadam = yakka ? 0 : rangQadami(q);
+                  const malumotli = !yakka && q !== undefined && malumotBormi(q, olchov);
                   const b = yakka ? 0 : balandlik(q);
                   const tanlandi = tanlangan === h.id;
                   const faolmi = faol === h.id || tanlandi || (yakkaRejim && h.id === yolqinHudud);
@@ -763,7 +828,11 @@ export function HududXaritasi({
                             key={i}
                             className="hudud-devor"
                             href={`#hd-${h.id}`}
-                            fill={`var(--devor-${Math.min(5, qadam || 1)})`}
+                            fill={
+                              qadam === 0
+                                ? 'var(--xarita-bosh-devor)'
+                                : `var(--devor-${Math.min(5, qadam)})`
+                            }
                             style={{
                               ['--q' as string]: i,
                               ['--n' as string]: DEVOR_QATLAMI,
@@ -775,13 +844,15 @@ export function HududXaritasi({
                       <use
                         className="hudud-yuza"
                         href={`#hd-${h.id}`}
-                        fill={qadam === 0 ? 'var(--surface-muted)' : `var(--step-${qadam})`}
+                        fill={qadam === 0 ? 'var(--xarita-bosh)' : `var(--step-${qadam})`}
                         stroke={
                           tanlandi
                             ? 'var(--accent-deep)'
                             : ogoh
                               ? 'var(--danger)'
-                              : 'var(--border-strong)'
+                              : malumotli
+                                ? 'var(--border-strong)'
+                                : 'var(--xarita-bosh-chiziq)'
                         }
                         strokeWidth={tanlandi ? 4 : ogoh ? 3 : 1.4}
                         strokeLinejoin="round"
@@ -866,7 +937,7 @@ export function HududXaritasi({
                   натижасидек ўқилади — ҳолбуки ўлчов ҳали
                   қилинмаган.
                 */}
-                {boshlanganmi(faolQator) ? (
+                {malumotBormi(faolQator, olchov) ? (
                   <>
                     {tr(olchov.matn(faolQator))}
                     {olchov.foiz(faolQator) !== null && (
@@ -924,14 +995,19 @@ export function HududXaritasi({
                 {tr('хатлов кетмоқда')}
               </span>
             )}
-            <span className="flex items-center gap-1.5">
-              <span
-                className="h-3 w-5 rounded-sm border"
-                style={{ background: 'var(--surface-muted)', borderColor: 'var(--border)' }}
-                aria-hidden="true"
-              />
-              {tr('хатлов бошланмаган')}
-            </span>
+            {!olchov.bazaviy && (
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-3 w-5 rounded-sm border"
+                  style={{
+                    background: 'var(--xarita-bosh)',
+                    borderColor: 'var(--xarita-bosh-chiziq)',
+                  }}
+                  aria-hidden="true"
+                />
+                {tr('хатлов бошланмаган')}
+              </span>
+            )}
           </div>
         </div>
 
@@ -1005,8 +1081,8 @@ export function HududXaritasi({
                         tanlandi={tanlangan === q.hududId}
                         ogoh={ogohRoyxati.has(q.hududId)}
                         mayoq={mayoqlar.has(q.hududId)}
-                        tartib={olchov.baholanadi ? i + 1 : null}
-                        boshlangan
+                        tartib={i + 1}
+                        malumotli={malumotBormi(q, olchov)}
                         bos={() => setTanlangan(q.hududId)}
                         kirdi={() => setFaol(q.hududId)}
                         chiqdi={() => setFaol(null)}
@@ -1034,12 +1110,12 @@ export function HududXaritasi({
                         key={q.mahallaId}
                         q={q}
                         olchov={olchov}
-                        qadam={0}
+                        qadam={rangQadami(q)}
                         tanlandi={tanlangan === q.hududId}
                         ogoh={false}
                         mayoq={false}
                         tartib={null}
-                        boshlangan={false}
+                        malumotli={malumotBormi(q, olchov)}
                         bos={() => setTanlangan(q.hududId)}
                         kirdi={() => setFaol(q.hududId)}
                         chiqdi={() => setFaol(null)}
@@ -1100,7 +1176,7 @@ function RoyxatQatori({
   ogoh,
   mayoq,
   tartib,
-  boshlangan,
+  malumotli,
   bos,
   kirdi,
   chiqdi,
@@ -1113,7 +1189,8 @@ function RoyxatQatori({
   mayoq: boolean;
   /** Тартиб рақами — баҳоланадиган ўлчовда */
   tartib: number | null;
-  boshlangan: boolean;
+  /** Шу ўлчов бўйича қиймат борми */
+  malumotli: boolean;
   bos: () => void;
   kirdi: () => void;
   chiqdi: () => void;
@@ -1140,8 +1217,8 @@ function RoyxatQatori({
         <span
           className={`h-2.5 w-2.5 rounded-sm ${ogoh ? 'ring-1 ring-danger' : ''}`}
           style={{
-            background: qadam === 0 ? 'var(--surface-muted)' : `var(--step-${qadam})`,
-            boxShadow: qadam === 0 ? 'inset 0 0 0 1px var(--border)' : undefined,
+            background: qadam === 0 ? 'var(--xarita-bosh)' : `var(--step-${qadam})`,
+            boxShadow: qadam === 0 ? 'inset 0 0 0 1px var(--xarita-bosh-chiziq)' : undefined,
           }}
           aria-hidden="true"
         />
@@ -1153,17 +1230,20 @@ function RoyxatQatori({
         {tr(q.nomiKirill)}
       </span>
 
-      {boshlangan ? (
+      {malumotli ? (
         <span className="raqam shrink-0 font-semibold text-ink">
           {f !== null ? `${f}%` : raqam(olchov.hajm(q))}
         </span>
       ) : (
         /*
-         * Бошланмаган МФЙ га «0%» ёзилмайди.
+         * Маълумоти йўқ МФЙ га «0%» ёзилмайди.
          *
          * Нол фоиз — ўлчов натижаси, бу эса ўлчов ҳали
          * қилинмагани. Иккисини бир хил кўрсатиш —
          * бошланмаган ишни ёмон бажарилган иш деб кўрсатиш.
+         *
+         * База кесимида эса ҳамма МФЙ нинг рақами бор ва
+         * шу ерда кўринади — хатлов бошланмаган бўлса ҳам.
          */
         <span className="shrink-0 text-[10px] text-ink-faint">{tr('навбатда')}</span>
       )}

@@ -31,6 +31,8 @@ export interface XaritaQatori {
   mahallaId: string;
   nomiKirill: string;
 
+  /** Базадаги аҳоли — хатловдан олдин ҳам маълум */
+  bazaAholi: number;
   bazaXonadon: number;
   xatlovXonadon: number;
   /** Хатлов қамрови, % */
@@ -86,7 +88,14 @@ async function hisobla(mahallaId?: string): Promise<XaritaMalumoti> {
   const [mahallalar, xonadonlar, bosqichlar] = await Promise.all([
     prisma.mahalla.findMany({
       orderBy: { nomi: 'asc' },
-      select: { id: true, nomi: true, nomiKirill: true, xonadon: true, ishsiz: true },
+      select: {
+        id: true,
+        nomi: true,
+        nomiKirill: true,
+        aholi: true,
+        xonadon: true,
+        ishsiz: true,
+      },
     }),
 
     prisma.household.groupBy({
@@ -154,6 +163,7 @@ async function hisobla(mahallaId?: string): Promise<XaritaMalumoti> {
       mahallaId: m.id,
       nomiKirill: m.nomiKirill,
 
+      bazaAholi: m.aholi,
       bazaXonadon: m.xonadon,
       xatlovXonadon,
       qamrovFoizi: foiz(xatlovXonadon, m.xonadon),

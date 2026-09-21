@@ -57,6 +57,7 @@ const qator = (o: Partial<XaritaQatori> = {}): XaritaQatori => ({
   hududId: 'h',
   mahallaId: 'm',
   nomiKirill: 'Синов',
+  bazaAholi: 900,
   bazaXonadon: 100,
   xatlovXonadon: 40,
   qamrovFoizi: 40,
@@ -317,14 +318,16 @@ const SINOVLAR: Sinov[] = [
     tekshir: () =>
       KOMPONENT_KODI.includes('const boshlanganmi') &&
       KOMPONENT_KODI.includes('q.xatlovXonadon > 0') &&
-      /* Ранг қаторига фақат бошлангани киради */
-      KOMPONENT_KODI.includes('if (!boshlanganmi(q)) continue;'),
+      /* Рўйхат икки бўлимга айнан шу шарт билан ажралади */
+      KOMPONENT_KODI.includes('qatorlar.filter(boshlanganmi)') &&
+      KOMPONENT_KODI.includes('.filter((q) => !boshlanganmi(q))'),
   },
   {
     nomi: 'Бошланмаган МФЙ га «0%» ёзилмайди — «навбатда» дейилади',
     tekshir: () =>
       KOMPONENT.includes("{tr('навбатда')}") &&
-      KOMPONENT_KODI.includes('boshlanganmi(faolQator)'),
+      KOMPONENT_KODI.includes('malumotBormi(faolQator, olchov)') &&
+      KOMPONENT_KODI.includes('{malumotli ? ('),
   },
   {
     nomi: '«Иш кетмоқда» маёғи бор ва у чегара билан чекланган',
@@ -344,6 +347,67 @@ const SINOVLAR: Sinov[] = [
       if (!mayoqli) return false;
       return mayoqli.includes('opacity: 0.5') && !mayoqli.includes('display: none');
     },
+  },
+
+  /* ══ ХАРИТА БЎШ ҚОҒОЗГА АЙЛАНМАСИН ══ */
+  {
+    nomi: 'База кесимлари бор — улар биринчи кундан тўла',
+    tekshir: () => {
+      /*
+       * Хатлов бир жойда кетаётганда «қамров» харитасининг 68
+       * та шакли бўш бўлади ва панел оппоқ қоғоздек очилади.
+       * База рақамлари (свод жадвали) эса ҳамма МФЙ да бор.
+       */
+      const bazaviylar = OLCHOVLAR.filter((o) => o.bazaviy);
+      return (
+        bazaviylar.length >= 2 &&
+        bazaviylar.some((o) => o.kalit === 'bazaIshsiz') &&
+        bazaviylar.every((o) => o.hajm(qator()) > 0)
+      );
+    },
+  },
+  {
+    nomi: 'Иш ёйилмаган бўлса, харита БАЗА кесими билан очилади',
+    tekshir: () =>
+      KOMPONENT_KODI.includes("boshlanganSoni >= KAMIDA_TAQQOS ? 'qamrov' : 'bazaIshsiz'"),
+  },
+  {
+    nomi: 'База кесимида ҳар бир МФЙ рангли — кулранг қолмайди',
+    tekshir: () =>
+      KOMPONENT_KODI.includes('const malumotBormi') &&
+      KOMPONENT_KODI.includes('olchov.bazaviy || boshlanganmi(q)') &&
+      KOMPONENT_KODI.includes('if (!malumotBormi(q, olchov)) continue;'),
+  },
+  {
+    nomi: 'Ҳар бир ҳудуд ердан кўтарилган — ясси шакл қолмайди',
+    tekshir: () =>
+      /* Ноль бўлса ҳудуд ясси ётади — доимий мусбат бўлиши шарт */
+      /const ASOS_BALAND = [1-9]\d*;/.test(KOMPONENT_KODI) &&
+      KOMPONENT_KODI.includes('return ASOS_BALAND;') &&
+      KOMPONENT_KODI.includes('ASOS_BALAND + Math.round('),
+  },
+  {
+    nomi: 'Маълумотсиз ҳудуднинг ўз ранги бор — деярли оқ эмас',
+    tekshir: () =>
+      KOMPONENT_KODI.includes("'var(--xarita-bosh)'") &&
+      !KOMPONENT_KODI.includes("qadam === 0 ? 'var(--surface-muted)'") &&
+      USLUB.includes('--xarita-bosh:') &&
+      USLUB.includes('--xarita-bosh-devor:'),
+  },
+  {
+    nomi: 'Тултип ва рўйхат «маълумот бор-йўқ» ни бир хил ҳисоблайди',
+    tekshir: () =>
+      KOMPONENT_KODI.includes('malumotBormi(faolQator, olchov)') &&
+      KOMPONENT_KODI.includes('malumotli={malumotBormi(q, olchov)}') &&
+      /* Эски, ўлчовга боғлиқ бўлмаган шарт қайтиб келмасин */
+      !KOMPONENT_KODI.includes('boshlanganmi(faolQator)'),
+  },
+  {
+    nomi: 'Чуқурлик учун панжара ва ёруғлик бор',
+    tekshir: () =>
+      KOMPONENT_KODI.includes('xarita-panjara') &&
+      KOMPONENT_KODI.includes('xarita-yoruglik') &&
+      KOMPONENT_KODI.includes('radialGradient'),
   },
 
   /* ══ РЎЙХАТ ВА ҚИДИРУВ ══ */
@@ -383,7 +447,7 @@ const SINOVLAR: Sinov[] = [
   {
     nomi: 'Ҳар бир ўлчовда ном, изоҳ ва матн бор',
     tekshir: () =>
-      OLCHOVLAR.length === 5 &&
+      OLCHOVLAR.length >= 5 &&
       OLCHOVLAR.every((o) => o.nomi.length > 0 && o.izoh.length > 0 && o.matn(qator()).length > 0),
   },
   {
