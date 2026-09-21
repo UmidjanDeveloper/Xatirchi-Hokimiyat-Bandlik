@@ -245,8 +245,8 @@ const SINOVLAR: Sinov[] = [
        * хил рангга айланиб, ҳеч нима демай қоларди.
        */
       return (
-        KOMPONENT_KODI.includes('qadamXaritasi.get(') &&
-        KOMPONENT_KODI.includes('const chegara = [0.2, 0.4, 0.6, 0.8]') &&
+        KOMPONENT_KODI.includes('qadamXaritasi.qadam.get(') &&
+        KOMPONENT_KODI.includes('const chorak = [0.25, 0.5, 0.75]') &&
         /* Эски мутлақ формула қайтиб келмасин */
         !KOMPONENT_KODI.includes('Math.ceil(d * 5)')
       );
@@ -265,7 +265,7 @@ const SINOVLAR: Sinov[] = [
        * бир хил. Шунинг учун ранг — `--step-1..5` кетма-кетлиги.
        */
       return (
-        KOMPONENT.includes('var(--step-${qadam})') &&
+        KOMPONENT.includes('var(--xarita-${qadam})') &&
         !KOMPONENT.includes('var(--ok)') &&
         !/fill=.*var\(--warn\)/.test(KOMPONENT)
       );
@@ -491,6 +491,48 @@ const SINOVLAR: Sinov[] = [
       /* Қатламлар ораси уч бирликдан кенг бўлса — девор зинапоя бўлиб кўринади */
       return balandlik <= 14 && oraliq <= 3.5;
     },
+  },
+
+  {
+    nomi: 'Ранг қатори тўртта қадам — қўшнилари ажралиб туради',
+    tekshir: () => {
+      /*
+       * Бештайди ва қўшни иккитасининг ёруғлик фарқи 0,09 эди
+       * — экранда деярли бир хил кўринарди, харита «ола-чипор»
+       * бўлиб чиқарди. Тўртта қадамда фарқ 0,15 га чиқди.
+       */
+      return (
+        /const QADAM_SONI = 4;/.test(KOMPONENT_KODI) &&
+        USLUB.includes('--xarita-4:') &&
+        !USLUB.includes('--xarita-5:')
+      );
+    },
+  },
+  {
+    nomi: 'Легендада мавҳум «кам/кўп» эмас, РАҚАМ оралиғи',
+    tekshir: () =>
+      KOMPONENT_KODI.includes('const oraliqMatni') &&
+      KOMPONENT_KODI.includes('oraliqMatni(n)') &&
+      /* Эски мавҳум ёрлиқ қайтиб келмасин */
+      !KOMPONENT.includes("{tr('Кам')}"),
+  },
+  {
+    nomi: 'База кесимида «ранг хатловга боғлиқ эмас» деб АЙТИЛАДИ',
+    tekshir: () => {
+      /*
+       * Харитага қараган одам ранг-баранг шаклларни кўриб
+       * «демак ҳамма жойда иш кетяпти» деб ўқиди. Ранг эса
+       * свод жадвалидан эди. Энди буни экраннинг ўзи айтади.
+       */
+      return (
+        KOMPONENT.includes('Бу ранглар хатловга боғлиқ эмас') &&
+        KOMPONENT_KODI.includes('olchov.bazaviy && !yakkaRejim')
+      );
+    },
+  },
+  {
+    nomi: 'Ранг нимани ўлчаётгани легенда бошида ёзилган',
+    tekshir: () => KOMPONENT.includes("{tr('Ранг:')}") && KOMPONENT.includes('tr(olchov.nomi)'),
   },
 
   /* ══ РЎЙХАТ ВА ҚИДИРУВ ══ */

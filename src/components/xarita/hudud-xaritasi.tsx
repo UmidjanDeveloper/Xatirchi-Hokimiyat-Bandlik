@@ -84,6 +84,15 @@ const ENG_BALAND = 12;
  */
 const ASOS_BALAND = 0;
 
+/*
+ * Ранг қатори неча қадамдан иборат.
+ *
+ * Бештайди ва қўшни иккитасининг фарқи кўзга илинмасди —
+ * харита «ола-чипор» бўлиб кўринарди. Тўртта етади ва ҳар
+ * бирининг рақам оралиғи легендада ёзилади.
+ */
+const QADAM_SONI = 4;
+
 /* Қизил контур билан белгиланадиган энг орқадаги ҳудудлар сони */
 const OGOH_SONI = 10;
 
@@ -516,7 +525,7 @@ export function HududXaritasi({
   const qadamXaritasi = useMemo(() => {
     const natija = new Map<string, number>();
 
-    const qiymatlar: { id: string; d: number }[] = [];
+    const qiymatlar: { id: string; h: number }[] = [];
     for (const q of qatorlar) {
       /*
        * Хатлов бошланмаган МФЙ рангли қаторга КИРМАЙДИ.
@@ -528,36 +537,62 @@ export function HududXaritasi({
        * легендада «хатлов бошланмаган» деб турибди.
        */
       if (!malumotBormi(q, olchov)) continue;
-      const d = daraja(q, olchov, engKattaHajm);
-      if (d !== null) qiymatlar.push({ id: q.hududId, d });
+      const f = olchov.foiz(q);
+      qiymatlar.push({ id: q.hududId, h: f !== null ? f : olchov.hajm(q) });
     }
-    if (qiymatlar.length === 0) return natija;
+    if (qiymatlar.length === 0) return { qadam: natija, chegara: [] as number[] };
 
-    const saralangan = qiymatlar.map((x) => x.d).sort((a, b) => a - b);
+    const saralangan = qiymatlar.map((x) => x.h).sort((a, b) => a - b);
     const eng = saralangan[saralangan.length - 1];
     const kam = saralangan[0];
 
     /* Ҳамма бир хил — бўлишнинг маъноси йўқ, ўртача қадам */
     if (eng === kam) {
-      for (const x of qiymatlar) natija.set(x.id, 3);
-      return natija;
+      for (const x of qiymatlar) natija.set(x.id, 2);
+      return { qadam: natija, chegara: [] as number[] };
     }
 
-    const chegara = [0.2, 0.4, 0.6, 0.8].map(
+    /*
+     * Чегаралар ЧОРАКЛАР бўйича: ҳар гуруҳга тахминан ўн
+     * еттита МФЙ тушади. Улар легендада РАҚАМ билан ёзилади —
+     * «кам» ва «кўп» деган мавҳум сўз ўрнига «30 дан 49 гача».
+     */
+    const chorak = [0.25, 0.5, 0.75].map(
       (u) => saralangan[Math.min(saralangan.length - 1, Math.floor(u * saralangan.length))]
     );
 
     for (const x of qiymatlar) {
       let qadam = 1;
-      for (const c of chegara) if (x.d > c) qadam += 1;
-      natija.set(x.id, Math.min(5, qadam));
+      for (const c of chorak) if (x.h > c) qadam += 1;
+      natija.set(x.id, Math.min(QADAM_SONI, qadam));
     }
-    return natija;
-  }, [qatorlar, olchov, engKattaHajm]);
+    return { qadam: natija, chegara: chorak };
+  }, [qatorlar, olchov]);
 
-  /** Ҳудуднинг ранг қадами: 1 (кам) — 5 (кўп), маълумотсиз — 0 */
+  /**
+   * Легендадаги рақам оралиғи: «30–49», «50 дан юқори».
+   *
+   * Чегаралар чораклардан келади, яъни улар ЖОРИЙ тақсимотни
+   * тасвирлайди — аммо экранда мавҳум «кам/кўп» эмас, ўқиб
+   * бўладиган сон туради.
+   */
+  const oraliqMatni = useCallback(
+    (qadam: number): string => {
+      const c = qadamXaritasi.chegara;
+      if (c.length === 0) return '';
+      const yaxlit = (n: number) => (olchov.foiz(qatorlar[0] ?? ({} as XaritaQatori)) !== null
+        ? `${Math.round(n)}%`
+        : raqam(Math.round(n)));
+      if (qadam === 1) return `< ${yaxlit(c[0])}`;
+      if (qadam === QADAM_SONI) return `> ${yaxlit(c[c.length - 1])}`;
+      return `${yaxlit(c[qadam - 2])}–${yaxlit(c[qadam - 1])}`;
+    },
+    [qadamXaritasi, olchov, qatorlar]
+  );
+
+  /** Ҳудуднинг ранг қадами: 1 (кам) — 4 (кўп), маълумотсиз — 0 */
   const rangQadami = useCallback(
-    (q?: XaritaQatori): number => (q ? (qadamXaritasi.get(q.hududId) ?? 0) : 0),
+    (q?: XaritaQatori): number => (q ? (qadamXaritasi.qadam.get(q.hududId) ?? 0) : 0),
     [qadamXaritasi]
   );
 
@@ -907,7 +942,7 @@ export function HududXaritasi({
                             fill={
                               qadam === 0
                                 ? 'var(--xarita-bosh-devor)'
-                                : `var(--devor-${Math.min(5, qadam)})`
+                                : `var(--devor-${Math.min(5, qadam + 1)})`
                             }
                             style={{
                               ['--q' as string]: i,
@@ -920,7 +955,7 @@ export function HududXaritasi({
                       <use
                         className="hudud-yuza"
                         href={`#hd-${h.id}`}
-                        fill={qadam === 0 ? 'var(--xarita-bosh)' : `var(--step-${qadam})`}
+                        fill={qadam === 0 ? 'var(--xarita-bosh)' : `var(--xarita-${qadam})`}
                         stroke={
                           tanlandi
                             ? 'var(--accent-deep)'
@@ -1038,51 +1073,104 @@ export function HududXaritasi({
             )}
           </div>
 
-          {/* ── Легенда ── */}
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-ink-faint">
-            <span className="flex items-center gap-1.5">
-              {tr('Кам')}
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span
-                  key={n}
-                  className="h-3 w-5 rounded-sm"
-                  style={{ background: `var(--step-${n})` }}
-                  aria-hidden="true"
-                />
-              ))}
-              {tr('Кўп')}
-              <span className="text-ink-faint">{tr('— бугунги тақсимотга нисбатан')}</span>
-            </span>
-            {ogohRoyxati.size > 0 && !yakkaRejim && (
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="h-3 w-5 rounded-sm border-2"
-                  style={{ borderColor: 'var(--danger)', background: 'var(--step-1)' }}
-                  aria-hidden="true"
-                />
-                {tr('энг орқада қолган 10 та')}
-              </span>
-            )}
-            {mayoqlar.size > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="relative flex h-3 w-3 items-center justify-center">
-                  <span className="xarita-mayoq-nuqta" style={{ right: 'auto', top: 'auto' }} />
+          {/*
+            ── ЛЕГЕНДА ──
+
+            Аввал «Кам ▪▪▪▪▪ Кўп» деб турарди. Ҳоким саволи
+            шундан чиқди: «нега ҳаммаси ҳар хил рангда, ахир
+            хатлов фақат бир жойда кетяпти-ку?» Савол ўринли
+            эди — ранг хатловни эмас, БОШҚА нарсани кўрсатарди,
+            аммо буни экранда ҳеч нима айтмасди.
+
+            Энди ҳар қадамнинг ёнида ўз РАҚАМ ОРАЛИҒИ туради ва
+            тепада ранг нимани ўлчаётгани очиқ ёзилган.
+          */}
+          <div className="mt-2 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-ink-faint">
+              <span className="font-semibold text-ink-muted">{tr('Ранг:')}</span>
+              <span className="text-ink-muted">{tr(olchov.nomi)}</span>
+
+              {/*
+                ── ҚАТОР ФАҚАТ ТАҚҚОСЛАШ БЎЛСА ──
+
+                Хатлов бир жойда кетаётганда бўладиган нарса:
+                маълумотли МФЙ битта, яъни бўладиган қатор ҳам
+                йўқ. Тўртта рангни ёзиб қўйсак, ёнида рақам
+                бўлмасди — бўш квадратлар қолиб кетарди.
+              */}
+              {qadamXaritasi.chegara.length > 0 ? (
+                [1, 2, 3, 4].map((n) => (
+                  <span key={n} className="flex items-center gap-1">
+                    <span
+                      className="h-3 w-4 rounded-sm"
+                      style={{ background: `var(--xarita-${n})` }}
+                      aria-hidden="true"
+                    />
+                    <span className="raqam">{oraliqMatni(n)}</span>
+                  </span>
+                ))
+              ) : (
+                <span className="flex items-center gap-1">
+                  <span
+                    className="h-3 w-4 rounded-sm"
+                    style={{ background: 'var(--xarita-2)' }}
+                    aria-hidden="true"
+                  />
+                  {tr('маълумоти бор МФЙ')}
                 </span>
-                {tr('хатлов кетмоқда')}
-              </span>
-            )}
-            {!olchov.bazaviy && (
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="h-3 w-5 rounded-sm border"
-                  style={{
-                    background: 'var(--xarita-bosh)',
-                    borderColor: 'var(--xarita-bosh-chiziq)',
-                  }}
-                  aria-hidden="true"
-                />
-                {tr('хатлов бошланмаган')}
-              </span>
+              )}
+
+              {mayoqlar.size > 0 && (
+                <span className="flex items-center gap-1.5 pl-1">
+                  <span className="relative flex h-3 w-3 items-center justify-center">
+                    <span className="xarita-mayoq-nuqta" style={{ right: 'auto', top: 'auto' }} />
+                  </span>
+                  {tr('хатлов кетмоқда')}
+                </span>
+              )}
+
+              {!olchov.bazaviy && (
+                <span className="flex items-center gap-1.5 pl-1">
+                  <span
+                    className="h-3 w-4 rounded-sm border"
+                    style={{
+                      background: 'var(--xarita-bosh)',
+                      borderColor: 'var(--xarita-bosh-chiziq)',
+                    }}
+                    aria-hidden="true"
+                  />
+                  {tr('хатлов бошланмаган')}
+                </span>
+              )}
+
+              {ogohRoyxati.size > 0 && (
+                <span className="flex items-center gap-1.5 pl-1">
+                  <span
+                    className="h-3 w-4 rounded-sm border-2"
+                    style={{ borderColor: 'var(--danger)', background: 'var(--xarita-1)' }}
+                    aria-hidden="true"
+                  />
+                  {tr('энг орқада қолган 10 та')}
+                </span>
+              )}
+            </div>
+
+            {/*
+              ── ЭНГ МУҲИМ ИЗОҲ ──
+
+              База кесимида ранг хатловга УМУМАН боғлиқ эмас:
+              у ҳокимликнинг свод жадвалидан. Буни айтмасак,
+              харитага қараган одам «демак ҳамма жойда иш
+              кетяпти» деб ўқийди — ва янглишади.
+            */}
+            {olchov.bazaviy && !yakkaRejim && (
+              <p className="quti-ogoh text-[11px] leading-relaxed">
+                {tr('Бу ранглар хатловга боғлиқ эмас — улар ҳокимлик свод жадвалидаги рақамлардан.')}{' '}
+                {mayoqlar.size > 0
+                  ? `${tr('Хатлов ҳозирча')} ${raqam(boshlanganSoni)} ${tr('та МФЙ да кетмоқда — улар нуқта билан белгиланган.')}`
+                  : tr('Хатлов ҳали бошланмаган.')}{' '}
+                {tr('Хатлов натижасини кўриш учун «Хатлов қамрови» ни танланг.')}
+              </p>
             )}
           </div>
         </div>
@@ -1293,7 +1381,7 @@ function RoyxatQatori({
         <span
           className={`h-2.5 w-2.5 rounded-sm ${ogoh ? 'ring-1 ring-danger' : ''}`}
           style={{
-            background: qadam === 0 ? 'var(--xarita-bosh)' : `var(--step-${qadam})`,
+            background: qadam === 0 ? 'var(--xarita-bosh)' : `var(--xarita-${qadam})`,
             boxShadow: qadam === 0 ? 'inset 0 0 0 1px var(--xarita-bosh-chiziq)' : undefined,
           }}
           aria-hidden="true"
