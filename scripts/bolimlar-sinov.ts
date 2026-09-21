@@ -32,6 +32,9 @@ type Sinov = { nomi: string; tekshir: () => boolean };
 const LIB = readFileSync('src/lib/bolimlar-tahlili.ts', 'utf8');
 const PANEL = readFileSync('src/components/panel/bolimlar-paneli.tsx', 'utf8');
 const SAHIFA = readFileSync('src/app/(ilova)/panel/page.tsx', 'utf8');
+const XATLOV = readFileSync('src/app/(ilova)/xatlov/page.tsx', 'utf8');
+const PROFIL = readFileSync('src/lib/hisobot/xonadon-profili.ts', 'utf8');
+const FORMAT = readFileSync('src/lib/hisobot/format.ts', 'utf8');
 const SXEMA = readFileSync('prisma/schema.prisma', 'utf8');
 const ANKETA = readFileSync('src/components/xatlov/qadamlar.tsx', 'utf8');
 
@@ -365,6 +368,71 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Панел сўрови ЁНМА-ЁН кетади — кутиш вақти ошмайди',
     tekshir: () =>
       /Promise\.all\(\[[\s\S]*bolimlarTahlili\(filtr\.mahallaId\)/.test(SAHIFA),
+  },
+
+  /* ══ МАҲАЛЛА ХОДИМИ ҲАМ КЎРАДИ ══ */
+  {
+    nomi: 'Маҳалла ходими ўз МФЙ сининг бўлимлар кесимини кўради',
+    tekshir: () =>
+      XATLOV.includes('BolimlarPaneli') &&
+      XATLOV.includes('bolimlarTahlili(filtr.mahallaId)'),
+  },
+  {
+    nomi: 'Ходимга ФАҚАТ ўз маҳалласи — туман рақами тушмайди',
+    tekshir: () =>
+      /*
+       * `filtr` сессиядан келади ва YETTILIK учун ҳар доим
+       * маҳалла билан тўлади. Маҳалласи йўқ ходимда (раҳбар,
+       * ҳоким) блок умуман ҳисобланмайди.
+       */
+      XATLOV.includes('filtr.mahallaId ? bolimlarTahlili(filtr.mahallaId) : null') &&
+      !XATLOV.includes('bolimlarTahlili()'),
+  },
+
+  /* ══ ҲИСОБОТ ҲАМ ШУ БЎЛИМЛАРНИ БЕРАДИ ══ */
+  {
+    nomi: 'PDF ва Excel да болалар ёш гуруҳлари бор',
+    tekshir: () =>
+      PROFIL.includes("kalit: 'oila'") &&
+      PROFIL.includes('bolalar0_3Yosh: true') &&
+      PROFIL.includes('bolalar3_17Yosh: true') &&
+      PROFIL.includes('bolalar18Yoshdan: true'),
+  },
+  {
+    nomi: 'Ҳисоботда томорқадан фойдаланиш даражаси бор',
+    tekshir: () =>
+      PROFIL.includes("'tomorqaFoydalanish', TOMORQA_FOYDALANISH") &&
+      PROFIL.includes('qoshimchaYerBor: true'),
+  },
+  {
+    nomi: 'Ҳисоботда соғлиқ эҳтиёжлари ва ҳужжат сифати бор',
+    tekshir: () =>
+      PROFIL.includes('doriEhtiyoji') &&
+      PROFIL.includes('tibbiyXizmatEhtiyoji') &&
+      PROFIL.includes("kalit: 'sifat'") &&
+      PROFIL.includes('rozilikBerdi'),
+  },
+  {
+    nomi: 'Сотихдаги майдон ГЕКТАР деб ёзилмайди',
+    tekshir: () => {
+      /*
+       * Ҳисоботда «Жами экин майдони: 95 га» деб турарди.
+       * Анкетада эса ўша катак СОТИХДА сўралади — ҳақиқий
+       * майдон 0,95 гектар эди, яъни рақам юз баробар катта
+       * кўрсатилган. Ҳоким ер субсидияси режасини шундан
+       * тузади.
+       */
+      const sotixMaydonlari = ['ekin', 'qoshimchaYer'];
+      const gektarda = sotixMaydonlari.filter((m) =>
+        new RegExp(`maydon\\(${m}`).test(PROFIL)
+      );
+      if (gektarda.length) console.log(`     гектар деб ёзилган: ${gektarda.join(', ')}`);
+      return (
+        gektarda.length === 0 &&
+        FORMAT.includes('export function sotix') &&
+        PROFIL.includes('sotix(ekin)')
+      );
+    },
   },
 
   /* ══ АНКЕТАДА СЎРАЛМАЙДИГАНИ КЎРСАТИЛМАЙДИ ══ */

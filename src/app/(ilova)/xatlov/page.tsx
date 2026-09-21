@@ -13,6 +13,8 @@ import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
+import { BolimlarPaneli } from '@/components/panel/bolimlar-paneli';
+import { bolimlarTahlili } from '@/lib/bolimlar-tahlili';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { UlanishBlogi } from '@/components/telegram/ulanish-blogi';
@@ -48,7 +50,7 @@ export default async function XatlovlarSahifasi({
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [xatlovlar, mahalla, tahlil, vHisob, vNavbat, men] = await Promise.all([
+  const [xatlovlar, mahalla, tahlil, bolimlar, vHisob, vNavbat, men] = await Promise.all([
     prisma.household.findMany({
       where: {
         ...filtr,
@@ -92,6 +94,25 @@ export default async function XatlovlarSahifasi({
      * туман бўйича оғир сўров юритишнинг кераги йўқ.
      */
     filtr.mahallaId ? tahlilOl(filtr.mahallaId, davr) : null,
+
+    /*
+     * ── ХАТЛОВ БЎЛИМЛАРИ — ЎЗ МАҲАЛЛАСИ БЎЙИЧА ──
+     *
+     * Ходим уч ойдан бери эшикма-эшик юриб маълумот тўплайди:
+     * боланинг ёши, боғча қамрови, ичимлик суви, томорқа. Ўша
+     * маълумот бугунгача ФАҚАТ ҳоким панелида кўринарди —
+     * тўплаган одамнинг ўзига эса кўринмасди.
+     *
+     * Бу нотўғри эди, ва фақат адолат масаласи эмас: боғчага
+     * бормаётган 12 та болани ҳоким кўради, аммо ўша болаларга
+     * бориб гаплашадиган одам — шу ходим. Рақамни у кўрмаса,
+     * чора чиқмайди.
+     *
+     * Кўрсаткичлар ЖАМЛАНМА: ташхис, дори номи ва бошқа эркин
+     * матн бу ерга чиқмайди — фақат «нечта хонадон» саналади.
+     */
+    filtr.mahallaId ? bolimlarTahlili(filtr.mahallaId) : null,
+
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId, 20),
     /* Telegram уланганми — фақат шу ходимнинг ўз ҳолати */
@@ -220,6 +241,19 @@ export default async function XatlovlarSahifasi({
           davr={davr}
           qamrovNomi={`${mahalla.nomiKirill} МФЙ`}
         />
+      )}
+
+      {/*
+        ── ХАТЛОВ БЎЛИМЛАРИ БЎЙИЧА ──
+
+        Ходим ўз маҳалласининг тўлиқ суратини кўради: болалар
+        ёши, боғча ва мактаб қамрови, чет элдаги оила аъзолари,
+        уй-жой шароити, томорқа ва чорва. Ҳоким панелидаги
+        билан АЙНАН БИР ХИЛ ҳисоб — фарқи фақат қамровда:
+        у ерда туман, бу ерда битта МФЙ.
+      */}
+      {mahalla && bolimlar && yuborilgan.length > 0 && (
+        <BolimlarPaneli b={bolimlar} qamrovNomi={`${mahalla.nomiKirill} МФЙ`} />
       )}
 
       {/*

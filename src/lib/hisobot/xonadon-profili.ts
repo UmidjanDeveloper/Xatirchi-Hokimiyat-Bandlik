@@ -37,11 +37,12 @@ import {
   KAMBAGALLIK_SABABI,
   MABLAG_YONALISHI,
   MOLIYA_TURI,
+  TOMORQA_FOYDALANISH,
   UY_HOLATI,
   kirillcha,
 } from '@/lib/constants';
 import type { Bolim, Jadval, Qator } from './turlar';
-import { foiz, foizi, maydon, pul, raqamga, son } from './format';
+import { foiz, foizi, pul, raqamga, son, sotix } from './format';
 
 /** Xatlovdan o'tgan xonadonlar - qoralama hisobga olinmaydi */
 type Filtr = Prisma.HouseholdWhereInput;
@@ -76,7 +77,7 @@ async function massivSanoq(
 /** Bitta matn maydoni bo'yicha sanoq - katalog tartibida */
 async function matnSanoq(
   filtr: Filtr,
-  maydonNomi: 'uyHolati' | 'ichimlikSuvi' | 'gazTuri',
+  maydonNomi: 'uyHolati' | 'ichimlikSuvi' | 'gazTuri' | 'tomorqaFoydalanish',
   katalog: { qiymat: string; kirill: string }[]
 ): Promise<{ nomi: string; soni: number }[]> {
   const guruh = await prisma.household.groupBy({
@@ -210,6 +211,20 @@ export async function xonadonBolimlari(
     infratuzilma,
     infratuzilmaXonadon,
     chorvaBosh,
+    // Oila tarkibi — bolalarning yosh guruhlari
+    bolalarYoshi,
+    ayolBoshliq,
+    // Sog'liq — dori va tibbiy xizmat ehtiyoji
+    doriKerak,
+    tibbiyKerak,
+    korikYozgan,
+    // Tomorqadan foydalanish darajasi va qo'shimcha yer
+    tomorqaFoydalanish,
+    qoshimchaYerXonadon,
+    qoshimchaYer,
+    // Anketa hujjati sifati
+    rozilikBerdi,
+    imzoBor,
   ] = await Promise.all([
     prisma.household.aggregate({
       where: filtr,
@@ -343,12 +358,132 @@ export async function xonadonBolimlari(
       where: { ...filtr, chorvaBor: true },
       _sum: { yirikShoxliSoni: true, maydaShoxliSoni: true, parrandaSoni: true },
     }),
+
+    /*
+     * ── БОЛАЛАРНИНГ ЁШ ГУРУҲЛАРИ ──
+     *
+     * «12 та бола» деган рақамдан чора чиқмайди. 0-3 ёшдаги
+     * бола онасини уйда ушлаб туради — унга БОҒЧА керак;
+     * 3-17 ёш мактаб ва тўгарак масаласи; 18 дан катта фарзанд
+     * эса аслида ИШСИЗ ФУҚАРО ва бандлик марказининг иши.
+     * Учтасига уч хил чора керак, шунинг учун учтаси алоҳида.
+     */
+    prisma.household.aggregate({
+      where: filtr,
+      _sum: {
+        bolalar0_3Yosh: true,
+        bolalar3_17Yosh: true,
+        bolalar18Yoshdan: true,
+      },
+    }),
+    prisma.household.count({ where: { ...filtr, oilaBoshligiJinsi: 'Ayol' } }),
+
+    /*
+     * Соғлиқ: доимий дори ва тиббий хизмат эҳтиёжи эркин
+     * матнда ёзилади, шунинг учун МАЗМУНИ эмас, БОРЛИГИ
+     * саналади. Рўйхатнинг ўзи маҳалла ходимида қолади.
+     */
+    prisma.household.count({ where: { ...filtr, doriEhtiyoji: { not: null } } }),
+    prisma.household.count({ where: { ...filtr, tibbiyXizmatEhtiyoji: { not: null } } }),
+    prisma.household.count({ where: { ...filtr, oxirgiTibbiyKorik: { not: null } } }),
+
+    /*
+     * Ер МАЙДОНИ етмайди: ўша 10 сотих тўлиқ экилган ҳам,
+     * йиллаб ташлаб қўйилган ҳам бўлиши мумкин. Иккисига
+     * бошқа-бошқа чора керак — биринчисига уруғ ва кўчат,
+     * иккинчисига аввал сабабини аниқлаш.
+     */
+    matnSanoq({ ...filtr, tomorqaBor: true }, 'tomorqaFoydalanish', TOMORQA_FOYDALANISH),
+    prisma.household.count({ where: { ...filtr, qoshimchaYerBor: true } }),
+    prisma.household.aggregate({
+      where: { ...filtr, qoshimchaYerBor: true },
+      _sum: { qoshimchaYerMaydoni: true },
+    }),
+
+    /*
+     * Анкета сифати: имзосиз анкета юридик кучга эга эмас ва
+     * унга таянган чора-тадбир эътирозга учраши мумкин.
+     */
+    prisma.household.count({ where: { ...filtr, rozilikBerdi: true } }),
+    prisma.household.count({ where: { ...filtr, imzoYoli: { not: null } } }),
   ]);
 
   const bolimlar: Bolim[] = [];
 
-  /* ── Oila tarkibi va mehnat salohiyati ────────────────────── */
+  /* ── Oila tarkibi: bolalarning yosh guruhlari ─────────────── */
   const jamiAzo = jamlar._sum.jamiAzo ?? 0;
+  const jamiBola = jamlar._sum.bolalarSoni ?? 0;
+  const bola0_3 = bolalarYoshi._sum.bolalar0_3Yosh ?? 0;
+  const bola3_17 = bolalarYoshi._sum.bolalar3_17Yosh ?? 0;
+  const bola18 = bolalarYoshi._sum.bolalar18Yoshdan ?? 0;
+
+  /*
+   * Ёш гуруҳи ЖАМИ ФАРЗАНД сонидан ажратилади, аҳолидан эмас:
+   * «72 та фарзанддан 7 таси боғча ёшида» деган гап текшириб
+   * бўладиган, «146 аҳолидан 7 таси» деган гап эса чалғитади.
+   *
+   * Бўлим фақат ёш гуруҳи тўлдирилган бўлса чиқади. Эски
+   * анкеталарда бу уч катак йўқ эди ва уларда учовининг
+   * йиғиндиси нол бўлади — «туманда бола йўқ» деб кўрсатишдан
+   * кўра, бўлимни умуман чиқармаган яхши.
+   */
+  if (bola0_3 + bola3_17 + bola18 > 0) {
+    bolimlar.push({
+      kalit: 'oila',
+      sarlavha: 'Хонадон ва оила таркиби',
+      varaqNomi: 'Оила таркиби',
+      kirish:
+        'Боланинг ёши — чорани белгилайди. 0-3 ёшдаги бола онасини уйда ушлаб туради ва унга боғча керак; 3-17 ёш мактаб ва тўгарак масаласи; 18 дан катта фарзанд эса аслида ишсиз фуқаро ва бандлик марказининг иши. «Жами 72 та бола» деган рақамдан бирон чора чиқмайди.',
+      korsatkichlar: [
+        { nomi: 'Хонадондаги аҳоли', qiymat: son(jamiAzo), izoh: `ўртача ${String(Math.round((jamlar._avg.jamiAzo ?? 0) * 10) / 10).replace('.', ',')} киши` },
+        { nomi: 'Жами фарзанд', qiymat: son(jamiBola), izoh: `аҳолининг ${foiz(foizi(jamiBola, jamiAzo))}и` },
+        {
+          nomi: '17 ёшгача бола',
+          qiymat: son(bola0_3 + bola3_17),
+          izoh: 'боғча, мактаб ва тиббиёт режаси учун',
+          yonalish: 'betaraf',
+        },
+        {
+          nomi: 'Аёл оила бошлиғи',
+          qiymat: son(ayolBoshliq),
+          izoh: `хонадонларнинг ${foiz(foizi(ayolBoshliq, jamiXonadon))}и`,
+          yonalish: 'betaraf',
+        },
+      ],
+      jadvallar: [
+        {
+          sarlavha: 'Болалар ёш гуруҳлари бўйича',
+          izoh:
+            'Улуш жами фарзанд сонидан ҳисобланган. 0-3 ёшдаги ҳар бола — боғча навбати, 3-17 ёшдаги ҳар бола — мактаб ва тўгарак қамрови масаласи.',
+          ustunlar: [
+            { sarlavha: 'Ёш гуруҳи' },
+            { sarlavha: 'Бола', raqamli: true, eni: 24 },
+            { sarlavha: 'Улуши', raqamli: true, eni: 24 },
+          ],
+          qatorlar: [
+            { nomi: '0-3 ёш', qiymatlar: [son(bola0_3), foiz(foizi(bola0_3, jamiBola))] },
+            { nomi: '3-17 ёш', qiymatlar: [son(bola3_17), foiz(foizi(bola3_17, jamiBola))] },
+            { nomi: '18 ёшдан катта', qiymatlar: [son(bola18), foiz(foizi(bola18, jamiBola))] },
+            {
+              nomi: 'ЖАМИ',
+              qiymatlar: [son(bola0_3 + bola3_17 + bola18), foiz(100)],
+              jami: true,
+            },
+          ],
+        },
+      ],
+      diagrammalar: [
+        {
+          turi: 'doira',
+          sarlavha: 'Болалар ёш гуруҳлари',
+          nomlar: ['0-3 ёш', '3-17 ёш', '18 ёшдан катта'],
+          qatorlar: [{ nomi: 'Бола', qiymatlar: [bola0_3, bola3_17, bola18] }],
+        },
+      ],
+    });
+  }
+
+  /* ── Mehnat salohiyati ────────────────────────────────────── */
   const layoqatli = mehnat._sum.mehnatgaLayoqatli ?? 0;
   const layoqatsiz = mehnat._sum.mehnatgaLayoqatsiz ?? 0;
   const ishlaydigan = mehnat._sum.ishlaydiganlar ?? 0;
@@ -1020,6 +1155,15 @@ export async function xonadonBolimlari(
     { nomi: 'Ёлғиз кекса', qiymatlar: [son(yolgizKeksa), foiz(foizi(yolgizKeksa, jamiXonadon))] },
     { nomi: 'Парваришга муҳтож шахс бор', qiymatlar: [son(parvarish), foiz(foizi(parvarish, jamiXonadon))] },
     { nomi: 'Узоқ даволаниш зарур', qiymatlar: [son(uzoqDavolanish), foiz(foizi(uzoqDavolanish, jamiXonadon))] },
+    /*
+     * Доимий дори ва тиббий хизмат эҳтиёжи — эркин матнда
+     * ёзилади, шунинг учун бу ерда фақат БОРЛИГИ саналади.
+     * Рўйхатнинг ўзи маҳалла ходимида қолади: ҳисоботга
+     * ташхис чиқмаслиги керак.
+     */
+    { nomi: 'Доимий дорига эҳтиёж', qiymatlar: [son(doriKerak), foiz(foizi(doriKerak, jamiXonadon))] },
+    { nomi: 'Тиббий хизматга эҳтиёж', qiymatlar: [son(tibbiyKerak), foiz(foizi(tibbiyKerak, jamiXonadon))] },
+    { nomi: 'Охирги тиббий кўрикни кўрсатган', qiymatlar: [son(korikYozgan), foiz(foizi(korikYozgan, jamiXonadon))] },
     { nomi: 'Ҳужжатлари тўлиқ эмас', qiymatlar: [son(hujjatsiz), foiz(foizi(hujjatsiz, jamiXonadon))] },
   ].filter((q) => q.qiymatlar[0] !== '0');
 
@@ -1104,6 +1248,24 @@ export async function xonadonBolimlari(
     );
     if (hunar) jadvallar.push(hunar);
 
+    /*
+     * ── ЕРДАН ҚАНДАЙ ФОЙДАЛАНИЛЯПТИ ──
+     *
+     * Майдон сони ЕТМАЙДИ: ўша 10 сотих тўлиқ экилган ҳам,
+     * йиллаб ташлаб қўйилган ҳам бўлиши мумкин. Иккисига
+     * бошқа-бошқа чора керак — биринчисига уруғ, кўчат ва
+     * бозор, иккинчисига аввал сабабини аниқлаш (сув йўқ,
+     * қўл етмайди, эгаси чет элда).
+     */
+    const foydalanish = sanoqJadvali(
+      'Томорқадан фойдаланиш даражаси',
+      'Улуш томорқаси бор хонадонлардан ҳисобланган. «Ёмон» деб белгиланган ҳар бир хонадон — аниқ манзил: ер бор, ҳосил йўқ.',
+      'Даража',
+      tomorqaFoydalanish,
+      tomorqaBor
+    );
+    if (foydalanish) jadvallar.unshift(foydalanish);
+
     bolimlar.push({
       kalit: 'yer',
       sarlavha: 'Ер, чорва ва ҳунармандчилик',
@@ -1111,7 +1273,7 @@ export async function xonadonBolimlari(
       kirish:
         'Ишга жойлаштириш имконияти чекланган маҳаллада даромад манбаи шу ердан чиқади: томорқа, чорва ва ҳунар.',
       korsatkichlar: [
-        ...(ekin > 0 ? [{ nomi: 'Жами экин майдони', qiymat: maydon(ekin), izoh: 'хатловдан ўтган хонадонларда' } as const] : []),
+        ...(ekin > 0 ? [{ nomi: 'Жами экин майдони', qiymat: sotix(ekin), izoh: 'хатловдан ўтган хонадонларда' } as const] : []),
         { nomi: 'Чорва боқадиган хонадон', qiymat: son(chorvaBor), yonalish: 'kop-yaxshi' },
         /*
          * БОШ СОНИ — субсидия ва ем-хашак режасининг асоси.
@@ -1127,6 +1289,16 @@ export async function xonadonBolimlari(
           : []),
         ...(parranda > 0
           ? [{ nomi: 'Парранда — жами', qiymat: `${son(parranda)} бош` } as const]
+          : []),
+        ...(qoshimchaYerXonadon > 0
+          ? [
+              {
+                nomi: 'Қўшимча ер олган хонадон',
+                qiymat: son(qoshimchaYerXonadon),
+                izoh: `жами ${sotix(qoshimchaYer._sum.qoshimchaYerMaydoni ?? 0)}`,
+                yonalish: 'kop-yaxshi',
+              } as const,
+            ]
           : []),
         { nomi: 'Ҳунарманд хонадон', qiymat: son(hunarmandBor), yonalish: 'kop-yaxshi' },
         { nomi: 'Иссиқхона талабгори', qiymat: son(issiqxona), yonalish: 'kop-yaxshi' },
@@ -1144,6 +1316,62 @@ export async function xonadonBolimlari(
         : undefined,
     });
   }
+
+  /* ── Anketa hujjatining sifati ────────────────────────────── */
+  /*
+   * Бу бўлим МАЪЛУМОТ ҳақида эмас, ҲУЖЖАТ ҳақида.
+   *
+   * Имзосиз анкета юридик кучга эга эмас: унга таянган
+   * чора-тадбир эътирозга учраши мумкин ва хонадон «мен бундай
+   * демадим» дейиши мумкин. Шунинг учун ҳоким бу рақамни
+   * йиғилишда кўриши керак — нуқсон бор бўлса, уни ҳали
+   * тузатиш мумкин, хатлов тугагач эса йўқ.
+   *
+   * Ҳаммаси жойида бўлса ҳам бўлим чиқади: «100%» — бу ҳам
+   * хабар, ва уни кўрсатмаслик текширилмаган деган маънони
+   * беради.
+   */
+  bolimlar.push({
+    kalit: 'sifat',
+    sarlavha: 'Хатлов ҳужжатининг сифати',
+    varaqNomi: 'Ҳужжат сифати',
+    kirish:
+      'Имзосиз ёки розиликсиз анкета юридик кучга эга эмас. Нуқсон хатлов давом этаётганда тузатилади — тугагач, хонадонга қайта бориш керак бўлади.',
+    korsatkichlar: [
+      {
+        nomi: 'Розилик берган',
+        qiymat: son(rozilikBerdi),
+        izoh: `${son(jamiXonadon)} тадан · ${foiz(foizi(rozilikBerdi, jamiXonadon))}`,
+        yonalish: 'kop-yaxshi',
+        foiz: foizi(rozilikBerdi, jamiXonadon),
+      },
+      {
+        nomi: 'Имзо қўйилган',
+        qiymat: son(imzoBor),
+        izoh: `${son(jamiXonadon)} тадан · ${foiz(foizi(imzoBor, jamiXonadon))}`,
+        yonalish: 'kop-yaxshi',
+        foiz: foizi(imzoBor, jamiXonadon),
+      },
+    ],
+    jadvallar: [
+      {
+        sarlavha: 'Анкета реквизитлари',
+        ustunlar: [
+          { sarlavha: 'Реквизит' },
+          { sarlavha: 'Хонадон', raqamli: true, eni: 26 },
+          { sarlavha: 'Улуши', raqamli: true, eni: 24 },
+        ],
+        qatorlar: [
+          { nomi: 'Розилик берилган', qiymatlar: [son(rozilikBerdi), foiz(foizi(rozilikBerdi, jamiXonadon))] },
+          { nomi: 'Имзо қўйилган', qiymatlar: [son(imzoBor), foiz(foizi(imzoBor, jamiXonadon))] },
+          {
+            nomi: 'Имзоси йўқ — тузатиш керак',
+            qiymatlar: [son(jamiXonadon - imzoBor), foiz(foizi(jamiXonadon - imzoBor, jamiXonadon))],
+          },
+        ],
+      },
+    ],
+  });
 
   return bolimlar;
 }

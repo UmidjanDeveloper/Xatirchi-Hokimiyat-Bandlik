@@ -65,8 +65,35 @@ export function raqamga(v: bigint | number | null | undefined): number {
   return typeof v === 'bigint' ? Number(v) : v;
 }
 
-/** "12.5 га" — maydon o'lchami */
+/**
+ * "12,5 га" — GEKTARDAGI maydon.
+ *
+ * Anketada gektar bilan SO'RALADIGAN bitta maydon bor: ijara
+ * yer. Qolgani sotixda so'raladi va ularga `sotix()` ishlatiladi.
+ */
 export function maydon(ga: number | null | undefined): string {
   if (ga === null || ga === undefined || !Number.isFinite(ga)) return '—';
   return `${String(Math.round(ga * 100) / 100).replace('.', ',')} га`;
+}
+
+/**
+ * "95 сотих" — SOTIXDAGI maydon.
+ *
+ * ── Nega alohida funksiya kerak bo'ldi ──
+ *
+ * Hisobotda "Жами экин майдони: 95 га" deb turardi. Anketada esa
+ * o'sha katak SOTIXDA so'raladi — ya'ni haqiqiy maydon 0,95
+ * gektar edi. Raqam yuz barobar kattaroq ko'rsatilgan.
+ *
+ * Bu oddiy terish xatosi emas: hokim yer subsidiyasi rejasini
+ * shu raqamdan tuzadi. "Tumanda 95 gektar tomorqa" bilan
+ * "95 sotix" — ikki xil qaror.
+ *
+ * Gektarga o'girib ko'rsatmaymiz: xodim sotixda so'ragan,
+ * xonadon sotixda aytgan, hisobotda ham sotixda tursin — aks
+ * holda xodim o'z yozganini hujjatda topa olmaydi.
+ */
+export function sotix(n: number | null | undefined): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  return `${String(Math.round(n * 100) / 100).replace('.', ',')} сотих`;
 }
