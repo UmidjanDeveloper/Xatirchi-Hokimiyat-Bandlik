@@ -379,12 +379,18 @@ const SINOVLAR: Sinov[] = [
       KOMPONENT_KODI.includes('if (!malumotBormi(q, olchov)) continue;'),
   },
   {
-    nomi: 'Ҳар бир ҳудуд ердан кўтарилган — ясси шакл қолмайди',
-    tekshir: () =>
-      /* Ноль бўлса ҳудуд ясси ётади — доимий мусбат бўлиши шарт */
-      /const ASOS_BALAND = [1-9]\d*;/.test(KOMPONENT_KODI) &&
-      KOMPONENT_KODI.includes('return ASOS_BALAND;') &&
-      KOMPONENT_KODI.includes('ASOS_BALAND + Math.round('),
+    nomi: 'Баландлик фақат ҚИЙМАТДАН чиқади — сунъий кўтариш йўқ',
+    tekshir: () => {
+      /*
+       * Бир пайтлар ҳар бир ҳудудга уч бирлик «асос
+       * баландлиги» қўшилганди — харита оппоқ қоғозга
+       * ўхшамасин деб. Оқлик бошқа йўл билан тузатилди
+       * (маълумотсиз ҳудуднинг ўз ранги бор), сунъий
+       * кўтариш эса харитани ғадир-будир қилиб қўйди.
+       */
+      const asos = KOMPONENT_KODI.match(/const ASOS_BALAND = (\d+);/);
+      return asos !== null && Number(asos[1]) === 0;
+    },
   },
   {
     nomi: 'Маълумотсиз ҳудуднинг ўз ранги бор — деярли оқ эмас',
@@ -435,6 +441,31 @@ const SINOVLAR: Sinov[] = [
       KOMPONENT_KODI.includes('{boshlangan ? ('),
   },
   {
+    nomi: 'Кўрсаткични ушлаб олиш БОСИШНИ ўлдирмайди',
+    tekshir: () => {
+      /*
+       * ── Энг узоқ яшаган нуқсон ──
+       *
+       * `setPointerCapture` сичқонча босилиши билан
+       * чақириларди. Ушлаб олингач, браузер `click` ни ҳам
+       * ушлаб олган элементга юборади — яъни ҳудудга эмас,
+       * саҳна `div` ига. Ҳудуднинг `onClick` и ҳеч қачон
+       * ишламади: экранда ҳамма нарса жойида, фақат босилмайди.
+       *
+       * Ушлаб олиш энди `pointerdown` да эмас, одам
+       * ҲАҚИҚАТДА сургагач — чегарадан ортиқ силжигач —
+       * бошланади.
+       */
+      const pastda = KOMPONENT_KODI.slice(KOMPONENT_KODI.indexOf('const sudrashBoshi'));
+      const boshida = pastda.slice(0, pastda.indexOf('const sudrashDavomi'));
+      return (
+        !boshida.includes('setPointerCapture') &&
+        KOMPONENT_KODI.includes('SURISH_CHEGARASI') &&
+        KOMPONENT_KODI.includes('Math.hypot(dx, dy) < SURISH_CHEGARASI')
+      );
+    },
+  },
+  {
     nomi: 'Харитадан ва рўйхатдан босиш БИР ХИЛ карточкани очади',
     tekshir: () => {
       /* Иккови ҳам айнан битта ҳолатни ўзгартиради */
@@ -458,7 +489,7 @@ const SINOVLAR: Sinov[] = [
       const balandlik = Number(eng[1]);
       const oraliq = balandlik / Number(qatlam[1]);
       /* Қатламлар ораси уч бирликдан кенг бўлса — девор зинапоя бўлиб кўринади */
-      return balandlik <= 26 && oraliq <= 3.5;
+      return balandlik <= 14 && oraliq <= 3.5;
     },
   },
 
