@@ -34,6 +34,8 @@ import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { BolimlarPaneli } from '@/components/panel/bolimlar-paneli';
 import { bolimlarTahlili } from '@/lib/bolimlar-tahlili';
+import { HududXaritasi } from '@/components/xarita/hudud-xaritasi';
+import { xaritaMalumoti } from '@/lib/xarita/xarita-malumoti';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 
@@ -78,7 +80,7 @@ export default async function PanelSahifasi({
    * ҳақида савол чиқса, шу рўйхатдан танлаб алоҳида ҳисобот
    * олади.
    */
-  const [t, b, vHisob, vNavbat, mahallalar] = await Promise.all([
+  const [t, b, xarita, vHisob, vNavbat, mahallalar] = await Promise.all([
     tahlilOl(filtr.mahallaId, davr),
     /*
      * Хатлов бўлимлари бўйича жамланма.
@@ -89,6 +91,16 @@ export default async function PanelSahifasi({
      * кутиш вақти ошмайди.
      */
     bolimlarTahlili(filtr.mahallaId),
+
+    /*
+     * Харита — 70 МФЙ нинг ер юзидаги ўрни билан.
+     *
+     * Жадвалда МФЙ лар алифбо тартибида туради, ер юзида эса
+     * ёнма-ён. «Қайси ТОМОН орқада қолган» деган саволга фақат
+     * харита жавоб беради.
+     */
+    xaritaMalumoti(filtr.mahallaId),
+
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId, 10),
     filtr.mahallaId
@@ -308,6 +320,22 @@ export default async function PanelSahifasi({
         dinamika={t.dinamika}
         davr={davr}
         qamrovNomi="Хатирчи тумани"
+      />
+
+      {/*
+        ── ТУМАН ХАРИТАСИ ──
+
+        Диаграммалар «қанча» деган саволга жавоб беради, харита
+        эса «ҚАЕРДА» деганига. Иккови бир-бирини алмаштирмайди:
+        70 та сатрли жадвалдан «шимолий МФЙ лар орқада қолган»
+        деган хулоса ҳеч қачон чиқмайди, харитадан эса биринчи
+        қарашда чиқади.
+      */}
+      <HududXaritasi
+        qatorlar={xarita.qatorlar}
+        ulanmagan={xarita.ulanmagan}
+        qamrovNomi="Хатирчи тумани"
+        sarlavha="Туман харитаси — МФЙ кесимида"
       />
 
       <div className="grid gap-4 lg:grid-cols-2">

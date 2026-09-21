@@ -1,0 +1,380 @@
+/**
+ * ============================================================
+ *  ИНТЕРАКТИВ ХАРИТА — СИНОВ
+ *
+ *  Харитада иккита хавф бор ва иккиси ҳам ЖИМ келади.
+ *
+ *  1. УЛАНИШ. Харита геометрияси бошқа манбадан, база бошқа
+ *     манбадан келган. Ном бир ҳарфга фарқ қилса, ҳудуд
+ *     кулранг бўлиб қолади — «маълумот йўқ» дегандек. Аслида
+ *     маълумот бор, фақат топилмаган. Экранда хато кўринмайди.
+ *
+ *  2. МАҲАЛЛА ИЗОЛЯЦИЯСИ. Харита барча 69 та шаклни чизади.
+ *     Агар сўров бегона МФЙ рақамини қайтарса, маҳалла ходими
+ *     уни кўриб қолади — ва бу қоида биринчи кундан бери
+ *     амал қилади.
+ * ============================================================
+ */
+
+import { readFileSync } from 'node:fs';
+import {
+  CHEGARA,
+  HUDUDLAR,
+  VIEW_BOX,
+  xaritaKaliti,
+  xaritaniUla,
+} from '../src/lib/xarita/hududlar';
+import { OLCHOVLAR, daraja, olchovTop } from '../src/components/xarita/olchovlar';
+import type { XaritaQatori } from '../src/lib/xarita/xarita-malumoti';
+
+type Sinov = { nomi: string; tekshir: () => boolean };
+
+const MALUMOT = readFileSync('src/lib/xarita/xarita-malumoti.ts', 'utf8');
+const KOMPONENT = readFileSync('src/components/xarita/hudud-xaritasi.tsx', 'utf8');
+const USLUB = readFileSync('src/app/globals.css', 'utf8');
+const PANEL = readFileSync('src/app/(ilova)/panel/page.tsx', 'utf8');
+
+/**
+ * Изоҳларсиз код.
+ *
+ * «WebGL ишлатилмаган» деб ёзилган ИЗОҲНИ синов WebGL
+ * ишлатилган деб ўқиб, ўзининг қоидасини бузди. Изоҳ — ният,
+ * код — амал; текширув амални кўриши керак.
+ */
+function kodiOl(matn: string): string {
+  return matn
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+}
+
+const KOMPONENT_KODI = kodiOl(KOMPONENT);
+const BANDLIK = readFileSync('src/app/(ilova)/bandlik/page.tsx', 'utf8');
+const XATLOV = readFileSync('src/app/(ilova)/xatlov/page.tsx', 'utf8');
+
+/** Сохта қатор — ўлчов ҳисобини базасиз синаш учун */
+const qator = (o: Partial<XaritaQatori> = {}): XaritaQatori => ({
+  hududId: 'h',
+  mahallaId: 'm',
+  nomiKirill: 'Синов',
+  bazaXonadon: 100,
+  xatlovXonadon: 40,
+  qamrovFoizi: 40,
+  bazaIshsiz: 50,
+  aniqlangan: 20,
+  joylashtirilgan: 10,
+  natijaFoizi: 50,
+  ishsizQoldiq: 10,
+  bolalar17: 30,
+  chetElIshchi: 5,
+  ...o,
+});
+
+const SINOVLAR: Sinov[] = [
+  /* ══ ГЕОМЕТРИЯ ══ */
+  {
+    nomi: 'Геометрияда 69 та ҳудуд бор ва ҳар бирида контур ёзилган',
+    tekshir: () =>
+      HUDUDLAR.length === 69 &&
+      HUDUDLAR.every((h) => h.id.length > 0 && h.name.length > 0 && h.d.startsWith('M')),
+  },
+  {
+    nomi: 'Ҳудуд калитлари такрорланмайди',
+    tekshir: () => new Set(HUDUDLAR.map((h) => h.id)).size === HUDUDLAR.length,
+  },
+  {
+    nomi: '`viewBox` контурлардан ҳисобланган — атрофда бўш жой қолмайди',
+    tekshir: () => {
+      /*
+       * Манба файл 1676×800 га мосланган, аммо туман ўша
+       * тўртбурчакнинг ҳаммасини эгалламайди. Тўлиқ ўлчам
+       * ишлатилса, харита экраннинг ярмида кичкина бўлиб
+       * турарди.
+       */
+      const [x, y, e, b] = VIEW_BOX.split(' ').map(Number);
+      return e < 1676 && b <= 800 && e > 600 && b > 400 && x === CHEGARA.x && y === CHEGARA.y;
+    },
+  },
+
+  /* ══ БАЗАГА УЛАНИШ ══ */
+  {
+    nomi: 'Тире, бўшлиқ ва бош ҳарф улашга халақит бермайди',
+    tekshir: () => {
+      /*
+       * Ҳақиқий фарқлар: харитада «оқ-олтин», базада «Оқ Олтин».
+       * Бу учталик далада топилган, ўйлаб чиқарилган эмас.
+       */
+      const juftlar: [string, string][] = [
+        ['оқ-олтин', 'Оқ Олтин'],
+        ['полвон-ота', 'Полвонота'],
+        ['кориз-араб', 'Кориз Араб'],
+        ['мирзо-улуғбек', 'Мирзо Улуғбек'],
+        ['янги-қурилиш', 'Янги Қурилиш'],
+      ];
+      return juftlar.every(([a, b]) => xaritaKaliti(a) === xaritaKaliti(b));
+    },
+  },
+  {
+    nomi: 'Барча 69 та ҳудуд база номларига уланади',
+    tekshir: () => {
+      /* Ҳудуд номларининг ўзидан «база» ясаймиз — уланиш қоидасини синаш учун */
+      const sohta = HUDUDLAR.map((h, i) => ({
+        id: `m${i}`,
+        nomiKirill: h.id.replace(/-/g, ' ').toUpperCase(),
+      }));
+      const u = xaritaniUla(sohta);
+      if (u.bazadaYoq.length > 0) {
+        console.log(`     уланмади: ${u.bazadaYoq.map((h) => h.name).join(', ')}`);
+      }
+      return u.hududdanMahallaga.size === HUDUDLAR.length && u.bazadaYoq.length === 0;
+    },
+  },
+  {
+    nomi: 'Уланмаган МФЙ яширилмайди — иккала томон ҳам қайтади',
+    tekshir: () => {
+      const u = xaritaniUla([{ id: 'm1', nomiKirill: 'Бахшижар' }, { id: 'm2', nomiKirill: 'Йўқ жой' }]);
+      return u.xaritadaYoq.length === 1 && u.bazadaYoq.length === 68;
+    },
+  },
+  {
+    nomi: 'Тахминий (ўхшаш) улаш йўқ — фақат аниқ мослик',
+    tekshir: () => {
+      /*
+       * «Бахшижор» — «Бахшижар» га бир ҳарф фарқ. Уни уласак,
+       * ҳоким бошқа МФЙ нинг рақамини кўрарди.
+       */
+      const u = xaritaniUla([{ id: 'm1', nomiKirill: 'Бахшижор' }]);
+      return u.hududdanMahallaga.size === 0;
+    },
+  },
+
+  /* ══ МАҲАЛЛА ИЗОЛЯЦИЯСИ ══ */
+  {
+    nomi: 'Бир МФЙ кесимида бошқа МФЙ қатори УМУМАН қайтмайди',
+    tekshir: () => MALUMOT.includes('if (mahallaId && m.id !== mahallaId) continue;'),
+  },
+  {
+    nomi: 'Маҳалла ходимига харита ўз МФЙ си билан чегараланиб берилади',
+    tekshir: () =>
+      XATLOV.includes('xaritaMalumoti(filtr.mahallaId)') &&
+      XATLOV.includes('yolqinMahallaId={filtr.mahallaId}') &&
+      !XATLOV.includes('xaritaMalumoti()'),
+  },
+
+  /* ══ ЭСКИ КОМПЬЮТЕРЛАР ══ */
+  {
+    nomi: 'WebGL, canvas ва ташқи 3D кутубхона ишлатилмаган',
+    tekshir: () => {
+      /*
+       * Ҳокимлик ва 70 маҳалла идорасидаги машиналар ҳар хил.
+       * WebGL уларнинг бир қисмида умуман очилмайди — ва буни
+       * синовда эмас, фақат ишлатувчи кўради.
+       */
+      const taqiq = ['three', 'webgl', 'WebGL', 'getContext', '<canvas', 'deck.gl', 'mapbox'];
+      const topilgan = taqiq.filter((t) => KOMPONENT_KODI.includes(t));
+      if (topilgan.length) console.log(`     топилди: ${topilgan.join(', ')}`);
+      return topilgan.length === 0;
+    },
+  },
+  {
+    nomi: '«2D» тугмаси бор ва танлов эсда қолади',
+    tekshir: () =>
+      KOMPONENT.includes('uchniAlmashtir') && KOMPONENT.includes('localStorage.setItem(SOZLAMA'),
+  },
+  {
+    nomi: 'Машина кўтармаса ўзи текис режимга ўтади ва БУНИ АЙТАДИ',
+    tekshir: () =>
+      KOMPONENT.includes('setOzgaOtdi(true)') &&
+      KOMPONENT.includes('ozgaOtdi &&') &&
+      /ortacha > \d+/.test(KOMPONENT),
+  },
+  {
+    nomi: 'Фойдаланувчи ўзи танлаган бўлса, ўлчов аралашмайди',
+    tekshir: () => KOMPONENT.includes('tanlovQildi.current'),
+  },
+  {
+    nomi: 'Ҳаракат камайтирилган режимда тебраниш тўхтайди',
+    tekshir: () =>
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.xarita-tebranish \{[\s\S]*?animation: none/.test(
+        USLUB
+      ),
+  },
+  {
+    nomi: 'Контур геометрияси `<defs>` да бир марта сақланади',
+    tekshir: () => {
+      /*
+       * Ҳар ҳудуд беш қатламда чизилади. Контур такрорланса,
+       * саҳифа беш баробар оғирлашарди — эски машинада бу
+       * сезилади.
+       */
+      return KOMPONENT.includes('<defs>') && KOMPONENT.includes('href={`#hd-');
+    },
+  },
+
+  /* ══ БОСИШ ЎҒИРЛАНМАСИН ══ */
+  {
+    nomi: 'Хаританинг бўш бурчаги тугмаларни тўсмайди',
+    tekshir: () => {
+      /*
+       * Манфий чет туфайли хаританинг тўртбурчак қутиси ўлчов
+       * тугмалари устига чиқади. Тугма кўринади, аммо
+       * босилмайди — буни синов топди, одам эмас.
+       */
+      return (
+        /\.xarita-tebranish,\s*\.xarita-tekislik,\s*\.xarita-svg \{\s*pointer-events: none;/.test(
+          USLUB
+        ) && /\.hudud \{\s*pointer-events: auto;/.test(USLUB)
+      );
+    },
+  },
+  {
+    nomi: 'Фокус ҳалқаси ўчирилган, аммо фокус кўринади',
+    tekshir: () =>
+      USLUB.includes('.hudud:focus {\n  outline: none;\n}') &&
+      USLUB.includes('.hudud:focus-visible'),
+  },
+
+  /* ══ РАНГ ВА МАЪНО ══ */
+  {
+    nomi: 'Ранг НИСБИЙ — мутлақ фоиздан эмас',
+    tekshir: () => {
+      /*
+       * Хатловнинг биринчи ойларида барча МФЙ да қамров
+       * 0,3-0,6 фоиз бўлади. Мутлақ шкалада бутун харита бир
+       * хил рангга айланиб, ҳеч нима демай қоларди.
+       */
+      return (
+        KOMPONENT_KODI.includes('qadamXaritasi.get(') &&
+        KOMPONENT_KODI.includes('const chegara = [0.2, 0.4, 0.6, 0.8]') &&
+        /* Эски мутлақ формула қайтиб келмасин */
+        !KOMPONENT_KODI.includes('Math.ceil(d * 5)')
+      );
+    },
+  },
+  {
+    nomi: 'Тенг қийматлар бир рангга тушади',
+    tekshir: () => KOMPONENT.includes('if (eng === kam)'),
+  },
+  {
+    nomi: 'Ранг қатори БИТТА тусда — қизил-яшил жуфти ишлатилмаган',
+    tekshir: () => {
+      /*
+       * Светофорда қизил билан тўқ сариқ ΔE 8,7 чиқди (чегара
+       * 15), қизил-яшил жуфти эса ҳар ўн иккинчи эркак учун
+       * бир хил. Шунинг учун ранг — `--step-1..5` кетма-кетлиги.
+       */
+      return (
+        KOMPONENT.includes('var(--step-${qadam})') &&
+        !KOMPONENT.includes('var(--ok)') &&
+        !/fill=.*var\(--warn\)/.test(KOMPONENT)
+      );
+    },
+  },
+  {
+    nomi: 'Муаммо рангда эмас, АЛОҲИДА белгида — қизил контур',
+    tekshir: () => KOMPONENT.includes("'var(--danger)'") && KOMPONENT.includes('ogohRoyxati'),
+  },
+  {
+    nomi: 'Огоҳлантириш нисбий: энг орқадаги ўнта, мутлақ чегара эмас',
+    tekshir: () => KOMPONENT.includes('OGOH_SONI') && !/f !== null && f < 40/.test(KOMPONENT),
+  },
+  {
+    nomi: 'Ҳажм ўлчовида огоҳлантириш умуман йўқ',
+    tekshir: () => {
+      /*
+       * «17 ёшгача болалар» харитасида боласи энг кам ўнта МФЙ
+       * қизил контур олганди — гўё улар орқада қолгандек.
+       */
+      const hajmli = OLCHOVLAR.filter((o) => !o.baholanadi).map((o) => o.kalit);
+      return (
+        hajmli.includes('bolalar') &&
+        hajmli.includes('chetEl') &&
+        KOMPONENT.includes('if (!olchov.baholanadi) return new Set<string>();')
+      );
+    },
+  },
+
+  /* ══ ЎЛЧОВ ҲИСОБИ ══ */
+  {
+    nomi: 'Ҳар бир ўлчовда ном, изоҳ ва матн бор',
+    tekshir: () =>
+      OLCHOVLAR.length === 5 &&
+      OLCHOVLAR.every((o) => o.nomi.length > 0 && o.izoh.length > 0 && o.matn(qator()).length > 0),
+  },
+  {
+    nomi: 'Маҳражи нол бўлса фоиз ҳисобланмайди (нолга бўлиш йўқ)',
+    tekshir: () => {
+      const bosh = qator({ bazaXonadon: 0, aniqlangan: 0, bazaIshsiz: 0 });
+      return OLCHOVLAR.every((o) => {
+        const f = o.foiz(bosh);
+        return f === null || Number.isFinite(f);
+      });
+    },
+  },
+  {
+    nomi: '«Рўйхатда турганлар» ўлчовида кўп бўлгани ЁМОН',
+    tekshir: () => olchovTop('ishsiz').kopYaxshi === false,
+  },
+  {
+    nomi: 'Даража 0 ва 1 оралиғидан чиқмайди',
+    tekshir: () => {
+      const sinovlar = [
+        qator({ qamrovFoizi: 0 }),
+        qator({ qamrovFoizi: 100 }),
+        qator({ qamrovFoizi: 250 }),
+      ];
+      return sinovlar.every((q) => {
+        const d = daraja(q, olchovTop('qamrov'), 100);
+        return d === null || (d >= 0 && d <= 1);
+      });
+    },
+  },
+
+  /* ══ УЧТА ПАНЕЛДА ══ */
+  {
+    nomi: 'Харита учала асосий панелда бор',
+    tekshir: () =>
+      PANEL.includes('<HududXaritasi') &&
+      BANDLIK.includes('<HududXaritasi') &&
+      XATLOV.includes('<HududXaritasi'),
+  },
+  {
+    nomi: 'Сўровлар ёнма-ён кетади — панел секинлашмайди',
+    tekshir: () =>
+      /Promise\.all\(\[[\s\S]*xaritaMalumoti\(/.test(PANEL) &&
+      /Promise\.all\(\[[\s\S]*xaritaMalumoti\(/.test(BANDLIK),
+  },
+  {
+    nomi: 'Натижа қисқа муддатга кешланади',
+    tekshir: () => MALUMOT.includes('KESH_MUDDATI_MS') && MALUMOT.includes('kesh.set(kalit'),
+  },
+  {
+    nomi: 'Ҳудуд рўйхати — хаританинг жадвал кўриниши',
+    tekshir: () => {
+      /*
+       * Рангни ажратолмайдиган одам ва экран ўқигич учун
+       * харитадаги бутун маълумот матн билан такрорланади.
+       */
+      return KOMPONENT.includes('aria-label={`${q?.nomiKirill') && KOMPONENT.includes('royxat.slice');
+    },
+  },
+  {
+    nomi: 'Чизиш тартиби орқадан олдинга — ҳажм бузилмайди',
+    tekshir: () => KOMPONENT.includes('chizishTartibi') && KOMPONENT.includes('markaz(a.d)[1] - markaz(b.d)[1]'),
+  },
+];
+
+let xato = 0;
+for (const s of SINOVLAR) {
+  let ok = false;
+  try {
+    ok = s.tekshir();
+  } catch (e) {
+    ok = false;
+    console.log(`     xatolik: ${(e as Error).message}`);
+  }
+  if (!ok) xato++;
+  console.log(`${ok ? 'OK  ' : 'XATO'} ${s.nomi}`);
+}
+console.log(`\n${SINOVLAR.length - xato}/${SINOVLAR.length} o'tdi`);
+process.exit(xato ? 1 : 0);

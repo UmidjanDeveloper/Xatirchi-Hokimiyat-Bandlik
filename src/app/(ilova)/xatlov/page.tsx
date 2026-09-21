@@ -15,6 +15,8 @@ import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { BolimlarPaneli } from '@/components/panel/bolimlar-paneli';
 import { bolimlarTahlili } from '@/lib/bolimlar-tahlili';
+import { HududXaritasi } from '@/components/xarita/hudud-xaritasi';
+import { xaritaMalumoti } from '@/lib/xarita/xarita-malumoti';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { UlanishBlogi } from '@/components/telegram/ulanish-blogi';
@@ -50,7 +52,7 @@ export default async function XatlovlarSahifasi({
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [xatlovlar, mahalla, tahlil, bolimlar, vHisob, vNavbat, men] = await Promise.all([
+  const [xatlovlar, mahalla, tahlil, bolimlar, xarita, vHisob, vNavbat, men] = await Promise.all([
     prisma.household.findMany({
       where: {
         ...filtr,
@@ -112,6 +114,22 @@ export default async function XatlovlarSahifasi({
      * матн бу ерга чиқмайди — фақат «нечта хонадон» саналади.
      */
     filtr.mahallaId ? bolimlarTahlili(filtr.mahallaId) : null,
+
+    /*
+     * ── ХАРИТА: ФАҚАТ ЎЗ МАҲАЛЛАСИ ──
+     *
+     * Ходим туманнинг бошқа МФЙ лари рақамини КЎРМАСЛИГИ
+     * керак — бу қоида биринчи кундан бери амал қилади.
+     * Шунинг учун `xaritaMalumoti` унинг маҳалласи билан
+     * чегараланиб чақирилади: қолган 68 та ҳудуд харитада
+     * шакл сифатида туради, аммо уларда рақам ҲАМ ЙЎҚ,
+     * чунки сўров уларни умуман олмайди.
+     *
+     * Ўз МФЙ сининг туман ичидаги ўрнини кўргани эса
+     * фойдали: қўшни маҳаллалар, йўл, чегара — далада
+     * ишлайдиган одам учун булар аниқ маъно.
+     */
+    filtr.mahallaId ? xaritaMalumoti(filtr.mahallaId) : null,
 
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId, 20),
@@ -254,6 +272,23 @@ export default async function XatlovlarSahifasi({
       */}
       {mahalla && bolimlar && yuborilgan.length > 0 && (
         <BolimlarPaneli b={bolimlar} qamrovNomi={`${mahalla.nomiKirill} МФЙ`} />
+      )}
+
+      {/*
+        ── МАҲАЛЛАМ ХАРИТАДА ──
+
+        Ходим ўз МФЙ си туманнинг қаерида турганини кўради.
+        Қолган ҳудудлар нейтрал: уларнинг рақами серверга ҳам
+        сўралмайди.
+      */}
+      {mahalla && xarita && filtr.mahallaId && (
+        <HududXaritasi
+          qatorlar={xarita.qatorlar}
+          ulanmagan={{ xaritada: [], bazada: [] }}
+          qamrovNomi={`${mahalla.nomiKirill} МФЙ`}
+          sarlavha="Маҳаллам туман харитасида"
+          yolqinMahallaId={filtr.mahallaId}
+        />
       )}
 
       {/*

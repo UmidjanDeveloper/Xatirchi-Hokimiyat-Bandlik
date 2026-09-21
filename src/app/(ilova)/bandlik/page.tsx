@@ -20,6 +20,8 @@ import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
+import { HududXaritasi } from '@/components/xarita/hudud-xaritasi';
+import { xaritaMalumoti } from '@/lib/xarita/xarita-malumoti';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { formatPhone } from '@/lib/utils';
@@ -66,8 +68,18 @@ export default async function BandlikSahifasi({
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [suhbatsiz, taklifsiz, ishOrinlari, istaklar, migratsiya, t, vHisob, vNavbat, mahallalar] =
-    await Promise.all([
+  const [
+    suhbatsiz,
+    taklifsiz,
+    ishOrinlari,
+    istaklar,
+    migratsiya,
+    t,
+    xarita,
+    vHisob,
+    vNavbat,
+    mahallalar,
+  ] = await Promise.all([
     // 1. Suhbat kutayotganlar - eng birinchi navbat
     prisma.unemployedPerson.findMany({
       where: { ...filtr, holati: 'ANIQLANDI' },
@@ -158,6 +170,10 @@ export default async function BandlikSahifasi({
     }),
 
     tahlilOl(filtr.mahallaId, davr),
+
+    /* Харита маълумоти — МФЙ кесимида беш ўлчов */
+    xaritaMalumoti(filtr.mahallaId),
+
     vaucherHisobi(filtr.mahallaId),
     vaucherNavbati(filtr.mahallaId),
 
@@ -371,6 +387,22 @@ export default async function BandlikSahifasi({
         диаграммасидан ўша ернинг ўзида топади.
       */}
       <DinamikaBloglari dinamika={t.dinamika} davr={davr} qamrovNomi="Хатирчи тумани" />
+
+      {/*
+        ── ХАРИТА ──
+
+        Раҳбарга ҳокимникидан кўра КЎПРОҚ керак: у қайси МФЙ га
+        мутахассис юборишни ҳал қилади. Ҳудудга босилса, ўша
+        МФЙ нинг хонадонлари ва ишсизлари рўйхати очилади —
+        харитадан тўғридан-тўғри ишга ўтади.
+      */}
+      <HududXaritasi
+        qatorlar={xarita.qatorlar}
+        ulanmagan={xarita.ulanmagan}
+        qamrovNomi="Хатирчи тумани"
+        sarlavha="Туман харитаси — қайси МФЙ га бориш керак"
+        havolalar
+      />
 
       {/*
         ── IT-ШАҲАРЧА ВАУЧЕРИ ──
