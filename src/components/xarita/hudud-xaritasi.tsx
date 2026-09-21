@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Box, Maximize2, RotateCcw, Square } from 'lucide-react';
+import { Box, Maximize2, RotateCcw, Search, Square } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+import { lotinga } from '@/lib/alifbo';
 import { HUDUDLAR, VIEW_BOX, CHEGARA } from '@/lib/xarita/hududlar';
 import type { XaritaQatori } from '@/lib/xarita/xarita-malumoti';
-import { OLCHOVLAR, daraja, olchovTop, type OlchovKaliti } from './olchovlar';
+import { OLCHOVLAR, daraja, olchovTop, type Olchov, type OlchovKaliti } from './olchovlar';
 
 /**
  * ============================================================
@@ -51,10 +52,59 @@ const ENG_BALAND = 44;
 /* Қизил контур билан белгиланадиган энг орқадаги ҳудудлар сони */
 const OGOH_SONI = 10;
 
+/**
+ * «Орқада қолган» дейиш учун камида нечта МФЙ да иш бошланган
+ * бўлиши керак.
+ *
+ * ── Нега керак бўлди ──
+ *
+ * Хатлов ҳозир ФАҚАТ Уйшунда кетмоқда. Аввалги қоида «иш
+ * бошланганлар орасидан энг орқадаги ўнтаси» эди — ва иш
+ * бошланган ягона МФЙ ўша ўнталикка тушиб, қизил контур олди.
+ * Яъни бутун туманда ягона ишлаётган маҳалла «орқада қолган»
+ * деб белгиланди.
+ *
+ * «Орқада қолган» — ТАҚҚОСЛАШ. Таққослайдиган нарса бўлмаса,
+ * у ҳукм эмас, туҳмат. Саккизта МФЙ да иш бошлангунча ҳеч ким
+ * белгиланмайди.
+ */
+const KAMIDA_TAQQOS = 8;
+
+/**
+ * Нечта МФЙ гача «иш кетмоқда» маёғи ёнади.
+ *
+ * Бошланғич даврда энг керакли маълумот — иш ҚАЕРДА бошланган.
+ * Ҳамма жойда бошлангач, бу маёқ фарқ кўрсатмай қўяди ва
+ * ўрнини ранг эгаллайди.
+ */
+const MAYOQ_CHEGARASI = 20;
+
 /* Бошланғич камера бурчаклари */
 const BOSHLANGICH = { qiya: 46, burilish: -7, masshtab: 1.06 };
 
 const raqam = (n: number) => n.toLocaleString('ru-RU');
+
+/**
+ * Қидирув учун соддалаштирилган ном.
+ *
+ * Апостроф олиб ташланади: «Боғчакалон» ни лотинда ёзган одам
+ * «Bog'chakalon» эмас, «bogchakalon» деб теради — ва тўғри
+ * қилади, чунки апострофни клавиатурадан излаб ўтиришнинг
+ * ҳожати йўқ.
+ */
+const qidiruvKaliti = (nom: string): string =>
+  nom.toLowerCase().replace(/[''ʻʼ`´]/g, '');
+
+/**
+ * МФЙ да хатлов бошланганми.
+ *
+ * Бу — танланган ўлчовга БОҒЛИҚ ЭМАС. «Чет элдагилар» кесимида
+ * чет элда биронта одами йўқ маҳалла ҳам хатловдан ўтган
+ * бўлиши мумкин: унинг қирқта хонадони тўлдирилган, шунчаки
+ * ҳеч ким чет элда эмас. «Маълумот йўқ» билан «маълумот бор,
+ * қиймати нол» — икки бошқа нарса.
+ */
+const boshlanganmi = (q: XaritaQatori): boolean => q.xatlovXonadon > 0;
 
 /** Сақланган созлама калити */
 const SOZLAMA = 'xarita-uch-olchov';
@@ -88,6 +138,7 @@ export function HududXaritasi({
 
   const [olchovKaliti, setOlchov] = useState<OlchovKaliti>('qamrov');
   const [tanlangan, setTanlangan] = useState<string | null>(null);
+  const [qidiruv, setQidiruv] = useState('');
   const [faol, setFaol] = useState<string | null>(null);
   const [uch, setUch] = useState(true);
   const [kamera, setKamera] = useState(BOSHLANGICH);
@@ -353,6 +404,16 @@ export function HududXaritasi({
 
     const qiymatlar: { id: string; d: number }[] = [];
     for (const q of qatorlar) {
+      /*
+       * Хатлов бошланмаган МФЙ рангли қаторга КИРМАЙДИ.
+       *
+       * Илгари у энг ёруғ кўк бўларди — «кам, аммо бор» деган
+       * маънода. Аслида у «ҳали ҳеч нима йўқ»: ноль фоиз
+       * қамров билан 3 фоиз қамровни бир қаторга қўйиш
+       * иккисини ҳам бузади. Энди у нейтрал кулранг ва
+       * легендада «хатлов бошланмаган» деб турибди.
+       */
+      if (!boshlanganmi(q)) continue;
       const d = daraja(q, olchov, engKattaHajm);
       if (d !== null) qiymatlar.push({ id: q.hududId, d });
     }
@@ -409,21 +470,80 @@ export function HududXaritasi({
    * бутун маълумот шу рўйхатда матн билан такрорланади.
    */
   const royxat = useMemo(() => {
-    const bor = qatorlar.filter((q) => olchov.foiz(q) !== null || olchov.hajm(q) > 0);
-    return [...bor].sort((a, b) => {
+    const solishtir = (a: XaritaQatori, b: XaritaQatori) => {
       const fa = olchov.foiz(a);
       const fb = olchov.foiz(b);
-      if (fa !== null && fb !== null) return olchov.kopYaxshi ? fa - fb : fb - fa;
-      return olchov.hajm(b) - olchov.hajm(a);
-    });
+      if (fa !== null && fb !== null) {
+        if (fa !== fb) return olchov.kopYaxshi ? fa - fb : fb - fa;
+      }
+      const ha = olchov.hajm(a);
+      const hb = olchov.hajm(b);
+      if (ha !== hb) return hb - ha;
+      /* Тенг бўлса — алифбо, рўйхат ҳар сафар бир хил турсин */
+      return a.nomiKirill.localeCompare(b.nomiKirill, 'ru');
+    };
+
+    const ishlagan = qatorlar.filter(boshlanganmi).sort(solishtir);
+    const boshlanmagan = qatorlar
+      .filter((q) => !boshlanganmi(q))
+      .sort((a, b) => a.nomiKirill.localeCompare(b.nomiKirill, 'ru'));
+
+    return { ishlagan, boshlanmagan };
   }, [qatorlar, olchov]);
 
-  /* Қизил контур оладиганлар — рўйхатнинг боши */
+  /*
+   * ── ҚИЗИЛ КОНТУР ОЛАДИГАНЛАР ──
+   *
+   * Иш бошланган МФЙ лар саккизтага етмагунча — ҳеч ким.
+   * Битта маҳаллани ўзи билан таққослаб бўлмайди.
+   */
   const ogohRoyxati = useMemo(() => {
     if (!olchov.baholanadi) return new Set<string>();
-    const ishlagan = royxat.filter((q) => olchov.hajm(q) > 0);
-    return new Set(ishlagan.slice(0, OGOH_SONI).map((q) => q.hududId));
+    if (royxat.ishlagan.length < KAMIDA_TAQQOS) return new Set<string>();
+    return new Set(royxat.ishlagan.slice(0, OGOH_SONI).map((q) => q.hududId));
   }, [royxat, olchov]);
+
+  /*
+   * ── «ИШ КЕТМОҚДА» МАЁҒИ ──
+   *
+   * Хатлов бошланган, аммо тугамаган МФЙ устида пульс уради.
+   * Ҳозирги вазиятда бу энг керакли маълумот: туманда иш
+   * ФАҚАТ бир жойда кетмоқда ва ҳоким буни бир қарашда
+   * кўриши керак.
+   */
+  /*
+   * ── ҚИДИРУВ ──
+   *
+   * Ном ИККАЛА алифбода ҳам қидирилади — экранда ҳозир
+   * қайсиси турганидан қатъи назар.
+   *
+   * Биринчи вариантда жорий алифбо бўйича қидирилди ва
+   * кириллда очиб турган одам «uysh» деб ёзганда ҳеч нима
+   * топилмади. Ходим клавиатурасини алмаштириб ўтирмайди:
+   * қайси алифбода қулай бўлса, шунда ёзади.
+   */
+  const topilgan = useMemo(() => {
+    const s = qidiruvKaliti(qidiruv.trim());
+    if (!s) {
+      return {
+        ishlagan: royxat.ishlagan,
+        boshlanmagan: royxat.boshlanmagan,
+        jami: royxat.ishlagan.length + royxat.boshlanmagan.length,
+      };
+    }
+    const mos = (q: XaritaQatori) =>
+      qidiruvKaliti(q.nomiKirill).includes(s) || qidiruvKaliti(lotinga(q.nomiKirill)).includes(s);
+
+    const ishlagan = royxat.ishlagan.filter(mos);
+    const boshlanmagan = royxat.boshlanmagan.filter(mos);
+    return { ishlagan, boshlanmagan, jami: ishlagan.length + boshlanmagan.length };
+  }, [royxat, qidiruv]);
+
+  const mayoqlar = useMemo(() => {
+    const faollar = qatorlar.filter(boshlanganmi);
+    if (faollar.length === 0 || faollar.length > MAYOQ_CHEGARASI) return new Set<string>();
+    return new Set(faollar.map((q) => q.hududId));
+  }, [qatorlar]);
 
   /**
    * Ҳудуд қизил контур билан белгиланадими.
@@ -564,7 +684,41 @@ export function HududXaritasi({
                   {HUDUDLAR.map((h) => (
                     <path key={h.id} id={`hd-${h.id}`} d={h.d} />
                   ))}
+
+                  {/*
+                    ── ПАНЖАРА ──
+
+                    Ағдарилган текисликнинг остидаги тўр. У
+                    маълумот эмас, аммо иши бор: перспектива
+                    ЧУҚУРЛИГИНИ кўрсатади. Тўрсиз харита осмонда
+                    осилиб тургандек, тўр билан — стол устида
+                    ётгандек кўринади. Кўз масофани шундай
+                    ўлчайди.
+                  */}
+                  <pattern
+                    id="xarita-panjara"
+                    width="42"
+                    height="42"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <path
+                      d="M42 0H0V42"
+                      fill="none"
+                      stroke="var(--accent)"
+                      strokeWidth="0.7"
+                      opacity="0.16"
+                    />
+                  </pattern>
                 </defs>
+
+                <rect
+                  className="xarita-panjara"
+                  x={CHEGARA.x}
+                  y={CHEGARA.y}
+                  width={CHEGARA.eni}
+                  height={CHEGARA.boyi}
+                  fill="url(#xarita-panjara)"
+                />
 
                 {chizishTartibi.map((h) => {
                   const q = xarita.get(h.id);
@@ -637,21 +791,63 @@ export function HududXaritasi({
                   );
                 })}
 
-                {/* Танланган ҳудуд номи — харита устида */}
+                {/*
+                  ── «ИШ КЕТМОҚДА» МАЁҚЛАРИ ──
+
+                  Хатлов бошланган МФЙ устида пульс уради.
+                  Ҳозирги вазиятда бу харитадаги ЭНГ муҳим
+                  маълумот: ҳоким туманда иш қаерда кетаётганини
+                  бир қарашда кўради.
+                */}
+                {chizishTartibi.map((h) => {
+                  if (!mayoqlar.has(h.id)) return null;
+                  const q = xarita.get(h.id);
+                  if (!q) return null;
+                  const c = markaz(h.d);
+                  const y = c[1] - balandlik(q) - 6;
+                  return (
+                    <g key={`m-${h.id}`} className="xarita-mayoq" transform={`translate(${c[0]} ${y})`}>
+                      <circle className="xarita-mayoq-halqa" r="7" />
+                      <circle
+                        className="xarita-mayoq-halqa"
+                        r="7"
+                        style={{ animationDelay: '1.15s' }}
+                      />
+                      <circle className="xarita-mayoq-yadro" r="3.4" />
+                    </g>
+                  );
+                })}
+
+                {/*
+                  ── ТАНЛАНГАН МФЙ: НИНА ──
+
+                  Рўйхатдан ном босилганда ҳудудни 69 таси
+                  орасидан топиш керак бўларди. Нина уни ўзи
+                  кўрсатади: ердан чиқиб, номини кўтариб
+                  туради.
+                */}
                 {tanlanganQator &&
                   (() => {
                     const h = HUDUDLAR.find((x) => x.id === tanlangan);
                     if (!h) return null;
                     const c = markaz(h.d);
+                    const tepa = c[1] - balandlik(tanlanganQator);
+                    const uch = tepa - 46;
                     return (
-                      <text
-                        className="xarita-nom"
-                        x={c[0]}
-                        y={c[1] - balandlik(tanlanganQator) - 8}
-                        textAnchor="middle"
-                      >
-                        {tr(tanlanganQator.nomiKirill)}
-                      </text>
+                      <g className="xarita-nina">
+                        <line
+                          className="xarita-nina-chiziq"
+                          x1={c[0]}
+                          y1={tepa}
+                          x2={c[0]}
+                          y2={uch}
+                        />
+                        <circle className="xarita-nina-halqa" cx={c[0]} cy={uch} r="9" />
+                        <circle className="xarita-nina-nuqta" cx={c[0]} cy={uch} r="4" />
+                        <text className="xarita-nom" x={c[0]} y={uch - 15} textAnchor="middle">
+                          {tr(tanlanganQator.nomiKirill)}
+                        </text>
+                      </g>
                     );
                   })()}
               </svg>
@@ -664,11 +860,29 @@ export function HududXaritasi({
               <>
                 <b>{tr(faolQator.nomiKirill)}</b>
                 <br />
-                {tr(olchov.matn(faolQator))}
-                {olchov.foiz(faolQator) !== null && (
+                {/*
+                  Хатлов бошланмаган МФЙ да «0 / 770 хонадон ·
+                  0%» ёзилиб турарди. Рақам тўғри, аммо ўлчов
+                  натижасидек ўқилади — ҳолбуки ўлчов ҳали
+                  қилинмаган.
+                */}
+                {boshlanganmi(faolQator) ? (
                   <>
-                    {' · '}
-                    <b>{olchov.foiz(faolQator)}%</b>
+                    {tr(olchov.matn(faolQator))}
+                    {olchov.foiz(faolQator) !== null && (
+                      <>
+                        {' · '}
+                        <b>{olchov.foiz(faolQator)}%</b>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {tr('Хатлов ҳали бошланмаган')}
+                    <br />
+                    <span style={{ opacity: 0.75 }}>
+                      {tr('Базада')} {raqam(faolQator.bazaXonadon)} {tr('хонадон')}
+                    </span>
                   </>
                 )}
               </>
@@ -692,7 +906,7 @@ export function HududXaritasi({
               {tr('Кўп')}
               <span className="text-ink-faint">{tr('— бугунги тақсимотга нисбатан')}</span>
             </span>
-            {olchov.baholanadi && !yakkaRejim && (
+            {ogohRoyxati.size > 0 && !yakkaRejim && (
               <span className="flex items-center gap-1.5">
                 <span
                   className="h-3 w-5 rounded-sm border-2"
@@ -702,68 +916,137 @@ export function HududXaritasi({
                 {tr('энг орқада қолган 10 та')}
               </span>
             )}
+            {mayoqlar.size > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="relative flex h-3 w-3 items-center justify-center">
+                  <span className="xarita-mayoq-nuqta" style={{ right: 'auto', top: 'auto' }} />
+                </span>
+                {tr('хатлов кетмоқда')}
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <span
                 className="h-3 w-5 rounded-sm border"
                 style={{ background: 'var(--surface-muted)', borderColor: 'var(--border)' }}
                 aria-hidden="true"
               />
-              {tr('маълумот йўқ')}
+              {tr('хатлов бошланмаган')}
             </span>
           </div>
         </div>
 
-        {/* ── ЁН РЎЙХАТ — хаританинг жадвал кўриниши ── */}
-        <div className="min-w-0">
-          {tanlanganQator ? (
+        {/* ── ЁН РЎЙХАТ — 69 та МФЙ, қидирув билан ── */}
+        <div className="min-w-0 space-y-2">
+          {tanlanganQator && (
             <TanlanganKarta
               q={tanlanganQator}
               havolalar={havolalar}
+              boshlangan={boshlanganmi(tanlanganQator)}
               yop={() => setTanlangan(null)}
             />
-          ) : (
-            <div className="rounded-md border border-line p-3">
-              <p className="text-xs font-semibold text-ink">
-                {!olchov.baholanadi
-                  ? tr('Энг кўп')
-                  : olchov.kopYaxshi
-                    ? tr('Энг орқада қолганлар')
-                    : tr('Энг кўп юк тушган МФЙ')}
-              </p>
-              <p className="mt-0.5 text-[11px] text-ink-faint">
-                {tr('Харитадаги ҳудудга ёки шу сатрга босинг')}
-              </p>
-              <div className="mt-2 max-h-[320px] space-y-0.5 overflow-auto pr-1">
-                {royxat.slice(0, 14).map((q) => {
-                  const f = olchov.foiz(q);
-                  return (
-                    <button
-                      key={q.mahallaId}
-                      type="button"
-                      onClick={() => setTanlangan(q.hududId)}
-                      onMouseEnter={() => setFaol(q.hududId)}
-                      onMouseLeave={() => setFaol(null)}
-                      className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-[11px] transition-colors hover:bg-surface-muted"
-                    >
-                      <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-sm"
-                        style={{
-                          background:
-                            rangQadami(q) === 0
-                              ? 'var(--surface-muted)'
-                              : `var(--step-${rangQadami(q)})`,
-                        }}
-                        aria-hidden="true"
+          )}
+
+          {!yakkaRejim && (
+            <div className="rounded-md border border-line">
+              {/*
+                ── ҚИДИРУВ ──
+
+                Олтмиш тўққизта МФЙ ни айлантириб чиқиш — беш
+                секунд. Ёзиб топиш — бир. Йиғилишда ўша тўрт
+                секунд ҳоким саволига жавоб беришни кутиб
+                турган одам вақти.
+              */}
+              <div className="border-b border-line p-2">
+                <div className="relative">
+                  <Search
+                    className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-faint"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="search"
+                    value={qidiruv}
+                    onChange={(e) => setQidiruv(e.target.value)}
+                    placeholder={tr('МФЙ номини ёзинг')}
+                    aria-label={tr('МФЙ қидириш')}
+                    className="w-full rounded border border-line bg-surface py-1.5 pl-7 pr-2 text-[11px] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent"
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-ink-faint">
+                  {qidiruv.trim()
+                    ? `${raqam(topilgan.jami)} ${tr('та топилди')}`
+                    : `${raqam(qatorlar.length)} ${tr('та МФЙ')} ${tr('·')} ${
+                        olchov.baholanadi
+                          ? olchov.kopYaxshi
+                            ? tr('орқадагиси биринчи')
+                            : tr('юки оғири биринчи')
+                          : tr('кўпи биринчи')
+                      }`}
+                  <br />
+                  {tr('Сатрга босинг — харитада кўрсатилади')}
+                </p>
+              </div>
+
+              <div className="max-h-[360px] overflow-auto p-1.5">
+                {topilgan.jami === 0 && (
+                  <p className="px-1.5 py-3 text-center text-[11px] text-ink-faint">
+                    {tr('Бундай номли МФЙ топилмади')}
+                  </p>
+                )}
+
+                {topilgan.ishlagan.length > 0 && (
+                  <>
+                    <RoyxatSarlavhasi matn="Хатлов кетмоқда" soni={topilgan.ishlagan.length} />
+                    {topilgan.ishlagan.map((q, i) => (
+                      <RoyxatQatori
+                        key={q.mahallaId}
+                        q={q}
+                        olchov={olchov}
+                        qadam={rangQadami(q)}
+                        tanlandi={tanlangan === q.hududId}
+                        ogoh={ogohRoyxati.has(q.hududId)}
+                        mayoq={mayoqlar.has(q.hududId)}
+                        tartib={olchov.baholanadi ? i + 1 : null}
+                        boshlangan
+                        bos={() => setTanlangan(q.hududId)}
+                        kirdi={() => setFaol(q.hududId)}
+                        chiqdi={() => setFaol(null)}
                       />
-                      <span className="min-w-0 flex-1 truncate text-ink-muted">
-                        {tr(q.nomiKirill)}
-                      </span>
-                      <span className="raqam shrink-0 font-semibold text-ink">
-                        {f !== null ? `${f}%` : raqam(olchov.hajm(q))}
-                      </span>
-                    </button>
-                  );
-                })}
+                    ))}
+                  </>
+                )}
+
+                {topilgan.boshlanmagan.length > 0 && (
+                  <>
+                    {/*
+                      ── АЛОҲИДА БЎЛИМ ──
+
+                      Хатлов бошланмаган МФЙ «нол фоиз» билан
+                      биринчи ўринда турса, у «энг орқада
+                      қолган» бўлиб ўқилади. Аслида у ҳали
+                      навбатда — бу бошқа ҳолат ва бошқа чора.
+                    */}
+                    <RoyxatSarlavhasi
+                      matn="Хатлов ҳали бошланмаган"
+                      soni={topilgan.boshlanmagan.length}
+                    />
+                    {topilgan.boshlanmagan.map((q) => (
+                      <RoyxatQatori
+                        key={q.mahallaId}
+                        q={q}
+                        olchov={olchov}
+                        qadam={0}
+                        tanlandi={tanlangan === q.hududId}
+                        ogoh={false}
+                        mayoq={false}
+                        tartib={null}
+                        boshlangan={false}
+                        bos={() => setTanlangan(q.hududId)}
+                        kirdi={() => setFaol(q.hududId)}
+                        chiqdi={() => setFaol(null)}
+                      />
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -797,14 +1080,107 @@ export function HududXaritasi({
   );
 }
 
+/* ── Рўйхат бўлими сарлавҳаси ── */
+function RoyxatSarlavhasi({ matn, soni }: { matn: string; soni: number }) {
+  const { t: tr } = useAlifbo();
+  return (
+    <p className="sticky top-0 z-10 flex items-baseline justify-between gap-2 bg-surface px-1.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+      <span className="min-w-0 truncate">{tr(matn)}</span>
+      <span className="raqam shrink-0">{soni}</span>
+    </p>
+  );
+}
+
+/* ── Рўйхатдаги битта МФЙ ── */
+function RoyxatQatori({
+  q,
+  olchov,
+  qadam,
+  tanlandi,
+  ogoh,
+  mayoq,
+  tartib,
+  boshlangan,
+  bos,
+  kirdi,
+  chiqdi,
+}: {
+  q: XaritaQatori;
+  olchov: Olchov;
+  qadam: number;
+  tanlandi: boolean;
+  ogoh: boolean;
+  mayoq: boolean;
+  /** Тартиб рақами — баҳоланадиган ўлчовда */
+  tartib: number | null;
+  boshlangan: boolean;
+  bos: () => void;
+  kirdi: () => void;
+  chiqdi: () => void;
+}) {
+  const { t: tr } = useAlifbo();
+  const f = olchov.foiz(q);
+
+  return (
+    <button
+      type="button"
+      onClick={bos}
+      onMouseEnter={kirdi}
+      onMouseLeave={chiqdi}
+      aria-pressed={tanlandi}
+      className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-[11px] transition-colors ${
+        tanlandi ? 'bg-accent-soft font-semibold text-ink' : 'hover:bg-surface-muted'
+      }`}
+    >
+      {tartib !== null && (
+        <span className="raqam w-4 shrink-0 text-right text-[10px] text-ink-faint">{tartib}</span>
+      )}
+
+      <span className="relative flex h-3 w-3 shrink-0 items-center justify-center">
+        <span
+          className={`h-2.5 w-2.5 rounded-sm ${ogoh ? 'ring-1 ring-danger' : ''}`}
+          style={{
+            background: qadam === 0 ? 'var(--surface-muted)' : `var(--step-${qadam})`,
+            boxShadow: qadam === 0 ? 'inset 0 0 0 1px var(--border)' : undefined,
+          }}
+          aria-hidden="true"
+        />
+        {/* Иш кетаётган МФЙ — ёнида жимирлаб турган нуқта */}
+        {mayoq && <span className="xarita-mayoq-nuqta" aria-hidden="true" />}
+      </span>
+
+      <span className={`min-w-0 flex-1 truncate ${tanlandi ? 'text-ink' : 'text-ink-muted'}`}>
+        {tr(q.nomiKirill)}
+      </span>
+
+      {boshlangan ? (
+        <span className="raqam shrink-0 font-semibold text-ink">
+          {f !== null ? `${f}%` : raqam(olchov.hajm(q))}
+        </span>
+      ) : (
+        /*
+         * Бошланмаган МФЙ га «0%» ёзилмайди.
+         *
+         * Нол фоиз — ўлчов натижаси, бу эса ўлчов ҳали
+         * қилинмагани. Иккисини бир хил кўрсатиш —
+         * бошланмаган ишни ёмон бажарилган иш деб кўрсатиш.
+         */
+        <span className="shrink-0 text-[10px] text-ink-faint">{tr('навбатда')}</span>
+      )}
+    </button>
+  );
+}
+
 /* ── Танланган ҳудуд картаси ── */
 function TanlanganKarta({
   q,
   havolalar,
+  boshlangan,
   yop,
 }: {
   q: XaritaQatori;
   havolalar: boolean;
+  boshlangan: boolean;
   yop: () => void;
 }) {
   const { t: tr } = useAlifbo();
@@ -819,7 +1195,14 @@ function TanlanganKarta({
   return (
     <div className="rounded-md border border-accent bg-accent-soft/40 p-3">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-bold text-ink">{tr(q.nomiKirill)}</h3>
+        <h3 className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-ink">
+          <span className="truncate">{tr(q.nomiKirill)}</span>
+          {boshlangan ? (
+            <span className="xarita-nishon-faol shrink-0">{tr('хатлов кетмоқда')}</span>
+          ) : (
+            <span className="xarita-nishon-navbat shrink-0">{tr('навбатда')}</span>
+          )}
+        </h3>
         <button
           type="button"
           onClick={yop}

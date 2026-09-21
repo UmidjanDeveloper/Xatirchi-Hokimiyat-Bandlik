@@ -294,6 +294,91 @@ const SINOVLAR: Sinov[] = [
     },
   },
 
+  /* ══ «ОРҚАДА ҚОЛГАН» — ТАҚҚОСЛАШ БЎЛСА ══ */
+  {
+    nomi: 'Иш бошланган МФЙ кам бўлса, ҳеч ким «орқада» деб белгиланмайди',
+    tekshir: () => {
+      /*
+       * Хатлов ҳозир ФАҚАТ Уйшунда кетмоқда. Эски қоида «иш
+       * бошланганлар орасидан энг орқадаги ўнтаси» эди — ва
+       * туманда ишлаётган ЯГОНА маҳалла қизил контур олди.
+       *
+       * «Орқада қолган» — таққослаш. Таққослайдиган нарса
+       * бўлмаса, у ҳукм эмас, туҳмат.
+       */
+      return (
+        KOMPONENT_KODI.includes('KAMIDA_TAQQOS') &&
+        KOMPONENT_KODI.includes('royxat.ishlagan.length < KAMIDA_TAQQOS')
+      );
+    },
+  },
+  {
+    nomi: 'Хатлов бошланмагани «бошланган-у ёмон» дан фарқланади',
+    tekshir: () =>
+      KOMPONENT_KODI.includes('const boshlanganmi') &&
+      KOMPONENT_KODI.includes('q.xatlovXonadon > 0') &&
+      /* Ранг қаторига фақат бошлангани киради */
+      KOMPONENT_KODI.includes('if (!boshlanganmi(q)) continue;'),
+  },
+  {
+    nomi: 'Бошланмаган МФЙ га «0%» ёзилмайди — «навбатда» дейилади',
+    tekshir: () =>
+      KOMPONENT.includes("{tr('навбатда')}") &&
+      KOMPONENT_KODI.includes('boshlanganmi(faolQator)'),
+  },
+  {
+    nomi: '«Иш кетмоқда» маёғи бор ва у чегара билан чекланган',
+    tekshir: () =>
+      KOMPONENT_KODI.includes('MAYOQ_CHEGARASI') &&
+      KOMPONENT_KODI.includes('xarita-mayoq-halqa') &&
+      USLUB.includes('@keyframes xarita-pulse'),
+  },
+  {
+    nomi: 'Ҳаракат камайтирилганда маёқ ЙЎҚОЛМАЙДИ, фақат тўхтайди',
+    tekshir: () => {
+      /* Айнан маёқ ҳақидаги қоида ёзилган блокни оламиз */
+      const bloklar = USLUB.split('@media').filter((b) =>
+        b.startsWith(' (prefers-reduced-motion: reduce)')
+      );
+      const mayoqli = bloklar.find((b) => b.includes('.xarita-mayoq-halqa'));
+      if (!mayoqli) return false;
+      return mayoqli.includes('opacity: 0.5') && !mayoqli.includes('display: none');
+    },
+  },
+
+  /* ══ РЎЙХАТ ВА ҚИДИРУВ ══ */
+  {
+    nomi: 'Рўйхатда БАРЧА МФЙ бор — ўнталик эмас',
+    tekshir: () =>
+      KOMPONENT_KODI.includes('topilgan.ishlagan.map') &&
+      KOMPONENT_KODI.includes('topilgan.boshlanmagan.map') &&
+      !KOMPONENT_KODI.includes('royxat.slice(0, 14)'),
+  },
+  {
+    nomi: 'Қидирув бор ва икки алифбода ҳам ишлайди',
+    tekshir: () =>
+      KOMPONENT_KODI.includes("type=\"search\"") &&
+      KOMPONENT_KODI.includes('qidiruvKaliti(lotinga(q.nomiKirill))') &&
+      KOMPONENT_KODI.includes('qidiruvKaliti(q.nomiKirill)'),
+  },
+  {
+    nomi: 'Қидирувда апостроф талаб қилинмайди',
+    tekshir: () => KOMPONENT_KODI.includes("replace(/[''ʻʼ`´]/g, '')"),
+  },
+  {
+    nomi: 'Сатрга босилганда харитада нина кўрсатади',
+    tekshir: () =>
+      KOMPONENT_KODI.includes('xarita-nina-chiziq') &&
+      KOMPONENT_KODI.includes('bos={() => setTanlangan(q.hududId)}') &&
+      USLUB.includes('@keyframes xarita-nina-chiz'),
+  },
+  {
+    nomi: 'Рўйхат иккита бўлимга ажратилган',
+    tekshir: () =>
+      KOMPONENT.includes('matn="Хатлов кетмоқда"') &&
+      KOMPONENT.includes('matn="Хатлов ҳали бошланмаган"'),
+  },
+
   /* ══ ЎЛЧОВ ҲИСОБИ ══ */
   {
     nomi: 'Ҳар бир ўлчовда ном, изоҳ ва матн бор',
@@ -355,7 +440,12 @@ const SINOVLAR: Sinov[] = [
        * Рангни ажратолмайдиган одам ва экран ўқигич учун
        * харитадаги бутун маълумот матн билан такрорланади.
        */
-      return KOMPONENT.includes('aria-label={`${q?.nomiKirill') && KOMPONENT.includes('royxat.slice');
+      return (
+        KOMPONENT.includes('aria-label={`${q?.nomiKirill') &&
+        /* Рўйхатда 69 таси ҳам матн билан такрорланади */
+        KOMPONENT_KODI.includes('topilgan.ishlagan.map') &&
+        KOMPONENT_KODI.includes('topilgan.boshlanmagan.map')
+      );
     },
   },
   {

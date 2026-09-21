@@ -686,7 +686,7 @@
 
 .xarita-nom {
   pointer-events: none;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   fill: var(--ink);
   paint-order: stroke;
@@ -718,6 +718,139 @@
   opacity: 1;
 }
 
+/* ── Панжара: ағдарилган текисликнинг «поли» ── */
+.xarita-panjara {
+  pointer-events: none;
+}
+
+/*
+ * ── МАЁҚ: «ИШ КЕТМОҚДА» ──
+ *
+ * Икки ҳалқа навбат билан кенгайиб ўчади. Иккинчиси ярим
+ * даврга кечикади — шунда пульс тўхтамайди, узлуксиз бўлиб
+ * кўринади.
+ *
+ * Анимация transform орқали: браузер уни видеокартада
+ * бажаради ва CPU га юк тушмайди. `r` атрибутини анимация
+ * қилиш эски Safari да ишламайди — шунинг учун ишлатилмаган.
+ */
+.xarita-mayoq {
+  pointer-events: none;
+}
+
+.xarita-mayoq-halqa {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  animation: xarita-pulse 2.3s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.xarita-mayoq-yadro {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+@keyframes xarita-pulse {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+/* Рўйхатдаги жимирловчи нуқта — харитадаги маёқнинг жуфти */
+.xarita-mayoq-nuqta {
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--surface);
+  animation: xarita-jimir 2.3s ease-in-out infinite;
+}
+
+@keyframes xarita-jimir {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+}
+
+/*
+ * ── НИНА: танланган МФЙ ──
+ *
+ * Чизиқ пастдан юқорига чизилади (`stroke-dasharray`), ҳалқа
+ * эса секин пульс уради. Рўйхатдан ном босилганда кўз
+ * ҳудудни қидириб юрмайди — нина уни ўзи кўрсатади.
+ */
+.xarita-nina {
+  pointer-events: none;
+}
+
+.xarita-nina-chiziq {
+  stroke: var(--accent-deep);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: xarita-nina-chiz 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes xarita-nina-chiz {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.xarita-nina-halqa {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  animation: xarita-pulse 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.xarita-nina-nuqta {
+  fill: var(--accent-deep);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+/* ── Рўйхатдаги ҳолат нишонлари ── */
+.xarita-nishon-faol,
+.xarita-nishon-navbat {
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.xarita-nishon-faol {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.xarita-nishon-navbat {
+  background: var(--surface-muted);
+  color: var(--ink-faint);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .xarita-tebranish {
     animation: none !important;
@@ -725,6 +858,24 @@
   .hudud {
     opacity: 1;
     transform: none;
+  }
+  /*
+   * Пульс ва жимирлаш ҳам тўхтайди. Аммо маёқ ЙЎҚОЛМАЙДИ:
+   * ҳаракат камайтирилган бўлса ҳам, «иш шу ерда кетмоқда»
+   * деган маълумот қолиши керак — ўша ерда доимий нуқта
+   * туради.
+   */
+  .xarita-mayoq-halqa,
+  .xarita-nina-halqa,
+  .xarita-mayoq-nuqta {
+    animation: none !important;
+  }
+  .xarita-mayoq-halqa,
+  .xarita-nina-halqa {
+    opacity: 0.5;
+  }
+  .xarita-nina-chiziq {
+    stroke-dashoffset: 0;
   }
 }
 
