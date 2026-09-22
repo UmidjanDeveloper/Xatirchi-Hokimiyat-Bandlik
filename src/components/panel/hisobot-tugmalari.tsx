@@ -212,17 +212,23 @@ export function HisobotTugmalari({
    */
   async function jadvalOl() {
     if (ishlayapti) return;
-    if (!joriyMahalla) {
-      setXato(tr('Жадвал маҳалла кесимида тузилади — юқоридан МФЙ ни танланг.'));
-      return;
-    }
     setXato(null);
     setIshlayapti('jadval');
     try {
-      setHolat(tr('Ҳокимлик жадвали тўлдирилмоқда…'));
+      setHolat(
+        joriyMahalla
+          ? tr('Ҳокимлик жадвали тўлдирилмоқда…')
+          : tr('Туман бўйича йиғма жадвал тўлдирилмоқда — бу бир оз вақт олади…')
+      );
       const javob = await fetch('/api/hisobot/mahalla-jadvali', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        /*
+         * Маҳалла берилмаса — туман бўйича йиғма жадвал.
+         * Ҳокимга иккиси ҳам керак: ҳокимлик ҳар МФЙ дан
+         * алоҳида сўрайди, у эса йиғилишга битта файл олиб
+         * киради.
+         */
         body: JSON.stringify({ mahallaId: joriyMahalla, lotin: alifbo === 'lot' }),
       });
 
@@ -238,7 +244,7 @@ export function HisobotTugmalari({
        */
       const sarlavha = javob.headers.get('Content-Disposition') ?? '';
       const moslik = /filename="([^"]+)"/.exec(sarlavha);
-      const nom = moslik?.[1] ?? `mahalla-jadvali-${sana}.xlsx`;
+      const nom = moslik?.[1] ?? `hokimlik-jadvali-${sana}.xlsx`;
 
       const bayt = await javob.blob();
       const manzil = URL.createObjectURL(bayt);
@@ -352,11 +358,11 @@ export function HisobotTugmalari({
           <button
             type="button"
             onClick={() => void jadvalOl()}
-            disabled={ishlayapti !== null || !malumotBormi || !joriyMahalla}
+            disabled={ishlayapti !== null || !malumotBormi}
             title={
               joriyMahalla
                 ? tr('Ҳокимлик андозаси бўйича етти варақли жадвал')
-                : tr('Аввал юқоридан МФЙ ни танланг')
+                : tr('Ўша етти варақ, туман бўйича йиғилган: ҳар МФЙ ўз блоги билан')
             }
             className={tugma}
           >
@@ -365,7 +371,12 @@ export function HisobotTugmalari({
             ) : (
               <Table2 className="h-4 w-4" aria-hidden="true" />
             )}
-            {tr('Маҳалла жадвали')}
+            {/*
+              Тугма номи ҚАЙСИ ҲУЖЖАТ тушишини айтади.
+              «Маҳалла жадвали» деб турган тугма туман бўйича
+              файл берса, ходим уни нотўғри жойга юборарди.
+            */}
+            {joriyMahalla ? tr('Маҳалла жадвали') : tr('Туман жадвали')}
           </button>
         )}
       </div>

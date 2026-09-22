@@ -224,6 +224,132 @@ const SINOVLAR: Sinov[] = [
       MODUL.includes('kirillcha(MALUMOT, malumoti) === MALUMOT_DARAJASI[daraja]'),
   },
 
+  /* ══ ИККИТА ҚАМРОВ: МФЙ ВА ТУМАН ══ */
+  {
+    nomi: 'Туман бўйича ҳам жадвал тузилади — маҳалла ихтиёрий',
+    tekshir: () =>
+      MODUL.includes('export async function mahallaJadvali(mahallaId?: string)') &&
+      YOL.includes('mahallaId: z.string().cuid().nullish()'),
+  },
+  {
+    nomi: 'Туман кесимида тугма БОСИЛАДИ',
+    tekshir: () => {
+      /*
+       * Илгари тугма фақат МФЙ танланганда ишларди ва ҳоким
+       * туман бўйича йиғма нусхани умуман ололмасди.
+       */
+      const o = TUGMA.indexOf('onClick={() => void jadvalOl()}');
+      if (o < 0) return false;
+      return !TUGMA.slice(o, o + 200).includes('!joriyMahalla');
+    },
+  },
+  {
+    nomi: 'Тугма номи ҚАЙСИ ҲУЖЖАТ тушишини айтади',
+    tekshir: () =>
+      /*
+       * «Маҳалла жадвали» деб турган тугма туман бўйича файл
+       * берса, ходим уни нотўғри жойга юборарди.
+       */
+      TUGMA.includes("{joriyMahalla ? tr('Маҳалла жадвали') : tr('Туман жадвали')}"),
+  },
+  {
+    nomi: 'Туман кесимида ҳар МФЙ ўз блоги билан ажратилади',
+    tekshir: () =>
+      /*
+       * Андозада «маҳалла» устуни ЙЎҚ — у битта МФЙ учун
+       * тузилган. Устун қўшиб бўлмайди, шунинг учун ҳар блок
+       * олдига бирлаштирилган сарлавҳа қатори қўйилади.
+       * Бусиз «Алиев Анвар» қайси маҳалладан экани билинмасди.
+       */
+      MODUL.includes('`${g.nomi} МФЙ — ${g.qatorlar.length} та ёзув`') &&
+      MODUL.includes('varaq.mergeCells(r, 1, r, ustunSoni)'),
+  },
+  {
+    nomi: 'Битта МФЙ кесимида ажратувчи қатор ЧИЗИЛМАЙДИ',
+    tekshir: () =>
+      /*
+       * Ўша ҳолатда жадвал маҳалла юборадиган шаклнинг
+       * АЙНАН ўзи бўлиши керак.
+       */
+      MODUL.includes("if (yakka) return [{ nomi: null, qatorlar: yozuvlar.map(qatorYasa) }];") &&
+      MODUL.includes('if (g.nomi) {'),
+  },
+  {
+    nomi: 'Блок ичида қатор ўрни СУРИЛАДИ — ҳаммаси битта жойга тушмасин',
+    tekshir: () =>
+      /*
+       * Биринчи вариантда `varaq.getRow(r)` ёзилган эди ва
+       * блокнинг ҳамма қатори битта жойга тушарди: охиргиси
+       * қолиб, қолгани йўқоларди. Файл тўлиқ кўринарди —
+       * фақат 17 та оиладан биттаси ёзилган эди.
+       */
+      MODUL.includes('const qator = r + i;') && MODUL.includes('varaq.getRow(qator)'),
+  },
+  {
+    nomi: 'Ёзуви йўқ МФЙ блок сифатида чиқарилмайди',
+    tekshir: () => MODUL.includes('if (!oziniki.length) continue;'),
+  },
+  {
+    nomi: 'Туман сарлавҳаси уч хил қўшимчага мос ўгирилади',
+    tekshir: () =>
+      /*
+       * Етти варақ сарлавҳаси уч хил қўшимча билан ёзилган:
+       * «маҳалласи», «маҳалласида», «маҳалласидаги». Биттаси
+       * билан алмаштирилса гап бузиларди.
+       */
+      MODUL.includes('барча маҳаллаларидаги') &&
+      MODUL.includes('барча маҳаллаларида') &&
+      MODUL.includes('барча маҳаллалари') &&
+      /маҳалласидаги[\s\S]{0,400}маҳалласида[\s\S]{0,400}маҳалласи\//.test(MODUL),
+  },
+  {
+    nomi: 'Файл номи қамровни айтади — туман ва МФЙ адашмасин',
+    tekshir: () => YOL.includes("${mahallaId ? 'mahalla' : 'tuman'}-jadvali-"),
+  },
+
+  /* ══ ҲАЖМ ══ */
+  {
+    nomi: 'Жуда катта жадвал ЯРИМ тайёрланмайди — аниқ хабар берилади',
+    tekshir: () => {
+      /*
+       * Ярим жадвал ҳокимлик ҳужжати сифатида ишламайди:
+       * қайси МФЙ тушиб қолганини ҳеч ким билмасди.
+       */
+      const chegara = Number(/const ENG_KOP_QATOR = ([\d_]+);/.exec(MODUL)?.[1].replace(/_/g, '') ?? 0);
+      return (
+        chegara >= 20_000 &&
+        MODUL.includes('if (jamiQator > ENG_KOP_QATOR)') &&
+        MODUL.includes('МФЙ ни танлаб, жадвални маҳалла кесимида олинг')
+      );
+    },
+  },
+  {
+    nomi: 'Чегара хабари ЭКРАНГА чиқади, ичкарида қолиб кетмайди',
+    tekshir: () =>
+      MODUL.includes('export class JadvalXatosi') &&
+      YOL.includes('if (e instanceof JadvalXatosi)'),
+  },
+  {
+    nomi: 'Безак НУСХАЛАНМАЙДИ — катта жадвалда хотира етсин',
+    tekshir: () =>
+      /*
+       * `{ ...asl.style }` билан 45 мингта қатор 633 МБ
+       * оларди; ҳавола билан 559 МБ ва икки баравар тез.
+       */
+      MODUL.includes('q.getCell(u).style = namuna.getCell(u).style;') &&
+      !MODUL.includes('{ ...namuna.getCell(u).style }'),
+  },
+  {
+    nomi: 'Функцияга кўпроқ хотира ва вақт берилган',
+    tekshir: () => {
+      const v = JSON.parse(oqi('vercel.json')) as {
+        functions?: Record<string, { memory?: number; maxDuration?: number }>;
+      };
+      const f = v.functions?.['app/api/hisobot/mahalla-jadvali/route.js'];
+      return (f?.memory ?? 0) >= 2048 && (f?.maxDuration ?? 0) >= 60;
+    },
+  },
+
   /* ══ ХАВФСИЗЛИК ══ */
   {
     nomi: 'Жадвал ФАҚАТ ҳоким ва администраторга очиқ',
@@ -235,18 +361,10 @@ const SINOVLAR: Sinov[] = [
       YOL.includes("talabQil(['HOKIM', 'ADMIN'])"),
   },
   {
-    nomi: 'Маҳалла МАЖБУРИЙ — туман бўйича жадвал тузилмайди',
-    tekshir: () => YOL.includes('mahallaId: z.string().cuid(),'),
-  },
-  {
     nomi: 'Тугма фақат ҳоким ва админ панелида',
     tekshir: () =>
       PANEL.includes("mahallaJadvali={sessiya.rol === 'HOKIM' || sessiya.rol === 'ADMIN'}") &&
       ADMIN.includes('mahallaJadvali'),
-  },
-  {
-    nomi: 'Маҳалла танланмаса тугма босилмайди',
-    tekshir: () => TUGMA.includes('|| !joriyMahalla'),
   },
   {
     nomi: 'Файл номи фақат лотин ҳарфларида',
@@ -289,7 +407,7 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Сарлавҳадаги маҳалла номи алмаштирилади',
     tekshir: () =>
       MODUL.includes('function sarlavhaniYangila') &&
-      MODUL.includes("matn.replace(/\"[^\"]*\"/, `\"${yangi}\"`)"),
+      MODUL.includes('matn.replace(/"[^"]*"/, `"${mahallaNomi}"`)'),
   },
 ];
 

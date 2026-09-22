@@ -1,9 +1,17 @@
 {
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "crons": [
     {
       "path": "/api/telegram/navbat",
       "schedule": "0 3 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/hisobot/mahalla-jadvali/route.js": {
+      "memory": 3009,
+      "maxDuration": 60
+    }
+  }
 }
