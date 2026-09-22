@@ -11,7 +11,8 @@ import {
   UserCheck,
   UserX,
 } from 'lucide-react';
-import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
+import { bandlikIshi, joriySessiya } from '@/lib/auth';
+import { panelQamroviniOl } from '@/lib/panel-qamrovi';
 import { prisma } from '@/lib/prisma';
 import { FAOL_ELON } from '@/lib/elon-muddati';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
@@ -23,6 +24,7 @@ import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { HududXaritasi } from '@/components/xarita/hudud-xaritasi';
 import { xaritaMalumoti } from '@/lib/xarita/xarita-malumoti';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
+import { MahallaTanlash } from '@/components/panel/mahalla-tanlash';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { formatPhone } from '@/lib/utils';
 import { hududKaliti } from '@/lib/hudud-qidiruv';
@@ -57,7 +59,7 @@ function moslikIzohi(m: Moslik, tr: (matn: string) => string): string {
 export default async function BandlikSahifasi({
   searchParams,
 }: {
-  searchParams: { davr?: string };
+  searchParams: { davr?: string; mfy?: string };
 }) {
   const tr = matnchi();
   const davr = davrOqi(searchParams.davr);
@@ -66,7 +68,23 @@ export default async function BandlikSahifasi({
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
 
-  const filtr = mahallaFiltri(sessiya);
+  /*
+   * ── ҚАМРОВ: туман бўйичами ёки битта МФЙ бўйича ──
+   *
+   * Ҳоким панелидаги билан БИТТА ёрдамчи. Раҳбар ҳам «Уйшунда
+   * нима гап» деган саволга панелнинг ўзидан жавоб олади.
+   *
+   * Маҳаллага бириктирилган ходимда танлов ишламайди —
+   * `panelQamroviniOl` сессиядаги МФЙ ни мажбурий қилади.
+   */
+  const qamrov = await panelQamroviniOl(sessiya, searchParams.mfy);
+  const mahallaId = qamrov.mahallaId;
+  /*
+   * Қуйидаги сўровларнинг ҳаммаси шу фильтрдан ўтади: навбат,
+   * мослаштириш, эълонлар ва миграция. Яъни МФЙ танланганда
+   * панелдаги ЯККА бир рақам ҳам туман бўйича қолиб кетмайди.
+   */
+  const filtr = mahallaId ? { mahallaId } : {};
 
   const [
     suhbatsiz,
@@ -78,7 +96,6 @@ export default async function BandlikSahifasi({
     xarita,
     vHisob,
     vNavbat,
-    mahallalar,
   ] = await Promise.all([
     // 1. Suhbat kutayotganlar - eng birinchi navbat
     prisma.unemployedPerson.findMany({
@@ -169,25 +186,24 @@ export default async function BandlikSahifasi({
       where: { ...filtr, takliflar: { has: 'Xorijga mehnat migratsiyasi' } },
     }),
 
-    tahlilOl(filtr.mahallaId, davr),
+    tahlilOl(mahallaId, davr),
 
     /* Харита маълумоти — МФЙ кесимида беш ўлчов */
-    xaritaMalumoti(filtr.mahallaId),
+    /* Харита ҳар доим туман бўйича — танлангани ёлқинланади
+       (ҳоким панелидаги изоҳга қаранг) */
+    xaritaMalumoti(qamrov.tanlashMumkin ? undefined : mahallaId),
 
-    vaucherHisobi(filtr.mahallaId),
-    vaucherNavbati(filtr.mahallaId),
+    vaucherHisobi(mahallaId),
+    vaucherNavbati(mahallaId),
 
-    /*
-     * Маҳаллалар рўйхати ҳисобот тугмалари учун: раҳбар туман
-     * бўйича ҳам, битта МФЙ бўйича ҳам ҳисобот олади.
-     */
-    filtr.mahallaId
-      ? Promise.resolve([] as { id: string; nomiKirill: string }[])
-      : prisma.mahalla.findMany({
-          orderBy: { nomi: 'asc' },
-          select: { id: true, nomiKirill: true },
-        }),
   ]);
+
+  /*
+   * Маҳаллалар рўйхати — танлов ва ҳисобот тугмалари учун.
+   * Қамров ёрдамчиси уни аллақачон ўқиган, иккинчи сўров
+   * юборилмайди.
+   */
+  const mahallalar = qamrov.mahallalar;
 
   /*
    * Moslashtirish: bo'sh ish o'rni lavozimi bilan fuqaroning
@@ -295,7 +311,7 @@ export default async function BandlikSahifasi({
         <div>
           <h1 className="sahifa-sarlavha">{tr('Операцион панел')}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {tr('Кундалик иш: навбат, мослаштириш ва курс талаби')}
+            {tr(qamrov.nomi)} · {tr('кундалик иш: навбат, мослаштириш ва курс талаби')}
           </p>
         </div>
 
@@ -304,8 +320,18 @@ export default async function BandlikSahifasi({
           aynan shu ish oqimi uchun tugma sahifa boshida turadi.
         */}
         <div className="flex flex-wrap items-center gap-3">
+          {qamrov.tanlashMumkin && (
+            <MahallaTanlash
+              joriyId={mahallaId ?? null}
+              joriyNomi={qamrov.nomi}
+              mahallalar={mahallalar}
+            />
+          )}
           <DavrTanlash joriy={davr} />
-          <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
+          <HisobotTugmalari
+            qamrov={{ nomi: qamrov.nomi, mahallaId }}
+            mahallalar={mahallalar}
+          />
         </div>
       </div>
 
@@ -315,7 +341,7 @@ export default async function BandlikSahifasi({
         гаплашиши керак, акс ҳолда «менда бошқача ёзилган» деган
         баҳс чиқади.
       */}
-      <AiXulosa qamrovNomi="Хатирчи тумани" />
+      <AiXulosa mahallaId={mahallaId} qamrovNomi={qamrov.nomi} />
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Kpi
@@ -386,7 +412,7 @@ export default async function BandlikSahifasi({
         устун юқорига кетган бўлса, сабабини ойлик оқим
         диаграммасидан ўша ернинг ўзида топади.
       */}
-      <DinamikaBloglari dinamika={t.dinamika} davr={davr} qamrovNomi="Хатирчи тумани" />
+      <DinamikaBloglari dinamika={t.dinamika} davr={davr} qamrovNomi={qamrov.nomi} />
 
       {/*
         ── ХАРИТА ──
@@ -399,7 +425,8 @@ export default async function BandlikSahifasi({
       <HududXaritasi
         qatorlar={xarita.qatorlar}
         ulanmagan={xarita.ulanmagan}
-        qamrovNomi="Хатирчи тумани"
+        qamrovNomi={qamrov.nomi}
+        yolqinMahallaId={mahallaId ?? null}
         sarlavha="Туман харитаси — қайси МФЙ га бориш керак"
         havolalar
       />
@@ -417,7 +444,7 @@ export default async function BandlikSahifasi({
       <VaucherNavbati
         navbat={vNavbat}
         hisob={vHisob}
-        qamrovNomi="Хатирчи тумани"
+        qamrovNomi={qamrov.nomi}
         bera
       />
 

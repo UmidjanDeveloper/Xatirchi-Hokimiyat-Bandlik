@@ -552,7 +552,20 @@ const SINOVLAR: Sinov[] = [
   },
   {
     nomi: 'Қидирувда апостроф талаб қилинмайди',
-    tekshir: () => KOMPONENT_KODI.includes("replace(/[''ʻʼ`´]/g, '')"),
+    tekshir: () => {
+      /*
+       * Қоиданинг ЎЗИ энди `lib/qidiruv.ts` да — уни панелдаги
+       * МФЙ танлови ҳам ишлатади. Бу ерда иккита нарса
+       * текширилади: қоида ўша файлда турибди ва харита
+       * унинг ўзини чақиради (ўз нусхасини эмас).
+       */
+      const qidiruv = readFileSync('src/lib/qidiruv.ts', 'utf8');
+      return (
+        qidiruv.includes("replace(/[''ʻʼ`´]/g, '')") &&
+        KOMPONENT_KODI.includes("from '@/lib/qidiruv'") &&
+        !/const qidiruvKaliti =/.test(KOMPONENT_KODI)
+      );
+    },
   },
   {
     nomi: 'Сатрга босилганда харитада нина кўрсатади',

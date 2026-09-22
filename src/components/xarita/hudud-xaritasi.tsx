@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Box, Maximize2, RotateCcw, Search, Square } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { lotinga } from '@/lib/alifbo';
+import { qidiruvKaliti } from '@/lib/qidiruv';
 import { HUDUDLAR, VIEW_BOX, CHEGARA } from '@/lib/xarita/hududlar';
 import type { XaritaQatori } from '@/lib/xarita/xarita-malumoti';
 import { OLCHOVLAR, daraja, olchovTop, type Olchov, type OlchovKaliti } from './olchovlar';
@@ -127,17 +128,6 @@ const MAYOQ_CHEGARASI = 20;
 const BOSHLANGICH = { qiya: 46, burilish: -7, masshtab: 1.12 };
 
 const raqam = (n: number) => n.toLocaleString('ru-RU');
-
-/**
- * Қидирув учун соддалаштирилган ном.
- *
- * Апостроф олиб ташланади: «Боғчакалон» ни лотинда ёзган одам
- * «Bog'chakalon» эмас, «bogchakalon» деб теради — ва тўғри
- * қилади, чунки апострофни клавиатурадан излаб ўтиришнинг
- * ҳожати йўқ.
- */
-const qidiruvKaliti = (nom: string): string =>
-  nom.toLowerCase().replace(/[''ʻʼ`´]/g, '');
 
 /**
  * МФЙ да хатлов бошланганми.

@@ -12,8 +12,8 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { joriySessiya, mahallaFiltri, tahlilKoradi } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { joriySessiya, tahlilKoradi } from '@/lib/auth';
+import { panelQamroviniOl } from '@/lib/panel-qamrovi';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { DARAJA_KORINISHI, tavsiyalarniHisobla } from '@/lib/tavsiyalar';
 import { percent } from '@/lib/utils';
@@ -30,6 +30,7 @@ import {
 } from '@/components/panel/grafiklar';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
+import { MahallaTanlash } from '@/components/panel/mahalla-tanlash';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { BolimlarPaneli } from '@/components/panel/bolimlar-paneli';
@@ -63,7 +64,7 @@ const pul = (som: number) =>
 export default async function PanelSahifasi({
   searchParams,
 }: {
-  searchParams: { davr?: string };
+  searchParams: { davr?: string; mfy?: string };
 }) {
   const tr = matnchi();
   const davr = davrOqi(searchParams.davr);
@@ -72,7 +73,16 @@ export default async function PanelSahifasi({
   if (!sessiya) redirect('/kirish');
   if (!tahlilKoradi(sessiya.rol)) redirect('/');
 
-  const filtr = mahallaFiltri(sessiya);
+  /*
+   * ── ҚАМРОВ: туман бўйичами ёки битта МФЙ бўйича ──
+   *
+   * Саҳифадаги ҲАР БИР сўров шу ердан чиққан `mahallaId` ни
+   * олади. Бошқа манба йўқ: битта блок эски фильтрда қолиб
+   * кетса, экранда иккита ҳар хил ҳудуд рақами ёнма-ён
+   * турарди ва қайси бири тўғри экани билинмасди.
+   */
+  const qamrov = await panelQamroviniOl(sessiya, searchParams.mfy);
+  const mahallaId = qamrov.mahallaId;
 
   /*
    * Маҳаллалар рўйхати ҳисобот тугмалари учун: ҳоким умумий
@@ -80,8 +90,8 @@ export default async function PanelSahifasi({
    * ҳақида савол чиқса, шу рўйхатдан танлаб алоҳида ҳисобот
    * олади.
    */
-  const [t, b, xarita, vHisob, vNavbat, mahallalar] = await Promise.all([
-    tahlilOl(filtr.mahallaId, davr),
+  const [t, b, xarita, vHisob, vNavbat] = await Promise.all([
+    tahlilOl(mahallaId, davr),
     /*
      * Хатлов бўлимлари бўйича жамланма.
      *
@@ -90,7 +100,7 @@ export default async function PanelSahifasi({
      * икки бўлими ҳақида. Иккови ёнма-ён ишлайди — панел
      * кутиш вақти ошмайди.
      */
-    bolimlarTahlili(filtr.mahallaId),
+    bolimlarTahlili(mahallaId),
 
     /*
      * Харита — 70 МФЙ нинг ер юзидаги ўрни билан.
@@ -99,17 +109,26 @@ export default async function PanelSahifasi({
      * ёнма-ён. «Қайси ТОМОН орқада қолган» деган саволга фақат
      * харита жавоб беради.
      */
-    xaritaMalumoti(filtr.mahallaId),
+    /*
+     * Харита ҲАР ДОИМ туман бўйича олинади — битта МФЙ
+     * танланганда ҳам.
+     *
+     * Сабаби: хаританинг вазифаси «ҚАЕРДА» деган саволга
+     * жавоб бериш. Уйшун танланганда харитада ёлғиз Уйшун
+     * қолса, ўша савол умуман йўқолади — ҳоким унинг қўшни
+     * МФЙ лардан орқадами ёки олдинда эканини кўра олмасди.
+     * Шунинг учун 70 та ҳудуд ўрнида қолади, танлангани эса
+     * ёлқинланиб туради (`yolqinMahallaId`).
+     *
+     * Маҳаллага бириктирилган ходимда `tanlashMumkin` ёлғон
+     * ва қамров ўзгармайди — унга барибир ўз МФЙ си келади.
+     */
+    xaritaMalumoti(qamrov.tanlashMumkin ? undefined : mahallaId),
 
-    vaucherHisobi(filtr.mahallaId),
-    vaucherNavbati(filtr.mahallaId, 10),
-    filtr.mahallaId
-      ? Promise.resolve([])
-      : prisma.mahalla.findMany({
-          orderBy: { nomi: 'asc' },
-          select: { id: true, nomiKirill: true },
-        }),
+    vaucherHisobi(mahallaId),
+    vaucherNavbati(mahallaId, 10),
   ]);
+  const mahallalar = qamrov.mahallalar;
   const tavsiyalar = tavsiyalarniHisobla(t);
 
   const bosh = t.jami;
@@ -120,7 +139,7 @@ export default async function PanelSahifasi({
         <div>
           <h1 className="sahifa-sarlavha">{tr('Таҳлил панели')}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {tr('Хатирчи тумани ·')} {raqam(bosh.bazaAholi)} {tr('аҳоли ·')} {raqam(bosh.bazaXonadon)} {tr('хонадон')}
+            {tr(qamrov.nomi)} · {raqam(bosh.bazaAholi)} {tr('аҳоли ·')} {raqam(bosh.bazaXonadon)} {tr('хонадон')}
           </p>
         </div>
 
@@ -135,8 +154,26 @@ export default async function PanelSahifasi({
           айнан шу бошланғич суратни йиғилишга олиб киради.
         */}
         <div className="flex flex-wrap items-center gap-3">
+          {/*
+            ── МФЙ ТАНЛАШ ──
+
+            Сарлавҳа ёнида, даврдан ОЛДИН: «қаер» деган савол
+            «қачон» дан олдин келади. Ҳоким панелни очганда
+            биринчи қарори — туман бўйичами ёки битта МФЙ
+            бўйича қараш.
+          */}
+          {qamrov.tanlashMumkin && (
+            <MahallaTanlash
+              joriyId={mahallaId ?? null}
+              joriyNomi={qamrov.nomi}
+              mahallalar={mahallalar}
+            />
+          )}
           <DavrTanlash joriy={davr} />
-          <HisobotTugmalari qamrov={{ nomi: 'Хатирчи тумани' }} mahallalar={mahallalar} />
+          <HisobotTugmalari
+            qamrov={{ nomi: qamrov.nomi, mahallaId }}
+            mahallalar={mahallalar}
+          />
         </div>
       </div>
 
@@ -259,7 +296,7 @@ export default async function PanelSahifasi({
         тавсияда БОСИЛАДИГАН ҲАВОЛА беради — ходим дарҳол
         керакли рўйхатга ўтади.
       */}
-      <AiXulosa qamrovNomi="Хатирчи тумани" />
+      <AiXulosa mahallaId={mahallaId} qamrovNomi={qamrov.nomi} />
 
       {/* ── Тавсиялар — чегаралар бўйича, ҳаволалар билан ── */}
       {tavsiyalar.length > 0 && (
@@ -319,7 +356,7 @@ export default async function PanelSahifasi({
       <DinamikaBloglari
         dinamika={t.dinamika}
         davr={davr}
-        qamrovNomi="Хатирчи тумани"
+        qamrovNomi={qamrov.nomi}
       />
 
       {/*
@@ -334,7 +371,8 @@ export default async function PanelSahifasi({
       <HududXaritasi
         qatorlar={xarita.qatorlar}
         ulanmagan={xarita.ulanmagan}
-        qamrovNomi="Хатирчи тумани"
+        qamrovNomi={qamrov.nomi}
+        yolqinMahallaId={mahallaId ?? null}
         sarlavha="Туман харитаси — МФЙ кесимида"
       />
 
@@ -355,7 +393,7 @@ export default async function PanelSahifasi({
         ham, yo'nalishni ham tanlash mumkin, ya'ni o'sha ikki
         ro'yxat ham, yana ikkitasi ham shu yerdan chiqadi.
       */}
-      {!filtr.mahallaId && (
+      {!mahallaId && (
         <section className="karta p-4 sm:p-5">
           <h2 className="text-sm font-bold text-ink">{tr('Маҳаллалар кесимида')}</h2>
           <p className="mt-1 text-xs text-ink-faint">
@@ -381,7 +419,7 @@ export default async function PanelSahifasi({
       <VaucherNavbati
         navbat={vNavbat}
         hisob={vHisob}
-        qamrovNomi="Хатирчи тумани"
+        qamrovNomi={qamrov.nomi}
         bera={false}
       />
 
@@ -409,10 +447,10 @@ export default async function PanelSahifasi({
         блоклар «ишсизлик камаяптими» саволига жавоб беради,
         булар эса «туман қандай яшаяпти» саволига.
       */}
-      <BolimlarPaneli b={b} qamrovNomi="Хатирчи тумани" />
+      <BolimlarPaneli b={b} qamrovNomi={qamrov.nomi} />
 
       {/* ── To'liq jadval ── */}
-      {!filtr.mahallaId && (
+      {!mahallaId && (
         <section className="karta p-4 sm:p-5">
           <h2 className="text-sm font-bold text-ink">{tr('Барча маҳаллалар')}</h2>
           <p className="mt-1 text-xs leading-relaxed text-ink-faint">

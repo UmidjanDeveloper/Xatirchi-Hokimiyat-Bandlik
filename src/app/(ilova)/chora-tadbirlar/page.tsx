@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import { AlertOctagon, CalendarClock, CheckCircle2 } from 'lucide-react';
 import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { topshiriqQamrovi } from '@/lib/panel-qamrovi';
 import { formatDate, percent } from '@/lib/utils';
 import { MASUL_TASHKILOT, kirillcha } from '@/lib/constants';
 import {
@@ -45,18 +46,10 @@ export default async function ChoraTadbirlarSahifasi({
 
   /*
    * Yettilik a'zosi faqat o'z mahallasidagi topshiriqlarni ko'radi.
-   * Topshiriq mahallaga bevosita bog'lanmagan - u xonadon yoki
-   * ishsiz orqali bog'langan, shuning uchun filtr ikkalasi bo'yicha
-   * yoziladi.
+   * Shart `panel-qamrovi.ts` da - u yerda boshqaruv paneli ham
+   * shu qoidadan foydalanadi.
    */
-  const mahallaSharti: Prisma.ActionPlanWhereInput = majburiy.mahallaId
-    ? {
-        OR: [
-          { household: { mahallaId: majburiy.mahallaId } },
-          { ishsiz: { mahallaId: majburiy.mahallaId } },
-        ],
-      }
-    : {};
+  const mahallaSharti = topshiriqQamrovi(majburiy.mahallaId);
 
   const kechikkanFiltri = searchParams.holati === 'KECHIKDI';
 

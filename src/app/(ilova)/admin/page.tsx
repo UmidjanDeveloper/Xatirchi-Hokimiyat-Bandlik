@@ -14,6 +14,8 @@ import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
+import { MahallaTanlash } from '@/components/panel/mahalla-tanlash';
+import { panelQamroviniOl, topshiriqQamrovi } from '@/lib/panel-qamrovi';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { XabarHolati } from '@/components/telegram/xabar-holati';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
@@ -43,7 +45,7 @@ const AMAL_NOMI: Record<string, string> = {
 export default async function AdminSahifasi({
   searchParams,
 }: {
-  searchParams: { davr?: string };
+  searchParams: { davr?: string; mfy?: string };
 }) {
   const tr = matnchi();
   const davr = davrOqi(searchParams.davr);
@@ -52,7 +54,19 @@ export default async function AdminSahifasi({
   if (!sessiya) redirect('/kirish');
   if (sessiya.rol !== 'ADMIN') redirect('/');
 
-  const [xodimlar, mahallalar, jurnal, statistika, tahlil, vHisob, vNavbat] = await Promise.all([
+  /*
+   * ── ҚАМРОВ ──
+   *
+   * Ҳоким ва раҳбар панелидаги билан битта ёрдамчи.
+   * Администраторда ҳам керак: у «бу МФЙ да рақам нега
+   * бундай» деган савол билан келади ва жавобни ҳоким
+   * кўраётган кесимнинг АЙНАН ўзидан олиши керак.
+   */
+  const qamrov = await panelQamroviniOl(sessiya, searchParams.mfy);
+  const mahallaId = qamrov.mahallaId;
+  const mahallaShart = mahallaId ? { mahallaId } : {};
+
+  const [xodimlar, jurnal, statistika, tahlil, vHisob, vNavbat] = await Promise.all([
     prisma.user.findMany({
       orderBy: [{ faol: 'desc' }, { rol: 'asc' }, { fullName: 'asc' }],
       select: {
@@ -68,25 +82,24 @@ export default async function AdminSahifasi({
         mahalla: { select: { nomiKirill: true } },
       },
     }),
-    prisma.mahalla.findMany({
-      orderBy: { nomi: 'asc' },
-      select: { id: true, nomiKirill: true },
-    }),
     prisma.auditLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 60,
       include: { user: { select: { fullName: true, username: true } } },
     }),
     Promise.all([
-      prisma.household.count(),
-      prisma.unemployedPerson.count(),
-      prisma.actionPlan.count(),
-      prisma.vacancy.count({ where: FAOL_ELON() }),
+      prisma.household.count({ where: mahallaShart }),
+      prisma.unemployedPerson.count({ where: mahallaShart }),
+      prisma.actionPlan.count({ where: topshiriqQamrovi(mahallaId) }),
+      prisma.vacancy.count({ where: { ...mahallaShart, ...FAOL_ELON() } }),
     ]),
-    tahlilOl(undefined, davr),
-    vaucherHisobi(),
-    vaucherNavbati(undefined, 10),
+    tahlilOl(mahallaId, davr),
+    vaucherHisobi(mahallaId),
+    vaucherNavbati(mahallaId, 10),
   ]);
+
+  /* Маҳаллалар рўйхати — қамров ёрдамчиси аллақачон ўқиган */
+  const mahallalar = qamrov.mahallalar;
 
   const [xonadon, ishsiz, topshiriq, ishOrni] = statistika;
 
@@ -96,10 +109,17 @@ export default async function AdminSahifasi({
         <div>
           <h1 className="sahifa-sarlavha">{tr('Бошқарув')}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {tr('Ходимлар, логинлар ва аудит журнали')}
+            {tr(qamrov.nomi)} · {tr('ходимлар, логинлар ва аудит журнали')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {qamrov.tanlashMumkin && (
+            <MahallaTanlash
+              joriyId={mahallaId ?? null}
+              joriyNomi={qamrov.nomi}
+              mahallalar={mahallalar}
+            />
+          )}
           <DavrTanlash joriy={davr} />
           <SahifaHisoboti malumotBormi={xonadon > 0} />
         </div>
@@ -114,7 +134,7 @@ export default async function AdminSahifasi({
         бандлик панелида бор эди — администратор эса AI
         ишламай турганини умуман билмасди.
       */}
-      <AiXulosa qamrovNomi="Хатирчи тумани" />
+      <AiXulosa mahallaId={mahallaId} qamrovNomi={qamrov.nomi} />
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Karta nomi={tr("Хонадон")} soni={xonadon} />
@@ -133,7 +153,7 @@ export default async function AdminSahifasi({
         бошқа графикда эмас.
       */}
       {xonadon > 0 && (
-        <DinamikaBloglari dinamika={tahlil.dinamika} davr={davr} qamrovNomi="Хатирчи тумани" />
+        <DinamikaBloglari dinamika={tahlil.dinamika} davr={davr} qamrovNomi={qamrov.nomi} />
       )}
 
       <section className="space-y-3">
@@ -156,7 +176,7 @@ export default async function AdminSahifasi({
         жавоб шу ерда: навбат ўсиб бораётган бўлса, демак
         белги қўйиляпти-ю, ваучер берилмаяпти.
       */}
-      <VaucherNavbati navbat={vNavbat} hisob={vHisob} qamrovNomi="Хатирчи тумани" bera={false} />
+      <VaucherNavbati navbat={vNavbat} hisob={vHisob} qamrovNomi={qamrov.nomi} bera={false} />
 
       {/*
         Telegram хабарномаси — жимгина ишламай қолиши мумкин:

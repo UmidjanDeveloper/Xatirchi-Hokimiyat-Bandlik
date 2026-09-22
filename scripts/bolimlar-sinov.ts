@@ -367,7 +367,13 @@ const SINOVLAR: Sinov[] = [
   {
     nomi: 'Панел сўрови ЁНМА-ЁН кетади — кутиш вақти ошмайди',
     tekshir: () =>
-      /Promise\.all\(\[[\s\S]*bolimlarTahlili\(filtr\.mahallaId\)/.test(SAHIFA),
+      /*
+       * Қамров `panel-qamrovi.ts` дан келади ва ўзгарувчи номи
+       * ўзгариши мумкин. Текширувнинг МАЪНОСИ эса бир хил
+       * қолади: бўлимлар сўрови `Promise.all` нинг ичида,
+       * қолганлари билан ЁНМА-ЁН кетсин.
+       */
+      /Promise\.all\(\[[\s\S]*bolimlarTahlili\(/.test(SAHIFA),
   },
 
   /* ══ МАҲАЛЛА ХОДИМИ ҲАМ КЎРАДИ ══ */
