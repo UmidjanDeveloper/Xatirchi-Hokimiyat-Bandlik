@@ -118,7 +118,31 @@ export interface Bolim {
 export interface HisobotTavsiyasi {
   daraja: 'shoshilinch' | 'muhim' | 'imkoniyat';
   sarlavha: string;
+  /** Raqamli dalil: nega aynan shu ish kerak */
   dalil: string;
+  /**
+   * Bajariladigan qadamlar - 1 dan 3 tagacha.
+   *
+   * "Ishni kuchaytirish kerak" tavsiya emas. Tavsiya bo'lishi
+   * uchun ertaga kim nima qilishi yozilgan bo'lishi kerak.
+   * Shuning uchun bu maydon qo'shildi: uni to'ldirmagan javob
+   * mavhum bo'lib qolgani darhol ko'rinadi.
+   *
+   * Ixtiyoriy: qoida bo'yicha hisoblangan tavsiyalarda yo'q,
+   * ular allaqachon aniq chegaraga bog'langan.
+   */
+  qadamlar?: string[];
+  /** Mas'ul tashkilot - MASUL_TASHKILOT ro'yxatidan */
+  masul?: string;
+  /** Muddat: "2 hafta", "chorak oxirigacha" */
+  muddat?: string;
+  /**
+   * O'lchanadigan natija.
+   *
+   * "Ahvol yaxshilanadi" emas, "12 bola bog'chaga yoziladi".
+   * Keyingi yig'ilishda shu satr bo'yicha hisob so'raladi.
+   */
+  olchov?: string;
 }
 
 /**

@@ -33,6 +33,7 @@ import type { Bolim, Hisobot, Jadval, Korsatkich, Qamrov, Qator } from './turlar
 import { foiz, foizi, pul, son } from './format';
 import { xonadonBolimlari } from './xonadon-profili';
 import { fuqaroBolimlari } from './fuqaro-profili';
+import { bolimlarTahlili } from '@/lib/bolimlar-tahlili';
 import { xulosaOl } from './xulosa';
 
 /**
@@ -325,6 +326,13 @@ export interface HisobotSorovi {
   lotin: boolean;
   /** AI хулосасини сўраш. Тезкор кўриниш учун ўчирилади. */
   aiXulosa?: boolean;
+  /**
+   * Кешни четлаб ўтиб, янги таҳлил сўраш.
+   *
+   * Фойдаланувчи панелдаги «Сунъий интеллект билан таҳлил
+   * қилиш» тугмасини босганда берилади.
+   */
+  yangila?: boolean;
 }
 
 export async function hisobotOl(sorov: HisobotSorovi): Promise<Hisobot> {
@@ -343,11 +351,36 @@ export async function hisobotOl(sorov: HisobotSorovi): Promise<Hisobot> {
    */
   const jamiXonadon = await prisma.household.count({ where: filtr });
 
-  const [tahlil, fuqarolar, xonadonBolimlar] = await Promise.all([
-    tahlilOl(mahallaId),
-    fuqaroBolimlari(mahallaId),
-    xonadonBolimlari(filtr, jamiXonadon),
-  ]);
+  /*
+   * ── ТУМАН АСОСИ — ТАҚҚОС УЧУН ──
+   *
+   * Битта МФЙ ҳисоботида сунъий интеллектга туман кесими ҳам
+   * юборилади: «боғчадан ташқарида 12 бола» деган рақам ўзича
+   * ҳеч нима демайди, туманда бу улуш 18% экани билинса —
+   * дарҳол маъно касб этади ва тавсия аниқ бўлади.
+   *
+   * Туман кесими АЙНАН шу мақсадда олинади ва экранга
+   * чиқмайди. Иккала сўров ҳам кешланган (`tahlilOl` ва
+   * `bolimlarTahlili` да 45 сония), шунинг учун панел
+   * секинлашмайди.
+   *
+   * AI сўралмаса умуман ҳисобланмайди — бандлик мутахассиси
+   * кунда ўнлаб саҳифа очади.
+   */
+  const tumanKerak = sorov.aiXulosa !== false && mahallaId !== undefined;
+
+  const [tahlil, fuqarolar, xonadonBolimlar, bolimlarJamlanma, tumanTahlil, tumanBolimlar] =
+    await Promise.all([
+      tahlilOl(mahallaId),
+      fuqaroBolimlari(mahallaId),
+      xonadonBolimlari(filtr, jamiXonadon),
+      bolimlarTahlili(mahallaId),
+      tumanKerak ? tahlilOl(undefined) : Promise.resolve(null),
+      tumanKerak ? bolimlarTahlili(undefined) : Promise.resolve(null),
+    ]);
+
+  const tumanAsosi =
+    tumanTahlil && tumanBolimlar ? { tahlil: tumanTahlil, b: tumanBolimlar } : null;
 
   /* ── Бўлимлар тартиби ── */
   const bolimlar: Bolim[] = [];
@@ -443,7 +476,15 @@ export async function hisobotOl(sorov: HisobotSorovi): Promise<Hisobot> {
    * айнан ўша ходимга кераклироқ: у ўз маҳалласида нима
    * қилишни билиши керак.
    */
-  const xulosa = await xulosaOl(tahlil, bolimlar, qamrovNomi, asos, sorov.aiXulosa !== false);
+  const xulosa = await xulosaOl(
+    tahlil,
+    bolimlarJamlanma,
+    qamrovNomi,
+    asos,
+    sorov.aiXulosa !== false,
+    tumanAsosi,
+    sorov.yangila === true
+  );
 
   const hisobot: Hisobot = {
     // `ogir()` faqat satrlarga tegadi, mantiqiy qiymat o'zgarmaydi

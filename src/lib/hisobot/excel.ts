@@ -186,19 +186,41 @@ export async function excelYasa(m: Hisobot, faylNomi: string): Promise<void> {
     [m.xulosa.holat || a('Маълумот кам — хулоса чиқмади.')],
     [],
     [a('ТАВСИЯЛАР')],
-    ['№', a('Даража'), a('Тавсия'), a('Рақамли далил')],
+    /*
+     * Қадам, масъул, муддат ва ўлчов АЛОҲИДА устунда.
+     *
+     * Бу варақ йиғилишда экранда очилади ва устун бўйича
+     * саралаб кўрилади: «Бандлик маркази нима қилиши керак»
+     * деган саволга жавоб масъул устунини фильтрлаш билан
+     * чиқади. Ҳаммаси битта катакда бўлганда бу мумкин эмас
+     * эди.
+     */
+    ['№', a('Даража'), a('Тавсия'), a('Рақамли далил'), a('Қадамлар'), a('Масъул'), a('Муддат'), a('Ўлчов')],
     ...m.xulosa.tavsiyalar.map((t, i) => [
       i + 1,
       darajaNomi[t.daraja] ?? t.daraja,
       t.sarlavha,
       t.dalil,
+      (t.qadamlar ?? []).map((q, n) => `${n + 1}. ${q}`).join('\n'),
+      t.masul ?? '',
+      t.muddat ?? '',
+      t.olchov ?? '',
     ]),
   ];
   if (m.xulosa.ogohlik) {
     xulosa.push([], [a('ИЗОҲ')], [m.xulosa.ogohlik]);
   }
   const v2 = XLSX.utils.aoa_to_sheet(xulosa);
-  v2['!cols'] = [{ wch: 5 }, { wch: 13 }, { wch: 52 }, { wch: 88 }];
+  v2['!cols'] = [
+    { wch: 5 },
+    { wch: 13 },
+    { wch: 46 },
+    { wch: 70 },
+    { wch: 70 },
+    { wch: 26 },
+    { wch: 14 },
+    { wch: 44 },
+  ];
   XLSX.utils.book_append_sheet(kitob, v2, xulosaNomi);
   mundarija.push([
     xulosaNomi,

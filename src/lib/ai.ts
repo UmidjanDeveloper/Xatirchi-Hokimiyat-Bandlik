@@ -35,8 +35,25 @@
 
 export type Provayder = 'groq' | 'openai' | 'gemini' | 'anthropic';
 
-/** Жавобни кутиш муддати — ошса қоидага тушамиз */
-const KUTISH_MS = 20_000;
+/**
+ * Жавобни кутиш муддати — ошса қоидага тушамиз.
+ *
+ * 20 сониядан 40 га кўтарилди. Сабаби: таҳлил кўрсатмаси
+ * узайди ва модел энди ҳар тавсияда қадам, масъул, муддат ва
+ * ўлчов ёзади. Кириллча матн токенга ёмон бўлинади — ўзбекча
+ * жумла инглизчадан икки-уч баравар кўп токен олади, яъни
+ * жавоб ҳам шунча узоқ ёзилади.
+ *
+ * 20 сонияда узилганда нима бўларди: сўров ЮБОРИЛГАН ва ПУЛ
+ * ЕЧИЛГАН бўларди, жавоб эса ташлаб юбориларди ва экранда
+ * қоида бўйича хулоса турарди. Фойдаланувчи «AI ишламаяпти»
+ * эмас, «AI тупой» деган хулосага келарди.
+ *
+ * Йўлнинг ўзида `maxDuration = 60` турибди, шунинг учун 40
+ * сония хавфсиз: жавоб келгач, қолган вақт уни текшириш ва
+ * саҳифага қайтаришга етади.
+ */
+const KUTISH_MS = 40_000;
 
 /**
  * Одатий моделлар.
@@ -64,7 +81,14 @@ export interface Sorov {
   tizim: string;
   /** Фойдаланувчи саволи — далилнома */
   savol: string;
-  /** Жавобнинг энг кўп узунлиги */
+  /**
+   * Жавобнинг энг кўп узунлиги.
+   *
+   * Кириллча матн учун сахий бўлиши керак: чегара етмаса
+   * модел жумланинг ўртасида тўхтайди, JSON эса ёпилмасдан
+   * қолади ва БУТУН жавоб ташлаб юборилади. Пул ечилади,
+   * натижа эса йўқолади.
+   */
   maxTokens?: number;
 }
 
@@ -222,7 +246,7 @@ async function geminiSora(kalit: string, s: Sorov, signal: AbortSignal): Promise
         systemInstruction: { parts: [{ text: s.tizim }] },
         contents: [{ role: 'user', parts: [{ text: s.savol }] }],
         generationConfig: {
-          maxOutputTokens: s.maxTokens ?? 2000,
+          maxOutputTokens: s.maxTokens ?? 3000,
           temperature: 0.3,
           /*
            * Моделдан ТОЗА JSON сўраймиз — ```json блокисиз.
@@ -287,7 +311,7 @@ async function openAiUslubida(
     headers: { 'content-type': 'application/json', authorization: `Bearer ${kalit}` },
     body: JSON.stringify({
       model: joriyModel(p),
-      max_tokens: s.maxTokens ?? 2000,
+      max_tokens: s.maxTokens ?? 3000,
       temperature: 0.3,
       messages: [
         { role: 'system', content: s.tizim },
@@ -326,7 +350,7 @@ async function anthropicSora(kalit: string, s: Sorov, signal: AbortSignal): Prom
     },
     body: JSON.stringify({
       model: joriyModel('anthropic'),
-      max_tokens: s.maxTokens ?? 2000,
+      max_tokens: s.maxTokens ?? 3000,
       system: s.tizim,
       messages: [{ role: 'user', content: s.savol }],
     }),

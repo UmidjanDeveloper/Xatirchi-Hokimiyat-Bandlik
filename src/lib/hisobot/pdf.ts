@@ -364,7 +364,34 @@ function xulosaSahifasi(h: Hujjat, m: Hisobot): void {
     doc.setFontSize(8);
     const dalilSatrlari = doc.splitTextToSize(t.dalil, ICHKI - 10) as string[];
 
-    const balandlik = sarlavhaSatrlari.length * 4.6 + dalilSatrlari.length * 3.9 + 9;
+    /*
+     * ── ҚАДАМЛАР, МАСЪУЛ, МУДДАТ ВА ЎЛЧОВ ──
+     *
+     * Ҳисобот йиғилишга босиб чиқарилади ва айнан шу тўртта
+     * сатр бўйича ҳисоб сўралади. Экранда улар бор эди, PDF
+     * да эса йўқ эди — қоғозга фақат «нима қилиш керак»
+     * тушарди, «ким» ва «қачонгача» тушмасди.
+     */
+    const qadamSatrlari: string[] = [];
+    for (const q of t.qadamlar ?? []) {
+      qadamSatrlari.push(...(doc.splitTextToSize(`•  ${q}`, ICHKI - 14) as string[]));
+    }
+
+    const belgilar: string[] = [];
+    if (t.masul) belgilar.push(`${h.a('Масъул')}: ${t.masul}`);
+    if (t.muddat) belgilar.push(`${h.a('Муддат')}: ${t.muddat}`);
+    const belgiSatri = belgilar.join('   ·   ');
+    const olchovSatrlari = t.olchov
+      ? (doc.splitTextToSize(`${h.a('Ўлчов')}: ${t.olchov}`, ICHKI - 10) as string[])
+      : [];
+
+    const balandlik =
+      sarlavhaSatrlari.length * 4.6 +
+      dalilSatrlari.length * 3.9 +
+      qadamSatrlari.length * 3.9 +
+      (belgiSatri ? 4.4 : 0) +
+      olchovSatrlari.length * 3.9 +
+      9;
     h.joyOchar(balandlik + 4);
 
     /* Чапдаги даража тасмаси */
@@ -385,9 +412,30 @@ function xulosaSahifasi(h: Hujjat, m: Hisobot): void {
     doc.setFont('Hisobot', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...KUL);
-    doc.text(dalilSatrlari, CHET + 5, h.y + 5 + sarlavhaSatrlari.length * 4.6, {
-      lineHeightFactor: 1.36,
-    });
+    let y = h.y + 5 + sarlavhaSatrlari.length * 4.6;
+    doc.text(dalilSatrlari, CHET + 5, y, { lineHeightFactor: 1.36 });
+    y += dalilSatrlari.length * 3.9;
+
+    if (qadamSatrlari.length) {
+      doc.setTextColor(...QORA);
+      doc.text(qadamSatrlari, CHET + 8, y + 1.5, { lineHeightFactor: 1.36 });
+      y += qadamSatrlari.length * 3.9 + 1.5;
+    }
+
+    if (belgiSatri) {
+      doc.setFont('Hisobot', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(...KUL);
+      doc.text(belgiSatri, CHET + 5, y + 2.5);
+      y += 4.4;
+    }
+
+    if (olchovSatrlari.length) {
+      doc.setFont('Hisobot', 'normal');
+      doc.setFontSize(7.4);
+      doc.setTextColor(...d.rang);
+      doc.text(olchovSatrlari, CHET + 5, y + 2.5, { lineHeightFactor: 1.36 });
+    }
 
     h.y += balandlik + 4;
   });

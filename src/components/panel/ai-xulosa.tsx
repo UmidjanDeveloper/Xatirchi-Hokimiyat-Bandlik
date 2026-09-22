@@ -226,7 +226,7 @@ export function AiXulosa({
           role="status"
         >
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-          {tr('Сунъий интеллект маълумотни таҳлил қилмоқда — 10–20 сония…')}
+          {tr('Сунъий интеллект маълумотни таҳлил қилмоқда — 15–40 сония…')}
         </div>
       )}
 
@@ -271,17 +271,62 @@ export function AiXulosa({
           {xulosa.tavsiyalar.map((t, i) => {
             const d = DARAJA[t.daraja] ?? DARAJA.muhim;
             const Ikonka = d.ikonka;
+            /*
+              ── Нега қадамлар алоҳида кўринади ──
+
+              Илгари тавсиянинг ҳаммаси битта абзацда эди ва
+              ҳоким уни ўқиб чиқарди-ю, йиғилишда нима дейишни
+              билмасди. Энди уччала савол экранда АЛОҲИДА
+              турибди: КИМ (масъул), ҚАЧОНГАЧА (муддат) ва
+              НАТИЖА нима (ўлчов). Йиғилишда айнан шу учтаси
+              сўралади.
+            */
+            const belgilar = [
+              t.masul ? { nomi: tr('Масъул'), qiymat: t.masul } : null,
+              t.muddat ? { nomi: tr('Муддат'), qiymat: t.muddat } : null,
+            ].filter(Boolean) as { nomi: string; qiymat: string }[];
+
             return (
-              <li key={`${t.sarlavha}-${i}`} className="flex gap-3 px-5 py-3.5">
+              <li key={`${t.sarlavha}-${i}`} className="flex gap-3 px-5 py-4">
                 <span
                   className={`mt-0.5 flex h-6 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[10px] font-bold ${d.sinf}`}
                 >
                   <Ikonka className="h-3 w-3" aria-hidden="true" />
                   {tr(d.nomi)}
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-ink">{t.sarlavha}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">{t.dalil}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{t.dalil}</p>
+
+                  {t.qadamlar && t.qadamlar.length > 0 && (
+                    <ol className="mt-2.5 space-y-1">
+                      {t.qadamlar.map((q, n) => (
+                        <li key={n} className="flex gap-2 text-xs leading-relaxed text-ink">
+                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+                          <span className="min-w-0">{q}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+
+                  {(belgilar.length > 0 || t.olchov) && (
+                    <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+                      {belgilar.map((b) => (
+                        <span key={b.nomi} className="text-[11px] text-ink-faint">
+                          <span className="font-semibold uppercase tracking-wide">{b.nomi}:</span>{' '}
+                          <span className="text-ink-muted">{b.qiymat}</span>
+                        </span>
+                      ))}
+                      {t.olchov && (
+                        <span className="text-[11px] text-ok">
+                          <span className="font-semibold uppercase tracking-wide">
+                            {tr('Ўлчов')}:
+                          </span>{' '}
+                          {t.olchov}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </li>
             );
