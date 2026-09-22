@@ -214,7 +214,15 @@ export default async function PanelSahifasi({
             Энди биттаси қолди. Ҳисобот панел қайси ҳудудни
             кўрсатиб турган бўлса, ЎШАНИ юклайди.
           */}
-          <HisobotTugmalari qamrov={{ nomi: qamrov.nomi, mahallaId }} />
+          <HisobotTugmalari
+            qamrov={{ nomi: qamrov.nomi, mahallaId }}
+            /*
+              «Маҳалла жадвали» — ичида Ф.И.Ш. бор ҳужжат,
+              шунинг учун фақат ҳоким ва администраторга.
+              Бандлик раҳбари панелида кўрсатилмайди.
+            */
+            mahallaJadvali={sessiya.rol === 'HOKIM' || sessiya.rol === 'ADMIN'}
+          />
         </div>
       </div>
 

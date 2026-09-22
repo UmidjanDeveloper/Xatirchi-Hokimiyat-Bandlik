@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileSpreadsheet, FileText, Loader2, Sparkles } from 'lucide-react';
+import { FileSpreadsheet, FileText, Loader2, Sparkles, Table2 } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { lotinga } from '@/lib/alifbo';
 import type { Hisobot } from '@/lib/hisobot/turlar';
@@ -61,6 +61,7 @@ export function HisobotTugmalari({
    */
   ozMahallasi = false,
   malumotBormi = true,
+  mahallaJadvali = false,
 }: {
   qamrov: HisobotQamrovi;
   /**
@@ -72,6 +73,19 @@ export function HisobotTugmalari({
    */
   mahallalar?: { id: string; nomiKirill: string }[];
   ozMahallasi?: boolean;
+  /**
+   * «Маҳалла жадвали» тугмаси кўрсатилсинми.
+   *
+   * Бу — ҳокимлик андозаси бўйича етти варақли Excel ва унинг
+   * ичида Ф.И.Ш. бор: бутун маҳалла бўйича бир неча юз кишининг
+   * рўйхати. Шунинг учун у фақат ҳоким ва администратор
+   * панелида турибди, ва сервер томонда ҳам шу икки рол
+   * текширилади (`/api/hisobot/mahalla-jadvali`).
+   *
+   * Экрандаги тугмани яшириш ҚЎШИМЧА қулайлик, ҳимоя эмас:
+   * ҳимоя серверда.
+   */
+  mahallaJadvali?: boolean;
   /**
    * Ҳисобот учун маълумот борми.
    *
@@ -90,7 +104,7 @@ export function HisobotTugmalari({
   malumotBormi?: boolean;
 }) {
   const { t: tr, alifbo } = useAlifbo();
-  const [ishlayapti, setIshlayapti] = useState<'pdf' | 'excel' | null>(null);
+  const [ishlayapti, setIshlayapti] = useState<'pdf' | 'excel' | 'jadval' | null>(null);
   const [xato, setXato] = useState<string | null>(null);
   const [holat, setHolat] = useState<string | null>(null);
 
@@ -186,6 +200,84 @@ export function HisobotTugmalari({
     }
   }
 
+  /**
+   * ── МАҲАЛЛА ЖАДВАЛИ ──
+   *
+   * Ҳокимлик андозаси бўйича етти варақли Excel. Файл СЕРВЕРДА
+   * тўлдирилади (андоза шу ерда туради ва безаги сақланиши
+   * керак), шунинг учун мижоз томон фақат юклаб олади.
+   *
+   * Қолган иккита тугмадан фарқи: улар маълумотни JSON да
+   * олиб, файлни браузерда чизади. Бу эса тайёр файлни олади.
+   */
+  async function jadvalOl() {
+    if (ishlayapti) return;
+    if (!joriyMahalla) {
+      setXato(tr('Жадвал маҳалла кесимида тузилади — юқоридан МФЙ ни танланг.'));
+      return;
+    }
+    setXato(null);
+    setIshlayapti('jadval');
+    try {
+      setHolat(tr('Ҳокимлик жадвали тўлдирилмоқда…'));
+      const javob = await fetch('/api/hisobot/mahalla-jadvali', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mahallaId: joriyMahalla, lotin: alifbo === 'lot' }),
+      });
+
+      if (!javob.ok) {
+        const d = (await javob.json().catch(() => ({}))) as { xabar?: string };
+        throw new Error(d.xabar ?? tr('Жадвал тайёрланмади'));
+      }
+
+      /*
+       * Файл номи СЕРВЕРДАН олинади: ҳудудни сервер ҳал қилади,
+       * демак ном ҳам ундан келиши керак. Сарлавҳа ўқилмаса —
+       * заҳира ном ишлатилади, юклама йўқолмасин.
+       */
+      const sarlavha = javob.headers.get('Content-Disposition') ?? '';
+      const moslik = /filename="([^"]+)"/.exec(sarlavha);
+      const nom = moslik?.[1] ?? `mahalla-jadvali-${sana}.xlsx`;
+
+      const bayt = await javob.blob();
+      const manzil = URL.createObjectURL(bayt);
+      const havola = document.createElement('a');
+      havola.href = manzil;
+      havola.download = nom;
+      document.body.appendChild(havola);
+      havola.click();
+      havola.remove();
+      URL.revokeObjectURL(manzil);
+
+      /*
+       * Ҳар варақда нечта ёзув чиққани ЭКРАНДА айтилади.
+       *
+       * Бусиз ходим файлни очиб, еттита варақни кўздан
+       * кечириб чиқиши керак эди. Энди у тугмани босиб,
+       * дарҳол «камбағал оилалар 134, ишсизлар 37» деган
+       * жавобни олади.
+       */
+      const xom = javob.headers.get('X-Jadval-Sanoq');
+      if (xom) {
+        try {
+          const sanoq = JSON.parse(decodeURIComponent(xom)) as Record<string, number>;
+          const satr = Object.entries(sanoq)
+            .map(([k, v]) => `${tr(k)} ${v}`)
+            .join(' · ');
+          setHolat(satr);
+          return;
+        } catch {
+          /* Сарлавҳа бузуқ бўлса — жим ўтамиз, файл барибир юкланди */
+        }
+      }
+    } catch (e) {
+      setXato(e instanceof Error ? e.message : tr('Жадвал тайёрланмади'));
+    } finally {
+      setIshlayapti(null);
+    }
+  }
+
   const tugma =
     'flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2.5 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:opacity-60';
 
@@ -242,6 +334,40 @@ export function HisobotTugmalari({
           )}
           {tr('Excel ҳисобот')}
         </button>
+
+        {/*
+          ── УЧИНЧИ ТУГМА: ҲОКИМЛИК ЖАДВАЛИ ──
+
+          Аввалги иккитаси ТАҲЛИЛ беради: жамланган сон,
+          диаграмма ва хулоса. Бу эса РЎЙХАТ беради —
+          ҳокимлик сўрайдиган андозанинг ўзи, исм-шарифлар
+          билан тўлдирилган.
+
+          Маҳалла танланмаган бўлса тугма кўринади, лекин
+          босилмайди: андоза маҳалла кесимида тузилган ва
+          сарлавҳасида маҳалла номи турибди. Яширилса,
+          ҳоким унинг борлигини умуман билмасди.
+        */}
+        {mahallaJadvali && (
+          <button
+            type="button"
+            onClick={() => void jadvalOl()}
+            disabled={ishlayapti !== null || !malumotBormi || !joriyMahalla}
+            title={
+              joriyMahalla
+                ? tr('Ҳокимлик андозаси бўйича етти варақли жадвал')
+                : tr('Аввал юқоридан МФЙ ни танланг')
+            }
+            className={tugma}
+          >
+            {ishlayapti === 'jadval' ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Table2 className="h-4 w-4" aria-hidden="true" />
+            )}
+            {tr('Маҳалла жадвали')}
+          </button>
+        )}
       </div>
 
       {holat && (

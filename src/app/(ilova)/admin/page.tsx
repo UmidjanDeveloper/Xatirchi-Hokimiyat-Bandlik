@@ -19,6 +19,7 @@ import { panelQamroviniOl, topshiriqQamrovi } from '@/lib/panel-qamrovi';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { XabarHolati } from '@/components/telegram/xabar-holati';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
+import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -121,6 +122,19 @@ export default async function AdminSahifasi({
             />
           )}
           <DavrTanlash joriy={davr} />
+          {/*
+            ── ҲОКИМЛИК ЖАДВАЛИ ──
+
+            Администраторга ҳам керак: ҳоким «жадвал чиқмаяпти»
+            деб мурожаат қилганда, у айнан шу тугмани босиб
+            текширади. Ҳоким панелидаги билан БИР ХИЛ файл —
+            бошқа йўл орқали текшириш нотўғри жавоб берарди.
+          */}
+          <HisobotTugmalari
+            qamrov={{ nomi: qamrov.nomi, mahallaId }}
+            malumotBormi={xonadon > 0}
+            mahallaJadvali
+          />
           <SahifaHisoboti malumotBormi={xonadon > 0} />
         </div>
       </div>
