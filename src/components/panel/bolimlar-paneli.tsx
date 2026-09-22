@@ -82,8 +82,14 @@ const foiz = (qism: number, butun: number): number =>
  */
 const qisqaNom = (nom: string): string => nom.split(' — ')[0];
 
-/* Бўлимлар рўйхати — юқоридаги ўтиш тугмалари шундан чиқади */
-const BOLIMLAR = [
+/**
+ * Бўлимлар рўйхати — юқоридаги ўтиш тугмалари шундан чиқади.
+ *
+ * `export` — чап мундарижа ҳам АЙНАН шу рўйхатдан ўқийди.
+ * Иккита нусха бўлганда бири янги бўлим билан тўлдирилиб,
+ * иккинчиси эскирарди ва мундарижада бўлим кўринмай қоларди.
+ */
+export const BOLIMLAR = [
   { id: 'bolim-oila', raqam: '0', nomi: 'Оила таркиби' },
   { id: 'bolim-mehnat', raqam: 'I', nomi: 'Меҳнат ва бандлик' },
   { id: 'bolim-tadbirkorlik', raqam: 'II', nomi: 'Тадбиркорлик' },

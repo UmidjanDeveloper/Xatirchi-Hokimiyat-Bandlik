@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FileSpreadsheet, FileText, Loader2, Sparkles } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { lotinga } from '@/lib/alifbo';
@@ -94,8 +94,25 @@ export function HisobotTugmalari({
   const [xato, setXato] = useState<string | null>(null);
   const [holat, setHolat] = useState<string | null>(null);
 
-  /** Танланган ҳудуд — бўш сатр «бутун туман» дегани */
+  /**
+   * Танланган ҳудуд — бўш сатр «бутун туман» дегани.
+   *
+   * ── Нега `useEffect` билан янгиланади ──
+   *
+   * `useState` нинг бошланғич қиймати ФАҚАТ БИР МАРТА
+   * ўқилади. Панелда МФЙ танлаш пайдо бўлгач, саҳифа янги
+   * `qamrov.mahallaId` билан қайта чизилади, аммо компонент
+   * ўрнидан кўчмагани учун React унинг ҳолатини сақлаб
+   * қоларди: ҳоким «Уйшун» ни танлар, панел Уйшунни кўрсатар,
+   * ҳисобот эса БУТУН ТУМАН бўйича юкланарди.
+   *
+   * Ташқаридан келган қамров ўзгарса — ҳисобот ҳам ўшанга
+   * ергашади.
+   */
   const [tanlangan, setTanlangan] = useState<string>(qamrov.mahallaId ?? '');
+  useEffect(() => {
+    setTanlangan(qamrov.mahallaId ?? '');
+  }, [qamrov.mahallaId]);
 
   const sana = new Date().toISOString().slice(0, 10);
   const qoshimcha = alifbo === 'lot' ? '' : '-kirill';

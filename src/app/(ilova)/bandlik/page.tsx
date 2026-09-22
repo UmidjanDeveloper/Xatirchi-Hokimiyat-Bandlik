@@ -328,10 +328,19 @@ export default async function BandlikSahifasi({
             />
           )}
           <DavrTanlash joriy={davr} />
-          <HisobotTugmalari
-            qamrov={{ nomi: qamrov.nomi, mahallaId }}
-            mahallalar={mahallalar}
-          />
+          {/*
+            Ҳисобот тугмаларига МФЙ рўйхати берилмайди.
+
+            Илгари берилар эди ва экранда ИККИТА ҳудуд танлови
+            ёнма-ён турарди: панелники ва ҳисоботники. Ҳоким
+            қайси бири нимага таъсир қилишини билмасди — биринчиси
+            экрандаги рақамларни, иккинчиси эса юкланадиган
+            файлни ўзгартирарди.
+
+            Энди биттаси қолди. Ҳисобот панел қайси ҳудудни
+            кўрсатиб турган бўлса, ЎШАНИ юклайди.
+          */}
+          <HisobotTugmalari qamrov={{ nomi: qamrov.nomi, mahallaId }} />
         </div>
       </div>
 
