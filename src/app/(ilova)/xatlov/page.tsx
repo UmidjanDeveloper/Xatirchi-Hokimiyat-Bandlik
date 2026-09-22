@@ -33,6 +33,15 @@ export function generateMetadata() {
   return { title: matnchi()('Хатловларим') };
 }
 
+/**
+ * Экранда кўрсатиладиган рўйхат узунлиги.
+ *
+ * Бу фақат КЎРИНИШ чегараси. Саҳифадаги ҳеч бир сон бу
+ * рўйхатдан ҳисобланмайди — акс ҳолда чегарадан ошган
+ * маҳаллада рақам ёлғон бўлиб қоларди.
+ */
+const RO_YXAT_HAJMI = 100;
+
 const HOLAT_NISHONI: Record<string, { matn: string; sinf: string }> = {
   QORALAMA: { matn: 'Қоралама', sinf: 'bg-warn-bg text-warn' },
   YUBORILGAN: { matn: 'Юборилган', sinf: 'bg-info-bg text-info' },
@@ -52,7 +61,18 @@ export default async function XatlovlarSahifasi({
 
   const filtr = mahallaFiltri(sessiya);
 
-  const [xatlovlar, mahalla, tahlil, bolimlar, xarita, vHisob, vNavbat, men] = await Promise.all([
+  const [
+    xatlovlar,
+    sanoq,
+    qoralamaSoni,
+    mahalla,
+    tahlil,
+    bolimlar,
+    xarita,
+    vHisob,
+    vNavbat,
+    men,
+  ] = await Promise.all([
     prisma.household.findMany({
       where: {
         ...filtr,
@@ -63,8 +83,15 @@ export default async function XatlovlarSahifasi({
           ? { OR: [{ holati: { not: 'QORALAMA' } }, { xodimId: sessiya.userId }] }
           : {}),
       },
+      /*
+       * Рўйхат КЎРСАТИШ учун — энг янги юзтаси.
+       *
+       * Кўрсаткичлар бу рўйхатдан САНАЛМАЙДИ: пастдаги
+       * `sanoq` алоҳида сўров билан олинади. Сабаби қуйида
+       * ёзилган.
+       */
       orderBy: { updatedAt: 'desc' },
-      take: 100,
+      take: RO_YXAT_HAJMI,
       select: {
         id: true,
         holati: true,
@@ -78,6 +105,53 @@ export default async function XatlovlarSahifasi({
         _count: { select: { ishsizlar: true } },
       },
     }),
+    /*
+     * ══════════════════════════════════════════════════════
+     *  КЎРСАТКИЧЛАР — АЛОҲИДА СЎРОВ БИЛАН
+     * ══════════════════════════════════════════════════════
+     *
+     *  ── Қандай нуқсон бўлган ──
+     *
+     *  Илгари учала кўрсаткич ҳам ЮҚОРИДАГИ рўйхатдан
+     *  саналарди: `xatlovlar.filter(...).length`. Рўйхат эса
+     *  `take` билан чекланган — фақат энг янги юзтаси.
+     *
+     *  Маҳаллада 134 та хатлов бўлганда панел 100 дан
+     *  ошмаган сонни кўрсатарди. Ходим уч ой ишлайди, рақам
+     *  эса бир жойда тўхтаб қолади — ва у «тизим менинг
+     *  ишимни ҳисобламаяпти» деб ўйлайди. Ҳоким панелида эса
+     *  худди шу маҳалла бўйича бошқа сон турарди, чунки у
+     *  ерда ҳисоб SQL да юритилади.
+     *
+     *  ── Қоида ──
+     *
+     *  РЎЙХАТ кўрсатиш учун, САНОҚ ҳисоблаш учун. Экранда
+     *  турган ҳар бир сон базанинг ўзидан келиши керак —
+     *  саҳифага тушган юзта қатордан эмас.
+     */
+    prisma.household.aggregate({
+      where: { ...filtr, holati: { not: 'QORALAMA' } },
+      _count: true,
+      _sum: { ishsizlarSoni: true },
+    }),
+
+    /*
+     *  Қоралама сони ҳам БАЗАДАН.
+     *
+     *  Бу рўйхатдан саналса юзаки тўғри кўринарди — қоралама
+     *  одатда рўйхат тепасида туради. Аммо «одатда» етарли
+     *  эмас: рўйхат `updatedAt` бўйича тартибланган, ва ходим
+     *  эски қораламага тегмай туриб юзта хатлов юборса, ўша
+     *  қоралама юзталикдан тушиб қолади. Экранда «0 қоралама»
+     *  ёзилади, тугалланмаган иш эса базада ётаверади.
+     *
+     *  Қоралама фақат ўзиники: бошқа ходимнинг тугалланмаган
+     *  ишини санашнинг маъноси йўқ.
+     */
+    prisma.household.count({
+      where: { ...filtr, holati: 'QORALAMA', xodimId: sessiya.userId },
+    }),
+
     filtr.mahallaId
       ? prisma.mahalla.findUnique({
           where: { id: filtr.mahallaId },
@@ -140,9 +214,16 @@ export default async function XatlovlarSahifasi({
     }),
   ]);
 
-  const yuborilgan = xatlovlar.filter((x) => x.holati !== 'QORALAMA');
-  const qoralamalar = xatlovlar.filter((x) => x.holati === 'QORALAMA');
-  const topilganIshsiz = yuborilgan.reduce((s, x) => s + x.ishsizlarSoni, 0);
+  /*
+   * Кўрсаткичлар — БАЗАДАН. Рўйхат — фақат экран учун.
+   *
+   * Саҳифадаги бирорта сон `xatlovlar` дан саналмайди.
+   */
+  const yuborilganSoni = sanoq._count;
+  const topilganIshsiz = sanoq._sum.ishsizlarSoni ?? 0;
+
+  /* Рўйхат тўлиб кетганми — экранда айтилади */
+  const royxatToldi = xatlovlar.length >= RO_YXAT_HAJMI;
 
   return (
     <div className="space-y-5">
@@ -187,7 +268,7 @@ export default async function XatlovlarSahifasi({
           <HisobotTugmalari
             qamrov={{ nomi: '' }}
             ozMahallasi
-            malumotBormi={yuborilgan.length > 0}
+            malumotBormi={yuborilganSoni > 0}
           />
 
           {/*
@@ -195,7 +276,7 @@ export default async function XatlovlarSahifasi({
             кесим керак: «шу ҳафта нечта хонадон қилдим» деган
             савол унинг кундалик саволи, ойлик эмас.
           */}
-          {mahalla && yuborilgan.length > 0 && <DavrTanlash joriy={davr} />}
+          {mahalla && yuborilganSoni > 0 && <DavrTanlash joriy={davr} />}
         </div>
       </div>
 
@@ -209,8 +290,8 @@ export default async function XatlovlarSahifasi({
           <Karta
             ikonka={<FileText className="h-4 w-4" />}
             nomi={tr("Хатловдан ўтган хонадон")}
-            qiymat={`${yuborilgan.length} / ${mahalla.xonadon}`}
-            izoh={tr(`${percent(yuborilgan.length, mahalla.xonadon)}% қамров`)}
+            qiymat={`${yuborilganSoni} / ${mahalla.xonadon}`}
+            izoh={tr(`${percent(yuborilganSoni, mahalla.xonadon)}% қамров`)}
           />
           <Karta
             ikonka={<Users className="h-4 w-4" />}
@@ -221,8 +302,8 @@ export default async function XatlovlarSahifasi({
           <Karta
             ikonka={<TriangleAlert className="h-4 w-4" />}
             nomi={tr("Тугалланмаган қоралама")}
-            qiymat={String(qoralamalar.length)}
-            izoh={qoralamalar.length > 0 ? tr('Тугатиб юборинг') : tr('Ҳаммаси юборилган')}
+            qiymat={String(qoralamaSoni)}
+            izoh={qoralamaSoni > 0 ? tr('Тугатиб юборинг') : tr('Ҳаммаси юборилган')}
           />
         </div>
       )}
@@ -236,7 +317,7 @@ export default async function XatlovlarSahifasi({
         Хатлов бошланмаган бўлса кўрсатилмайди: бўш маълумотдан
         хулоса чиқмайди.
       */}
-      {mahalla && yuborilgan.length > 0 && (
+      {mahalla && yuborilganSoni > 0 && (
         <AiXulosa qamrovNomi={`${mahalla.nomiKirill} МФЙ`} />
       )}
 
@@ -253,7 +334,7 @@ export default async function XatlovlarSahifasi({
         келади, яъни қўшни маҳалланинг битта фуқароси ҳам
         бу ерга аралашмайди.
       */}
-      {mahalla && tahlil && yuborilgan.length > 0 && (
+      {mahalla && tahlil && yuborilganSoni > 0 && (
         <DinamikaBloglari
           dinamika={tahlil.dinamika}
           davr={davr}
@@ -270,7 +351,7 @@ export default async function XatlovlarSahifasi({
         билан АЙНАН БИР ХИЛ ҳисоб — фарқи фақат қамровда:
         у ерда туман, бу ерда битта МФЙ.
       */}
-      {mahalla && bolimlar && yuborilgan.length > 0 && (
+      {mahalla && bolimlar && yuborilganSoni > 0 && (
         <BolimlarPaneli b={bolimlar} qamrovNomi={`${mahalla.nomiKirill} МФЙ`} />
       )}
 
@@ -363,6 +444,22 @@ export default async function XatlovlarSahifasi({
         </div>
       ) : (
         <div className="karta divide-y divide-line">
+          {/*
+            ── РЎЙХАТ ЧЕГАРАСИ ОЧИҚ АЙТИЛАДИ ──
+
+            Юздан ортиқ хатлов қилган маҳаллада рўйхатда фақат
+            энг янгилари кўринади. Буни айтмасак, ходим
+            «эскилари йўқолибди» деб ўйлайди — ҳолбуки улар
+            жойида, фақат бу экранга сиғмаган.
+          */}
+          {royxatToldi && (
+            <p className="px-4 py-2.5 text-[11px] leading-relaxed text-ink-faint">
+              {tr('Рўйхатда энг сўнгги')} {RO_YXAT_HAJMI} {tr('таси кўрсатилган.')}{' '}
+              {tr('Жами')} <b className="raqam text-ink">{yuborilganSoni}</b>{' '}
+              {tr('та хатлов юборилган — юқоридаги кўрсаткичлар шу тўлиқ сондан ҳисобланган.')}
+            </p>
+          )}
+
           {xatlovlar.map((x) => {
             const nishon = HOLAT_NISHONI[x.holati];
             return (

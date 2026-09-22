@@ -27,6 +27,9 @@ export function generateMetadata() {
   return { title: matnchi()('Чора-тадбирлар') };
 }
 
+/** Рўйхатда бир йўла нечта топшириқ кўрсатилади */
+const RO_YXAT_HAJMI = 200;
+
 export default async function ChoraTadbirlarSahifasi({
   searchParams,
 }: {
@@ -78,7 +81,10 @@ export default async function ChoraTadbirlarSahifasi({
     prisma.actionPlan.findMany({
       where,
       orderBy: [{ muddat: 'asc' }],
-      take: 200,
+      /* Рўйхат КЎРСАТИШ учун чегараланган; юқоридаги сонлар
+         эса `count` билан базадан олинади. Чегарага етилса
+         экранда айтилади. */
+      take: RO_YXAT_HAJMI,
       include: {
         household: { select: { id: true, oilaBoshligi: true, manzil: true } },
         ishsiz: { select: { id: true, fish: true } },
@@ -189,6 +195,13 @@ export default async function ChoraTadbirlarSahifasi({
       </div>
 
       {/* ── Ro'yxat ── */}
+      {royxat.length >= RO_YXAT_HAJMI && (
+        <p className="text-xs text-ink-faint">
+          {tr('Рўйхатда энг яқин муддатли')} {RO_YXAT_HAJMI} {tr('таси кўрсатилган.')}{' '}
+          {tr('Юқоридаги сонлар эса барча')} {jami} {tr('та топшириқ бўйича.')}
+        </p>
+      )}
+
       {royxat.length === 0 ? (
         <div className="karta p-8 text-center text-sm text-ink-muted">
           {tr('Шартга мос топшириқ топилмади.')}

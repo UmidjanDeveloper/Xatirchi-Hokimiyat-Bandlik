@@ -17,7 +17,7 @@
     "db:migrate": "prisma migrate dev",
     "tekshir": "tsx scripts/tekshir.ts",
     "ai-tekshir": "tsx scripts/ai-tekshir.ts",
-    "sinov": "tsx scripts/alifbo-sinov.ts && tsx scripts/sana-sinov.ts && tsx scripts/ulanish-sinov.ts && tsx scripts/moslik-sinov.ts && tsx scripts/tekshiruv-sinov.ts && tsx scripts/chora-sinov.ts && tsx scripts/xulosa-sinov.ts && tsx scripts/pdf-sinov.ts && tsx scripts/navbat-sinov.ts && tsx scripts/dinamika-sinov.ts && tsx scripts/it-vaucher-sinov.ts && tsx scripts/tarix-sinov.ts && tsx scripts/dublikat-sinov.ts && tsx scripts/xabarnoma-sinov.ts && npx tsx scripts/zanjir-sinov.ts && npx tsx scripts/anketa-sinov.ts && npx tsx scripts/arxiv-sinov.ts && npx tsx scripts/bolimlar-sinov.ts && npx tsx scripts/xarita-sinov.ts",
+    "sinov": "tsx scripts/alifbo-sinov.ts && tsx scripts/sana-sinov.ts && tsx scripts/ulanish-sinov.ts && tsx scripts/moslik-sinov.ts && tsx scripts/tekshiruv-sinov.ts && tsx scripts/chora-sinov.ts && tsx scripts/xulosa-sinov.ts && tsx scripts/pdf-sinov.ts && tsx scripts/navbat-sinov.ts && tsx scripts/dinamika-sinov.ts && tsx scripts/it-vaucher-sinov.ts && tsx scripts/tarix-sinov.ts && tsx scripts/dublikat-sinov.ts && tsx scripts/xabarnoma-sinov.ts && npx tsx scripts/zanjir-sinov.ts && npx tsx scripts/anketa-sinov.ts && npx tsx scripts/arxiv-sinov.ts && npx tsx scripts/bolimlar-sinov.ts && npx tsx scripts/xarita-sinov.ts && npx tsx scripts/sonlar-sinov.ts",
     "vercel-build": "npm run build"
   },
   "prisma": {
