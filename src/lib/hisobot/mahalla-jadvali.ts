@@ -245,19 +245,6 @@ const malumotBelgisi = (
 /* ── Варақ тўлдириш ─────────────────────────────────────────── */
 
 /**
- * Битта блок — маҳалла ва унинг қаторлари.
- *
- * Битта МФЙ кесимида блок ҳам битта бўлади ва `nomi` бўш
- * қолади. Туман кесимида эса ҳар МФЙ ўз блоги билан келади ва
- * блок олдига ном ёзилган ажратувчи қатор қўйилади.
- */
-interface Guruh {
-  /** МФЙ номи — битта маҳалла кесимида `null` */
-  nomi: string | null;
-  qatorlar: Katak[][];
-}
-
-/**
  * Битта варақни тўлдиради.
  *
  * Ҳар қатор — А устунидан КЕЙИНГИ катаклар кетма-кетлиги;
@@ -288,7 +275,7 @@ function varaqniToldir(
    * тайёрланмайди ва ходим хатони дарҳол кўради.
    */
   ustunSoni: number,
-  guruhlar: Guruh[],
+  qatorlar: Katak[][],
   izoh: string
 ): void {
   if (varaq.columnCount !== ustunSoni) {
@@ -296,13 +283,11 @@ function varaqniToldir(
       `«${varaq.name}» варағида ${varaq.columnCount} та устун бор, кутилгани ${ustunSoni} та. Андоза ўзгарган — тўлдириш қоидаси ҳам янгиланиши керак.`
     );
   }
-  for (const g of guruhlar) {
-    for (const [i, q] of g.qatorlar.entries()) {
-      if (q.length !== ustunSoni - 1) {
-        throw new Error(
-          `«${varaq.name}» варағи${g.nomi ? `, ${g.nomi}` : ''}, ${i + 1}-қатор: ${q.length} та қиймат берилди, керагиси ${ustunSoni - 1} та. Устунлар сурилиб кетарди.`
-        );
-      }
+  for (const [i, q] of qatorlar.entries()) {
+    if (q.length !== ustunSoni - 1) {
+      throw new Error(
+        `«${varaq.name}» варағи, ${i + 1}-қатор: ${q.length} та қиймат берилди, керагиси ${ustunSoni - 1} та. Устунлар сурилиб кетарди.`
+      );
     }
   }
 
@@ -330,66 +315,36 @@ function varaqniToldir(
     }
   };
 
-  let r = BOSHLANISH;
+  /*
+   * ── АЖРАТУВЧИ ҚАТОР ЙЎҚ ──
+   *
+   * Аввалги вариантда туман кесимида ҳар МФЙ олдига номи
+   * ёзилган сарлавҳа қатори қўйилган эди. Ҳужжат ўқиш учун
+   * қулай бўларди, аммо ҲОКИМЛИК КУТГАН ШАКЛДАН чиқиб
+   * кетарди: андозада бундай қатор йўқ.
+   *
+   * Жадвал ҳокимликка топширилади ва улар уни ўзлари юборган
+   * шакл билан солиштиради. «Тузукроқ» қилиш ҳуқуқимиз йўқ —
+   * шакл ўзгарса, ҳужжат қайтариб юборилади.
+   *
+   * Шунинг учун туман кесимида ҳам жадвал битта узлуксиз
+   * рўйхат: 1 дан охиригача, маҳалла бўйича тартибланган.
+   * Қайси қатор қайси МФЙ дан экани «Хонадонлар — тўлиқ»
+   * варағида, «МФЙ» устунида кўринади.
+   */
+  qatorlar.forEach((qiymatlar, i) => {
+    const qator = BOSHLANISH + i;
+    const q = varaq.getRow(qator);
+    if (qator > oxirgiTayyor) bezakniKochir(q);
 
-  for (const g of guruhlar) {
-    /*
-     * ── МФЙ АЖРАТУВЧИ ҚАТОРИ ──
-     *
-     * Туман кесимида битта варақда 70 та маҳалланинг қатори
-     * ёнма-ён туради. Андозада эса «маҳалла» устуни ЙЎҚ — у
-     * битта МФЙ учун тузилган ва сарлавҳада ном ёзилган.
-     *
-     * Устун қўшиб бўлмайди: жадвал ҳокимлик кутган шаклдан
-     * чиқиб кетарди. Шунинг учун ҳар блок олдига бирлаштирилган
-     * сарлавҳа қатори қўйилади — қоғоздаги йиғма жадваллар
-     * айнан шундай тузилади.
-     *
-     * Бусиз файл ЎҚИБ БЎЛМАЙДИГАН бўларди: «Алиев Анвар»
-     * қайси маҳалладан экани билинмасди.
-     */
-    if (g.nomi) {
-      const ajratgich = varaq.getRow(r);
-      if (r > oxirgiTayyor) bezakniKochir(ajratgich);
-      for (let u = 1; u <= ustunSoni; u++) ajratgich.getCell(u).value = null;
-      const k = ajratgich.getCell(1);
-      k.value = `${g.nomi} МФЙ — ${g.qatorlar.length} та ёзув`;
-      k.font = { bold: true, size: 11 };
-      k.alignment = { vertical: 'middle', horizontal: 'left' };
-      k.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE8EEF7' },
-      };
-      varaq.mergeCells(r, 1, r, ustunSoni);
-      ajratgich.height = 20;
-      ajratgich.commit();
-      r++;
-    }
-
-    g.qatorlar.forEach((qiymatlar, i) => {
-      /*
-       * `r + i` — блок ичидаги ўрин. Фақат `r` ёзилганда
-       * блокнинг ҲАММА қатори битта жойга тушарди: охиргиси
-       * қолиб, қолгани йўқоларди, ва андозанинг эски тартиб
-       * рақамлари тагида кўриниб турарди.
-       */
-      const qator = r + i;
-      const q = varaq.getRow(qator);
-      if (qator > oxirgiTayyor) bezakniKochir(q);
-      /*
-       * Тартиб рақами ҳар МФЙ да ЯНГИДАН бошланади. Шунда
-       * блок маҳалла юборган жадвалнинг ўзи билан бир хил
-       * бўлади ва иккисини солиштириш осон.
-       */
-      q.getCell(1).value = i + 1;
-      qiymatlar.forEach((v, j) => {
-        q.getCell(j + 2).value = v === null || v === '' ? null : v;
-      });
-      q.commit();
+    q.getCell(1).value = i + 1;
+    qiymatlar.forEach((v, j) => {
+      q.getCell(j + 2).value = v === null || v === '' ? null : v;
     });
-    r += g.qatorlar.length;
-  }
+    q.commit();
+  });
+
+  const r = BOSHLANISH + qatorlar.length;
 
   /* Ортиқча тайёр қаторлар тозаланади — сохта тартиб рақами қолмасин */
   for (let b = r; b <= oxirgiTayyor; b++) {
@@ -406,7 +361,9 @@ function varaqniToldir(
    * савол умуман берилмаган. Фарқи катта — биринчиси хулоса,
    * иккинчиси маълумот йўқлиги.
    */
-  const izohQatori = varaq.getRow(Math.max(r, oxirgiTayyor + 1) + 1);
+  /* Жадвал тагида бир қатор бўш жой қолдирилади */
+  const izohOrni = Math.max(r, oxirgiTayyor + 1) + 1;
+  const izohQatori = varaq.getRow(izohOrni);
   const katak = izohQatori.getCell(1);
   katak.value = izoh;
   katak.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
@@ -555,7 +512,15 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
      */
     prisma.household.findMany({
       where: shart,
-      orderBy: { oilaBoshligi: 'asc' },
+      /*
+       * Аввал МФЙ номи, кейин оила бошлиғи.
+       *
+       * Туман кесимида жадвалда ажратувчи қатор йўқ — ҳокимлик
+       * андозасида бундай қатор кўзда тутилмаган. Тартиб эса
+       * бор: бир маҳалланинг қаторлари ёнма-ён туради ва
+       * ҳужжат бетартиб аралашмайди.
+       */
+      orderBy: [{ mahalla: { nomi: 'asc' } }, { oilaBoshligi: 'asc' }],
       include: {
         mahalla: { select: { nomiKirill: true } },
         xodim: { select: { fullName: true } },
@@ -564,7 +529,7 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
     }),
     prisma.unemployedPerson.findMany({
       where: mahallaId ? { mahallaId } : undefined,
-      orderBy: { fish: 'asc' },
+      orderBy: [{ mahalla: { nomi: 'asc' } }, { fish: 'asc' }],
       include: {
         mahalla: { select: { nomiKirill: true } },
         mutaxassis: { select: { fullName: true } },
@@ -602,39 +567,27 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   const varaq = (i: number) => kitob.worksheets[i];
 
   /**
-   * Ёзувларни МФЙ бўйича блокларга ажратади.
+   * Ёзувларни жадвал қаторларига айлантиради.
    *
-   * Битта МФЙ кесимида блок битта бўлади ва номсиз қолади —
-   * ажратувчи қатор чизилмайди, жадвал маҳалла юборадиган
-   * шаклнинг АЙНАН ўзи бўлади.
-   *
-   * Туман кесимида ҳар МФЙ ўз блоги билан келади, номи ва
-   * ёзув сони ёзилган сарлавҳа остида. Ёзуви йўқ МФЙ умуман
-   * чиқарилмайди: 70 та бўш сарлавҳа жадвални ўқиб бўлмайдиган
-   * қиларди.
+   * Туман кесимида ҳам, битта МФЙ кесимида ҳам БИТТА узлуксиз
+   * рўйхат чиқади — ҳокимлик юборган андозада қандай бўлса,
+   * шундай. Тартиб сўровда белгиланган: аввал МФЙ номи, кейин
+   * оила бошлиғи, шунда бир маҳалланинг қаторлари ёнма-ён
+   * туради.
    */
-  function guruhla<T extends { mahallaId: string }>(
-    yozuvlar: T[],
-    qatorYasa: (y: T) => Katak[]
-  ): Guruh[] {
-    if (yakka) return [{ nomi: null, qatorlar: yozuvlar.map(qatorYasa) }];
+  const qatorla = <T,>(yozuvlar: T[], qatorYasa: (y: T) => Katak[]): Katak[][] =>
+    yozuvlar.map(qatorYasa);
 
-    const guruhlar: Guruh[] = [];
-    for (const m of mahallalar) {
-      const oziniki = yozuvlar.filter((y) => y.mahallaId === m.id);
-      if (!oziniki.length) continue;
-      guruhlar.push({ nomi: m.nomiKirill, qatorlar: oziniki.map(qatorYasa) });
-    }
-    return guruhlar;
-  }
-
-  /** Блоклардаги жами ёзув сони */
-  const jami = (g: Guruh[]) => g.reduce((n, x) => n + x.qatorlar.length, 0);
-
-  /** Қамров ҳақидаги гап — ҳар варақ изоҳининг бошида туради */
+  /**
+   * Қамров ҳақидаги гап — ҳар варақ изоҳининг бошида.
+   *
+   * Туман кесимида бу АЙТИЛИШИ керак: жадвалда 70 та МФЙ нинг
+   * қатори аралаш туради ва уни битта маҳалла ҳисоботи деб
+   * ўқиб бўлмайди.
+   */
   const qamrovMatni = yakka
     ? ''
-    : `Жадвал ТУМАН бўйича йиғилган: ҳар МФЙ ўз блоги билан, номи ёзилган сарлавҳа остида туради, тартиб рақами ҳар блокда янгидан бошланади. `;
+    : `Жадвал ТУМАН бўйича: барча МФЙ нинг ёзувлари битта узлуксиз рўйхатда, маҳалла номи бўйича тартибланган. Қайси қатор қайси МФЙ дан экани «Хонадонлар — тўлиқ» ва «Ишсизлар — тўлиқ» варақларидаги «МФЙ» устунида кўрсатилган. `;
 
   /* ══ 1. КАМБАҒАЛ ОИЛАЛАР ══ */
   /*
@@ -649,7 +602,7 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   const kambagal = xonadonlar.filter(
     (x) => x.kambagallikSabablari.length > 0 || x.ishsizlarSoni > 0
   );
-  const kambagalGuruh = guruhla(kambagal, (x) => {
+  const kambagalQatori = qatorla(kambagal, (x) => {
       const bogliq = x.ishsizlar;
       const kasbli = bogliq.filter((i) => (i.mutaxassisligi ?? '').trim()).length;
       return [
@@ -678,13 +631,13 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   varaqniToldir(
     varaq(0),
     USTUN.kambagal,
-    kambagalGuruh,
-    `${qamrovMatni}Рўйхат хатлов маълумотидан тузилган: камбағаллик сабаби кўрсатилган ёки ишсиз аъзоси бор оилалар (${jami(kambagalGuruh)} та). Бўш устунлар — «иш билан банд лекин даромади паст», «коллеж ва олийгоҳ талабалари», «бева ва ажрашган аёллар», «пенсия ёшидагилар» — хатлов анкетасида сўралмаган, шунинг учун тахмин билан тўлдирилмади. «Касб ҳунарга эга/эга эмас» устунлари фақат ишсиз фуқаро анкетаси тўлдирилган оилаларда чиқади.`
+    kambagalQatori,
+    `${qamrovMatni}Рўйхат хатлов маълумотидан тузилган: камбағаллик сабаби кўрсатилган ёки ишсиз аъзоси бор оилалар (${kambagalQatori.length} та). Бўш устунлар — «иш билан банд лекин даромади паст», «коллеж ва олийгоҳ талабалари», «бева ва ажрашган аёллар», «пенсия ёшидагилар» — хатлов анкетасида сўралмаган, шунинг учун тахмин билан тўлдирилмади. «Касб ҳунарга эга/эга эмас» устунлари фақат ишсиз фуқаро анкетаси тўлдирилган оилаларда чиқади.`
   );
-  sanoq['камбағал оилалар'] = jami(kambagalGuruh);
+  sanoq['камбағал оилалар'] = kambagalQatori.length;
 
   /* ══ 2. ИШСИЗЛАР ══ */
-  const ishsizGuruh = guruhla(ishsizlar, (i) => {
+  const ishsizQatori = qatorla(ishsizlar, (i) => {
       const ishda = i.holati === 'JOYLASHTIRILDI' || i.holati === 'TASDIQLANDI';
       const joy = [i.ishJoyi, i.ishLavozimi].filter(Boolean).join(', ');
       return [
@@ -707,10 +660,10 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   varaqniToldir(
     varaq(1),
     USTUN.ishsizlar,
-    ishsizGuruh,
-    `${qamrovMatni}Рўйхатда барча ишсиз фуқаро ёзувлари (${jami(ishsizGuruh)} та). «Расмий банд» устуни ишга жойлаштирилган ва тасдиқланганлар учун иш жойи билан тўлдирилади. «Норасмий банд» ва унинг ости устунлари — томорқа, фермер, тадбиркорлик, кунлик иш — хатлов анкетасида сўралмаган; фақат «ички ёки ташқи миграция» устуни фуқарога миграция таклифи белгиланганда «+» олади.`
+    ishsizQatori,
+    `${qamrovMatni}Рўйхатда барча ишсиз фуқаро ёзувлари (${ishsizQatori.length} та). «Расмий банд» устуни ишга жойлаштирилган ва тасдиқланганлар учун иш жойи билан тўлдирилади. «Норасмий банд» ва унинг ости устунлари — томорқа, фермер, тадбиркорлик, кунлик иш — хатлов анкетасида сўралмаган; фақат «ички ёки ташқи миграция» устуни фуқарога миграция таклифи белгиланганда «+» олади.`
   );
-  sanoq['ишсизлар'] = jami(ishsizGuruh);
+  sanoq['ишсизлар'] = ishsizQatori.length;
 
   /* ══ 3. МИГРАЦИЯ ══ */
   /*
@@ -723,7 +676,7 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
    * қўйса, ҳоким уни ўша одам деб ўқиган бўларди.
    */
   const migratsiya = xonadonlar.filter((x) => x.chetElMehnati);
-  const migratsiyaGuruh = guruhla(migratsiya, (x) => {
+  const migratsiyaQatori = qatorla(migratsiya, (x) => {
       const davlatlar = [
         ...x.chetElDavlatlari.map((d) => kirillcha(CHET_EL_DAVLATI, d)),
         x.chetElBoshqaDavlat,
@@ -748,14 +701,14 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   varaqniToldir(
     varaq(2),
     USTUN.migratsiya,
-    migratsiyaGuruh,
-    `${qamrovMatni}Хатлов миграцияни ХОНАДОН кесимида сўрайди: ҳар бир мигрантнинг исми алоҳида ёзилмайди. Шунинг учун ҳар қатор — битта ОИЛА (${jami(migratsiyaGuruh)} та), охирги устунда эса оиладан нечта киши хорижда экани кўрсатилган. Мигрантларнинг Ф.И.Ш., фаолият тури ва маълумоти анкетада сўралмаган. Даромад доллари сўмдаги жавобдан жорий курс бўйича ҳисобланган.`
+    migratsiyaQatori,
+    `${qamrovMatni}Хатлов миграцияни ХОНАДОН кесимида сўрайди: ҳар бир мигрантнинг исми алоҳида ёзилмайди. Шунинг учун ҳар қатор — битта ОИЛА (${migratsiyaQatori.length} та), охирги устунда эса оиладан нечта киши хорижда экани кўрсатилган. Мигрантларнинг Ф.И.Ш., фаолият тури ва маълумоти анкетада сўралмаган. Даромад доллари сўмдаги жавобдан жорий курс бўйича ҳисобланган.`
   );
-  sanoq['миграция'] = jami(migratsiyaGuruh);
+  sanoq['миграция'] = migratsiyaQatori.length;
 
   /* ══ 4. АЖРАТИЛГАН ЕРЛАР ══ */
   const yerlar = xonadonlar.filter((x) => x.qoshimchaYerBor);
-  const yerGuruh = guruhla(yerlar, (x) => [
+  const yerQatori = qatorla(yerlar, (x) => [
       x.oilaBoshligi,
       sotixdanGa(x.qoshimchaYerMaydoni),
       null, // картошка
@@ -775,14 +728,14 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   varaqniToldir(
     varaq(3),
     USTUN.yerlar,
-    yerGuruh,
-    `${qamrovMatni}Рўйхат хатлов анкетасидаги «қўшимча фойдаланувдаги ер майдони» саволидан тузилган (${jami(yerGuruh)} та оила). Бу ПФ-18 бўйича расмийлаштирилган ер рўйхати ЭМАС — ер қайси ҳужжат билан берилгани анкетада сўралмайди, шунинг учун рўйхатни ер кадастри билан солиштириш керак. Майдон анкетада сотихда сўралади, бу ерга гектарга ўгирилиб ёзилган (1 га = 100 сотих). Экин турлари бўйича тақсимот, даромад ва деҳқон хўжалиги ҳолати анкетада сўралмаган. Сув таъминоти «суғориш суви борми» саволидан: бор бўлса «қониқарли», йўқ бўлса «қониқарсиз».`
+    yerQatori,
+    `${qamrovMatni}Рўйхат хатлов анкетасидаги «қўшимча фойдаланувдаги ер майдони» саволидан тузилган (${yerQatori.length} та оила). Бу ПФ-18 бўйича расмийлаштирилган ер рўйхати ЭМАС — ер қайси ҳужжат билан берилгани анкетада сўралмайди, шунинг учун рўйхатни ер кадастри билан солиштириш керак. Майдон анкетада сотихда сўралади, бу ерга гектарга ўгирилиб ёзилган (1 га = 100 сотих). Экин турлари бўйича тақсимот, даромад ва деҳқон хўжалиги ҳолати анкетада сўралмаган. Сув таъминоти «суғориш суви борми» саволидан: бор бўлса «қониқарли», йўқ бўлса «қониқарсиз».`
   );
-  sanoq['ажратилган ерлар'] = jami(yerGuruh);
+  sanoq['ажратилган ерлар'] = yerQatori.length;
 
   /* ══ 5. ТОМОРҚА ЕРЛАРИ ══ */
   const tomorqa = xonadonlar.filter((x) => x.tomorqaBor);
-  const tomorqaGuruh = guruhla(tomorqa, (x) => [
+  const tomorqaQatori = qatorla(tomorqa, (x) => [
       x.oilaBoshligi,
       x.tomorqaMaydoni,
       null, // картошка
@@ -809,10 +762,10 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   varaqniToldir(
     varaq(4),
     USTUN.tomorqa,
-    tomorqaGuruh,
-    `${qamrovMatni}Рўйхатда томорқаси бор оилалар (${jami(tomorqaGuruh)} та). Хатлов экин турлари бўйича тақсимот сўрамайди — фақат ЖАМИ экилган майдонни, у охирги устунда кўрсатилган. Отлар, қуёнлар ва асалари уялари анкетада алоҳида сўралмаган. «Фойдаланиш даражаси» анкетадаги тўрт баҳодан ўгирилган: «аъло» ва «яхши» → яхши, «қониқарли» → қониқарли, «ёмон» → қониқарсиз. Иссиқхона майдони — оила иссиқхона талабини билдирганда кўрсатилган майдон.`
+    tomorqaQatori,
+    `${qamrovMatni}Рўйхатда томорқаси бор оилалар (${tomorqaQatori.length} та). Хатлов экин турлари бўйича тақсимот сўрамайди — фақат ЖАМИ экилган майдонни, у охирги устунда кўрсатилган. Отлар, қуёнлар ва асалари уялари анкетада алоҳида сўралмаган. «Фойдаланиш даражаси» анкетадаги тўрт баҳодан ўгирилган: «аъло» ва «яхши» → яхши, «қониқарли» → қониқарли, «ёмон» → қониқарсиз. Иссиқхона майдони — оила иссиқхона талабини билдирганда кўрсатилган майдон.`
   );
-  sanoq['томорқа ерлари'] = jami(tomorqaGuruh);
+  sanoq['томорқа ерлари'] = tomorqaQatori.length;
 
   /* ══ 6. ТАДБИРКОР ВА ФЕРМЕРЛАР ══ */
   /*

@@ -263,41 +263,53 @@ const SINOVLAR: Sinov[] = [
       TUGMA.includes("{joriyMahalla ? tr('Маҳалла жадвали') : tr('Туман жадвали')}"),
   },
   {
-    nomi: 'Туман кесимида ҳар МФЙ ўз блоги билан ажратилади',
-    tekshir: () =>
+    nomi: 'Жадвалда АЖРАТУВЧИ қатор йўқ — андоза шакли сақланади',
+    tekshir: () => {
       /*
-       * Андозада «маҳалла» устуни ЙЎҚ — у битта МФЙ учун
-       * тузилган. Устун қўшиб бўлмайди, шунинг учун ҳар блок
-       * олдига бирлаштирилган сарлавҳа қатори қўйилади.
-       * Бусиз «Алиев Анвар» қайси маҳалладан экани билинмасди.
+       * Бир марта туман кесимида ҳар МФЙ олдига номи ёзилган
+       * сарлавҳа қатори қўйилган эди. Ўқиш учун қулай, аммо
+       * ҲОКИМЛИК КУТГАН ШАКЛДАН чиқиб кетарди: андозада бундай
+       * қатор йўқ ва ҳужжат шу шакл билан солиштирилади.
+       *
+       * «Тузукроқ» қилиш ҳуқуқимиз йўқ — шакл ўзгарса, ҳужжат
+       * қайтариб юборилади.
        */
-      MODUL.includes('`${g.nomi} МФЙ — ${g.qatorlar.length} та ёзув`') &&
-      MODUL.includes('varaq.mergeCells(r, 1, r, ustunSoni)'),
+      return (
+        !MODUL_KODI.includes('mergeCells(r, 1, r, ustunSoni)') &&
+        !MODUL.includes('МФЙ — ${') &&
+        !MODUL_KODI.includes('interface Guruh')
+      );
+    },
   },
   {
-    nomi: 'Битта МФЙ кесимида ажратувчи қатор ЧИЗИЛМАЙДИ',
+    nomi: 'Тартиб рақами узлуксиз: 1 дан охиригача',
     tekshir: () =>
       /*
-       * Ўша ҳолатда жадвал маҳалла юборадиган шаклнинг
-       * АЙНАН ўзи бўлиши керак.
+       * Блокларга бўлинганда рақам ҳар блокда янгидан
+       * бошланарди. Энди битта узлуксиз рўйхат.
        */
-      MODUL.includes("if (yakka) return [{ nomi: null, qatorlar: yozuvlar.map(qatorYasa) }];") &&
-      MODUL.includes('if (g.nomi) {'),
+      MODUL_KODI.includes('const qator = BOSHLANISH + i;') &&
+      MODUL_KODI.includes('q.getCell(1).value = i + 1;'),
   },
   {
-    nomi: 'Блок ичида қатор ўрни СУРИЛАДИ — ҳаммаси битта жойга тушмасин',
+    nomi: 'Туман кесимида қаторлар МФЙ бўйича тартибланади',
     tekshir: () =>
       /*
-       * Биринчи вариантда `varaq.getRow(r)` ёзилган эди ва
-       * блокнинг ҳамма қатори битта жойга тушарди: охиргиси
-       * қолиб, қолгани йўқоларди. Файл тўлиқ кўринарди —
-       * фақат 17 та оиладан биттаси ёзилган эди.
+       * Ажратувчи қатор йўқ, аммо тартиб бор: бир маҳалланинг
+       * қаторлари ёнма-ён туради.
        */
-      MODUL.includes('const qator = r + i;') && MODUL.includes('varaq.getRow(qator)'),
+      MODUL.includes("orderBy: [{ mahalla: { nomi: 'asc' } }, { oilaBoshligi: 'asc' }]") &&
+      MODUL.includes("orderBy: [{ mahalla: { nomi: 'asc' } }, { fish: 'asc' }]"),
   },
   {
-    nomi: 'Ёзуви йўқ МФЙ блок сифатида чиқарилмайди',
-    tekshir: () => MODUL.includes('if (!oziniki.length) continue;'),
+    nomi: 'Қайси қатор қайси МФЙ дан экани изоҳда АЙТИЛАДИ',
+    tekshir: () =>
+      /*
+       * Андоза варақларида «маҳалла» устуни йўқ, шунинг учун
+       * жадвал тагидаги изоҳ ўқувчини тўлиқ варақларга
+       * йўллайди — у ерда «МФЙ» устуни бор.
+       */
+      MODUL.includes('«Хонадонлар — тўлиқ» ва «Ишсизлар — тўлиқ» варақларидаги «МФЙ» устунида'),
   },
   {
     nomi: 'Туман сарлавҳаси уч хил қўшимчага мос ўгирилади',
@@ -366,6 +378,76 @@ const SINOVLAR: Sinov[] = [
        */
       MODUL.includes('q.getCell(u).style = namuna.getCell(u).style;') &&
       !MODUL.includes('{ ...namuna.getCell(u).style }'),
+  },
+
+  /* ══ АНДОЗА ШАКЛИ БУЗИЛМАСИН ══ */
+  {
+    nomi: 'Андоза сарлавҳаси (3–5-қатор) БИТТА БЕЛГИ ҳам ўзгармайди',
+    tekshir: () => {
+      /*
+       * Жадвал ҳокимликка топширилади ва улар уни ўзлари
+       * юборган шакл билан солиштиради. Устун номи ёки
+       * бирлаштириш ўзгарса, ҳужжат қайтариб юборилади.
+       *
+       * Бу текширув фақат кодни эмас, ҲАҚИҚИЙ ФАЙЛНИ
+       * текширади: андоза ўқилади ва устун номлари
+       * солиштирилади.
+       */
+      const wb = XLSX.readFile(ANDOZA);
+      const ayblilar: string[] = [];
+
+      for (const nom of wb.SheetNames) {
+        const sh = wb.Sheets[nom];
+        const ref = sh['!ref'];
+        if (!ref) continue;
+        const r = XLSX.utils.decode_range(ref);
+
+        /* Маълумот 6-қатордан бошланади — сарлавҳа 3–5 да */
+        let nomlar = 0;
+        for (let c = r.s.c; c <= r.e.c; c++) {
+          for (let qr = 2; qr <= 4; qr++) {
+            const k = XLSX.utils.encode_cell({ r: qr, c });
+            if ((sh[k] as { v?: unknown } | undefined)?.v) nomlar++;
+          }
+        }
+        if (nomlar === 0) ayblilar.push(`${nom}: сарлавҳа топилмади`);
+      }
+
+      if (ayblilar.length) console.log(`     ${ayblilar.join('; ')}`);
+      return ayblilar.length === 0;
+    },
+  },
+  {
+    nomi: 'Андоза варағида сарлавҳа қаторларига ЁЗИЛМАЙДИ',
+    tekshir: () => {
+      /*
+       * `varaqniToldir` — АНДОЗА варақларига тегадиган ягона
+       * функция. Ундаги ҳар бир `getRow` 6-қатордан пастга
+       * ишлаши керак: 1–2 сарлавҳа, 3–5 устун номлари, ва
+       * уларга ёзилса ҳокимлик шакли бузиларди.
+       *
+       * (`toliqVaraq` даги `getRow(1)` бошқа масала: у ЎЗИМИЗ
+       * яратган янги варақнинг сарлавҳаси.)
+       */
+      const bosh = MODUL_KODI.indexOf('function varaqniToldir');
+      const oxir = MODUL_KODI.indexOf('function toliqVaraq');
+      if (bosh < 0 || oxir < 0 || oxir < bosh) return false;
+      const tana = MODUL_KODI.slice(bosh, oxir);
+
+      const chaqiruvlar = [...tana.matchAll(/getRow\(([^)]*)\)/g)].map((m) =>
+        m[1].replace(/\s+/g, ' ').trim()
+      );
+      /* Барчаси BOSHLANISH дан ҳисобланган ўзгарувчи бўлиши керак */
+      const ruxsat = ['BOSHLANISH', 'qator', 'b', 'izohOrni'];
+      const ayblilar = chaqiruvlar.filter((c) => !ruxsat.includes(c));
+      if (ayblilar.length) console.log(`     шубҳали getRow: ${ayblilar.join(', ')}`);
+      return (
+        ayblilar.length === 0 &&
+        tana.includes('const qator = BOSHLANISH + i;') &&
+        /* Тозалаш ҳалқаси ҳам 6-қатордан бошланади */
+        tana.includes('for (let b = r; b <= oxirgiTayyor; b++)')
+      );
+    },
   },
 
   /* ══ ТЎЛИҚ МАЪЛУМОТ ВАРАҚЛАРИ ══ */
