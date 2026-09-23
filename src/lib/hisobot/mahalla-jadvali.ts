@@ -44,9 +44,13 @@
  *  у фақат жамланган сонлар билан ишлайди.
  * ============================================================
  */
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import ExcelJS from 'exceljs';
+import { ANDOZA_BAYTI } from './andoza/andoza-fayli';
+import {
+  FUQARO_USTUNLARI,
+  XONADON_USTUNLARI,
+  type Ustun,
+} from './toliq-ustunlar';
 import { prisma } from '@/lib/prisma';
 import {
   CHET_EL_DAVLATI,
@@ -56,8 +60,24 @@ import {
   kirillcha,
 } from '@/lib/constants';
 
-/** Андоза файли — ҳокимлик юборган асл нусха */
-const ANDOZA = path.join(process.cwd(), 'src/lib/hisobot/andoza/mahalla-jadvali.xlsx');
+/*
+ * Андоза `andoza/andoza-fayli.ts` дан келади — base64 да, КОД
+ * сифатида.
+ *
+ * ── Нега дискдан ўқилмайди ──
+ *
+ * Аввалги вариантда `readFile(process.cwd() + ...)` ёзилган
+ * эди. Маҳаллий машинада ишларди, аммо серверсиз функцияга
+ * қайси файл тушишини Next.js ҳал қилади ва кодда ёзилмаган
+ * файл умуман тушмаслиги мумкин. Уни созлама билан мажбурлаш
+ * мумкин, лекин созламани бу ерда синаб кўриб бўлмайди — ва
+ * синалмаган созлама ишлаб турган сайтни бузиб қўйди.
+ *
+ * Base64 сатр эса коднинг ўзи: бандлер уни ҳар доим олиб
+ * кетади ва «файл топилмади» ҳеч қачон чиқмайди.
+ *
+ * Янги андоза келса: `.xlsx` ни алмаштириб, `npm run andoza`.
+ */
 
 /**
  * Маълумот қайси қатордан бошланади.
@@ -72,25 +92,29 @@ const BOSHLANISH = 6;
 const ANDOZA_QATORI = 47;
 
 /**
- * Битта варақдаги энг кўп қатор.
+ * БУТУН КИТОБДАГИ энг кўп қатор.
  *
- * ── Нега чегара керак ──
+ * ── Нега варақ эмас, китоб ──
  *
- * Туман бўйича жадвал 70 та МФЙ нинг ёзувини битта варақда
- * жамлайди. Хатлов тугагач бу ўн минглаб қатор бўлади ва
- * файл серверсиз функциянинг хотирасини еб қўяди.
+ * Еттала варақ бир пайтда хотирада туради ва биргаликда
+ * ёзилади. Чегара ҳар варақда алоҳида текширилса, бештаси
+ * 39 000 тадан бўлса ҳам ўтиб кетарди — жами 195 000 қатор.
+ *
+ * ── Сон қаердан ──
  *
  * Ўлчанган: 45 000 қатор — 5,7 сония ва 559 МБ (18 устунли
- * варақда, безак ҳаволаси билан). Функцияга 3 ГБ берилган,
- * шунинг учун 40 000 қатор хавфсиз чегара: иккита оғир
- * варақ бир пайтда очилса ҳам сиғади.
+ * варақда), яъни ҳар қатор тахминан 12,4 КБ. Серверсиз
+ * функциянинг одатий хотираси 1 ГБ, ундан ~200 МБ ни Prisma
+ * ва Next эгаллайди.
  *
- * Чегарадан ошса файл ЯРИМ тайёрланмайди — аниқ хабар
- * берилади ва ҳоким маҳаллани танлаб олади. Ярим жадвал
- * ҳокимлик ҳужжати сифатида ишламайди: қайси МФЙ тушиб
- * қолганини ҳеч ким билмасди.
+ * 25 000 қатор ≈ 310 МБ — заҳираси билан сиғади.
+ *
+ * Чегарадан ошса файл ЯРИМ тайёрланмайди: аниқ хабар берилади
+ * ва ҳоким маҳаллани танлаб олади. Ярим жадвал ҳокимлик
+ * ҳужжати сифатида ишламайди — қайси МФЙ тушиб қолганини
+ * ҳеч ким билмасди.
  */
-const ENG_KOP_QATOR = 40_000;
+const ENG_KOP_QATOR = 25_000;
 
 /**
  * Ҳар варақдаги устунлар сони — андозадан ўқиб ёзилган.
@@ -282,15 +306,6 @@ function varaqniToldir(
     }
   }
 
-  const jamiQator =
-    guruhlar.reduce((n, g) => n + g.qatorlar.length, 0) +
-    guruhlar.filter((g) => g.nomi).length;
-  if (jamiQator > ENG_KOP_QATOR) {
-    throw new JadvalXatosi(
-      `«${varaq.name}» варағига ${jamiQator.toLocaleString('ru-RU')} та қатор тушади — чегара ${ENG_KOP_QATOR.toLocaleString('ru-RU')} та. Битта файлда бунча ёзув сиғмайди. Юқоридан МФЙ ни танлаб, жадвални маҳалла кесимида олинг.`
-    );
-  }
-
   const namuna = varaq.getRow(BOSHLANISH);
   const oxirgiTayyor = BOSHLANISH + ANDOZA_QATORI - 1;
 
@@ -402,6 +417,62 @@ function varaqniToldir(
 }
 
 /**
+ * ── ТЎЛИҚ МАЪЛУМОТ ВАРАҒИ ──
+ *
+ * Ҳокимлик андозаси анкетанинг ҳаммасини сўрамайди. Аммо
+ * ҳокимга баъзан анкетанинг ЎЗИ керак: «қайси оилада газ
+ * йўқ», «ким иссиқхона сўраган» — бундай савол етти варақдан
+ * чиқмайди.
+ *
+ * Шунинг учун китоб охирига иккита варақ қўшилади. Андоза
+ * варақларига ТЕГИЛМАЙДИ — ҳокимлик кутган етти варақ ўз
+ * жойида, ўз шаклида қолади.
+ *
+ * Варақ оддий: биринчи қатор — сарлавҳа, қолгани — маълумот.
+ * Фильтр ёқилади ва сарлавҳа музлатилади, шунда ўн минглаб
+ * қаторни варақлаганда устун номлари кўриниб туради.
+ */
+function toliqVaraq<T>(
+  kitob: ExcelJS.Workbook,
+  nomi: string,
+  ustunlar: Ustun<T>[],
+  yozuvlar: T[]
+): void {
+  const v = kitob.addWorksheet(nomi, {
+    views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }],
+  });
+
+  v.columns = ustunlar.map((u) => ({
+    header: u.nomi,
+    /*
+     * Кенглик матн узунлигига қараб, аммо чегара билан:
+     * «Даромадни кўпайтириш имконияти» эркин матн ва у
+     * чегарасиз бўлса устун экранга сиғмасди.
+     */
+    width: Math.min(Math.max(u.nomi.length + 2, 10), 34),
+  }));
+
+  const sarlavha = v.getRow(1);
+  sarlavha.font = { bold: true, size: 10 };
+  sarlavha.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+  sarlavha.height = 34;
+  sarlavha.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } };
+  sarlavha.commit();
+
+  for (const y of yozuvlar) {
+    v.addRow(ustunlar.map((u) => u.ol(y) ?? null)).commit();
+  }
+
+  /* Фильтр — ҳоким устун бўйича саралаб кўради */
+  if (yozuvlar.length) {
+    v.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: ustunlar.length },
+    };
+  }
+}
+
+/**
  * Сарлавҳани қамровга мослайди.
  *
  * Андозада «Хатирчи тумани "Уйшун" маҳалласи…» деб ёзилган —
@@ -474,64 +545,54 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
     : { holati: { not: 'QORALAMA' as const } };
 
   const [xonadonlar, ishsizlar] = await Promise.all([
+    /*
+     * ТЎЛИҚ ёзув олинади, танланган майдонлар эмас.
+     *
+     * Андоза варақларига бир нечта майдон етарли эди, аммо
+     * китобда «Хонадонлар — тўлиқ» варағи ҳам бор ва унга
+     * анкетанинг ҲАММА майдони тушади. Иккита сўров юбориш
+     * ўрнига биттасини тўлиқ олган арзонроқ.
+     */
     prisma.household.findMany({
       where: shart,
       orderBy: { oilaBoshligi: 'asc' },
-      select: {
-        id: true,
-        mahallaId: true,
-        oilaBoshligi: true,
-        manzil: true,
-        telefon: true,
-        jamiAzo: true,
-        ishsizlarSoni: true,
-        ishlaydiganlar: true,
-        bolalar0_3Yosh: true,
-        maktabgachaYoshdagi: true,
-        maktabYoshdagi: true,
-        bogchaKutayotganAyollar: true,
-        nogironShaxslar: true,
-        kambagallikSabablari: true,
-        parvarishgaMuhtoj: true,
-        chetElMehnati: true,
-        chetElIshchilar: true,
-        chetElDavlatlari: true,
-        chetElBoshqaDavlat: true,
-        chetElOylikPul: true,
-        chetElValyuta: true,
-        qoshimchaYerBor: true,
-        qoshimchaYerMaydoni: true,
-        tomorqaBor: true,
-        tomorqaMaydoni: true,
-        ekinMaydoni: true,
-        tomorqaFoydalanish: true,
-        issiqxonaMaydoni: true,
-        yirikShoxliSoni: true,
-        maydaShoxliSoni: true,
-        parrandaSoni: true,
-        sugorishSuvi: true,
+      include: {
+        mahalla: { select: { nomiKirill: true } },
+        xodim: { select: { fullName: true } },
         ishsizlar: { select: { mutaxassisligi: true } },
       },
     }),
     prisma.unemployedPerson.findMany({
       where: mahallaId ? { mahallaId } : undefined,
       orderBy: { fish: 'asc' },
-      select: {
-        mahallaId: true,
-        fish: true,
-        mutaxassisligi: true,
-        malumoti: true,
-        holati: true,
-        ishJoyi: true,
-        ishLavozimi: true,
-        takliflar: true,
-        household: { select: { parvarishgaMuhtoj: true } },
+      include: {
+        mahalla: { select: { nomiKirill: true } },
+        mutaxassis: { select: { fullName: true } },
+        household: { select: { oilaBoshligi: true, parvarishgaMuhtoj: true } },
       },
     }),
   ]);
 
+  /*
+   * ── ҲАЖМ ЧЕГАРАСИ ──
+   *
+   * Еттала андоза варағи ва иккита тўлиқ варақ БИР ПАЙТДА
+   * хотирада туради. Шунинг учун чегара бутун китоб бўйича
+   * текширилади, ҳар варақда алоҳида эмас: бештаси 24 000
+   * тадан бўлса ҳам алоҳида текширувдан ўтиб кетарди.
+   *
+   * Текшириш ЁЗИШДАН ОЛДИН бўлади — ярим тайёрланган файлни
+   * ташлаб юборишдан кўра, умуман бошламаган яхши.
+   */
+  const jamiQator = xonadonlar.length * 2 + ishsizlar.length * 2;
+  if (jamiQator > ENG_KOP_QATOR) {
+    throw new JadvalXatosi(
+      `Танланган ҳудудда ${xonadonlar.length.toLocaleString('ru-RU')} та хонадон ва ${ishsizlar.length.toLocaleString('ru-RU')} та фуқаро ёзуви бор — битта файлга бунча сиғмайди (чегара ${ENG_KOP_QATOR.toLocaleString('ru-RU')} қатор). Юқоридан МФЙ ни танлаб, жадвални маҳалла кесимида олинг.`
+    );
+  }
+
   const kitob = new ExcelJS.Workbook();
-  await kitob.xlsx.load(await readFile(ANDOZA));
+  await kitob.xlsx.load(ANDOZA_BAYTI);
 
   for (const v of kitob.worksheets) {
     sarlavhaniYangila(v, yakka ? mahallalar[0].nomiKirill : null);
@@ -781,6 +842,18 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
     `Бу варақ хатлов маълумотидан тўлдирилмайди. Бўш турган бино ва ерлар хонадон хатловида сўралмайди — хатлов оила ҳаёти ҳақида, объект эса маҳалла мулки ҳақида. Варақни тўлдириш учун анкетага алоҳида бўлим ёки маҳалла раиси тўлдирадиган мустақил рўйхат керак.`
   );
   sanoq['бўш турган бинолар'] = 0;
+
+  /* ══ 8-9. ТЎЛИҚ МАЪЛУМОТ ══ */
+  /*
+   * Андоза варақларидан КЕЙИН қўшилади — ҳокимлик очганда
+   * биринчи етти варақни кўриши керак, қўшимчаси охирида
+   * турсин.
+   */
+  toliqVaraq(kitob, 'Хонадонлар — тўлиқ', XONADON_USTUNLARI, xonadonlar);
+  sanoq['хонадон (тўлиқ)'] = xonadonlar.length;
+
+  toliqVaraq(kitob, 'Ишсизлар — тўлиқ', FUQARO_USTUNLARI, ishsizlar);
+  sanoq['фуқаро (тўлиқ)'] = ishsizlar.length;
 
   const bayt = (await kitob.xlsx.writeBuffer()) as Buffer;
   return { bayt: Buffer.from(bayt), sanoq };

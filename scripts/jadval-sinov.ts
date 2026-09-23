@@ -35,6 +35,16 @@ const TUGMA = oqi('src/components/panel/hisobot-tugmalari.tsx');
 const PANEL = oqi('src/app/(ilova)/panel/page.tsx');
 const ADMIN = oqi('src/app/(ilova)/admin/page.tsx');
 const SOZLAMA = oqi('next.config.mjs');
+const USTUNLAR = oqi('src/lib/hisobot/toliq-ustunlar.ts');
+
+/**
+ * Изоҳларсиз модул коди.
+ *
+ * Изоҳда «нега дискдан ўқилмайди» деб ёзилган ва унда
+ * `readFile` сўзи бор. Матн бўйича текширув уни КОД деб
+ * ўйлаб, тўғри ёзилган файлни айбдор қиларди.
+ */
+const MODUL_KODI = MODUL.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** Андозани ўқиб, ҳар варақнинг устун сонини беради */
 function andozaUstunlari(): number[] {
@@ -317,10 +327,28 @@ const SINOVLAR: Sinov[] = [
        */
       const chegara = Number(/const ENG_KOP_QATOR = ([\d_]+);/.exec(MODUL)?.[1].replace(/_/g, '') ?? 0);
       return (
-        chegara >= 20_000 &&
+        chegara >= 10_000 &&
+        chegara <= 30_000 &&
         MODUL.includes('if (jamiQator > ENG_KOP_QATOR)') &&
         MODUL.includes('МФЙ ни танлаб, жадвални маҳалла кесимида олинг')
       );
+    },
+  },
+  {
+    nomi: 'Чегара БУТУН КИТОБ бўйича, варақма-варақ эмас',
+    tekshir: () =>
+      /*
+       * Ҳар варақда алоҳида текширилса, бештаси 24 000 тадан
+       * бўлса ҳам ўтиб кетарди — жами 120 000 қатор.
+       */
+      MODUL.includes('const jamiQator = xonadonlar.length * 2 + ishsizlar.length * 2;'),
+  },
+  {
+    nomi: 'Чегара ЁЗИШДАН ОЛДИН текширилади',
+    tekshir: () => {
+      const chegaraOrni = MODUL.indexOf('if (jamiQator > ENG_KOP_QATOR)');
+      const yozishOrni = MODUL.indexOf('kitob.xlsx.load(ANDOZA_BAYTI)');
+      return chegaraOrni > 0 && chegaraOrni < yozishOrni;
     },
   },
   {
@@ -339,15 +367,85 @@ const SINOVLAR: Sinov[] = [
       MODUL.includes('q.getCell(u).style = namuna.getCell(u).style;') &&
       !MODUL.includes('{ ...namuna.getCell(u).style }'),
   },
+
+  /* ══ ТЎЛИҚ МАЪЛУМОТ ВАРАҚЛАРИ ══ */
   {
-    nomi: 'Функцияга кўпроқ хотира ва вақт берилган',
+    nomi: 'Китобда анкетанинг БАРЧА майдони бор',
+    tekshir: () =>
+      /*
+       * Ҳокимлик андозаси анкетанинг ҳаммасини сўрамайди:
+       * унда «коллеж талабалари» бор, «ичимлик суви» йўқ.
+       * Ҳокимга эса баъзан анкетанинг ўзи керак.
+       */
+      MODUL.includes("toliqVaraq(kitob, 'Хонадонлар — тўлиқ', XONADON_USTUNLARI, xonadonlar)") &&
+      MODUL.includes("toliqVaraq(kitob, 'Ишсизлар — тўлиқ', FUQARO_USTUNLARI, ishsizlar)"),
+  },
+  {
+    nomi: 'Тўлиқ варақлар андозадан КЕЙИН қўшилади',
     tekshir: () => {
-      const v = JSON.parse(oqi('vercel.json')) as {
-        functions?: Record<string, { memory?: number; maxDuration?: number }>;
-      };
-      const f = v.functions?.['app/api/hisobot/mahalla-jadvali/route.js'];
-      return (f?.memory ?? 0) >= 2048 && (f?.maxDuration ?? 0) >= 60;
+      /* Ҳокимлик очганда биринчи етти варақни кўриши керак */
+      const andoza = MODUL.indexOf('USTUN.boshObyekt');
+      const toliq = MODUL.indexOf('toliqVaraq(kitob');
+      return andoza > 0 && toliq > andoza;
     },
+  },
+  {
+    nomi: 'Андоза варақларига ТЕГИЛМАЙДИ — китобга қўшилади',
+    tekshir: () =>
+      /* `addWorksheet` — янги варақ; мавжудлари ўзгармайди */
+      MODUL.includes('kitob.addWorksheet(nomi'),
+  },
+  {
+    nomi: 'Тўлиқ варақда сарлавҳа музлатилган ва фильтр бор',
+    tekshir: () =>
+      MODUL.includes("state: 'frozen'") && MODUL.includes('v.autoFilter = {'),
+  },
+  {
+    nomi: 'Хатловнинг ҳар бўлими тўлиқ варақда вакил қилинган',
+    tekshir: () => {
+      /*
+       * Ўн икки бўлимнинг бирортаси тушиб қолса, «барча
+       * маълумот» деган ваъда ёлғон бўларди.
+       */
+      const kerak = [
+        'Жами аъзо',            // 0-бўлим
+        'Меҳнатга лаёқатли',    // I
+        'Тадбиркорлик истаги',  // II
+        'Чет элда меҳнат',      // II-Б
+        'Ойлик даромад (сўм)',  // III
+        'Мактабгача ёшдаги бола', // IV
+        'Узоқ даволаниш зарур', // V
+        'Ичимлик суви',         // VI
+        'Ногиронлик бор',       // VII
+        'Ҳужжатлар тўлиқ',      // VIII
+        'Томорқа бор',          // IX
+        'Қўшимча даромад истаги', // X
+        'Инфратузилма муаммолари', // XI
+        'Розилик берди',        // XII
+      ];
+      const yoq = kerak.filter((k) => !USTUNLAR.includes(`nomi: '${k}'`));
+      if (yoq.length) console.log(`     тўлиқ варақда йўқ: ${yoq.join(', ')}`);
+      return yoq.length === 0;
+    },
+  },
+  {
+    nomi: 'Тўлиқ варақда қийматлар КИРИЛЛГА ўгирилади',
+    tekshir: () =>
+      /*
+       * База лотинда сақлайди («Erkak», «O'rta maxsus»).
+       * Хом қиймат чиқарилса, битта файлда иккита ёзув
+       * аралашиб кетарди.
+       */
+      USTUNLAR.includes('kat(JINS)') &&
+      USTUNLAR.includes('kat(MALUMOT)') &&
+      USTUNLAR.includes('katRoyxat(KAMBAGALLIK_SABABI)') &&
+      USTUNLAR.includes("XATLOV_HOLATI[String(x.holati)]"),
+  },
+  {
+    nomi: 'Каталогда топилмаган қиймат ЙЎҚОЛМАЙДИ',
+    tekshir: () =>
+      /* Эски анкетадаги қиймат ўзгармай қолиши керак */
+      USTUNLAR.includes('return kirillcha(katalog, String(x));'),
   },
 
   /* ══ ХАВФСИЗЛИК ══ */
@@ -375,26 +473,58 @@ const SINOVLAR: Sinov[] = [
 
   /* ══ ЖОЙЛАШТИРИШ ══ */
   {
-    nomi: 'Андоза серверсиз функцияга ҚЎШИЛАДИ',
+    nomi: 'Андоза КОДДАН келади — дискдан ўқилмайди',
+    tekshir: () =>
+      /*
+       * Серверсиз функцияга қайси файл тушишини Next.js ҳал
+       * қилади ва кодда ёзилмаган файл умуман тушмаслиги
+       * мумкин. Base64 сатр эса коднинг ўзи — бандлер уни
+       * ҳар доим олиб кетади.
+       */
+      MODUL.includes("import { ANDOZA_BAYTI } from './andoza/andoza-fayli'") &&
+      MODUL.includes('kitob.xlsx.load(ANDOZA_BAYTI)') &&
+      /* Изоҳда «нега дискдан ўқилмайди» деб ёзилган — код текширилади */
+      !MODUL_KODI.includes('readFile(') &&
+      !MODUL_KODI.includes('process.cwd()'),
+  },
+  {
+    nomi: 'Коддаги андоза `.xlsx` файл билан БИР ХИЛ',
     tekshir: () => {
       /*
-       * Next.js функцияга фақат код боғланишларини қўшади.
-       * Бусиз илова маҳаллий машинада ишлар, Vercel да эса
-       * «ENOENT» берарди — ва буни фақат ҳоким тугмани
-       * босганда билардик.
+       * Иккови ажралиб кетиши мумкин: кимдир `.xlsx` ни
+       * алмаштириб, `npm run andoza` ни унутади. Унда жадвал
+       * ЭСКИ андоза билан тўлдириларди ва буни ҳеч ким
+       * сезмасди.
        */
-      if (!SOZLAMA.includes('outputFileTracingIncludes')) return false;
-      if (!SOZLAMA.includes("'/api/hisobot/mahalla-jadvali'")) return false;
-      /* Қурилгандан кейин изда ҳам бўлиши керак */
-      const iz = '.next/server/app/api/hisobot/mahalla-jadvali/route.js.nft.json';
-      if (!existsSync(iz)) return true; // ҳали қурилмаган — бу синов эмас
-      const d = JSON.parse(oqi(iz)) as { files: string[] };
-      return d.files.some((f) => f.includes('andoza/mahalla-jadvali.xlsx'));
+      const xom = readFileSync(ANDOZA);
+      const kod = oqi('src/lib/hisobot/andoza/andoza-fayli.ts');
+      const bolaklar = [...kod.matchAll(/'([A-Za-z0-9+/=]+)',/g)].map((m) => m[1]).join('');
+      return Buffer.from(bolaklar, 'base64').equals(xom);
     },
   },
   {
-    nomi: 'Андоза ўқилиши `process.cwd()` дан — нисбий йўл эмас',
-    tekshir: () => MODUL.includes("path.join(process.cwd(), 'src/lib/hisobot/andoza/mahalla-jadvali.xlsx')"),
+    nomi: 'vercel.json да СИНАЛМАГАН `functions` созламаси йўқ',
+    tekshir: () => {
+      /*
+       * Бу ерда бир марта бутун сайт тўхтаб қолган.
+       *
+       * `functions` калитига «app/api/.../route.js» деб
+       * ёзилган эди, лойиҳада эса `src/app/` ва `.ts`.
+       * Vercel бундай нақшни рад этади ва БУТУН жойлаштириш
+       * йиқилади — фақат битта тугма эмас.
+       *
+       * Созламани бу ерда синаб кўриб бўлмайди, шунинг учун
+       * у умуман ишлатилмайди: муддат route файлининг ўзида
+       * (`export const maxDuration`), хотира эса қатор
+       * чегараси билан ҳал қилинади.
+       */
+      const v = JSON.parse(oqi('vercel.json')) as Record<string, unknown>;
+      return !('functions' in v);
+    },
+  },
+  {
+    nomi: 'Муддат route файлининг ЎЗИДА белгиланган',
+    tekshir: () => YOL.includes('export const maxDuration = 60;'),
   },
 
   /* ══ ҚЎШИМЧА ══ */
