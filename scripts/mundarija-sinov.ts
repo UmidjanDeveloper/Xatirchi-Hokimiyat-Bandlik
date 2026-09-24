@@ -22,11 +22,28 @@
  * ============================================================
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 type Sinov = { nomi: string; tekshir: () => boolean };
 
 const oqi = (yol: string) => readFileSync(yol, 'utf8');
+
+/**
+ * `(ilova)` гуруҳидаги ҲАММА саҳифа.
+ *
+ * Рўйхат қўлда ёзилмайди: эртага янги саҳифа қўшилганда у
+ * текширувдан четда қолиб кетарди — айнан шундай нуқсон
+ * «Бошқарув» саҳифасида сезилмай турган эди.
+ */
+const globSahifalar = (ildiz = 'src/app/(ilova)'): string[] => {
+  const chiqdi: string[] = [];
+  for (const band of readdirSync(ildiz, { withFileTypes: true })) {
+    const yol = `${ildiz}/${band.name}`;
+    if (band.isDirectory()) chiqdi.push(...globSahifalar(yol));
+    else if (band.name === 'page.tsx') chiqdi.push(yol);
+  }
+  return chiqdi;
+};
 
 const MUNDARIJA = oqi('src/components/panel/mundarija.tsx');
 const PANEL = oqi('src/app/(ilova)/panel/page.tsx');
@@ -238,6 +255,35 @@ const SINOVLAR: Sinov[] = [
     tekshir: () =>
       !PANEL_KODI.includes('xl:grid-cols-[13rem_minmax(0,1fr)]') &&
       PANEL_KODI.indexOf('<Mundarija') < PANEL_KODI.indexOf('<div className="mt-4 space-y-5 lg:mt-0">'),
+  },
+  {
+    /*
+     * ── БИТТА САҲИФАДА БИТТА ҲИСОБОТ БЛОКИ ──
+     *
+     * `HisobotTugmalari` саҳифанинг ўз қамровига эргашади,
+     * `SahifaHisoboti` эса ЎЗ ҳудуд рўйхатини олиб юради ва
+     * қамрови қотириб ёзилган («Хатирчи тумани»).
+     *
+     * Иккови бир саҳифада турса, экранда иккита бир хил «PDF
+     * ҳисобот» ва иккита ҳудуд рўйхати кўринади — устига
+     * устак улар БОШҚА-БОШҚА файл беради: биттаси танланган
+     * МФЙ бўйича, иккинчиси доим бутун туман бўйича.
+     *
+     * Айнан шу «Бошқарув» саҳифасида юз берган эди.
+     */
+    nomi: 'Ҳар саҳифада ҲИСОБОТ БЛОКИ битта — такрорланмайди',
+    tekshir: () => {
+      const yollar = globSahifalar();
+      const aybdor: string[] = [];
+      for (const yol of yollar) {
+        const k = kodiOl(oqi(yol));
+        const a = (k.match(/<HisobotTugmalari/g) ?? []).length;
+        const b = (k.match(/<SahifaHisoboti/g) ?? []).length;
+        if (a + b > 1) aybdor.push(`${yol} (${a}+${b})`);
+      }
+      if (aybdor.length) console.log('     такрор:', aybdor.join(', '));
+      return aybdor.length === 0;
+    },
   },
   {
     nomi: 'Экранда бўлмаган бўлимга банд чиқарилмайди',

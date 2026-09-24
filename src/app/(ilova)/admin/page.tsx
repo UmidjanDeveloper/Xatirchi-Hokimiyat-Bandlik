@@ -18,7 +18,6 @@ import { MahallaTanlash } from '@/components/panel/mahalla-tanlash';
 import { panelQamroviniOl, topshiriqQamrovi } from '@/lib/panel-qamrovi';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { XabarHolati } from '@/components/telegram/xabar-holati';
-import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
 
 /*
@@ -130,12 +129,29 @@ export default async function AdminSahifasi({
             текширади. Ҳоким панелидаги билан БИР ХИЛ файл —
             бошқа йўл орқали текшириш нотўғри жавоб берарди.
           */}
+          {/*
+            Бу ерда `SahifaHisoboti` ЁЗИЛМАЙДИ.
+
+            У ҳисобот тугмаси умуман йўқ саҳифалар учун
+            (ишсизлар, хонадонлар, чора-тадбирлар, бўш иш
+            ўринлари) ва ўз ичида АЛОҲИДА ҳудуд рўйхатини
+            олиб юради.
+
+            Бу саҳифада эса юқорида `MahallaTanlash` бор ва
+            тугмалар ўшанга эргашади. Иккови бирга турганда
+            экранда иккита бир хил «PDF ҳисобот» ва иккита
+            ҳудуд рўйхати кўринарди — ва улар БОШҚА-БОШҚА
+            файл берарди: биттаси танланган МФЙ бўйича,
+            иккинчиси эса доим бутун туман бўйича, чунки
+            унинг қамрови қотириб ёзилган. Администратор
+            «ҳоким кўрган жадвал» ни текшираман деб, бошқа
+            файлни очиб қоларди.
+          */}
           <HisobotTugmalari
             qamrov={{ nomi: qamrov.nomi, mahallaId }}
             malumotBormi={xonadon > 0}
             mahallaJadvali
           />
-          <SahifaHisoboti malumotBormi={xonadon > 0} />
         </div>
       </div>
 
