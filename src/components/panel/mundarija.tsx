@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, List } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+import { MUNDARIJA_UYASI } from '@/components/shell/navigatsiya';
 
 /**
  * ============================================================
@@ -28,6 +30,19 @@ import { useAlifbo } from '@/components/alifbo/alifbo-provider';
  *  эса браузернинг ўзида ишлайди ва фақат чегара кесиб
  *  ўтилганда хабар беради.
  *
+ *  ── Қаерда туради ──
+ *
+ *  Рўйхат ЁН МЕНЮНИНГ ичида, «Таҳлил панели» банди тагида
+ *  чиқади. Аввал у саҳифанинг ўз чап устунида турарди ва
+ *  меню билан мундарижа ёнма-ён икки устун бўлиб кўринарди —
+ *  ҳоким қайси бири нима эканини дарров ажрата олмасди.
+ *
+ *  Рўйхатни менюнинг ўзида ясаб бўлмайди: унда қайси банд
+ *  борлиги САҲИФАГА боғлиқ (битта МФЙ танланса, бир нечта
+ *  бўлим умуман чизилмайди). Шунинг учун меню бўш уя
+ *  қолдиради, саҳифа эса рўйхатни ўша уяга портал билан
+ *  юборади. Маълумот саҳифада қолади, кўриниши эса менюда.
+ *
  *  ── Телефонда ──
  *
  *  Ён устун учун жой йўқ, шунинг учун у тепада ёпиқ тугмага
@@ -52,6 +67,17 @@ export function Mundarija({ bandlar }: { bandlar: MundarijaBandi[] }) {
   const [ochiq, setOchiq] = useState(false);
   /** Ён устуннинг ЎЗ айланадиган қутиси — саҳифа эмас */
   const qutiRef = useRef<HTMLDivElement>(null);
+  /**
+   * Ён менюдаги уя.
+   *
+   * `useState` + `useEffect` орқали — серверда `document`
+   * йўқ, шунинг учун биринчи чизишда `null` бўлади ва
+   * порталга фақат браузерда киришилади.
+   */
+  const [uya, setUya] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setUya(document.getElementById(MUNDARIJA_UYASI));
+  }, []);
 
   /*
    * ── ҚАЙСИ БЎЛИМ КЎРИНИБ ТУРИБДИ ──
@@ -191,10 +217,22 @@ export function Mundarija({ bandlar }: { bandlar: MundarijaBandi[] }) {
     </nav>
   );
 
+  /** Ён менюга тушадиган қисм — сарлавҳа ва айланадиган рўйхат */
+  const ustun = (
+    <div className="mt-1 border-t border-line pt-2">
+      <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-ink-faint">
+        {tr('Мундарижа')}
+      </p>
+      <div ref={qutiRef} className="max-h-[46vh] overflow-y-auto pb-1 pr-1">
+        {royxat}
+      </div>
+    </div>
+  );
+
   return (
     <>
       {/* ── Телефон ва планшет: тепада ёпиқ тугма ── */}
-      <div className="xl:hidden">
+      <div className="lg:hidden">
         <button
           type="button"
           onClick={() => setOchiq((v) => !v)}
@@ -215,18 +253,22 @@ export function Mundarija({ bandlar }: { bandlar: MundarijaBandi[] }) {
         )}
       </div>
 
-      {/* ── Катта экран: ёпишиб турадиган ён устун ── */}
-      <aside className="hidden xl:block">
-        <div
-          ref={qutiRef}
-          className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto pb-4"
-        >
-          <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-faint">
-            {tr('Мундарижа')}
-          </p>
-          {royxat}
-        </div>
-      </aside>
+      {/*
+        ── Катта экран: ён менюнинг ичида ──
+
+        Уя топилмаса (меню бошқача чизилган ёки саҳифа бошқа
+        қобиқда) рўйхат эски жойида — саҳифанинг ўзида —
+        қолади. Мундарижа ҳар қандай ҳолда ҲАМ бўлиши керак.
+
+        Баландлик чегараси бор: меню бандлари билан бирга
+        экранга сиғмаса, рўйхат ЎЗИ айланади. Фаол бандни
+        кўринишга суриш ҳам шу қутида ишлайди.
+      */}
+      {uya ? (
+        createPortal(ustun, uya)
+      ) : (
+        <aside className="hidden lg:block">{ustun}</aside>
+      )}
     </>
   );
 }

@@ -32,6 +32,7 @@ const MUNDARIJA = oqi('src/components/panel/mundarija.tsx');
 const PANEL = oqi('src/app/(ilova)/panel/page.tsx');
 const BOLIMLAR = oqi('src/components/panel/bolimlar-paneli.tsx');
 const TUGMALAR = oqi('src/components/panel/hisobot-tugmalari.tsx');
+const QOBIQ = oqi('src/components/shell/app-shell.tsx');
 
 /** Изоҳларсиз код */
 const kodiOl = (m: string) =>
@@ -42,6 +43,7 @@ const kodiOl = (m: string) =>
 
 const PANEL_KODI = kodiOl(PANEL);
 const MUNDARIJA_KODI = kodiOl(MUNDARIJA);
+const QOBIQ_KODI = kodiOl(QOBIQ);
 
 /** Саҳифадаги ҳар бир бўлимнинг `id` си */
 const QISMLAR = [
@@ -170,10 +172,17 @@ const SINOVLAR: Sinov[] = [
 
   /* ══ КИЧИК ЭКРАН ══ */
   {
+    /*
+     * Чегара `lg` — ён меню айнан шу кенгликда ён устунга
+     * айланади. Мундарижа унинг ичида тургани учун иккови
+     * БИР ХИЛ чегарада алмашиши керак: `xl` бўлиб қолса,
+     * `lg`—`xl` оралиғида мундарижа умуман кўринмасди.
+     */
     nomi: 'Кичик экранда ён устун эмас, ёпиладиган тугма',
     tekshir: () =>
-      MUNDARIJA_KODI.includes('xl:hidden') &&
-      MUNDARIJA_KODI.includes('hidden xl:block') &&
+      MUNDARIJA_KODI.includes('lg:hidden') &&
+      !MUNDARIJA_KODI.includes('xl:hidden') &&
+      MUNDARIJA_KODI.includes('hidden lg:block') &&
       MUNDARIJA_KODI.includes('aria-expanded={ochiq}'),
   },
   {
@@ -183,29 +192,52 @@ const SINOVLAR: Sinov[] = [
 
   /* ══ САҲИФАНИНГ ТУЗИЛИШИ ══ */
   {
-    nomi: 'Мундарижа ЧАП устунда турибди',
+    /*
+     * Мундарижа ЁН МЕНЮГА тушади: «Таҳлил панели» банди
+     * тагига, портал орқали. Уянинг `id` си иккала файлда
+     * бир хил бўлиши шарт — акс ҳолда портал ҳеч қаерга
+     * тушмай, рўйхат жим йўқоларди.
+     */
+    nomi: 'Мундарижа ён менюдаги уяга — портал билан',
     tekshir: () =>
-      PANEL_KODI.includes('xl:grid-cols-[13rem_minmax(0,1fr)]') &&
-      PANEL_KODI.indexOf('<Mundarija') < PANEL_KODI.indexOf('<div className="mt-4 space-y-5 xl:mt-0">'),
+      QOBIQ_KODI.includes('id={MUNDARIJA_UYASI}') &&
+      QOBIQ_KODI.includes('b.yol === MUNDARIJA_YOLI && faolmi(b.yol)') &&
+      MUNDARIJA_KODI.includes('createPortal(ustun, uya)') &&
+      MUNDARIJA_KODI.includes("document.getElementById(MUNDARIJA_UYASI)"),
   },
   {
-    nomi: 'Чап устун охиригача ёнда туради — `items-start` йўқ',
-    tekshir: () => {
-      /*
-       * `items-start` ёзилганда чап устун ўз мундарижаси
-       * баландлигича қисқарарди (~700px). Ёпишиб туриш фақат
-       * ЎЗ устуни ичида ишлайди — ҳоким саҳифани сурганда
-       * мундарижа биргаликда чиқиб кетар ва экранда бўм-бўш
-       * чап чекка қоларди.
-       *
-       * Кўз билан топиш қийин: мундарижа саҳифанинг тепасида
-       * тўғри кўринади, нуқсон фақат суриб кўрганда билинади.
-       */
-      const o = PANEL_KODI.indexOf('xl:grid-cols-[13rem_minmax(0,1fr)]');
-      if (o < 0) return false;
-      const satr = PANEL_KODI.slice(Math.max(0, o - 120), o + 120);
-      return !satr.includes('items-start');
-    },
+    /*
+     * Уя топилмаса ҳам мундарижа ЙЎҚОЛМАСЛИГИ керак —
+     * эски жойида, саҳифанинг ўзида қолади. Портал битта
+     * `id` га таянади ва у синганда ҳоким узун саҳифада
+     * йўл топа олмай қоларди.
+     */
+    nomi: 'Уя топилмаса рўйхат саҳифада қолади',
+    tekshir: () =>
+      MUNDARIJA_KODI.includes('uya ? (') &&
+      MUNDARIJA_KODI.includes('<aside className="hidden lg:block">{ustun}</aside>'),
+  },
+  {
+    /*
+     * Меню бандлари ва мундарижа биргаликда экран бўйига
+     * сиғмайди: ўнта банд ~420px, рўйхат ~700px. Иккита
+     * чора бор — ён устуннинг ўзи айланади, рўйхатнинг эса
+     * ўз баландлик чегараси бор.
+     */
+    nomi: 'Ён устун ва рўйхат айлана олади — сиғмаса кесилмайди',
+    tekshir: () =>
+      QOBIQ_KODI.includes('lg:overflow-y-auto') &&
+      MUNDARIJA_KODI.includes('max-h-[46vh] overflow-y-auto'),
+  },
+  {
+    /*
+     * Мундарижа менюга кўчгач саҳифа икки устунга
+     * бўлинмайди — диаграммалар бутун кенгликни олади.
+     */
+    nomi: 'Саҳифада энди чап устун йўқ — бутун кенглик',
+    tekshir: () =>
+      !PANEL_KODI.includes('xl:grid-cols-[13rem_minmax(0,1fr)]') &&
+      PANEL_KODI.indexOf('<Mundarija') < PANEL_KODI.indexOf('<div className="mt-4 space-y-5 lg:mt-0">'),
   },
   {
     nomi: 'Экранда бўлмаган бўлимга банд чиқарилмайди',

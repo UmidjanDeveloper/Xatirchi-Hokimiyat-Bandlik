@@ -2,7 +2,7 @@
 
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import * as Ikonkalar from 'lucide-react';
@@ -11,7 +11,7 @@ import type { Rol } from '@prisma/client';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
 import { Gerb } from '@/components/shared/gerb';
-import { menyuOl, ROL_NOMI } from './navigatsiya';
+import { menyuOl, MUNDARIJA_UYASI, MUNDARIJA_YOLI, ROL_NOMI } from './navigatsiya';
 import { initials } from '@/lib/utils';
 
 interface Props {
@@ -110,24 +110,46 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
         <aside
           className={`workspace-sidebar ${
             ochiq ? 'block' : 'hidden'
-          } fixed inset-x-0 top-16 z-20 border-b border-line bg-elev p-3 lg:sticky lg:top-16 lg:block lg:h-[calc(100dvh-4rem)] lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:bg-transparent`}
+          } fixed inset-x-0 top-16 z-20 border-b border-line bg-elev p-3 lg:sticky lg:top-16 lg:block lg:h-[calc(100dvh-4rem)] lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:bg-transparent`}
         >
           <nav className="space-y-0.5">
             {bandlar.map((b) => (
-              <Link
-                key={b.yol}
-                href={b.yol}
-                onClick={() => setOchiq(false)}
-                aria-current={faolmi(b.yol) ? 'page' : undefined}
-                className={`relative flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                  faolmi(b.yol)
-                    ? 'bg-accent-soft font-semibold text-accent'
-                    : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
-                }`}
-              >
-                <Ikonka nomi={b.ikonka} className="h-[18px] w-[18px] shrink-0" />
-                <span className="truncate">{tr(b.nomi)}</span>
-              </Link>
+              <Fragment key={b.yol}>
+                <Link
+                  href={b.yol}
+                  onClick={() => setOchiq(false)}
+                  aria-current={faolmi(b.yol) ? 'page' : undefined}
+                  className={`relative flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                    faolmi(b.yol)
+                      ? 'bg-accent-soft font-semibold text-accent'
+                      : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
+                  }`}
+                >
+                  <Ikonka nomi={b.ikonka} className="h-[18px] w-[18px] shrink-0" />
+                  <span className="truncate">{tr(b.nomi)}</span>
+                </Link>
+
+                {/*
+                  ── МУНДАРИЖАНИНГ УЯСИ ──
+
+                  Бўш `div` — мундарижа саҳифадан шу ерга
+                  портал орқали тушади. Рўйхатнинг ЎЗИ шу
+                  ерда ясалмайди: у қайси бўлимлар экранда
+                  борлигига боғлиқ, буни эса фақат саҳифа
+                  билади.
+
+                  Уя фақат таҳлил панелида чизилади — бошқа
+                  саҳифада мундарижа йўқ ва бўш қути меню
+                  остида ортиқча оралиқ очиб турарди.
+
+                  Кичик экранда меню — очиладиган рўйхат;
+                  мундарижа у ерда эмас, саҳифанинг тепасида
+                  ўз тугмаси билан чиқади.
+                */}
+                {b.yol === MUNDARIJA_YOLI && faolmi(b.yol) && (
+                  <div id={MUNDARIJA_UYASI} className="hidden lg:block" />
+                )}
+              </Fragment>
             ))}
           </nav>
 
