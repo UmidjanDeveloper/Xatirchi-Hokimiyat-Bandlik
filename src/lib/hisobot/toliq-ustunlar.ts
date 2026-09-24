@@ -48,6 +48,9 @@ import {
   VALYUTA,
   kirillcha,
   type Variant,
+  shaharNomi,
+  IT_VAUCHER_HOLATI,
+  PASSIV_BIRLIGI,
 } from '@/lib/constants';
 import { ISHSIZ_HOLATI } from '@/lib/ishsiz-holati';
 import type { IshsizHolati } from '@prisma/client';
@@ -135,6 +138,27 @@ const matn = (x: unknown): string | null => {
   return t ? t : null;
 };
 
+/**
+ * Қўшимча даромад воситалари ва СОНИ.
+ *
+ * Хатловда оила «Товуқ» деб белгилайди ва «100» деб ёзади.
+ * Иккиси айри майдонда сақланади: тури массивда, сони эса
+ * JSON да. Фақат турини чиқарсак, таъминот рўйхатини тузиб
+ * бўлмасди — «товуқ керак» деган сатрдан нечта товуқ
+ * кераклиги чиқмайди.
+ */
+const passivSonlari = (x: unknown): string | null => {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
+  const satrlar = Object.entries(x as Record<string, unknown>)
+    .filter(([, v]) => Number(v) > 0)
+    .map(([tur, v]) => {
+      const nomi = kirillcha(PASSIV_DAROMAD_TURI, tur);
+      const birlik = PASSIV_BIRLIGI[tur] ?? '';
+      return `${nomi}: ${Number(v)}${birlik ? ` ${birlik}` : ''}`;
+    });
+  return satrlar.length ? satrlar.join('; ') : null;
+};
+
 /* ── ХОНАДОН ───────────────────────────────────────────────── */
 
 type Xonadon = Record<string, unknown>;
@@ -193,7 +217,18 @@ export const XONADON_USTUNLARI: Ustun<Xonadon>[] = [
   { nomi: 'Чет элдаги ишчилар', ol: (x) => son(x.chetElIshchilar) },
   { nomi: 'Давлатлар', ol: (x) => katRoyxat(CHET_EL_DAVLATI)(x.chetElDavlatlari) },
   { nomi: 'Давлат (бошқа)', ol: (x) => matn(x.chetElBoshqaDavlat) },
-  { nomi: 'Шаҳарлар', ol: (x) => royxat(x.chetElShaharlari) },
+  {
+    /*
+     * Шаҳар базада «Rossiya|Москва» кўринишида сақланади —
+     * қиймат ноёб бўлиши учун давлат қўшилган. Хом ҳолда
+     * чиқарилса, ҳужжатда «Rossiya|Москва» деб турарди.
+     */
+    nomi: 'Шаҳарлар',
+    ol: (x) =>
+      Array.isArray(x.chetElShaharlari) && x.chetElShaharlari.length
+        ? (x.chetElShaharlari as string[]).map(shaharNomi).join(', ')
+        : null,
+  },
   { nomi: 'Шаҳар (бошқа)', ol: (x) => matn(x.chetElBoshqaShahar) },
   { nomi: 'Ойлик пул (киритилган)', ol: (x) => son(x.chetElOylikPul) },
   { nomi: 'Валютаси', ol: (x) => kat(VALYUTA)(x.chetElValyuta) },
@@ -274,6 +309,7 @@ export const XONADON_USTUNLARI: Ustun<Xonadon>[] = [
   /* ── X. Қўшимча даромад ── */
   { nomi: 'Қўшимча даромад истаги', ol: (x) => haYoqMatn(x.passivDaromadIstagi) },
   { nomi: 'Қўшимча даромад турлари', ol: (x) => katRoyxat(PASSIV_DAROMAD_TURI)(x.passivDaromadTurlari) },
+  { nomi: 'Қўшимча даромад — сонлари', ol: (x) => passivSonlari(x.passivDaromadSonlari) },
   { nomi: 'Қўшимча даромад изоҳи', ol: (x) => matn(x.passivDaromadIzohi) },
 
   /* ── XI. Инфратузилма ── */
@@ -334,6 +370,30 @@ export const FUQARO_USTUNLARI: Ustun<Fuqaro>[] = [
   { nomi: 'Иш жойи', ol: (x) => matn(x.ishJoyi) },
   { nomi: 'Иш лавозими', ol: (x) => matn(x.ishLavozimi) },
   { nomi: 'Ишга кирган санаси', ol: (x) => sana(x.ishgaKirganSana) },
+  {
+    /* Қайси эълонга бириктирилган — занжирнинг охирги ҳалқаси */
+    nomi: 'Бириктирилган иш ўрни',
+    ol: (x) => {
+      const v = x.vacancy as { korxonaNomi?: string; lavozim?: string } | null;
+      if (!v) return null;
+      return [v.korxonaNomi, v.lavozim].filter(Boolean).join(', ') || null;
+    },
+  },
+  {
+    nomi: 'IT ваучер',
+    ol: (x) => {
+      const r = x.itVaucherlar;
+      if (!Array.isArray(r) || !r.length) return null;
+      return r
+        .map((v) => {
+          const o = v as { raqami?: string; holati?: string };
+          return [o.raqami, o.holati ? kirillcha(IT_VAUCHER_HOLATI, o.holati) : null]
+            .filter(Boolean)
+            .join(' — ');
+        })
+        .join('; ');
+    },
+  },
   { nomi: 'Рад сабаби', ol: (x) => matn(x.radSababi) },
   { nomi: 'Хулоса', ol: (x) => matn(x.xulosa) },
   { nomi: 'Киритилган санаси', ol: (x) => sana(x.createdAt) },

@@ -145,6 +145,7 @@ export async function xatlovniYukla(
     xizmatTosiqlari: t(x.xizmatTosiqlari),
 
     tomorqaBor: x.tomorqaBor,
+    tomorqaMaydoni: s(x.tomorqaMaydoni),
     ekinMaydoni: s(x.ekinMaydoni),
     tomorqaFoydalanish: x.tomorqaFoydalanish,
     qoshimchaYerBor: x.qoshimchaYerBor,

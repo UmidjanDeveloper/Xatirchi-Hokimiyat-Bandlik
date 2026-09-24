@@ -70,6 +70,7 @@ export interface XatlovRaqamlari {
   hunarmandBor?: boolean | null;
   hunarTurlari?: string[] | null;
   hunarmandchilik?: string | null;
+  tomorqaMaydoni?: number | null;
   ekinMaydoni?: number | null;
   tomorqaFoydalanish?: string | null;
   qoshimchaYerBor?: boolean | null;
@@ -343,11 +344,29 @@ export function xatlovTekshir(d: XatlovRaqamlari): TekshiruvHisoboti {
     xato('hunarmandchilik', '«Бошқа» танланган — қайси ҳунар эканини ёзинг');
   }
 
+  if (d.tomorqaBor && n(d.tomorqaMaydoni) <= 0) {
+    xato('tomorqaMaydoni', 'Ер бор деб белгиланган — томорқанинг жами майдонини киритинг');
+  }
+  if (!d.tomorqaBor && n(d.tomorqaMaydoni) > 0) {
+    xato('tomorqaMaydoni', 'Томорқа майдони киритилган, лекин «ер йўқ» деб белгиланган');
+  }
   if (d.tomorqaBor && n(d.ekinMaydoni) <= 0) {
     xato('ekinMaydoni', 'Ер бор деб белгиланган — экин экиладиган майдонни киритинг');
   }
   if (!d.tomorqaBor && n(d.ekinMaydoni) > 0) {
     xato('ekinMaydoni', 'Экин майдони киритилган, лекин «ер йўқ» деб белгиланган');
+  }
+  /*
+   * Экин майдони ЖАМИ майдоннинг ичида — ундан катта бўлиши
+   * мумкин эмас. Иккита сон қўшилгани учун ходим иккисини
+   * адаштириб ёзиши осон; бу текширув ўшани дала шароитида,
+   * ҳужжатга тушишидан олдин ушлайди.
+   */
+  if (n(d.tomorqaMaydoni) > 0 && n(d.ekinMaydoni) > n(d.tomorqaMaydoni)) {
+    xato(
+      'ekinMaydoni',
+      `Экин майдони (${n(d.ekinMaydoni)} сотих) жами майдондан (${n(d.tomorqaMaydoni)} сотих) катта бўлиши мумкин эмас`
+    );
   }
   /*
    * Майдон сони ЕТМАЙДИ: ўша 10 сотих тўлиқ экилган ҳам,

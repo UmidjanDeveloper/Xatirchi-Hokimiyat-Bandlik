@@ -799,6 +799,24 @@ export const CHET_EL_SHAHRI: Record<string, Variant[]> = {
   ),
 };
 
+/**
+ * «давлат|шаҳар» қийматини ўқиладиган номга айлантиради.
+ *
+ * Шаҳар базада қўшимча билан сақланади — `Rossiya|Москва` —
+ * чунки бир хил ном бир нечта давлатда учрайди («Бошқа
+ * шаҳар» ҳаммасида бор) ва қиймат ноёб бўлиши керак.
+ *
+ * Экранда ва ҳужжатда эса у «Россия — Москва» бўлиб чиқиши
+ * керак. Қоида битта жойда: хонадон ҳисоботи, таҳлил панели
+ * ва тўлиқ экспорт ШУНИ чақиради. Учта нусха бўлганда
+ * биттасида хом қиймат кўриниб қоларди.
+ */
+export function shaharNomi(qiymat: string): string {
+  const [davlat, nomi] = qiymat.split('|');
+  if (!nomi) return qiymat;
+  return `${kirillcha(CHET_EL_DAVLATI, davlat)} — ${nomi}`;
+}
+
 /** Tanlangan davlatlarga tegishli shaharlar ro'yxati */
 export function shaharlarRoyxati(davlatlar: string[]): Variant[] {
   const out: Variant[] = [];

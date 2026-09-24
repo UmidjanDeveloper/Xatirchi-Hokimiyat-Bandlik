@@ -40,6 +40,7 @@ import {
   TOMORQA_FOYDALANISH,
   UY_HOLATI,
   kirillcha,
+  shaharNomi,
 } from '@/lib/constants';
 import type { Bolim, Jadval, Qator } from './turlar';
 import { foiz, foizi, pul, raqamga, son, sotix } from './format';
@@ -712,9 +713,9 @@ export async function xonadonBolimlari(
     const shaharXarita = new Map<string, number>();
     for (const r of chetElShaharXom) {
       for (const sh of r.chetElShaharlari) {
-        const [davlat, nomi] = sh.split('|');
-        if (!nomi) continue;
-        const kalit = `${kirillcha(CHET_EL_DAVLATI, davlat)} — ${nomi}`;
+        /* Қоида `constants.ts` да — панел ва экспорт ҳам шуни ишлатади */
+        const kalit = shaharNomi(sh);
+        if (kalit === sh) continue; // «давлат|шаҳар» шаклида эмас
         shaharXarita.set(kalit, (shaharXarita.get(kalit) ?? 0) + 1);
       }
     }

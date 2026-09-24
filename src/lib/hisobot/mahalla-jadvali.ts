@@ -242,6 +242,120 @@ const malumotBelgisi = (
   return kirillcha(MALUMOT, malumoti) === MALUMOT_DARAJASI[daraja] ? '+' : null;
 };
 
+/* ── Ҳужжат кўриниши ────────────────────────────────────────── */
+
+/**
+ * ============================================================
+ *  ДАВЛАТ ҲУЖЖАТИ КЎРИНИШИ
+ *
+ *  Жадвал ҳокимликка БОСИБ ЧИҚАРИЛИБ топширилади ва имзоланади.
+ *  Шунинг учун у қоғозда ҳам тартибли бўлиши керак, экранда
+ *  ҳам.
+ *
+ *  ── Шрифт ──
+ *
+ *  Ўзбекистон давлат ҳужжатларида Times New Roman қабул
+ *  қилинган. Андозада у ФАҚАТ сарлавҳада ишлатилган, маълумот
+ *  катаклари эса Calibri 11 да эди — яъни битта ҳужжатда
+ *  иккита шрифт.
+ *
+ *  Энди ҳаммаси Times New Roman:
+ *    · сарлавҳа — 14, қалин;
+ *    · устун номлари — 12, қалин, ўралган;
+ *    · маълумот — 12;
+ *    · жадвал тагидаги изоҳ — 10, курсив.
+ *
+ *  ── Нега маълумот 14 эмас, 12 ──
+ *
+ *  Энг кенг варақда 23 та устун бор ва у А4 га сиғиши учун
+ *  Excel уни 45–53% гача кичрайтиради. Шрифт катталашса,
+ *  кичрайтириш кучаяди ва ҚОҒОЗДАГИ ҳарф катталашмайди —
+ *  фақат экранда катта кўринади. 12 да эса жадвал кенглиги
+ *  ва ўқилиши мувозанатда қолади.
+ *
+ *  ── Босма созламаси ──
+ *
+ *  А4, кўндаланг, кенглиги бўйича БИТТА саҳифага сиғдирилади,
+ *  баландлиги бўйича чекланмайди. Сарлавҳа ва устун номлари
+ *  ҲАР САҲИФАДА такрорланади — иккинчи бетдаги қатор қайси
+ *  устунга тегишли экани билинсин. Пойида бет рақами.
+ * ============================================================
+ */
+const SHRIFT = 'Times New Roman';
+
+/** Ҳужжатдаги ҳар бир матн ўлчами */
+const OLCHOV = {
+  sarlavha: 14,
+  ustunNomi: 12,
+  malumot: 12,
+  izoh: 10,
+} as const;
+
+/**
+ * Варақдаги ҳар бир катакнинг шрифтини Times New Roman га
+ * ўтказади, ўлчамни қатор ролига қараб белгилайди.
+ *
+ * Мавжуд безак (чегара, тўлдириш, текислаш) САҚЛАНАДИ —
+ * фақат шрифт алмашади.
+ */
+function shriftniOrnat(
+  varaq: ExcelJS.Worksheet,
+  /** Устун номлари шу қатордан кейин тугайди */
+  sarlavhaOxiri: number
+): void {
+  varaq.eachRow({ includeEmpty: true }, (qator) => {
+    const n = qator.number;
+    const olcham =
+      n <= 2 ? OLCHOV.sarlavha : n <= sarlavhaOxiri ? OLCHOV.ustunNomi : OLCHOV.malumot;
+    const qalin = n <= sarlavhaOxiri;
+
+    qator.eachCell({ includeEmpty: true }, (katak) => {
+      const asl = katak.font ?? {};
+      katak.font = {
+        ...asl,
+        name: SHRIFT,
+        size: olcham,
+        bold: qalin || asl.bold === true,
+      };
+    });
+  });
+}
+
+/**
+ * Босмага тайёрлайди: А4 кўндаланг, кенглиги бўйича битта
+ * саҳифа, сарлавҳа ҳар бетда, пойида бет рақами.
+ *
+ * `fitToHeight: 0` — баландлиги чекланмайди. 1 қўйилса,
+ * 40 000 қаторли жадвал БИТТА саҳифага сиқилиб, ўқиб
+ * бўлмайдиган бўлиб қоларди.
+ */
+function bosmaga(varaq: ExcelJS.Worksheet, takrorQatorlar: string): void {
+  varaq.pageSetup = {
+    ...varaq.pageSetup,
+    paperSize: 9, // A4
+    orientation: 'landscape',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    horizontalCentered: true,
+    margins: {
+      left: 0.3,
+      right: 0.3,
+      top: 0.5,
+      bottom: 0.5,
+      header: 0.2,
+      footer: 0.2,
+    },
+    printTitlesRow: takrorQatorlar,
+  };
+
+  /* Пойида бет рақами — «2 / 7» */
+  varaq.headerFooter = {
+    ...varaq.headerFooter,
+    oddFooter: '&C&"Times New Roman,Regular"&10&P / &N',
+  };
+}
+
 /* ── Варақ тўлдириш ─────────────────────────────────────────── */
 
 /**
@@ -367,7 +481,7 @@ function varaqniToldir(
   const katak = izohQatori.getCell(1);
   katak.value = izoh;
   katak.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
-  katak.font = { size: 9, italic: true };
+  katak.font = { name: SHRIFT, size: OLCHOV.izoh, italic: true };
   varaq.mergeCells(izohQatori.number, 1, izohQatori.number, Math.max(ustunSoni, 2));
   izohQatori.height = 42;
   izohQatori.commit();
@@ -410,14 +524,22 @@ function toliqVaraq<T>(
   }));
 
   const sarlavha = v.getRow(1);
-  sarlavha.font = { bold: true, size: 10 };
+  sarlavha.font = { name: SHRIFT, size: OLCHOV.ustunNomi, bold: true };
   sarlavha.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
   sarlavha.height = 34;
   sarlavha.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } };
   sarlavha.commit();
 
   for (const y of yozuvlar) {
-    v.addRow(ustunlar.map((u) => u.ol(y) ?? null)).commit();
+    const q = v.addRow(ustunlar.map((u) => u.ol(y) ?? null));
+    /*
+     * Тўлиқ варақда 111 та устун бор ва 12 да у А4 га умуман
+     * сиғмасди. 10 — ўқиладиган энг кичик ўлчам; варақнинг
+     * вазифаси ҳам бошқа: у экранда фильтр билан кўрилади,
+     * босма учун эса ҳокимликнинг етти варағи бор.
+     */
+    q.font = { name: SHRIFT, size: 10 };
+    q.commit();
   }
 
   /* Фильтр — ҳоким устун бўйича саралаб кўради */
@@ -501,7 +623,7 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
     ? { mahallaId, holati: { not: 'QORALAMA' as const } }
     : { holati: { not: 'QORALAMA' as const } };
 
-  const [xonadonlar, ishsizlar] = await Promise.all([
+  const [xonadonlar, ishsizlar, qoralamaSoni] = await Promise.all([
     /*
      * ТЎЛИҚ ёзув олинади, танланган майдонлар эмас.
      *
@@ -534,7 +656,24 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
         mahalla: { select: { nomiKirill: true } },
         mutaxassis: { select: { fullName: true } },
         household: { select: { oilaBoshligi: true, parvarishgaMuhtoj: true } },
+        /* Занжирнинг охирги ҳалқалари — тўлиқ варақда кўринади */
+        vacancy: { select: { korxonaNomi: true, lavozim: true } },
+        itVaucherlar: { select: { raqami: true, holati: true } },
       },
+    }),
+    /*
+     * Қоралама хатловлар СОНИ — ўзи эмас.
+     *
+     * Улар ҳужжатга тушмайди (ярим тўлдирилган анкета
+     * ҳокимлик ҳужжатида ёлғон рақам беради), аммо ҳоким
+     * «нега 157 эмас, 151?» деб сўраганда жавоб файлнинг
+     * ўзида турсин. Айтилмаган фильтр — йўқолган маълумот
+     * билан баробар.
+     */
+    prisma.household.count({
+      where: mahallaId
+        ? { mahallaId, holati: 'QORALAMA' as const }
+        : { holati: 'QORALAMA' as const },
     }),
   ]);
 
@@ -585,9 +724,19 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
    * қатори аралаш туради ва уни битта маҳалла ҳисоботи деб
    * ўқиб бўлмайди.
    */
+  /**
+   * Ҳужжатга тушмаган хатловлар ҳақида бир гап.
+   *
+   * Қоралама бўлмаса — гап ҳам йўқ, изоҳни беҳуда
+   * узайтирмаймиз.
+   */
+  const qoralamaMatni = qoralamaSoni
+    ? `Яна ${qoralamaSoni} та хатлов ҳали ҚОРАЛАМА ҳолатида — якунланмагани учун бу ҳужжатга киритилмади. `
+    : '';
+
   const qamrovMatni = yakka
-    ? ''
-    : `Жадвал ТУМАН бўйича: барча МФЙ нинг ёзувлари битта узлуксиз рўйхатда, маҳалла номи бўйича тартибланган. Қайси қатор қайси МФЙ дан экани «Хонадонлар — тўлиқ» ва «Ишсизлар — тўлиқ» варақларидаги «МФЙ» устунида кўрсатилган. `;
+    ? qoralamaMatni
+    : `Жадвал ТУМАН бўйича: барча МФЙ нинг ёзувлари битта узлуксиз рўйхатда, маҳалла номи бўйича тартибланган. Қайси қатор қайси МФЙ дан экани «Хонадонлар — тўлиқ» ва «Ишсизлар — тўлиқ» варақларидаги «МФЙ» устунида кўрсатилган. ${qoralamaMatni}`;
 
   /* ══ 1. КАМБАҒАЛ ОИЛАЛАР ══ */
   /*
@@ -796,6 +945,18 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   );
   sanoq['бўш турган бинолар'] = 0;
 
+  /*
+   * ── ҲУЖЖАТ КЎРИНИШИ ──
+   *
+   * Етти варақнинг ҳаммасига бир хил қўлланади: Times New
+   * Roman, А4 кўндаланг, кенглиги бўйича битта саҳифа,
+   * сарлавҳа ва устун номлари ҳар бетда такрорланади.
+   */
+  for (const v of kitob.worksheets) {
+    shriftniOrnat(v, BOSHLANISH - 1);
+    bosmaga(v, `1:${BOSHLANISH - 1}`);
+  }
+
   /* ══ 8-9. ТЎЛИҚ МАЪЛУМОТ ══ */
   /*
    * Андоза варақларидан КЕЙИН қўшилади — ҳокимлик очганда
@@ -807,6 +968,12 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
 
   toliqVaraq(kitob, 'Ишсизлар — тўлиқ', FUQARO_USTUNLARI, ishsizlar);
   sanoq['фуқаро (тўлиқ)'] = ishsizlar.length;
+
+  /* Тўлиқ варақларда сарлавҳа битта қатор — ўша такрорланади */
+  for (const nomi of ['Хонадонлар — тўлиқ', 'Ишсизлар — тўлиқ']) {
+    const v = kitob.getWorksheet(nomi);
+    if (v) bosmaga(v, '1:1');
+  }
 
   const bayt = (await kitob.xlsx.writeBuffer()) as Buffer;
   return { bayt: Buffer.from(bayt), sanoq };

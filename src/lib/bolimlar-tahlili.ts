@@ -113,6 +113,15 @@ export interface BolimlarTahlili {
     /** Шундан нечта оила суммани айтган (айтмаганлар ҳам бор) */
     pulliOila: number;
     davlatlar: UlushQatori[];
+    /**
+     * Қайси шаҳарларда — «давлат|шаҳар» қийматидан.
+     *
+     * Давлат кесими етарли эмас: «Россияда 340 киши» деган
+     * рақамдан чора чиқмайди, «Москвада 120, Сургутда 45»
+     * эса чиқади. Консуллик, меҳнат миграцияси агентлиги ва
+     * диаспора билан иш айнан ШАҲАР даражасида юритилади.
+     */
+    shaharlar: UlushQatori[];
   };
 
   /** III бўлим — даромад ва камбағаллик сабаблари */
@@ -382,6 +391,7 @@ async function bolimlarniHisobla(mahallaId?: string): Promise<BolimlarTahlili> {
           "daromadManbalari", "kambagallikSabablari", "infratuzilmaMuammolari",
           "passivDaromadTurlari", "chorvaTurlari", "hunarTurlari",
           "tadbirkorlikSohasi", "moliyaTuri", "chetElDavlatlari",
+          "chetElShaharlari",
           /*
            * ── ДАРВОЗА УСТУНЛАРИ ──
            *
@@ -429,6 +439,8 @@ async function bolimlarniHisobla(mahallaId?: string): Promise<BolimlarTahlili> {
         FROM x, unnest("moliyaTuri") AS t WHERE "moliyaEhtiyoji" GROUP BY 2
       UNION ALL SELECT 'davlatlar', t, COUNT(*)::int
         FROM x, unnest("chetElDavlatlari") AS t WHERE "chetElMehnati" GROUP BY 2
+      UNION ALL SELECT 'shaharlar', t, COUNT(*)::int
+        FROM x, unnest("chetElShaharlari") AS t WHERE "chetElMehnati" GROUP BY 2
     `,
   ]);
 
@@ -486,6 +498,7 @@ async function bolimlarniHisobla(mahallaId?: string): Promise<BolimlarTahlili> {
       oylikSom: Math.round(n(r.chetElOylikSom)),
       pulliOila: n(r.chetElPulliOila),
       davlatlar: g('davlatlar'),
+      shaharlar: g('shaharlar'),
     },
 
     daromad: {

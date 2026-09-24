@@ -147,6 +147,7 @@ export interface XatlovHolati {
 
   // IX. Yer, chorva va hunarmandchilik
   tomorqaBor: boolean | null;
+  tomorqaMaydoni: Raqam;
   ekinMaydoni: Raqam;
   tomorqaFoydalanish: string | null;
   qoshimchaYerBor: boolean | null;
@@ -302,6 +303,7 @@ export function bosHolat(mahallaId = ''): XatlovHolati {
     xizmatTosiqlari: '',
 
     tomorqaBor: null,
+    tomorqaMaydoni: '',
     ekinMaydoni: '',
     tomorqaFoydalanish: null,
     qoshimchaYerBor: null,
@@ -444,6 +446,7 @@ export function yuborishUchun(h: XatlovHolati) {
       maktabYoshdagi: r(x.maktabYoshdagi),
       maktabQamrovda: r(x.maktabQamrovda),
       togarakQamrovi: r(x.togarakQamrovi),
+      tomorqaMaydoni: r(x.tomorqaMaydoni),
       ekinMaydoni: r(x.ekinMaydoni),
       qoshimchaYerMaydoni: r(x.qoshimchaYerMaydoni),
       issiqxonaMaydoni: r(x.issiqxonaMaydoni),

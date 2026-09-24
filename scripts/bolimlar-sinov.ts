@@ -236,7 +236,14 @@ const SINOVLAR: Sinov[] = [
        * «0 — 3 ёш» даги тире ОРАЛИҚ белгиси. Қисқартиргич уни
        * ҳам кесиб, ёрлиқни «0» га айлантириб қўйганди.
        */
-      PANEL.includes('katalog ? qisqaNom(kirillcha(katalog, q.qiymat)) : q.qiymat') &&
+      /*
+       * Қисқартиргич ФАҚАТ каталогдан келган номга
+       * қўлланади. Қўлда берилган ёрлиқ («0–3 ёш») ва
+       * `nomla` билан ясалган ном («Россия — Москва») бутун
+       * қолади.
+       */
+      PANEL.includes('qisqaNom(kirillcha(katalog, q.qiymat))') &&
+      PANEL.includes('? nomla(q.qiymat)') &&
       !PANEL.includes("'0 — 3") &&
       PANEL.includes("'0–3 ёш'"),
   },

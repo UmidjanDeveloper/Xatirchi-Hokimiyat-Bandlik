@@ -675,6 +675,7 @@ function sonlar(h: XatlovHolati): XatlovRaqamlari {
     moliyaEhtiyoji: h.moliyaEhtiyoji,
     talabQilinganMablag: s(h.talabQilinganMablag),
     tomorqaBor: h.tomorqaBor,
+    tomorqaMaydoni: s(h.tomorqaMaydoni),
     ekinMaydoni: s(h.ekinMaydoni),
     tomorqaFoydalanish: h.tomorqaFoydalanish,
     qoshimchaYerBor: h.qoshimchaYerBor,

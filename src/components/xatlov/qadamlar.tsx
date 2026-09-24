@@ -1011,6 +1011,25 @@ export function QadamYerChorva({ h, yangila, xatolar }: QadamProps) {
 
         {h.tomorqaBor && (
           <>
+            {/*
+              ЖАМИ майдон ва ЭКИН майдони — бошқа-бошқа сон.
+              Ҳокимлик жадвалининг «Таморқа майдони (сотих)»
+              устуни айни жамисини сўрайди; экин майдони эса
+              ўшанинг ишлатилаётган қисми. Биттасини иккинчиси
+              ўрнига ёзиш ҳужжатда нотўғри рақам беради.
+            */}
+            <RaqamMaydoni
+              yorliq={tr("Томорқанинг жами майдони")}
+              izoh={tr("Ҳовли билан қўшиб, оилага тегишли томорқа ерининг ҳаммаси")}
+              majburiy
+              qiymat={h.tomorqaMaydoni}
+              ozgardi={(q) => yangila('tomorqaMaydoni', q)}
+              max={10000}
+              qadam={0.01}
+              birlik={tr("сотих")}
+              xato={x(xatolar, 'tomorqaMaydoni')}
+            />
+
             <RaqamMaydoni
               yorliq={tr("Экин экиладиган майдон")}
               izoh={tr("Уй турган жойни ҳисобламанг — фақат экин экса бўладиган қисми")}
@@ -2040,6 +2059,7 @@ export const QADAMLAR = [
       'hunarmandBor',
       'issiqxonaTalabi',
       'ijaraYer',
+      'tomorqaMaydoni',
       'ekinMaydoni',
       'chorvaTurlari',
       'hunarTurlari',

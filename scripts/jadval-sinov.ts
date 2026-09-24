@@ -530,6 +530,173 @@ const SINOVLAR: Sinov[] = [
       USTUNLAR.includes('return kirillcha(katalog, String(x));'),
   },
 
+  /* ══ ДАВЛАТ ҲУЖЖАТИ КЎРИНИШИ ══ */
+  {
+    nomi: 'Ҳужжат Times New Roman да — битта файлда иккита шрифт бўлмасин',
+    tekshir: () =>
+      /*
+       * Андозада Times New Roman ФАҚАТ сарлавҳада эди,
+       * маълумот катаклари Calibri 11 да. Ўзбекистон давлат
+       * ҳужжатларида Times New Roman қабул қилинган.
+       */
+      MODUL.includes("const SHRIFT = 'Times New Roman';") &&
+      MODUL.includes('function shriftniOrnat') &&
+      MODUL.includes('name: SHRIFT'),
+  },
+  {
+    nomi: 'Ўлчовлар ролга қараб: сарлавҳа 14, устун 12, маълумот 12',
+    tekshir: () => {
+      const blok = /const OLCHOV = \{([\s\S]*?)\} as const;/.exec(MODUL)?.[1] ?? '';
+      return (
+        /sarlavha:\s*14/.test(blok) &&
+        /ustunNomi:\s*12/.test(blok) &&
+        /malumot:\s*12/.test(blok)
+      );
+    },
+  },
+  {
+    nomi: 'Мавжуд безак САҚЛАНАДИ — фақат шрифт алмашади',
+    tekshir: () =>
+      /*
+       * Чегара, тўлдириш ва текислаш андозадан келади. Шрифт
+       * ўрнатишда улар ўчиб кетса, жадвал чизиқсиз қоларди.
+       */
+      MODUL.includes('const asl = katak.font ?? {};') && MODUL.includes('...asl,'),
+  },
+  {
+    nomi: 'Ҳар варақ босмага тайёр: А4 кўндаланг, кенглиги битта саҳифа',
+    tekshir: () =>
+      /*
+       * Изоҳ эмас, КОД текширилади: изоҳда ҳам «fitToHeight: 0»
+       * деб ёзилган ва матн бўйича текширув уни тўғри деб
+       * ҳисоблаб, ўзгартирилган кодни ўтказиб юборарди.
+       *
+       * `fitToHeight: 0` — баландлиги чекланмайди. 1 қўйилса,
+       * минглаб қаторли жадвал битта саҳифага сиқилиб, ўқиб
+       * бўлмайдиган бўлиб қоларди.
+       */
+      MODUL_KODI.includes('paperSize: 9') &&
+      MODUL_KODI.includes("orientation: 'landscape'") &&
+      MODUL_KODI.includes('fitToWidth: 1') &&
+      MODUL_KODI.includes('fitToHeight: 0'),
+  },
+  {
+    nomi: 'Сарлавҳа ҲАР САҲИФАДА такрорланади',
+    tekshir: () =>
+      /*
+       * Иккинчи бетдаги қатор қайси устунга тегишли экани
+       * билиниши керак. Андоза варағида сарлавҳа 5 қатор,
+       * тўлиқ варақда битта.
+       */
+      MODUL.includes('printTitlesRow: takrorQatorlar') &&
+      MODUL.includes('bosmaga(v, `1:${BOSHLANISH - 1}`)') &&
+      MODUL.includes("bosmaga(v, '1:1')"),
+  },
+  {
+    nomi: 'Пойида бет рақами бор',
+    tekshir: () => MODUL.includes('oddFooter') && MODUL.includes('&P / &N'),
+  },
+  {
+    nomi: 'Барча варақ шрифт ва босма созламасини олади',
+    tekshir: () =>
+      /* Биттаси ўтказиб юборилса, ҳужжат аралаш кўринарди */
+      MODUL.includes('for (const v of kitob.worksheets) {') &&
+      MODUL.includes('shriftniOrnat(v, BOSHLANISH - 1);'),
+  },
+
+  /* ══ ҲЕЧ БИР МАЪЛУМОТ ТУШИБ ҚОЛМАСИН ══ */
+  {
+    nomi: 'Чет эл ШАҲАРЛАРИ экспортда ўқиладиган ном билан',
+    tekshir: () =>
+      /*
+       * База «Rossiya|Москва» деб сақлайди — қиймат ноёб
+       * бўлиши учун давлат қўшилган. Хом ҳолда чиқарилса,
+       * ҳужжатда «Rossiya|Москва» деб турарди.
+       */
+      USTUNLAR.includes('.map(shaharNomi)') &&
+      oqi('src/lib/constants.ts').includes('export function shaharNomi'),
+  },
+  {
+    nomi: 'Шаҳар қоидаси БИТТА жойда — уч жой ҳам ўшани чақиради',
+    tekshir: () => {
+      const panel = oqi('src/components/panel/bolimlar-paneli.tsx');
+      const profil = oqi('src/lib/hisobot/xonadon-profili.ts');
+      return (
+        panel.includes('nomla={shaharNomi}') &&
+        profil.includes('const kalit = shaharNomi(sh);') &&
+        USTUNLAR.includes('shaharNomi')
+      );
+    },
+  },
+  {
+    nomi: 'Шаҳарлар ТАҲЛИЛ ПАНЕЛИДА ҳам кўринади',
+    tekshir: () => {
+      /*
+       * Хатловда йиғиларди, хонадон ҳисоботида бор эди, аммо
+       * панелга чиқмасди — ҳоким уни умуман кўрмасди.
+       */
+      const tahlil = oqi('src/lib/bolimlar-tahlili.ts');
+      const panel = oqi('src/components/panel/bolimlar-paneli.tsx');
+      return (
+        tahlil.includes("UNION ALL SELECT 'shaharlar'") &&
+        tahlil.includes("shaharlar: g('shaharlar')") &&
+        panel.includes('Қайси шаҳарларда')
+      );
+    },
+  },
+  {
+    nomi: 'Анкетанинг ҳар бир майдони экспортда ёки рўйхатда',
+    tekshir: () => {
+      /*
+       * Шаҳарлар бир марта тушиб қолган эди ва буни фақат
+       * фойдаланувчи кўрди. Бу текширув сxемадаги ҲАР БИР
+       * майдонни экспорт билан солиштиради: янги майдон
+       * қўшилса, уни экспортга қўшиш ёки «керак эмас»
+       * рўйхатига ёзиш керак бўлади.
+       */
+      const sxema = oqi('prisma/schema.prisma');
+      const maydonlar = (model: string): string[] => {
+        const m = new RegExp(`model ${model} \\{([\\s\\S]*?)\\n\\}`).exec(sxema);
+        if (!m) return [];
+        return m[1]
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l && !l.startsWith('/') && !l.startsWith('@@'))
+          .map((l) => l.split(/\s+/)[0])
+          .filter((n) => /^[a-z]/.test(n));
+      };
+
+      /* Экспортга КЕРАК ЭМАС — ҳар бири сабаби билан */
+      const kerakmas = new Set([
+        'id', 'mahallaId', 'householdId', 'xodimId', 'mutaxassisId', 'vacancyId',
+        'arxivchiId', // ички калитлар
+        'viloyat', 'tuman', // доимий қиймат
+        'takrorKaliti', // такрорни топиш учун ички калит
+        'createdAt', 'updatedAt', 'arxivSanasi', 'arxivSababi', // хизмат майдонлари
+        'aiXulosa', 'aiXulosaVaqti', 'aiManbasi', // хатлов эмас, ҳисоблаб чиқарилган
+        'rasmUrl', 'imzoYoli', // файл йўллари
+        'ishsizlar', 'topshiriqlar', 'kesmalar', 'itVaucherlar', 'vacancy',
+        'mahalla', 'xodim', 'household', 'mutaxassis', // боғланишлар
+      ]);
+
+      const ayblilar: string[] = [];
+      for (const [model, belgi] of [
+        ['Household', 'XONADON_USTUNLARI'],
+        ['UnemployedPerson', 'FUQARO_USTUNLARI'],
+      ] as const) {
+        const bosh = USTUNLAR.indexOf(`export const ${belgi}`);
+        const keyingi = USTUNLAR.indexOf('export const', bosh + 10);
+        const blok = USTUNLAR.slice(bosh, keyingi > 0 ? keyingi : undefined);
+        for (const f of maydonlar(model)) {
+          if (kerakmas.has(f)) continue;
+          if (!new RegExp(`\\b${f}\\b`).test(blok)) ayblilar.push(`${model}.${f}`);
+        }
+      }
+      if (ayblilar.length) console.log(`     экспортда йўқ: ${ayblilar.join(', ')}`);
+      return ayblilar.length === 0;
+    },
+  },
+
   /* ══ ХАВФСИЗЛИК ══ */
   {
     nomi: 'Жадвал ФАҚАТ ҳоким ва администраторга очиқ',
@@ -614,6 +781,28 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Ҳар варақдаги ёзув сони экранга қайтарилади',
     tekshir: () =>
       YOL.includes("'X-Jadval-Sanoq'") && TUGMA.includes("javob.headers.get('X-Jadval-Sanoq')"),
+  },
+  {
+    /*
+     * Қоралама хатлов ҳужжатга тушмайди. Бу тўғри — ярим
+     * тўлдирилган анкета ҳокимлик рақамини бузарди. Аммо
+     * АЙТИЛМАГАН фильтр йўқолган маълумотдан фарқ қилмайди:
+     * ҳоким 157 ўрнига 151 ни кўриб, фарқи қаёққа кетганини
+     * файлнинг ўзидан билиши керак.
+     */
+    nomi: 'Ҳужжатга тушмаган қоралама сони изоҳда айтилади',
+    tekshir: () =>
+      MODUL_KODI.includes("holati: 'QORALAMA' as const }") &&
+      MODUL_KODI.includes('const qoralamaMatni = qoralamaSoni') &&
+      MODUL_KODI.includes('та хатлов ҳали ҚОРАЛАМА ҳолатида') &&
+      /* иккала қамровда ҳам — якка МФЙ да ҳам, туманда ҳам */
+      MODUL_KODI.includes('? qoralamaMatni') &&
+      MODUL_KODI.includes('${qoralamaMatni}`'),
+  },
+  {
+    /* Қоралама бўлмаса изоҳ беҳуда узаймасин */
+    nomi: 'Қоралама йўқ бўлса изоҳга ҳеч нарса қўшилмайди',
+    tekshir: () => MODUL_KODI.includes("    : '';"),
   },
   {
     nomi: 'Сарлавҳадаги маҳалла номи алмаштирилади',

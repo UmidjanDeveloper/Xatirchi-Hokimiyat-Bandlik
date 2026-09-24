@@ -255,6 +255,7 @@ export const XonadonSxemasi = z.object({
 
   // IX. Tomorqa, yer, chorva
   tomorqaBor: z.boolean().default(false),
+  tomorqaMaydoni: olchov,
   ekinMaydoni: olchov,
   tomorqaFoydalanish: tanlov(TOMORQA_FOYDALANISH),
   qoshimchaYerBor: z.boolean().default(false),

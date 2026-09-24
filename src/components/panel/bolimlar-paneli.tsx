@@ -30,6 +30,7 @@ import {
   DAROMAD_MANBAI,
   kirillcha,
   type Variant,
+  shaharNomi,
 } from '@/lib/constants';
 
 /**
@@ -307,6 +308,21 @@ export function BolimlarPaneli({
 
         <Ulush sarlavha="Қайси давлатларда" qatorlar={b.chetEl.davlatlar}
           katalog={CHET_EL_DAVLATI} maxraj={b.chetEl.oila} maxrajNomi="оиладан" />
+
+        {/*
+          ── ШАҲАРЛАР ──
+
+          Давлат кесими етарли эмас. «Россияда 340 киши» деган
+          рақамдан чора чиқмайди, «Москвада 120, Сургутда 45»
+          эса чиқади: консуллик, меҳнат миграцияси агентлиги ва
+          диаспора билан иш айнан ШАҲАР даражасида юритилади.
+
+          Хатловда бу маълумот йиғиларди, хонадон ҳисоботида
+          ҳам бор эди, аммо ПАНЕЛГА чиқмасди — ҳоким уни
+          умуман кўрмасди.
+        */}
+        <Ulush sarlavha="Қайси шаҳарларда" qatorlar={b.chetEl.shaharlar}
+          nomla={shaharNomi} maxraj={b.chetEl.oila} maxrajNomi="оиладан" />
       </Bolim>
 
       {/* ══ III. ДАРОМАД ══ */}
@@ -636,6 +652,7 @@ function Ulush({
   maxrajNomi,
   xavfli,
   katalogTartibi,
+  nomla,
   soni = 8,
 }: {
   sarlavha: string;
@@ -654,6 +671,15 @@ function Ulush({
    * шкаласи ҲАР ДОИМ яхшидан ёмонга қараб ўқилади.
    */
   katalogTartibi?: boolean;
+  /**
+   * Номни ЎЗИ ясайдиган функция — каталог етмаганда.
+   *
+   * Шаҳар базада «давлат|шаҳар» кўринишида сақланади ва уни
+   * каталогдан топиб бўлмайди: қиймат ноёб бўлиши учун
+   * давлат қўшилган. `shaharNomi()` уни «Россия — Москва»
+   * га айлантиради.
+   */
+  nomla?: (qiymat: string) => string;
   soni?: number;
 }) {
   const tr = matnchi();
@@ -725,7 +751,11 @@ function Ulush({
            * билдиради ва кесилса «0» бўлиб қоларди. Айнан
            * шундай бўлди ҳам.
            */
-          const nomi = katalog ? qisqaNom(kirillcha(katalog, q.qiymat)) : q.qiymat;
+          const nomi = nomla
+            ? nomla(q.qiymat)
+            : katalog
+              ? qisqaNom(kirillcha(katalog, q.qiymat))
+              : q.qiymat;
           const ulush = maxraj > 0 ? foiz(q.soni, maxraj) : 0;
 
           return (
