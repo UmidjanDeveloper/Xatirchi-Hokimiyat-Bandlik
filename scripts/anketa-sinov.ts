@@ -33,6 +33,15 @@ import { xatlovTekshir, type XatlovRaqamlari } from '../src/lib/xatlov-tekshiruv
 type Sinov = { nomi: string; tekshir: () => boolean };
 
 const FORMA = readFileSync('src/components/xatlov/qadamlar.tsx', 'utf8');
+const FORMA_QADAM = FORMA;
+/** Изоҳларсиз код — текширув изоҳдаги сўзни ўқиб алданмасин */
+const kodiOl = (m: string) =>
+  m
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+const FORMA_KODI = kodiOl(readFileSync('src/components/xatlov/xatlov-formasi.tsx', 'utf8'));
+const TEKSHIRUV_KODI = kodiOl(readFileSync('src/lib/xatlov-tekshiruvi.ts', 'utf8'));
 const ASOS = readFileSync('src/components/xatlov/xatlov-formasi.tsx', 'utf8');
 const TEKSHIRUV = readFileSync('src/lib/xatlov-tekshiruvi.ts', 'utf8');
 
@@ -178,6 +187,92 @@ const SINOVLAR: Sinov[] = [
       }
       if (yomon.length) for (const v of yomon) console.log(`     ${v}`);
       return yomon.length === 0;
+    },
+  },
+
+  /* ══ ҚАДАМ КЎРСАТКИЧИ ══ */
+  {
+    /*
+     * Кўрсаткич «тўлдирилмаган» саноғини ЮБОРИШ билан айнан
+     * бир хил текширувдан олиши шарт.
+     *
+     * Бошқа қоида ёзилса, кўрсаткич «ҳаммаси тўлиқ» деб
+     * яшил турар, «Юбориш» эса ходимни хато билан
+     * қайтарарди — яъни белги ёлғон гапирарди. Бу
+     * белгисизликдан ҳам ёмон: ходим унга ишониб,
+     * хонадондан чиқиб кетарди.
+     */
+    nomi: 'Қадам кўрсаткичи ЮБОРИШ билан бир хил текширувдан ўқийди',
+    tekshir: () =>
+      FORMA_KODI.includes('qadamlarBoyicha(toliqTekshir(h))') &&
+      /* Хато қайси қадамда — ўша санов асосида */
+      FORMA_KODI.includes('const soni = qadamlarBoyicha(xatolar);'),
+  },
+  {
+    /* Калит → қадам мосламаси БИТТА жойда */
+    nomi: 'Калитни қадамга улаш қоидаси битта функцияда',
+    tekshir: () =>
+      FORMA_KODI.includes('function kalitQadami(kalit: string): number') &&
+      FORMA_KODI.includes('const i = kalitQadami(kalit);') &&
+      /* Эски нусха қолмаган бўлсин */
+      (FORMA_KODI.match(/startsWith\('passivSoni\.'\)/g) ?? []).length === 1 &&
+      (FORMA_KODI.match(/startsWith\('ishsiz\.'\)/g) ?? []).length === 1,
+  },
+  {
+    /*
+     * Ҳали ОЧИЛМАГАН қадам «тўлдирилмаган» деб
+     * белгиланмайди: акс ҳолда анкета бошидан бошлаб
+     * саккизта огоҳлантириш билан очиларди ва белги
+     * маъносини йўқотарди.
+     */
+    nomi: 'Фақат кўрилган қадам «тўлдирилмаган» деб белгиланади',
+    tekshir: () =>
+      FORMA_KODI.includes('const korildi = korilgan.includes(i);') &&
+      FORMA_KODI.includes('const qoldi = korildi && qolgan[i] > 0;') &&
+      FORMA_KODI.includes('korilgan.some((i) => qolgan[i] > 0)'),
+  },
+  {
+    /*
+     * ── ЭНГ МУҲИМИ ──
+     *
+     * Текширув айблай оладиган ҲАР БИР майдон биror
+     * қадамнинг `maydonlar` рўйхатида бўлиши ШАРТ.
+     *
+     * Бўлмаса `kalitQadami` `-1` қайтаради: хато саноққа
+     * кирмайди (кўрсаткич «тўлиқ» деб туради) ва
+     * `xatoQadami` ходимни 1-қадамга юборади — у эса ўша
+     * ерда ҳеч нарса топа олмайди.
+     *
+     * Бу айнан 19-сентябрдаги нуқсоннинг акаси: хато бор,
+     * аммо у КЎРИНМАЙДИ.
+     */
+    nomi: 'Айблана оладиган ҳар бир майдон биror қадамга тегишли',
+    tekshir: () => {
+      /* Қадамлардаги барча майдонлар */
+      const qadamMaydonlari = new Set<string>();
+      for (const blok of FORMA_QADAM.matchAll(/maydonlar:\s*\[([\s\S]*?)\]/g)) {
+        for (const m of blok[1].matchAll(/'([^']+)'/g)) qadamMaydonlari.add(m[1]);
+      }
+
+      /* Текширув айблай оладиган майдонлар */
+      const ayblanadigan = new Set<string>();
+      for (const m of FORMA_KODI.matchAll(/xt\.([a-zA-Z0-9_]+)\s*=/g)) ayblanadigan.add(m[1]);
+      for (const m of TEKSHIRUV_KODI.matchAll(/(?:xato|ogoh)\(\s*'([^']+)'/g)) ayblanadigan.add(m[1]);
+
+      /*
+       * Префиксли калитлар (`ishsiz.0.fish`, `passivSoni.Tovuq`)
+       * `kalitQadami` да алоҳида ишланади — уларнинг ўзаги
+       * рўйхатда бор.
+       */
+      const istisno = new Set(['ishsiz', 'passivSoni']);
+
+      const yoqolgan = [...ayblanadigan].filter(
+        (f) => !qadamMaydonlari.has(f) && !istisno.has(f.split('.')[0])
+      );
+      if (yoqolgan.length) {
+        console.log(`     ҳеч бир қадамга кирмайди: ${yoqolgan.join(', ')}`);
+      }
+      return yoqolgan.length === 0;
     },
   },
 ];

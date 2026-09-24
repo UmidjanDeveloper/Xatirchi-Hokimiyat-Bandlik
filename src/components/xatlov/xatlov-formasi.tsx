@@ -88,9 +88,30 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
 
   const [id, setId] = useState<string | null>(boshlangich?.id ?? null);
   const [qadam, setQadam] = useState(0);
+  /*
+   * Ходим ҚАЙСИ қадамларни очган.
+   *
+   * Тўлдирилмаган қадамни белгилаш учун керак: ҳали
+   * очилмаган қадам «тўлдирилмаган» деб қизариб турса,
+   * анкета бошидан хатога тўла бўлиб кўринарди ва белги
+   * маъносини йўқотарди.
+   */
+  const [korilgan, setKorilgan] = useState<number[]>([0]);
   const [h, setH] = useState<XatlovHolati>(
     boshlangich?.holat ?? bosHolat(mahallalar.length === 1 ? mahallalar[0].id : '')
   );
+
+  /*
+   * Қадам ўзгарганда уни «кўрилган» деб белгилаймиз.
+   *
+   * Тўққизта `setQadam` чақируви бор — «Кейинги», «Олдинги»,
+   * кўрсаткичдаги нуқта, хатога қайтариш, сервер жавоби.
+   * Ҳар бирига қўлда қўшиш ўрнига БИТТА кузатувчи: эртага
+   * янги йўл қўшилса, у ҳам ўзи ҳисобга олинади.
+   */
+  useEffect(() => {
+    setKorilgan((oldingi) => (oldingi.includes(qadam) ? oldingi : [...oldingi, qadam]));
+  }, [qadam]);
 
   const [xatolar, setXatolar] = useState<Record<string, string>>({});
   /** Такрор хатловда — мавжуд ёзувнинг `id` си (ҳавола учун) */
@@ -317,6 +338,24 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
   const Joriy = QADAMLAR[qadam].komponent;
   const oxirgi = qadam === QADAMLAR.length - 1;
 
+  /*
+   * ── ҚАЙСИ ҚАДАМДА НИМА ҚОЛГАН ──
+   *
+   * Илгари ходим саккизала қадамни бўш ҳолда охиригача
+   * босиб ўтар, «Юбориш» эса уни 1-қадамга ўн саккизта
+   * хато билан қайтарарди. У пайтда ходим хонадондан чиқиб
+   * кетган, оила аъзоси эса ишга кетган бўларди.
+   *
+   * Энди санов ЖОНЛИ: ҳар ўзгаришда қайта ҳисобланади ва
+   * ходим эшик олдида турибоқ нима қолганини кўради.
+   *
+   * `toliqTekshir` — «Юбориш» босилганда ишлатиладиган
+   * ЎША функция. Бошқа қоида ёзилса, кўрсаткич «тўлиқ» деб
+   * турар, юбориш эса рад этарди.
+   */
+  const qolgan = useMemo(() => qadamlarBoyicha(toliqTekshir(h)), [h]);
+  const jamiQolgan = qolgan.reduce((a, n) => a + n, 0);
+
   return (
     <div className="space-y-4">
       {/* ── Qadamlar ko'rsatkichi ── */}
@@ -337,18 +376,75 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
           aria-valuenow={qadam + 1}
           aria-label={tr("Анкета қадамлари")}
         >
-          {QADAMLAR.map((q, i) => (
-            <button
-              key={q.nomi}
-              type="button"
-              onClick={() => setQadam(i)}
-              aria-label={tr(`${i + 1}-қадам: ${q.nomi}`)}
-              className={`h-1.5 flex-1 rounded-full transition-colors ${
-                i <= qadam ? 'bg-accent' : 'bg-line'
-              }`}
-            />
-          ))}
+          {QADAMLAR.map((q, i) => {
+            /*
+             * Уч ҳолат, учта ранг:
+             *   joriy      — ходим шу ерда
+             *   tugallangan — кўрилган ва тўлиқ
+             *   qoldi      — кўрилган, аммо майдон бўш
+             *
+             * Ҳали КЎРИЛМАГАН қадам кулранг қолади: уни
+             * «тўлдирилмаган» деб белгилаш анкетани
+             * бошидан хатога тўла қилиб кўрсатарди.
+             */
+            const korildi = korilgan.includes(i);
+            const qoldi = korildi && qolgan[i] > 0;
+            const tugallangan = korildi && qolgan[i] === 0;
+            return (
+              <button
+                key={q.nomi}
+                type="button"
+                onClick={() => setQadam(i)}
+                aria-label={
+                  tr(`${i + 1}-қадам: ${q.nomi}`) +
+                  (qoldi ? ` — ${qolgan[i]} ${tr('та майдон тўлдирилмаган')}` : '')
+                }
+                className={`h-1.5 flex-1 rounded-full transition-colors ${
+                  i === qadam
+                    ? 'bg-accent'
+                    : qoldi
+                      ? 'bg-warn'
+                      : tugallangan
+                        ? 'bg-ok'
+                        : 'bg-line'
+                }`}
+              />
+            );
+          })}
         </div>
+
+        {/*
+          ── НИМА ҚОЛГАНИ ──
+
+          Фақат КЎРИЛГАН қадамлар саналади. Ходим ҳали
+          очмаган қадамни «тўлдирилмаган» деб кўрсатиш
+          ноҳақ бўларди — у ҳали навбат билан бормоқда.
+
+          Ёзув босилади: тўғри қадамга олиб боради, ходим
+          ўн икки минг пиксель суриб ахтармайди.
+        */}
+        {korilgan.some((i) => qolgan[i] > 0) && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5">
+            <span className="text-[11px] font-medium text-ink-muted">
+              {tr('Тўлдирилмаган:')}
+            </span>
+            {QADAMLAR.map((q, i) =>
+              korilgan.includes(i) && qolgan[i] > 0 ? (
+                <button
+                  key={q.nomi}
+                  type="button"
+                  onClick={() => {
+                    setQadam(i);
+                    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="rounded-md bg-warn-bg px-2 py-1 text-[11px] font-medium text-warn transition-colors hover:brightness-95"
+                >
+                  {i + 1}-{tr('қадам')} · {qolgan[i]}
+                </button>
+              ) : null
+            )}
+          </div>
+        )}
       </div>
 
       {/*
@@ -977,21 +1073,46 @@ function toliqTekshir(h: XatlovHolati): Record<string, string> {
  * Xodim "Yuborish" ni bosganda darhol o'sha qadamga o'tishi kerak,
  * aks holda xatoni qidirib 7 ta qadamni aylanib chiqadi.
  */
-function xatoQadami(xatolar: Record<string, string>): number {
-  const kalitlar = Object.keys(xatolar);
-
+/**
+ * Битта хато калити қайси қадамга тегишли.
+ *
+ * Мослама БИТТА жойда: ундан ҳам «хато қайси қадамда», ҳам
+ * қадам кўрсаткичидаги санов фойдаланади. Иккита нусха бўлса,
+ * кўрсаткич «3-қадам тўлиқ» деб турар, «Юбориш» эса айнан
+ * ўша қадамга қайтарарди.
+ */
+function kalitQadami(kalit: string): number {
   // `passivSoni.Tovuq` kabi kalitlar xulosa qadamiga tegishli
-  if (kalitlar.some((k) => k.startsWith('passivSoni.'))) {
-    const i = QADAMLAR.findIndex((q) => q.maydonlar.some((m) => m === 'passivDaromadTurlari'));
-    if (i >= 0) return i;
+  if (kalit.startsWith('passivSoni.')) {
+    return QADAMLAR.findIndex((q) => q.maydonlar.some((m) => m === 'passivDaromadTurlari'));
   }
-
   // `ishsiz.0.fish` kabi kalitlar shaxslar qadamiga tegishli
-  if (kalitlar.some((k) => k.startsWith('ishsiz.'))) {
-    const i = QADAMLAR.findIndex((q) => q.maydonlar.some((m) => m === 'ishsizlar'));
-    if (i >= 0) return i;
+  if (kalit.startsWith('ishsiz.')) {
+    return QADAMLAR.findIndex((q) => q.maydonlar.some((m) => m === 'ishsizlar'));
   }
+  return QADAMLAR.findIndex((q) => q.maydonlar.some((m) => m === kalit));
+}
 
-  const i = QADAMLAR.findIndex((q) => kalitlar.some((k) => q.maydonlar.some((m) => m === k)));
+/** Ҳар қадамда нечта майдон тўлдирилмаган */
+function qadamlarBoyicha(xatolar: Record<string, string>): number[] {
+  const soni = QADAMLAR.map(() => 0);
+  for (const kalit of Object.keys(xatolar)) {
+    const i = kalitQadami(kalit);
+    if (i >= 0) soni[i] += 1;
+  }
+  return soni;
+}
+
+/**
+ * Хато БОР биринчи қадам.
+ *
+ * Илгари бу ерда `Object.keys` тартибида биринчи мос келган
+ * калит олинарди — яъни қайси қадамга тушиш калитларнинг
+ * тасодифий тартибига боғлиқ эди. Энди ЭНГ ОЛДИНГИ қадам
+ * қайтади: ходим анкетани бошидан тўғрилаб боради.
+ */
+function xatoQadami(xatolar: Record<string, string>): number {
+  const soni = qadamlarBoyicha(xatolar);
+  const i = soni.findIndex((n) => n > 0);
   return i >= 0 ? i : 0;
 }
