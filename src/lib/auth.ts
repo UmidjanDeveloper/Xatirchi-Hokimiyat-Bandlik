@@ -202,7 +202,18 @@ export function mahallaFiltri(sessiya: Sessiya): { mahallaId?: string } {
 }
 
 /** Xodim shu mahalladagi yozuvga tega oladimi */
-export function mahallagaRuxsat(sessiya: Sessiya, mahallaId: string): boolean {
+export function mahallagaRuxsat(
+  /*
+   * Тўлиқ сессия эмас, фақат КЕРАКЛИ иккита майдон.
+   *
+   * Занжирга Telegram орқали ҳам кирилади — у ерда сессия
+   * умуман йўқ, боғланган ходимнинг роли ва маҳалласи бор,
+   * холос. Тур торайтирилгани учун иккала йўл ҲАМ шу
+   * текширувдан ўтади.
+   */
+  sessiya: Pick<Sessiya, 'rol' | 'mahallaId'>,
+  mahallaId: string
+): boolean {
   if (sessiya.rol === 'YETTILIK') return sessiya.mahallaId === mahallaId;
   return true;
 }
