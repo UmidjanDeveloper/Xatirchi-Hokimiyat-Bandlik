@@ -13,6 +13,15 @@
  *  такрор (409), яроқсиз маълумот ва алоқанинг узилиши.
  * ============================================================
  */
+import { readFileSync } from 'node:fs';
+
+/** Изоҳларсиз код — изоҳдаги сўз текширувни алдамасин */
+const kodiOl = (m: string) =>
+  m.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+const KOD_OFFLINE = kodiOl(readFileSync('src/lib/offline.ts', 'utf8'));
+const KOD_QOBIQ = kodiOl(readFileSync('src/components/shell/app-shell.tsx', 'utf8'));
+
 import {
   MAX_URINISH,
   avtomatikYuboriladimi,
@@ -170,6 +179,64 @@ const SINOVLAR: Sinov[] = [
       return n.yuborildi === 0 && n.qoldi === 0 && !n.aloqaYoq;
     },
   },
+  /* ══ ТЕЛЕФОНДАГИ МАЪЛУМОТНИНГ УМРИ ══ */
+  {
+    /*
+     * Қораламада очиқ матнда исм, манзил, телефон,
+     * ногиронлик ва даромад ётади. Илгари у МУДДАТСИЗ
+     * сақланарди: `vaqt` ёзиларди-ю, ҳеч қачон
+     * ишлатилмасди.
+     *
+     * Телефон сотилса, йўқолса ёки бошқага берилса —
+     * хонадонлар маълумоти у билан кетарди.
+     */
+    nomi: 'Эскирган қоралама ЎҚИШДА тушиб қолади',
+    tekshir: () => {
+      const k = KOD_OFFLINE;
+      return (
+        k.includes('export const QORALAMA_KUNI = 7') &&
+        k.includes('function eskirganmi(vaqt: string)') &&
+        k.includes('if (y && typeof y === \'object\' && !eskirganmi(y.vaqt)) toza[id] = y;') &&
+        /* Сана ўқилмаса — ишончсиз, ташланади */
+        k.includes('if (Number.isNaN(t)) return true;')
+      );
+    },
+  },
+  {
+    /*
+     * Сессия 12 соат, `localStorage` эса муддатсиз. Чиқиб
+     * кетган ходимнинг телефонида маълумот қолмаслиги керак.
+     */
+    nomi: 'Чиқишда телефон хотираси тозаланади',
+    tekshir: () => {
+      const k = KOD_OFFLINE;
+      const q = KOD_QOBIQ;
+      return (
+        k.includes('export function chiqishdaTozala()') &&
+        k.includes('window.localStorage.removeItem(QORALAMA_KEY)') &&
+        /* Қобиқ уни ҲАҚИҚАТАН чақирсин — ёзиб қўйиб унутилмасин */
+        q.includes('const qoldiq = chiqishdaTozala();')
+      );
+    },
+  },
+  {
+    /*
+     * ЮБОРИЛМАГАН навбат ўчирилмайди: у тайёр хатлов ва
+     * уни йўқотиш ходимнинг бир соатлик ишини йўқотиш
+     * дегани. Аввал сўралади.
+     */
+    nomi: 'Юборилмаган навбат ўчирилмайди — аввал сўралади',
+    tekshir: () => {
+      const k = KOD_OFFLINE;
+      const q = KOD_QOBIQ;
+      return (
+        k.includes('if (navbat === 0) window.localStorage.removeItem(NAVBAT_KEY);') &&
+        q.includes('if (qoldiq.navbat > 0)') &&
+        q.includes('window.confirm')
+      );
+    },
+  },
+
 ];
 
 /* tsx CJS га ўгиради — юқори даражадаги `await` ишламайди */

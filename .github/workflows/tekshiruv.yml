@@ -1,0 +1,71 @@
+# ============================================================
+#  HAR PUSH VA PULL REQUEST'DA TEKSHIRUV
+#
+#  Loyihada 594 ta sinov bor edi, lekin ular FAQAT qo'lda
+#  yurgizilardi. Ya'ni ishlaydigan xavfsizlik to'ri bor edi-yu,
+#  u hech narsaga ulanmagan edi.
+#
+#  Bu oqim uchtasini ketma-ket bajaradi:
+#    1. Tiplar        - `tsc --noEmit`
+#    2. Sinovlar      - `npm run sinov` (594 ta)
+#    3. Qurish        - `npm run build`
+#
+#  MIGRATSIYA BU YERDA BAJARILMAYDI. U ataylab `build` dan
+#  chiqarilgan: migratsiya bilan kod orasida bir necha daqiqa
+#  bo'ladi va o'sha orada yangi baza eski kod bilan yonma-yon
+#  yashaydi. Migratsiya `npm run db:deploy` bilan, kodni
+#  jo'natishdan OLDIN, qo'lda bajariladi.
+# ============================================================
+name: Tekshiruv
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Bitta shoxda ketma-ket push bo'lsa, eskisini to'xtatamiz:
+# oxirgi holat muhim, oraliq natija emas.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tekshiruv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # `npm ci` - `package-lock.json` ga qat'iy amal qiladi.
+      # `npm install` lock faylini o'zgartirib yuborishi mumkin
+      # va CI mahalliy muhitdan farq qilib qolardi.
+      - name: Paketlar
+        run: npm ci
+
+      # Prisma mijozi sxemadan yasaladi. Busiz `tsc` ham,
+      # sinovlar ham `@prisma/client` tiplarini topa olmaydi.
+      - name: Prisma mijozi
+        run: npx prisma generate
+
+      - name: Tiplar
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Sinovlar
+        run: npm run sinov
+
+      - name: Qurish
+        run: npm run build
+        env:
+          # Qurish uchun bazaga ulanish SHART EMAS - sahifalar
+          # so'rov paytida chiziladi. Lekin Prisma `DATABASE_URL`
+          # o'zgaruvchisi yo'q bo'lsa ishga tushmaydi, shuning
+          # uchun soxta qiymat beriladi. Unga ulanilmaydi.
+          DATABASE_URL: 'postgresql://soxta:soxta@127.0.0.1:5432/soxta'
+          SESSION_SECRET: 'ci-uchun-soxta-kalit-kamida-32-belgi-bolsin'
+          NODE_OPTIONS: '--max-old-space-size=4096'

@@ -11,6 +11,7 @@ import type { Rol } from '@prisma/client';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
 import { Gerb } from '@/components/shared/gerb';
+import { chiqishdaTozala } from '@/lib/offline';
 import { menyuOl, MUNDARIJA_UYASI, MUNDARIJA_YOLI, ROL_NOMI } from './navigatsiya';
 import { initials } from '@/lib/utils';
 
@@ -39,6 +40,27 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
   const bandlar = menyuOl(rol);
 
   async function chiq() {
+    /*
+     * ── ТЕЛЕФОН ХОТИРАСИНИ ТОЗАЛАШ ──
+     *
+     * Сессия 12 соат яшайди, `localStorage` эса муддатсиз.
+     * Ходим чиқиб кетса ҳам, телефонида хонадонлар
+     * маълумоти — исм, манзил, телефон, ногиронлик,
+     * даромад — очиқ матнда қолаверарди.
+     *
+     * Юборилмаган навбат ЎЧИРИЛМАЙДИ: у тайёр хатлов ва уни
+     * йўқотиш ходимнинг бир соатлик ишини йўқотиш дегани.
+     * Шунинг учун аввал сўраймиз.
+     */
+    const qoldiq = chiqishdaTozala();
+    if (qoldiq.navbat > 0) {
+      const davom = window.confirm(
+        tr('Юборилмаган хатлов бор:') +
+          ` ${qoldiq.navbat} ${tr('та')}. ` +
+          tr('Улар телефон хотирасида қолади ва алоқа тикланганда ўзи юборилади. Барибир чиқасизми?')
+      );
+      if (!davom) return;
+    }
     await fetch('/api/auth/chiqish', { method: 'POST' });
     router.replace('/kirish');
     router.refresh();

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
@@ -40,6 +41,18 @@ export default async function ChoraTadbirlarSahifasi({
 
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
+  /*
+   * ── РОЛ ҚЎРИҚЧИСИ ──
+   *
+   * Менюда бу саҳифа кўринмаслиги ЕТАРЛИ ЭМАС: манзилни
+   * қўлда ёзиб очиш мумкин. Middleware эса фақат «сессия
+   * борми» деб қарайди — у ҳимоя эмас, йўналтирувчи.
+   *
+   * Қоида `navigatsiya.ts` даги МЕНЮ рўйхатидан ўқилади,
+   * яъни менюда ким кўрса — шу очади. Иккита рўйхат
+   * бўлганда бири эскириб қоларди.
+   */
+  if (!yolgaRuxsat(sessiya.rol, '/chora-tadbirlar')) redirect(boshSahifa(sessiya.rol));
 
   const hozir = new Date();
   const majburiy = mahallaFiltri(sessiya);

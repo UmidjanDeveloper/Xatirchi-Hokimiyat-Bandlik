@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { OchirishTugmasi } from '@/components/arxiv/ochirish-tugmasi';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
@@ -58,6 +59,18 @@ export default async function XatlovlarSahifasi({
 
   const sessiya = joriySessiya();
   if (!sessiya) redirect('/kirish');
+  /*
+   * ── РОЛ ҚЎРИҚЧИСИ ──
+   *
+   * Менюда бу саҳифа кўринмаслиги ЕТАРЛИ ЭМАС: манзилни
+   * қўлда ёзиб очиш мумкин. Middleware эса фақат «сессия
+   * борми» деб қарайди — у ҳимоя эмас, йўналтирувчи.
+   *
+   * Қоида `navigatsiya.ts` даги МЕНЮ рўйхатидан ўқилади,
+   * яъни менюда ким кўрса — шу очади. Иккита рўйхат
+   * бўлганда бири эскириб қоларди.
+   */
+  if (!yolgaRuxsat(sessiya.rol, '/xatlov')) redirect(boshSahifa(sessiya.rol));
 
   const filtr = mahallaFiltri(sessiya);
 

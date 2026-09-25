@@ -70,13 +70,59 @@ export function qoralamaSaqla(id: string, malumot: unknown): boolean {
   }
 }
 
+/**
+ * Қоралама қанча яшайди.
+ *
+ * Телефонда ОЧИҚ МАТНДА исм, манзил, телефон, ногиронлик ва
+ * даромад ётади. Ходим анкетани ташлаб кетган бўлса ҳам, у
+ * йиллаб сақланиб қоларди: телефон сотилса, йўқолса ёки
+ * бошқага берилса — маълумот у билан кетарди.
+ *
+ * Етти кун — амалий чегара: бир ҳафтада қайтиб келмаган
+ * қораламадан фойда йўқ, ходим уни барибир бошидан
+ * тўлдиради.
+ *
+ * Навбатга бу тегмайди: навбатдаги ёзув ТАЙЁР хатлов ва у
+ * серверга етиб бориши керак. Унинг ўз чегараси бор —
+ * `MAX_URINISH`.
+ */
+export const QORALAMA_KUNI = 7;
+
+/** Ёзув эскирганми */
+function eskirganmi(vaqt: string): boolean {
+  const t = Date.parse(vaqt);
+  if (Number.isNaN(t)) return true; // сана ўқилмаса — ишончсиз, ташланади
+  return Date.now() - t > QORALAMA_KUNI * 24 * 60 * 60 * 1000;
+}
+
 export function qoralamalarniOqi(): Record<string, { malumot: unknown; vaqt: string }> {
   if (!xotiraBormi()) return {};
   try {
     const xom = window.localStorage.getItem(QORALAMA_KEY);
     if (!xom) return {};
     const parsed = JSON.parse(xom);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (!parsed || typeof parsed !== 'object') return {};
+
+    /*
+     * Эскиргани ЎҚИШДА тушиб қолади ва дарҳол ёзиб
+     * қўйилади. Алоҳида «тозалагич» ёзиш ҳам мумкин эди,
+     * лекин уни ишга тушириш керак бўларди — ва аввал ё
+     * кечроқ кимдир чақиришни унутарди.
+     */
+    const toza: Record<string, { malumot: unknown; vaqt: string }> = {};
+    let tashlandi = 0;
+    for (const [id, y] of Object.entries(parsed as Record<string, { malumot: unknown; vaqt: string }>)) {
+      if (y && typeof y === 'object' && !eskirganmi(y.vaqt)) toza[id] = y;
+      else tashlandi++;
+    }
+    if (tashlandi > 0) {
+      try {
+        window.localStorage.setItem(QORALAMA_KEY, JSON.stringify(toza));
+      } catch {
+        /* ёзиб бўлмаса — ўқиганимиз барибир тоза */
+      }
+    }
+    return toza;
   } catch {
     return {};
   }
@@ -249,4 +295,36 @@ export async function navbatniYubor(
     etibor: qolgan.filter((y) => !avtomatikYuboriladimi(y)).length,
     aloqaYoq,
   };
+}
+
+/**
+ * ТИЗИМДАН ЧИҚҚАНДА телефон хотирасини тозалайди.
+ *
+ * Сессия 12 соат яшайди, `localStorage` эса МУДДАТСИЗ.
+ * Яъни ходим чиқиб кетса ҳам, унинг телефонида хонадонлар
+ * маълумоти қолаверарди — кейинги эгасига ҳам, топиб олган
+ * одамга ҳам.
+ *
+ * НАВБАТ ЮБОРИЛМАГАН бўлса тегилмайди: у тайёр хатлов ва
+ * уни ўчириш ходимнинг бир соатлик ишини йўқотарди. Функция
+ * нечта ёзув қолганини қайтаради — чақирувчи ходимни
+ * огоҳлантириши учун.
+ */
+export function chiqishdaTozala(): { qoralama: number; navbat: number } {
+  if (!xotiraBormi()) return { qoralama: 0, navbat: 0 };
+  let qoralama = 0;
+  try {
+    qoralama = Object.keys(qoralamalarniOqi()).length;
+    window.localStorage.removeItem(QORALAMA_KEY);
+  } catch {
+    /* ўчириб бўлмаса — зарари йўқ */
+  }
+  let navbat = 0;
+  try {
+    navbat = navbatniOqi().length;
+    if (navbat === 0) window.localStorage.removeItem(NAVBAT_KEY);
+  } catch {
+    /* ўқиб бўлмаса — навбат ҳам йўқ деб ҳисоблаймиз */
+  }
+  return { qoralama, navbat };
 }
