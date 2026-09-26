@@ -61,6 +61,16 @@ jobs:
 
     env:
       DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/bandlik'
+      # Sxemada `directUrl = env("DIRECT_URL")` bor va `prisma migrate
+      # deploy` uni SHART deb biladi — yo'q bo'lsa P1012 bilan yiqiladi.
+      #
+      # Productionda bu ikkisi FARQ qiladi: Supabase'da DATABASE_URL
+      # pgbouncer orqali (6543-port), DIRECT_URL esa bazaning o'ziga
+      # (5432-port). Migratsiya pooler orqali ishlamaydi — u seans
+      # darajasidagi ulanish talab qiladi.
+      #
+      # CI'da pooler yo'q, shuning uchun ikkisi bir xil.
+      DIRECT_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/bandlik'
       SESSION_SECRET: 'ci-uchun-soxta-kalit-kamida-32-belgi-bolsin'
       TZ: 'UTC'
 
