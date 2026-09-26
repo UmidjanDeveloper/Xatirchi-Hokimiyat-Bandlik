@@ -34,6 +34,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Sinovlarning uchtasi HAQIQIY bazani talab qiladi:
+    # arxiv-sinov, chora-sinov va xabarnoma-sinov yozuv
+    # yaratadi, o'zgartiradi va o'chiradi. Ularni soxta
+    # ulanish bilan yurgizib bo'lmaydi.
+    #
+    # Birinchi ishga tushirishda shu e'tiborsizlik CI ni
+    # yiqitdi: `DATABASE_URL` faqat qurish qadamiga
+    # berilgan, sinov qadamiga berilmagan edi.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bandlik
+        ports:
+          - 5432:5432
+        # Baza tayyor bo'lguncha kutamiz — aks holda
+        # birinchi so'rov "connection refused" beradi.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/bandlik'
+      SESSION_SECRET: 'ci-uchun-soxta-kalit-kamida-32-belgi-bolsin'
+      TZ: 'UTC'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +83,17 @@ jobs:
       - name: Prisma mijozi
         run: npx prisma generate
 
+      # Sinov bazasiga jadvallarni yoyamiz. Bu PRODUCTION
+      # emas - har ishga tushirishda yangi konteyner.
+      - name: Baza sxemasi
+        run: npx prisma migrate deploy
+
+      # Sinovlar mahalla va xodim yozuvlariga tayanadi
+      # (masalan `prisma.mahalla.findFirst`). Seed ularni
+      # yaratadi.
+      - name: Boshlang'ich ma'lumot
+        run: npx prisma db seed
+
       - name: Tiplar
         run: npx tsc --noEmit -p tsconfig.json
 
@@ -62,10 +103,4 @@ jobs:
       - name: Qurish
         run: npm run build
         env:
-          # Qurish uchun bazaga ulanish SHART EMAS - sahifalar
-          # so'rov paytida chiziladi. Lekin Prisma `DATABASE_URL`
-          # o'zgaruvchisi yo'q bo'lsa ishga tushmaydi, shuning
-          # uchun soxta qiymat beriladi. Unga ulanilmaydi.
-          DATABASE_URL: 'postgresql://soxta:soxta@127.0.0.1:5432/soxta'
-          SESSION_SECRET: 'ci-uchun-soxta-kalit-kamida-32-belgi-bolsin'
           NODE_OPTIONS: '--max-old-space-size=4096'
