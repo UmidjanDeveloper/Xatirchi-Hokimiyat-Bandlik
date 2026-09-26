@@ -565,6 +565,12 @@ async function tahlilniHisobla(
     mahallaBosqich.set(b.mahallaId, m);
   }
 
+  /** Маҳалла кесимида: хатловда топилган ишсиз */
+  const topilganSoni = new Map(
+    xonadonlar.map((x) => [x.mahallaId, x._sum.ishsizlarSoni ?? 0])
+  );
+  const xatlovdaTopilgan = Array.from(topilganSoni.values()).reduce((s, n) => s + n, 0);
+
   const bazaIshsiz = mahallalar.reduce((s, m) => s + m.ishsiz, 0);
   const aniqlangan = Array.from(bosqichSoni.values()).reduce((s, n) => s + n, 0);
   const radEtgan = bosqichSoni.get('RAD_ETDI') ?? 0;
@@ -581,7 +587,22 @@ async function tahlilniHisobla(
       (s, x) => s + (bosqichSoni.get(x) ?? 0),
       0
     );
-    return { holati: h, soni, foiz: f(soni, bazaIshsiz) };
+    /*
+     * Фоиз ХАТЛОВ ТОПГАНИДАН ҳисобланади, рўйхатдан эмас.
+     *
+     * Илгари маҳраж 3 345 эди ва воронка «35 та · 1%» деб
+     * кўринарди — ҳар пағона нолга яқин фоиз берар,
+     * босқичлар орасидаги фарқ умуман билинмасди.
+     *
+     * Хатлов ҳали бошланиш босқичида: рўйхатдаги 3 345 тадан
+     * 134 таси кўрилган. Воронканинг вазифаси эса «кўрилган
+     * одамлар занжирда қаерда тиқилиб қолган» саволига жавоб
+     * бериш — шунинг учун маҳраж ҳам ўша.
+     *
+     * Рўйхатга нисбатан қамров АЛОҲИДА кўрсаткич ва у юқорида,
+     * «Хатловда топилган» картасида турибди.
+     */
+    return { holati: h, soni, foiz: f(soni, xatlovdaTopilgan || bazaIshsiz) };
   });
 
   const joylashtirilgan =
@@ -589,11 +610,6 @@ async function tahlilniHisobla(
 
   // ── Mahalla qamrovi ──
   const xonadonSoni = new Map(xonadonlar.map((x) => [x.mahallaId, x._count]));
-  /** Маҳалла кесимида: хатловда топилган ишсиз */
-  const topilganSoni = new Map(
-    xonadonlar.map((x) => [x.mahallaId, x._sum.ishsizlarSoni ?? 0])
-  );
-  const xatlovdaTopilgan = Array.from(topilganSoni.values()).reduce((s, n) => s + n, 0);
 
   const qamrov: MahallaQamrovi[] = mahallalar.map((m) => {
     const b = mahallaBosqich.get(m.id) ?? new Map<IshsizHolati, number>();

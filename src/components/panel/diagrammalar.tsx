@@ -36,12 +36,22 @@ const pul = (som: number) =>
 export function Voronka({
   bosqichlar,
   bazaIshsiz,
+  xatlovdaTopilgan,
   radEtgan,
   uzoqIshsiz,
   tekshiruvKutayotgan,
 }: {
   bosqichlar: VoronkaBosqichi[];
   bazaIshsiz: number;
+  /**
+   * Хатлов ТОПГАН ишсизлар сони — воронканинг бошланиши.
+   *
+   * Илгари воронка «Аниқланди» дан бошланарди, яъни шахсий
+   * анкетаси тўлдирилганлардан. Топилган-у анкетаси йўқ
+   * одамлар воронкага УМУМАН кирмасди — энг катта узилиш
+   * кўринмай қоларди.
+   */
+  xatlovdaTopilgan?: number;
   /** Воронкадан ЧИҚИБ кетганлар — босқич эмас, чиқиш йўли */
   radEtgan?: number;
   /** 12 ойдан ошиб ишсиз юрганлар */
@@ -51,16 +61,55 @@ export function Voronka({
 }) {
   const tr = matnchi();
 
-  const eng = bosqichlar[0]?.soni ?? 0;
+  /*
+   * Устун кенглиги ТОПИЛГАНГА нисбатан. Шунда биринчи
+   * пағона — «анкетаси бор» — ўз улушига мос қисқа кўринади
+   * ва узилиш кўзга ташланади.
+   */
+  const eng = Math.max(xatlovdaTopilgan ?? 0, bosqichlar[0]?.soni ?? 0);
+  const anketasiz = Math.max(0, (xatlovdaTopilgan ?? 0) - (bosqichlar[0]?.soni ?? 0));
 
   return (
     <section className="karta p-4 sm:p-5">
       <h2 className="text-sm font-bold text-ink">{tr('Бандлик воронкаси')}</h2>
       <p className="mt-1 text-xs text-ink-faint">
-        {tr(`Рўйхатдаги ${raqam(bazaIshsiz)} та ишсизнинг ҳар босқичдаги улуши`)}
+        {xatlovdaTopilgan
+          ? tr(`Хатлов топган ${raqam(xatlovdaTopilgan)} та ишсизнинг ҳар босқичдаги улуши`)
+          : tr(`Рўйхатдаги ${raqam(bazaIshsiz)} та ишсизнинг ҳар босқичдаги улуши`)}
       </p>
 
       <div className="mt-4 space-y-2">
+        {/*
+          ── ВОРОНКАНИНГ БОШИ ──
+
+          Хатлов топган одамлар. Улардан фақат бир қисмининг
+          шахсий анкетаси тўлдирилган — қолгани бандлик
+          марказига кўринмайди ва воронкада ҳам йўқ эди.
+        */}
+        {xatlovdaTopilgan !== undefined && xatlovdaTopilgan > 0 && (
+          <div>
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full bg-ink-faint"
+                  aria-hidden="true"
+                />
+                {tr('Хатловда топилган')}
+              </span>
+              <span className="raqam shrink-0 text-xs text-ink-faint">
+                <b className="text-sm text-ink">{raqam(xatlovdaTopilgan)}</b> · 100%
+              </span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-surface-muted">
+              <div className="h-full w-full rounded-full bg-ink-faint/50" />
+            </div>
+            {anketasiz > 0 && (
+              <p className="mt-1 text-[11px] font-medium text-warn">
+                {tr(`${raqam(anketasiz)} тасининг шахсий анкетаси тўлдирилмаган — улар қуйидаги босқичларга кирмайди`)}
+              </p>
+            )}
+          </div>
+        )}
         {bosqichlar.map((b) => {
           const bosqich = ISHSIZ_HOLATI[b.holati].bosqich;
           const kenglik = eng > 0 ? Math.max(2, (b.soni / eng) * 100) : 0;

@@ -493,6 +493,7 @@ export default async function PanelSahifasi({
           <Voronka
             bosqichlar={t.voronka}
             bazaIshsiz={bosh.bazaIshsiz}
+            xatlovdaTopilgan={bosh.xatlovdaTopilgan}
             radEtgan={t.jami.radEtgan}
             uzoqIshsiz={t.jami.uzoqIshsiz}
             tekshiruvKutayotgan={t.jami.tekshiruvKutayotgan}
