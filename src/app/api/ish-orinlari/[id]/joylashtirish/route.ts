@@ -4,11 +4,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { mahallagaRuxsat } from '@/lib/auth';
-import {
-  BAND_HOLATLAR,
-  bekorQilingandagiHolat,
-  joylashtirishAmali,
-} from '@/lib/joylashtirish';
+import { BAND_HOLATLAR, bekorQilingandagiHolat } from '@/lib/joylashtirish';
 import { elonKuchdami, odatiyMuddat } from '@/lib/elon-muddati';
 import { mustahkamlashChorasi } from '@/lib/chora-yaratish';
 
@@ -74,22 +70,131 @@ export async function POST(request: Request, { params }: { params: { id: string 
   try {
     const javob = await prisma.$transaction(
       async (tx) => {
-        /*
-         * Мантиқ `joylashtirish.ts` да — иловадан
-         * жойлаштириш ҳам, Telegram хабарини тасдиқлаш ҳам
-         * ЎША функцияни чақиради. Иккита нусха бўлганда
-         * бири эскириб, ҳисобот рақамлари бўлиниб кетарди.
-         */
-        return joylashtirishAmali(tx, {
-          orinId: params.id,
-          ishsizId: d.ishsizId,
-          ishgaKirganSana: d.ishgaKirganSana,
-          kim: {
-            userId: q.sessiya.userId,
-            rol: q.sessiya.rol,
-            mahallaId: q.sessiya.mahallaId,
+        const orin = await tx.vacancy.findUnique({
+          where: { id: params.id },
+          select: {
+            id: true,
+            mahallaId: true,
+            faol: true,
+            amalQilishMuddati: true,
+            ornlarSoni: true,
+            korxonaNomi: true,
+            lavozim: true,
           },
         });
+        if (!orin) return { xato: 'Эълон топилмади', kod: 404 } as const;
+        if (!mahallagaRuxsat(q.sessiya, orin.mahallaId)) {
+          return { xato: 'Бу маҳаллага ҳуқуқингиз йўқ', kod: 403 } as const;
+        }
+        if (!orin.faol) {
+          return { xato: 'Эълон ёпилган — жойлаштириб бўлмайди', kod: 409 } as const;
+        }
+        /*
+         * Муддати ўтган эълон базада ҳали `faol` бўлиши мумкин:
+         * кунлик тозалаш ҳали ишламаган. Одамни ўша ерга
+         * юбормаймиз — корхона аллақачон воз кечган бўлиши
+         * мумкин, фуқаро эса бекорга бориб қайтарди.
+         */
+        if (!elonKuchdami(orin)) {
+          return {
+            xato: 'Эълоннинг амал қилиш муддати тугаган. Муддатини узайтиринг ёки корхона билан боғланинг.',
+            kod: 409,
+          } as const;
+        }
+
+        const odam = await tx.unemployedPerson.findUnique({
+          where: { id: d.ishsizId },
+          select: {
+            id: true,
+            fish: true,
+            mahallaId: true,
+            holati: true,
+            vacancyId: true,
+            householdId: true,
+          },
+        });
+        if (!odam) return { xato: 'Фуқаро топилмади', kod: 404 } as const;
+        if (!mahallagaRuxsat(q.sessiya, odam.mahallaId)) {
+          return { xato: 'Бу фуқарога ҳуқуқингиз йўқ', kod: 403 } as const;
+        }
+        if (odam.vacancyId === orin.id) {
+          return { ok: true, allaqachon: true } as const;
+        }
+        if (odam.vacancyId) {
+          return {
+            xato: 'Фуқаро аллақачон бошқа эълонга жойлаштирилган. Аввал ўшани бекор қилинг.',
+            kod: 409,
+          } as const;
+        }
+
+        const band = await tx.unemployedPerson.count({
+          where: { vacancyId: orin.id, holati: { in: BAND_HOLATLAR } },
+        });
+        if (band >= orin.ornlarSoni) {
+          return { xato: 'Бўш ўрин қолмади', kod: 409 } as const;
+        }
+
+        await tx.unemployedPerson.update({
+          where: { id: odam.id },
+          data: {
+            vacancyId: orin.id,
+            // Иш жойи ва лавозим эълондан КЎЧИРИЛАДИ: қўлда терилса,
+            // бир корхона беш хил ёзилиб, ҳисобот бўлиниб кетарди.
+            ishJoyi: orin.korxonaNomi,
+            ishLavozimi: orin.lavozim,
+            ishgaKirganSana: d.ishgaKirganSana ?? new Date(),
+            radSababi: null,
+            // TASDIQLANDI — якуний натижа, орқага қайтмайди
+            holati: odam.holati === 'TASDIQLANDI' ? 'TASDIQLANDI' : 'JOYLASHTIRILDI',
+            ...(odam.holati === 'ANIQLANDI'
+              ? { suhbatSanasi: new Date(), mutaxassisId: q.sessiya.userId }
+              : {}),
+          },
+        });
+
+        // Ўрин тўлдими — шу ернинг ўзида ёпамиз. Кейинги сўровга
+        // қолдирилса, эълон бир муддат «бўш» бўлиб турарди.
+        const toldi = band + 1 >= orin.ornlarSoni;
+        if (toldi) {
+          await tx.vacancy.update({
+            where: { id: orin.id },
+            data: { faol: false, yopilishSababi: 'TOLDI', yopilganSana: new Date() },
+          });
+        }
+
+        /*
+         * ── ЗАНЖИРНИНГ ОХИРГИ ҲАЛҚАСИ ──
+         *
+         * Схемада «3 ойдан кейин текширилади» деб ёзилган эди,
+         * аммо у фақат ҚЎЛДА белгиланарди — яъни биров эслаб
+         * қолиши керак эди. Ҳеч ким эсламади ва одамлар
+         * тўртинчи ойдан бери «жойлаштирилди» да ётаверди.
+         *
+         * Энди жойлаштиришнинг ЎЗИ текширув топшириғини
+         * туғдиради. Муддат ўтса — кечиккан топшириқлар
+         * қаторига тушади ва ҳокимнинг панелида қизил кўринади.
+         *
+         * Такрор яратилмайди: муаммо матни бўйича танилади.
+         */
+        const kirganSana = d.ishgaKirganSana ?? new Date();
+        const mustahkamlash = mustahkamlashChorasi({
+          ishsizId: odam.id,
+          householdId: odam.householdId,
+          fish: odam.fish,
+          ishJoyi: orin.korxonaNomi,
+          ishgaKirganSana: kirganSana,
+        });
+        const borTopshiriq = await tx.actionPlan.findFirst({
+          where: { ishsizId: odam.id, muammo: mustahkamlash.muammo },
+          select: { id: true },
+        });
+        if (!borTopshiriq) {
+          await tx.actionPlan.create({
+            data: { ...mustahkamlash, yaratganId: q.sessiya.userId },
+          });
+        }
+
+        return { ok: true, fish: odam.fish, toldi, qolgan: orin.ornlarSoni - band - 1 } as const;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );

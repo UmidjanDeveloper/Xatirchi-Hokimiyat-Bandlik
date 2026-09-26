@@ -111,14 +111,12 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  xatlovlar          Household[]
-  suhbatlar          UnemployedPerson[]
-  topshiriqlar       ActionPlan[]
-  auditYozuvlar      AuditLog[]
-  itVaucherlar       ItVaucher[]
-  xabarlar           Xabarnoma[]
-  joylashuvXabarlari JoylashuvXabari[]  @relation("JoylashuvXabarchi")
-  joylashuvHalQilgan JoylashuvXabari[]  @relation("JoylashuvHalQilgan")
+  xatlovlar     Household[]
+  suhbatlar     UnemployedPerson[]
+  topshiriqlar  ActionPlan[]
+  auditYozuvlar AuditLog[]
+  itVaucherlar  ItVaucher[]
+  xabarlar      Xabarnoma[]
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -704,9 +702,6 @@ model UnemployedPerson {
   vacancyId String?
   vacancy   Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
 
-  /// Маҳалла ходими юборган «иш топдим» хабарлари
-  joylashuvXabarlari JoylashuvXabari[]
-
   // ── Suhbat o'tkazgan mutaxassis ──
   suhbatSanasi DateTime?
   mutaxassisId String?
@@ -799,14 +794,6 @@ enum XabarTuri {
   VAUCHER_KUTMOQDA
   /// Chora-tadbir muddati yaqinlashdi yoki o'tdi
   TOPSHIRIQ_MUDDATI
-
-  /// Mahalla xodimi «shu fuqaroga ish topdim» deb xabar qildi.
-  /// Bandlik markaziga - tasdiqlash uchun.
-  ISH_TOPILDI
-
-  /// Bandlik markazi xabarni tasdiqladi, fuqaro rasman ishga
-  /// joylashdi. Hokimga va xabar qilgan xodimga boradi.
-  JOYLASHUV_TASDIQLANDI
   /// Bog'lashni tasdiqlash
   ULANISH
 }
@@ -1128,8 +1115,7 @@ model Vacancy {
   updatedAt DateTime @updatedAt
 
   /// Shu e'lon orqali ishga joylashtirilgan fuqarolar
-  joylashganlar      UnemployedPerson[]
-  joylashuvXabarlari JoylashuvXabari[]
+  joylashganlar UnemployedPerson[]
 
   @@index([mahallaId, faol])
   @@index([yonalish, faol])
@@ -1161,77 +1147,4 @@ model AuditLog {
 
   @@index([userId, createdAt])
   @@index([amal, createdAt])
-}
-
-/// Joylashuv xabarining holati
-enum JoylashuvHolati {
-  /// Mahalla xodimi xabar qildi, markaz hali ko'rmadi
-  XABAR_QILINDI
-  /// Markaz tasdiqladi - fuqaro rasman joylashtirildi
-  TASDIQLANDI
-  /// Markaz rad etdi - sababi yoziladi
-  RAD_ETILDI
-}
-
-/// ============================================================
-///  «ИШ ТОПДИМ» ХАБАРИ
-///
-///  Занжирнинг етишмаган ҳалқаси. Илгари шундай эди:
-///
-///    эълон → маҳалла ходимига хабар → ... → ҲЕЧ НАРСА
-///
-///  Ходим одамни ишга жойлаштирса ҳам, бу тизимга тушмасди:
-///  унда жойлаштириш ҳуқуқи йўқ, Telegram эса бир томонлама
-///  эди. Натижа маҳалла даражасида қолиб кетарди.
-///
-///  ── Нега алоҳида модел, тўғридан-тўғри жойлаштириш эмас ──
-///
-///  Расмий жойлаштириш — бандлик марказининг иши: ҳужжат,
-///  шартнома, ҳисобот ўшанда. 70 та маҳалла ходими туман
-///  рақамини бевосита ўзгартира олса, рақам ҳужжатсиз ўсиб
-///  кетарди.
-///
-///  Шунинг учун ходимнинг тугмаси ХАБАР ёзади. Марказ уни
-///  тасдиқлагач, мавжуд жойлаштириш мантиғи ишлайди ва
-///  фуқаро расман ЖОЙЛАШТИРИЛДИ бўлади.
-///
-///  Ҳар ҳалқанинг ўз фойдаси бор: ходим дала билимини
-///  киритади, марказ рақамни тасдиқлайди, ҳоким эса кутмасдан
-///  кўради.
-/// ============================================================
-model JoylashuvXabari {
-  id     String          @id @default(cuid())
-  holati JoylashuvHolati @default(XABAR_QILINDI)
-
-  vacancyId String
-  vacancy   Vacancy @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
-
-  ishsizId String
-  ishsiz   UnemployedPerson @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
-
-  /// Xabar qilgan mahalla xodimi
-  xabarchiId String
-  xabarchi   User   @relation("JoylashuvXabarchi", fields: [xabarchiId], references: [id], onDelete: Restrict)
-
-  /// Markaz shu sanagacha tasdiqlashi kerak.
-  /// O'tib ketsa - kechikkanlar ro'yxatiga tushadi va
-  /// hokimning panelida ko'rinadi.
-  muddat DateTime
-
-  /// Tasdiqlagan yoki rad etgan mutaxassis
-  halQilganId String?
-  halQilgan   User?   @relation("JoylashuvHalQilgan", fields: [halQilganId], references: [id], onDelete: SetNull)
-
-  halQilinganSana DateTime?
-  /// Rad etilsa - sababi. Tasdiqlansa - qo'shimcha izoh.
-  izoh            String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  /// Bitta fuqaro bitta e'longa BIR MARTA xabar qilinadi.
-  /// Tugma ikki marta bosilsa, ikkinchisi shu yerda to'xtaydi.
-  @@unique([vacancyId, ishsizId])
-  @@index([holati, muddat])
-  @@index([xabarchiId, holati])
 }
