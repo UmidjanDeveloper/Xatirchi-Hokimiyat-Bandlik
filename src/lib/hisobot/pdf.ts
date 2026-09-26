@@ -61,15 +61,37 @@ const DARAJA: Record<string, { rang: [number, number, number]; nomi: string }> =
 
 /* ── Шрифт ───────────────────────────────────────────────────── */
 
+/** Шрифт йўллари — `public/` га нисбатан */
+export const SHRIFT_REGULAR = '/shrift/hisobot-regular.ttf';
+export const SHRIFT_BOLD = '/shrift/hisobot-bold.ttf';
+
 let shriftKeshi: { regular: string; bold: string } | null = null;
 
-async function shriftYukla(): Promise<{ regular: string; bold: string }> {
+/**
+ * Шрифт файлини ўқийдиган функция.
+ *
+ * Одатда браузернинг `fetch` и — файл `public/shrift/` да
+ * турибди ва сервердан олинади. Node да эса `/shrift/...` манзил
+ * эмас, шунчаки матн: `fetch` уни таний олмайди.
+ *
+ * Шунинг учун ўқувчи АЛМАШТИРИЛАДИГАН қилинган. Ҳисоботни
+ * терминалдан чиқарадиган скрипт файл тизимидан ўқийдиган
+ * вариантни узатади. Чизиш коди эса ўзгармайди — иккала ҳолда
+ * ҳам БИР ХИЛ ҳужжат чиқади.
+ */
+export type ShriftOquvchi = (yol: string) => Promise<ArrayBuffer>;
+
+const BRAUZER_OQUVCHI: ShriftOquvchi = async (yol) => {
+  const javob = await fetch(yol);
+  if (!javob.ok) throw new Error(`Shrift yuklanmadi: ${yol}`);
+  return javob.arrayBuffer();
+};
+
+async function shriftYukla(oquvchi: ShriftOquvchi): Promise<{ regular: string; bold: string }> {
   if (shriftKeshi) return shriftKeshi;
 
   const oqi = async (yol: string) => {
-    const javob = await fetch(yol);
-    if (!javob.ok) throw new Error(`Shrift yuklanmadi: ${yol}`);
-    const bayt = new Uint8Array(await javob.arrayBuffer());
+    const bayt = new Uint8Array(await oquvchi(yol));
     // Катта массивда `String.fromCharCode(...bayt)` стекни
     // тўлдиради, шунинг учун бўлак-бўлак йиғилади.
     let s = '';
@@ -80,13 +102,41 @@ async function shriftYukla(): Promise<{ regular: string; bold: string }> {
   };
 
   shriftKeshi = {
-    regular: await oqi('/shrift/hisobot-regular.ttf'),
-    bold: await oqi('/shrift/hisobot-bold.ttf'),
+    regular: await oqi(SHRIFT_REGULAR),
+    bold: await oqi(SHRIFT_BOLD),
   };
   return shriftKeshi;
 }
 
 /* ── Чизиш ёрдамчилари ──────────────────────────────────────── */
+
+/**
+ * Шрифтни ҚЎЯДИ, кейин матнни сатрларга бўлади.
+ *
+ * `splitTextToSize` матнни ЖОРИЙ шрифт билан ўлчайди — яъни
+ * чақирилган ондаги шрифт билан, кейин қандай чизилишидан
+ * қатъи назар. Иккови мос келмаса, матн қутидан чиқиб кетади
+ * ва буни фақат тайёр PDF ни очиб кўрган одам сезади.
+ *
+ * Бир марта шундай бўлган: хулоса қутисидаги матн 7.4 да
+ * ўлчанган, 9 да чизилган ва ҳар сатр саҳифа четида кесилган.
+ *
+ * Шунинг учун иккови БИТТА чақирувга бирлаштирилди: ўлчов ва
+ * чизиш энди бир хил шрифтни кўради. `scripts/pdf-sinov.ts`
+ * `doc.splitTextToSize` нинг тўғридан-тўғри ишлатилишини
+ * тақиқлайди.
+ */
+export function satrlar(
+  doc: jsPDFType,
+  matn: string,
+  eni: number,
+  qalin: boolean,
+  olcham: number
+): string[] {
+  doc.setFont('Hisobot', qalin ? 'bold' : 'normal');
+  doc.setFontSize(olcham);
+  return doc.splitTextToSize(matn, eni) as string[];
+}
 
 /**
  * Матнни белгиланган қатор сонига сиғдиради.
@@ -178,14 +228,15 @@ class Hujjat {
     doc.setTextColor(...(o.rang ?? QORA));
 
     const x = o.x ?? (o.markaz ? EN / 2 : o.ong ? EN - CHET : CHET);
-    const satrlar = doc.splitTextToSize(s, o.eni ?? ICHKI) as string[];
+    const qatorlar = satrlar(doc, s, o.eni ?? ICHKI, o.qalin ?? false, o.olcham ?? 9);
+    doc.setTextColor(...(o.rang ?? QORA));
     const orasi = o.satrOrasi ?? (o.olcham ?? 9) * 0.42;
 
-    doc.text(satrlar, x, this.y, {
+    doc.text(qatorlar, x, this.y, {
       align: o.markaz ? 'center' : o.ong ? 'right' : 'left',
       lineHeightFactor: 1.32,
     });
-    this.y += satrlar.length * orasi;
+    this.y += qatorlar.length * orasi;
   }
 
   chiziq(rang: [number, number, number] = OCH, qalinlik = 0.3): void {
@@ -209,9 +260,8 @@ function muqova(h: Hujjat, m: Hisobot): void {
   doc.setTextColor(...OQ);
   doc.text(m.ostSarlavha.toUpperCase(), CHET, 20);
 
-  doc.setFont('Hisobot', 'bold');
-  doc.setFontSize(20);
-  const sarlavhaSatrlari = doc.splitTextToSize(m.sarlavha, ICHKI) as string[];
+  const sarlavhaSatrlari = satrlar(doc, m.sarlavha, ICHKI, true, 20);
+  doc.setTextColor(...OQ);
   doc.text(sarlavhaSatrlari, CHET, 33);
 
   doc.setFont('Hisobot', 'normal');
@@ -240,10 +290,9 @@ function muqova(h: Hujjat, m: Hisobot): void {
     doc.setFontSize(7);
     doc.setTextColor(...KUL);
     doc.text(nomi.toUpperCase(), x, h.y + 7);
-    doc.setFont('Hisobot', 'bold');
-    doc.setFontSize(9);
+    const qiymatSatrlari = satrlar(doc, qiymat, ustun - 8, true, 9);
     doc.setTextColor(...QORA);
-    doc.text(doc.splitTextToSize(qiymat, ustun - 8) as string[], x, h.y + 13);
+    doc.text(qiymatSatrlari, x, h.y + 13);
   });
   h.y += 30;
 
@@ -332,8 +381,20 @@ function xulosaSahifasi(h: Hujjat, m: Hisobot): void {
     doc.setFillColor(...FON);
     doc.setDrawColor(...OCH);
     doc.setLineWidth(0.2);
-    const satrlar = doc.splitTextToSize(m.xulosa.holat, ICHKI - 10) as string[];
-    const balandlik = satrlar.length * 4.4 + 13;
+
+    /*
+     * ШРИФТ ЎЛЧАШДАН ОЛДИН ҚЎЙИЛАДИ.
+     *
+     * `splitTextToSize` матнни ЖОРИЙ шрифт билан ўлчайди. Илгари
+     * у шу ердан юқорида, шрифт ҳали 7.4 турганда чақириларди —
+     * кейин эса матн 9 ўлчамда чизиларди. 9 кенгроқ, шунинг учун
+     * ҳар сатр қутидан ошиб кетар, охиргиси эса саҳифа четида
+     * кесиларди.
+     *
+     * Ҳоким тайёр ҳужжатда биринчи кўрадиган жой айнан шу қути.
+     */
+    const holatSatrlari = satrlar(doc, m.xulosa.holat, ICHKI - 10, false, 9);
+    const balandlik = holatSatrlari.length * 4.4 + 13;
     doc.roundedRect(CHET, h.y, ICHKI, balandlik, 1.5, 1.5, 'FD');
 
     doc.setFont('Hisobot', 'bold');
@@ -344,7 +405,7 @@ function xulosaSahifasi(h: Hujjat, m: Hisobot): void {
     doc.setFont('Hisobot', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(...QORA);
-    doc.text(satrlar, CHET + 5, h.y + 13, { lineHeightFactor: 1.38 });
+    doc.text(holatSatrlari, CHET + 5, h.y + 13, { lineHeightFactor: 1.38 });
 
     h.y += balandlik + 8;
   }
@@ -357,12 +418,8 @@ function xulosaSahifasi(h: Hujjat, m: Hisobot): void {
   m.xulosa.tavsiyalar.forEach((t, i) => {
     const d = DARAJA[t.daraja] ?? DARAJA.muhim;
 
-    doc.setFont('Hisobot', 'bold');
-    doc.setFontSize(9.5);
-    const sarlavhaSatrlari = doc.splitTextToSize(`${i + 1}. ${t.sarlavha}`, ICHKI - 32) as string[];
-    doc.setFont('Hisobot', 'normal');
-    doc.setFontSize(8);
-    const dalilSatrlari = doc.splitTextToSize(t.dalil, ICHKI - 10) as string[];
+    const sarlavhaSatrlari = satrlar(doc, `${i + 1}. ${t.sarlavha}`, ICHKI - 32, true, 9.5);
+    const dalilSatrlari = satrlar(doc, t.dalil, ICHKI - 10, false, 8);
 
     /*
      * ── ҚАДАМЛАР, МАСЪУЛ, МУДДАТ ВА ЎЛЧОВ ──
@@ -374,7 +431,7 @@ function xulosaSahifasi(h: Hujjat, m: Hisobot): void {
      */
     const qadamSatrlari: string[] = [];
     for (const q of t.qadamlar ?? []) {
-      qadamSatrlari.push(...(doc.splitTextToSize(`•  ${q}`, ICHKI - 14) as string[]));
+      qadamSatrlari.push(...satrlar(doc, `•  ${q}`, ICHKI - 14, false, 8));
     }
 
     const belgilar: string[] = [];
@@ -382,7 +439,7 @@ function xulosaSahifasi(h: Hujjat, m: Hisobot): void {
     if (t.muddat) belgilar.push(`${h.a('Муддат')}: ${t.muddat}`);
     const belgiSatri = belgilar.join('   ·   ');
     const olchovSatrlari = t.olchov
-      ? (doc.splitTextToSize(`${h.a('Ўлчов')}: ${t.olchov}`, ICHKI - 10) as string[])
+      ? satrlar(doc, `${h.a('Ўлчов')}: ${t.olchov}`, ICHKI - 10, false, 8)
       : [];
 
     const balandlik =
@@ -506,7 +563,25 @@ function mundarijaniYoz(h: Hujjat, sahifaRaqami: number, m: Hisobot): void {
 
 function korsatkichlarChiz(h: Hujjat, korsatkichlar: Korsatkich[]): void {
   const { doc } = h;
-  const ustunSoni = Math.min(korsatkichlar.length, 4);
+  /*
+   * УСТУН СОНИ — ОХИРГИ ҚАТОР ЁЛҒИЗ ҚОЛМАСЛИГИ УЧУН.
+   *
+   * Тўртта устун қатъий бўлганда бешта карта 4 + 1 бўлиб
+   * тушарди: пастда ёлғиз битта карта, ёнида бўш жой. Ҳужжат
+   * босилиб ҳокимга берилади — у ерда бундай қатор «нимадир
+   * тушиб қолган» дегандек кўринади.
+   *
+   * Шунинг учун 3 ва 4 дан қайси бири охирги қаторни тўлароқ
+   * қолдирса, ўша танланади. Бешта карта энди 3 + 2 бўлади.
+   */
+  const ustunSoni = (() => {
+    const n = korsatkichlar.length;
+    if (n <= 4) return n;
+    /** Охирги қаторда нечта карта қолади */
+    const oxirgiQator = (u: number) => (n % u === 0 ? u : n % u);
+    // Тенг бўлса 4 қолади — картани кенгроқ қилади
+    return oxirgiQator(3) > oxirgiQator(4) ? 3 : 4;
+  })();
   const eni = ICHKI / ustunSoni;
   /*
    * Карта баландлиги изоҳнинг ИККИ қаторига мўлжалланган.
@@ -567,6 +642,31 @@ async function jadvalChiz(h: Hujjat, j: Jadval): Promise<void> {
     j.qatorlar.map((q, i) => (q.jami ? i : -1)).filter((i) => i >= 0)
   );
 
+  /*
+   * ── ҚАТЪИЙ ЭНЛАР САҲИФАГА МОСЛАНАДИ ──
+   *
+   * Ҳамма устун қатъий энга эга бўлса, autoTable жадвални
+   * АЙНАН шу йиғиндига тенг чизади — саҳифада қанча жой
+   * борлигига қарамай. Йиғинди кам бўлса ўнгда оқ жой қолади,
+   * кўп бўлса устунлар сиқилади.
+   *
+   * Маҳаллалар жадвалида шундай бўлган: йиғинди 169, саҳифада
+   * эса 180. Жадвал ўнг четга етмай тугарди ва босилган
+   * ҳужжатда қийшиқ кўринарди. Кутубхонанинг огоҳлантириши
+   * («units width could not fit page») чалғитади — у «сиғмади»
+   * эмас, «тўлмади» дегани.
+   *
+   * Энди `eni` қатъий сон эмас, УЛУШ бўлиб ишлайди: йиғинди
+   * қанча бўлса ҳам, жадвал саҳифани четдан четга тўлдиради.
+   * Бу ҳар жадвалга тегишли — фақат маҳаллалар жадвалига эмас.
+   *
+   * Битта «авто» устун бўлса, у қолган жойни ўзи олади ва
+   * мослаш КЕРАК ЭМАС — шунинг учун шарт `every`.
+   */
+  const qatiyEni = j.ustunlar.every((u) => u.eni);
+  const eniYigindisi = j.ustunlar.reduce((yigindi, u) => yigindi + (u.eni ?? 0), 0);
+  const olcham = qatiyEni && eniYigindisi > 0 ? ICHKI / eniYigindisi : 1;
+
   autoTable(doc, {
     startY: h.y,
     margin: { left: CHET, right: CHET, bottom: POY + 4 },
@@ -595,7 +695,7 @@ async function jadvalChiz(h: Hujjat, j: Jadval): Promise<void> {
         i,
         {
           halign: u.raqamli ? ('right' as const) : ('left' as const),
-          cellWidth: u.eni ?? 'auto',
+          cellWidth: u.eni ? u.eni * olcham : ('auto' as const),
         },
       ])
     ),
@@ -735,8 +835,16 @@ function kolontitul(doc: jsPDFType, m: Hisobot): void {
  * биргаликда ~350 КБ ва фақат шу тугма босилганда керак. Статик
  * импорт қилинса, ҳар бир саҳифа шу оғирликни кўтариб юрарди.
  */
-export async function pdfYasa(m: Hisobot, faylNomi: string): Promise<void> {
-  const [{ default: JsPDF }, shrift] = await Promise.all([import('jspdf'), shriftYukla()]);
+/**
+ * Ҳужжат байтларини яратади — файлни САҚЛАМАЙДИ.
+ *
+ * `excelBayt` билан бир хил сабабдан ажратилган: сақлаш браузерга
+ * боғланган, чизиш эса боғланмаган. Шунинг учун диаграмма ўлчами
+ * ёки шрифт ўзгарганда файлни Node дан чиқариб КЎРИШ мумкин
+ * (`scripts/hisobot-chiqar.ts`), браузерга кирмасдан.
+ */
+export async function pdfBayt(m: Hisobot, oquvchi: ShriftOquvchi = BRAUZER_OQUVCHI): Promise<ArrayBuffer> {
+  const [{ default: JsPDF }, shrift] = await Promise.all([import('jspdf'), shriftYukla(oquvchi)]);
 
   const doc = new JsPDF({ unit: 'mm', format: 'a4', compress: true }) as jsPDFType;
 
@@ -789,5 +897,23 @@ export async function pdfYasa(m: Hisobot, faylNomi: string): Promise<void> {
   mundarijaniYoz(h, mundarijaSahifasi, m);
   kolontitul(doc, m);
 
-  doc.save(faylNomi);
+  return doc.output('arraybuffer') as ArrayBuffer;
+}
+
+export async function pdfYasa(m: Hisobot, faylNomi: string): Promise<void> {
+  const bayt = await pdfBayt(m);
+
+  /*
+   * Excel билан бир хил усул: `<a download>`. jsPDF нинг ўз
+   * `save()` и ҳам шуни қилади, аммо унда файл номи ва MIME
+   * тури иккита жойда белгиланарди.
+   */
+  const url = URL.createObjectURL(new Blob([bayt], { type: 'application/pdf' }));
+  const havola = document.createElement('a');
+  havola.href = url;
+  havola.download = faylNomi;
+  document.body.appendChild(havola);
+  havola.click();
+  document.body.removeChild(havola);
+  URL.revokeObjectURL(url);
 }

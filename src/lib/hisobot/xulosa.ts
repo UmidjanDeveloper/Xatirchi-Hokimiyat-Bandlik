@@ -313,8 +313,30 @@ function qoidaHolati(t: TahlilNatijasi, qamrovNomi: string): string {
   );
 
   if (j.aniqlangan > 0) {
+    /*
+     * ИККИТА СОН, ИККИТА МАЪНО.
+     *
+     * `xatlovdaTopilgan` — хонадон анкетасида «шу ерда нечта
+     * ишсиз бор» деган саволга берилган жавобларнинг йиғиндиси.
+     * `aniqlangan`      — шахсий анкетаси тўлдирилганлар.
+     *
+     * Ҳоким ҳисоботда фақат иккинчисини кўриб «хатловда 70 дан
+     * ортиқ эди-ку» деган эди. Иккови ҳам тўғри сон, аммо ҳар
+     * хил нарсани ўлчайди — шунинг учун иккови ҳам ёзилади ва
+     * фарқ АТАЙИН айтилади: у йўқолган маълумот эмас, ҳали
+     * қилинмаган иш.
+     *
+     * Фоиз маҳражи ҳам топилганга нисбатан: «жойлаштирилган
+     * 51%» деган сон анкета тўлдирилганлар ичида ҳисобланса,
+     * ишнинг ҳақиқий ҳажмини яширади.
+     */
+    const topilgan = j.xatlovdaTopilgan || j.aniqlangan;
     gaplar.push(
-      `Хатлов натижасида ${son(j.aniqlangan)} ишсиз фуқаро аниқланган, ${son(j.joylashtirilgan)} таси ишга жойлаштирилган (${foiz(foizi(j.joylashtirilgan, j.aniqlangan))}).`
+      `Хатлов натижасида ${son(topilgan)} ишсиз фуқаро топилган` +
+        (j.anketasiz > 0
+          ? `, шундан ${son(j.aniqlangan)} тасининг шахсий анкетаси тўлдирилган (${son(j.anketasiz)} таси кутмоқда)`
+          : '') +
+        `; ${son(j.joylashtirilgan)} таси ишга жойлаштирилган (${foiz(foizi(j.joylashtirilgan, topilgan))}).`
     );
   } else {
     gaplar.push('Ҳали бирорта ишсиз фуқаро тизимга киритилмаган — хатловни давом эттириш керак.');
@@ -330,7 +352,7 @@ function qoidaHolati(t: TahlilNatijasi, qamrovNomi: string): string {
 
   if (j.radEtgan > 0 && j.aniqlangan >= 20) {
     gaplar.push(
-      `${son(j.radEtgan)} фуқаро таклифдан бош тортган (${foiz(foizi(j.radEtgan, j.aniqlangan))}) — таклифлар мослигини кўриб чиқиш керак.`
+      `${son(j.radEtgan)} фуқаро таклифдан бош тортган (${foiz(foizi(j.radEtgan, j.aniqlangan))} — анкетаси тўлдирилганларга нисбатан) — таклифлар мослигини кўриб чиқиш керак.`
     );
   }
 

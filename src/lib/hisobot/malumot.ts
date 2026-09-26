@@ -95,12 +95,29 @@ function mahallalarBolimi(tahlil: Awaited<ReturnType<typeof tahlilOl>>): Bolim |
       {
         sarlavha: 'Барча маҳаллалар — қамров бўйича тартибланган',
         ustunlar: [
-          { sarlavha: 'МФЙ', eni: 38 },
-          { sarlavha: 'Хонадон', raqamli: true, eni: 20 },
-          { sarlavha: 'Хатлов', raqamli: true, eni: 19 },
+          /*
+           * БУ СОНЛАР УЛУШ, МИЛЛИМЕТР ЭМАС.
+           *
+           * Жадвалнинг ҳамма устуни қатъий энга эга — битта ҳам
+           * «авто» йўқ. Ундай пайтда `pdf.ts` энларни саҳифа
+           * кенглигига мослаб қайта ҳисоблайди, шунинг учун
+           * йиғинди қанча бўлиши муҳим эмас: муҳими — устунлар
+           * бир-бирига НИСБАТАН қанча жой олиши.
+           *
+           * Илгари бундай мослаш йўқ эди ва йиғинди 169 эди,
+           * саҳифада эса 180 жой бор — жадвал ўнг четга етмай
+           * тугарди. Босилган ҳужжатда у марказдан сурилгандек
+           * кўринарди.
+           *
+           * МФЙ номи энг кенг: «Деҳқонобод» каби сўзлар бир
+           * қаторга сиғиши керак.
+           */
+          { sarlavha: 'МФЙ', eni: 50 },
+          { sarlavha: 'Хонадон', raqamli: true, eni: 19 },
+          { sarlavha: 'Хатлов', raqamli: true, eni: 18 },
           { sarlavha: 'Қамров', raqamli: true, eni: 19 },
           { sarlavha: 'Ишсиз', raqamli: true, eni: 18 },
-          { sarlavha: 'Аниқл.', raqamli: true, eni: 18 },
+          { sarlavha: 'Аниқл.', raqamli: true, eni: 19 },
           { sarlavha: 'Жойл.', raqamli: true, eni: 18 },
           { sarlavha: 'Натижа', raqamli: true, eni: 19 },
         ],
@@ -439,26 +456,58 @@ export async function hisobotOl(sorov: HisobotSorovi): Promise<Hisobot> {
       yonalish: 'kop-yaxshi',
       foiz: foizi(j.xatlovXonadon, j.bazaXonadon),
     },
+    /*
+     * МУҚОВАДА ИККИТА СОН ТУРАДИ, БИТТАСИ ЭМАС.
+     *
+     * Илгари бу ерда ёлғиз «Аниқланган ишсиз» бор эди ва у
+     * шахсий анкетаси тўлдирилганларни санарди. Ҳоким
+     * ҳисоботни очиб биринчи шу рақамни кўрар, хатловда эса
+     * ундан анча кўп ишсиз борлигини биларди — шундан «бу
+     * рақамлар хато» деган хулоса чиққан.
+     *
+     * Рақам хато эмас эди, НОМИ хато эди. Энди иккови ҳам
+     * турибди ва ораларидаги фарқ кўриниб қолади.
+     */
     {
-      nomi: 'Аниқланган ишсиз',
-      qiymat: son(j.aniqlangan),
-      izoh: `базада рўйхатда ${son(j.bazaIshsiz)} та`,
+      nomi: 'Хатловда топилган ишсиз',
+      qiymat: son(j.xatlovdaTopilgan || j.aniqlangan),
+      izoh: `хонадон анкеталаридан · базада рўйхатда ${son(j.bazaIshsiz)} та`,
       yonalish: 'betaraf',
+    },
+    {
+      nomi: 'Шахсий анкетаси бор',
+      qiymat: son(j.aniqlangan),
+      izoh:
+        j.anketasiz > 0
+          ? `${son(j.anketasiz)} та фуқаро билан ҳали суҳбат ўтказилмаган`
+          : 'барчасининг анкетаси тўлдирилган',
+      yonalish: 'kop-yaxshi',
+      foiz: foizi(j.aniqlangan, j.xatlovdaTopilgan || j.aniqlangan),
     },
     {
       nomi: 'Ишга жойлаштирилган',
       qiymat: son(j.joylashtirilgan),
-      izoh: `аниқланганларнинг ${foiz(foizi(j.joylashtirilgan, j.aniqlangan))}и`,
+      izoh: `хатловда топилганларнинг ${foiz(foizi(j.joylashtirilgan, j.xatlovdaTopilgan || j.aniqlangan))}и`,
       yonalish: 'kop-yaxshi',
-      foiz: foizi(j.joylashtirilgan, j.aniqlangan),
-    },
-    {
-      nomi: 'Таклифдан бош тортган',
-      qiymat: son(j.radEtgan),
-      izoh: 'алоҳида ишлаш талаб қилинади',
-      yonalish: 'kam-yaxshi',
+      foiz: foizi(j.joylashtirilgan, j.xatlovdaTopilgan || j.aniqlangan),
     },
   ];
+
+  /*
+   * МУҚОВАДА ТЎРТТА РАҚАМ ТУРАДИ, БЕШТА ЭМАС.
+   *
+   * Муқова карталарни ИККИТА устунга теради, шунинг учун
+   * бешинчиси пастда ёлғиз қоларди — ёнида бўш жой билан.
+   * Босилган ҳужжатда бу «бир нарса тушиб қолган» дегандек
+   * кўринади.
+   *
+   * «Таклифдан бош тортган» энг кам муҳими: у 1-бўлимнинг
+   * кўрсаткичларида ҳам, воронка жадвалида ҳам бор. Шунинг
+   * учун муқовадан олинди, ҳисоботдан эмас.
+   *
+   * Занжирнинг ўзи тўрт рақамда тўлиқ кўринади:
+   *   хонадон → топилган ишсиз → анкета → жойлаштирилган
+   */
 
   const asos = {
     xonadon: jamiXonadon,

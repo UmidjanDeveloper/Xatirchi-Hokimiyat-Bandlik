@@ -155,6 +155,7 @@ export async function fuqaroBolimlari(
     itVaucherHolatlari,
     itVaucherYonalishlari,
     itNavbatda,
+    xatlovIshsizi,
   ] = await Promise.all([
     prisma.unemployedPerson.findMany({
       where: filtr,
@@ -283,6 +284,40 @@ export async function fuqaroBolimlari(
         itVaucherlar: { none: { holati: { notIn: ['BEKOR_QILINDI', 'TASHLAB_KETDI'] } } },
       },
     }),
+
+    /*
+     * ХАТЛОВ ТОПГАН ИШСИЗ — воронканинг ҳақиқий боши.
+     *
+     * Анкетачи хонадонда «шу ерда нечта ишсиз бор» деб сўрайди ва
+     * жавоб `ishsizlarSoni` га ёзилади. Бу одамларнинг ҲАММАСИГА
+     * ҳали шахсий анкета тўлдирилмаган — анкета алоҳида иш, кўп
+     * вақт олади.
+     *
+     * Шунинг учун иккита БОШҚА-БОШҚА сон бор:
+     *   `xatlovIshsizi` — хатлов ТОПГАН
+     *   `jamiFuqaro`    — шахсий анкетаси ТЎЛДИРИЛГАН
+     *
+     * Ҳоким ҳисоботда иккинчисини кўриб «менда ундан кўп эди-ку»
+     * деган эди — ҳақ эди. Энди иккаласи ҳам кўринади ва
+     * орасидаги фарқ ЙЎҚОЛГАН РАҚАМ эмас, ҚИЛИНМАГАН ИШ.
+     */
+    prisma.household.aggregate({
+      /*
+       * ҚОРАЛАМА ХОНАДОНЛАР САНАЛМАЙДИ.
+       *
+       * Қоралама — ходим бошлаган-у тугатмаган анкета. Ундаги
+       * «нечта ишсиз бор» жавоби ҳали тасдиқланмаган ва кейин
+       * ўзгариши мумкин.
+       *
+       * Бу фильтрсиз ҳисоботда иккита БОШҚА-БОШҚА сон чиқади:
+       * муқовада 134 (`tahlil.ts` қоралмани чиқаради), бўлимда
+       * эса 136. Битта ҳужжатда бир хил номли рақам икки хил
+       * бўлиши — ҳокимнинг «бу рақамлар хато» дейишига энг
+       * тўғри сабаб.
+       */
+      where: { ...(mahallaId ? { mahallaId } : {}), holati: { not: 'QORALAMA' } },
+      _sum: { ishsizlarSoni: true },
+    }),
   ]);
 
   const jamiFuqaro = shaxslar.length;
@@ -295,15 +330,75 @@ export async function fuqaroBolimlari(
     const sanoq = new Map<IshsizHolati, number>();
     for (const b of bosqichlar) sanoq.set(b.holati, b._count);
 
-    const voronkaQatorlari: Qator[] = VORONKA.map((h) => {
-      const n = sanoq.get(h) ?? 0;
-      return { nomi: ISHSIZ_HOLATI[h].kirill, qiymatlar: [son(n), foiz(foizi(n, jamiFuqaro))] };
-    });
+    const topilgan = xatlovIshsizi._sum.ishsizlarSoni ?? 0;
+    /** Анкетаси ҳали тўлдирилмаганлар — воронкага умуман кирмаганлар */
+    const anketasiz = Math.max(0, topilgan - jamiFuqaro);
+
+    /*
+     * ВОРОНКА КУМУЛЯТИВ ҲИСОБЛАНАДИ.
+     *
+     * База ҳар фуқаро учун ФАҚАТ ҲОЗИРГИ босқични сақлайди.
+     * Иш топган одамнинг ҳолати «Жойлаштирилди» бўлиб қолади —
+     * у энди «Аниқланди» да саналмайди.
+     *
+     * Ҳар босқични алоҳида санаганда шу чиқарди:
+     *
+     *   Аниқланди        11
+     *   Суҳбат ўтказилди  4
+     *   Таклиф берилди    1
+     *   Жойлаштирилди    19   ← олдингисидан КЎП
+     *
+     * Бу воронка эмас. Диаграмма остида эса «пастга тушган сари
+     * сон камаяди» деб ёзилган эди — яъни ҳужжат ўзига ўзи зид
+     * келарди. Ҳоким «рақамлар хато» деганда кўрган нарсаси
+     * айнан шу.
+     *
+     * Тўғри ўқиш: «шу босқичдан ЎТГАН» — яъни шу босқич ва
+     * ундан кейингиларнинг йиғиндиси. Панелдаги воронка
+     * (`tahlil.ts`) аллақачон шундай ҳисоблайди; ҳисобот эса
+     * ортда қолган эди.
+     */
+    const otgan = (h: IshsizHolati) => {
+      const bu = VORONKA.indexOf(h);
+      return VORONKA.filter((x) => VORONKA.indexOf(x) >= bu).reduce(
+        (yigindi, x) => yigindi + (sanoq.get(x) ?? 0),
+        0
+      );
+    };
+
+    /*
+     * Фоиз маҳражи — ХАТЛОВ ТОПГАН сон, анкета сони эмас.
+     *
+     * Акс ҳолда «Аниқланди 100%» чиқади ва анкетаси
+     * тўлдирилмаган юзлаб одам ҳужжатда умуман кўринмайди.
+     */
+    const maxraj = topilgan || jamiFuqaro;
+
+    const voronkaQatorlari: Qator[] = [];
+    if (topilgan > 0) {
+      voronkaQatorlari.push({
+        nomi: 'Хатловда топилган',
+        qiymatlar: [son(topilgan), foiz(100)],
+      });
+    }
+    if (anketasiz > 0) {
+      voronkaQatorlari.push({
+        nomi: '  шундан анкетаси тўлдирилмаган',
+        qiymatlar: [son(anketasiz), foiz(foizi(anketasiz, maxraj))],
+      });
+    }
+    for (const h of VORONKA) {
+      const n = otgan(h);
+      voronkaQatorlari.push({
+        nomi: ISHSIZ_HOLATI[h].kirill,
+        qiymatlar: [son(n), foiz(foizi(n, maxraj))],
+      });
+    }
     const radEtgan = sanoq.get('RAD_ETDI') ?? 0;
     if (radEtgan > 0) {
       voronkaQatorlari.push({
         nomi: `${ISHSIZ_HOLATI.RAD_ETDI.kirill} (воронкадан чиқди)`,
-        qiymatlar: [son(radEtgan), foiz(foizi(radEtgan, jamiFuqaro))],
+        qiymatlar: [son(radEtgan), foiz(foizi(radEtgan, maxraj))],
       });
     }
 
@@ -314,15 +409,29 @@ export async function fuqaroBolimlari(
       sarlavha: 'Ишсизлар билан иш — босқичлар',
       varaqNomi: 'Босқичлар',
       kirish:
-        'Ҳар бир фуқаро аниқланишдан тасдиқлашгача бешта босқичдан ўтади. Қаерда тўхтаб қолгани — айнан шу ерда иш талаб қилинишини кўрсатади.',
+        'Занжир хонадон хатловидан бошланади: аввал ишсиз ТОПИЛАДИ, кейин унга шахсий анкета тўлдирилади, сўнг суҳбат, таклиф ва жойлаштириш. Ҳар босқичдаги сон — шу босқичдан ЎТГАН фуқаролар (кейинги босқичдагилар ҳам киради). Энг катта тушиш бўлган жой — иш талаб қилинадиган жой.',
       korsatkichlar: [
-        { nomi: 'Тизимда аниқланган', qiymat: son(jamiFuqaro) },
+        {
+          nomi: 'Хатловда топилган ишсиз',
+          qiymat: son(topilgan || jamiFuqaro),
+          izoh: 'хонадон анкеталаридан',
+        },
+        {
+          nomi: 'Шахсий анкетаси бор',
+          qiymat: son(jamiFuqaro),
+          izoh:
+            anketasiz > 0
+              ? `${son(anketasiz)} та фуқаро билан ҳали суҳбат ўтказилмаган`
+              : 'барчасининг анкетаси тўлдирилган',
+          yonalish: 'kop-yaxshi',
+          foiz: foizi(jamiFuqaro, maxraj),
+        },
         {
           nomi: 'Ишга жойлаштирилган',
           qiymat: son(joylashgan),
-          izoh: `аниқланганларнинг ${foiz(foizi(joylashgan, jamiFuqaro))}и`,
+          izoh: `хатловда топилганларнинг ${foiz(foizi(joylashgan, maxraj))}и`,
           yonalish: 'kop-yaxshi',
-          foiz: foizi(joylashgan, jamiFuqaro),
+          foiz: foizi(joylashgan, maxraj),
         },
         {
           nomi: 'Суҳбат кутаётган',
@@ -352,9 +461,20 @@ export async function fuqaroBolimlari(
         {
           turi: 'gorizontal',
           sarlavha: 'Босқичлар — фуқаро сони',
-          izoh: 'Пастга тушган сари сон камаяди. Кескин тушиш бўлган жой — тўхтаб қолган босқич.',
-          nomlar: VORONKA.map((h) => ISHSIZ_HOLATI[h].kirill),
-          qatorlar: [{ nomi: 'Фуқаро', qiymatlar: VORONKA.map((h) => sanoq.get(h) ?? 0) }],
+          izoh:
+            anketasiz > 0
+              ? `Ҳар пағона — шу босқичдан ЎТГАНЛАР сони, шунинг учун пастга тушган сари камаяди. Энг катта тушиш биринчи икки пағона орасида: ${son(anketasiz)} та топилган фуқаронинг анкетаси ҳали тўлдирилмаган.`
+              : 'Ҳар пағона — шу босқичдан ЎТГАНЛАР сони, шунинг учун пастга тушган сари камаяди. Кескин тушиш бўлган жой — тўхтаб қолган босқич.',
+          nomlar: [
+            ...(topilgan > 0 ? ['Хатловда топилган'] : []),
+            ...VORONKA.map((h) => ISHSIZ_HOLATI[h].kirill),
+          ],
+          qatorlar: [
+            {
+              nomi: 'Фуқаро',
+              qiymatlar: [...(topilgan > 0 ? [topilgan] : []), ...VORONKA.map((h) => otgan(h))],
+            },
+          ],
         },
       ],
     });

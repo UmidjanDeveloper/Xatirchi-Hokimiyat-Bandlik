@@ -117,7 +117,16 @@ function chartTuri(t: Diagramma['turi']): ChartSpec['kind'] {
 
 /* ═══════════════════════════════════════════════════════════ */
 
-export async function excelYasa(m: Hisobot, faylNomi: string): Promise<void> {
+/**
+ * Китоб байтларини яратади — файлни САҚЛАМАЙДИ.
+ *
+ * Сақлаш браузерга боғланган (`Blob`, `URL`, `<a download>`), бу
+ * қисм эса боғланмаган. Ажратилгани учун Node дан ҳам чақирилади:
+ * `scripts/hisobot-chiqar.ts` айнан шу функцияни ишлатади, яъни
+ * текширилаётган файл ходим юклаб оладиган файлнинг НУСХАСИ эмас,
+ * ўзи бўлади.
+ */
+export async function excelBayt(m: Hisobot): Promise<ArrayBuffer> {
   const XLSX = await import('xlsx');
 
   /**
@@ -409,7 +418,15 @@ export async function excelYasa(m: Hisobot, faylNomi: string): Promise<void> {
     { sheetName: mundarijaNomi, look: { hideGridLines: true, printFit: true, cells: { A1: 'title', A2: 'subtitle' } } },
   ]);
 
-  const blob = new Blob([tayyor as ArrayBuffer], {
+  return tayyor as ArrayBuffer;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+
+export async function excelYasa(m: Hisobot, faylNomi: string): Promise<void> {
+  const tayyor = await excelBayt(m);
+
+  const blob = new Blob([tayyor], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 

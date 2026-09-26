@@ -53,7 +53,50 @@ const SAHIFALAR = [
   'src/app/(ilova)/xonadonlar/page.tsx',
 ];
 
+/**
+ * «Хатловда топилган ишсиз» ни ҳисоблайдиган ҲАР БИР сўров.
+ *
+ * Бу сон иккита жойда ҳисобланади — панел учун (`tahlil.ts`) ва
+ * ҳисобот учун (`fuqaro-profili.ts`). Иккови БИР ХИЛ жавоб
+ * бериши шарт, акс ҳолда битта ҳужжатда муқовада 134, бўлимда
+ * 136 туради ва ҳоким ҳақли равишда «рақамлар хато» дейди.
+ * Бир марта айнан шундай бўлган.
+ *
+ * Фарқнинг сабаби ҚОРАЛАМА хонадонлар эди: тугатилмаган анкета.
+ * Ундаги «нечта ишсиз бор» жавоби ҳали тасдиқланмаган.
+ */
+function topilganSorovlari(): { fayl: string; qator: number; qoralamasiz: boolean }[] {
+  const FAYLLAR = ['src/lib/tahlil.ts', 'src/lib/hisobot/fuqaro-profili.ts'];
+  const natija: { fayl: string; qator: number; qoralamasiz: boolean }[] = [];
+
+  for (const fayl of FAYLLAR) {
+    const qatorlar = readFileSync(fayl, 'utf8').split('\n');
+    qatorlar.forEach((qator, i) => {
+      if (!qator.includes('_sum: { ishsizlarSoni: true }')) return;
+      /*
+       * Сўровнинг `where` и юқорида, лекин орада узун изоҳ
+       * бўлиши мумкин — шунинг учун 40 қатор орқага қаралади.
+       */
+      const atrof = qatorlar.slice(Math.max(0, i - 40), i).join('\n');
+      natija.push({ fayl, qator: i + 1, qoralamasiz: atrof.includes("QORALAMA") });
+    });
+  }
+  return natija;
+}
+
 const SINOVLAR: Sinov[] = [
+  {
+    nomi: '«Хатловда топилган» сўровлари ТОПИЛДИ',
+    tekshir: () => topilganSorovlari().length >= 2,
+  },
+  {
+    nomi: 'Ҳар бири ҚОРАЛАМА хонадонларни чиқаради',
+    tekshir: () => {
+      const yomon = topilganSorovlari().filter((x) => !x.qoralamasiz);
+      for (const y of yomon) console.log(`     qoralama chiqarilmagan: ${y.fayl}:${y.qator}`);
+      return yomon.length === 0;
+    },
+  },
   {
     nomi: 'Ходим панелидаги хатлов сони БАЗАДАН олинади',
     tekshir: () =>

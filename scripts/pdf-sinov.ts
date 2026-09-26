@@ -13,8 +13,9 @@
  *  Шунинг учун қоида: матн кесилса, уч нуқта қўйилиши ШАРТ.
  * ============================================================
  */
+import { readFileSync } from 'node:fs';
 import { jsPDF } from 'jspdf';
-import { sigdir } from '../src/lib/hisobot/pdf';
+import { satrlar, sigdir } from '../src/lib/hisobot/pdf';
 
 const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 doc.setFont('helvetica', 'normal');
@@ -72,6 +73,59 @@ const SINOVLAR: Sinov[] = [
   {
     nomi: 'Бўш матн хато бермайди',
     tekshir: () => Array.isArray(sigdir(doc, '', ENI, 2)),
+  },
+
+  /* ── Ўлчов ва чизиш бир хил шрифтни кўриши ────────────────── */
+
+  {
+    nomi: 'satrlar() шрифтни ЎЗИ қўяди — ўлчов чизишга мос келади',
+    tekshir: () => {
+      const matn = 'Хатирчи тумани бўйича базада 40 377 хонадон рўйхатда турибди';
+      const ENI2 = 60;
+
+      // Аввал бошқа (кичик) ўлчам қўйиб қўямиз — эски хато
+      // айнан шундай пайдо бўлган эди
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6);
+
+      const q = satrlar(doc as never, matn, ENI2, false, 12);
+
+      // Энди ҳар сатр 12 ўлчамда ҳам сиғиши керак
+      doc.setFontSize(12);
+      return q.length > 0 && q.every((sat) => doc.getTextWidth(sat) <= ENI2 + 0.01);
+    },
+  },
+  {
+    nomi: 'pdf.ts да doc.splitTextToSize тўғридан-тўғри ишлатилмайди',
+    tekshir: () => {
+      /*
+       * Хулоса қутисидаги матн саҳифадан чиқиб кетган эди: 7.4
+       * да ўлчаниб, 9 да чизилган. Тузатилди, аммо кейинги
+       * марта ҳам шундай ёзиб юборилиши мумкин.
+       *
+       * Шунинг учун қоида: ўлчаш фақат `satrlar()` орқали.
+       * Иккита истисно бор — `satrlar` нинг ўзи ва `sigdir`
+       * (у атайин чақирувчи қўйган шрифт билан ўлчайди).
+       */
+      const manba = readFileSync('src/lib/hisobot/pdf.ts', 'utf8');
+      const qatorlar = manba.split('\n');
+
+      const ISTISNO = ['satrlar', 'sigdir'];
+      let joriyFunksiya = '';
+      const ayblar: string[] = [];
+
+      qatorlar.forEach((qator, i) => {
+        const e = /^export function (\w+)|^function (\w+)/.exec(qator);
+        if (e) joriyFunksiya = e[1] ?? e[2] ?? '';
+        if (!qator.includes('doc.splitTextToSize')) return;
+        if (qator.trimStart().startsWith('*')) return; // изоҳ
+        if (ISTISNO.includes(joriyFunksiya)) return;
+        ayblar.push(`${i + 1}-qator (${joriyFunksiya || 'nomsiz'})`);
+      });
+
+      if (ayblar.length) console.log(`     topildi: ${ayblar.join(', ')}`);
+      return ayblar.length === 0;
+    },
   },
 ];
 
