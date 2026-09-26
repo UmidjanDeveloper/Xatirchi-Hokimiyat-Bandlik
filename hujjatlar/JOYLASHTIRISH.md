@@ -55,6 +55,40 @@ git push
 
 Migratsiya yo'q bo'lsa 3–4 qadamlar tashlab ketiladi.
 
+## KUTIB TURGAN ISH: Telegram zanjiri
+
+**Holati:** kod tayyor, migratsiya hali production bazaga
+yoyilmagan. Shuning uchun kod shoxdan vaqtincha qaytarilgan.
+
+**Nima qiladi:** bandlik rahbari bo'sh ish o'rni qo'yganda
+mahalla hokim yordamchilariga botdan xabar boradi — «sizning
+falonchi fuqaroyingizga shu o'rin mos keladi». Yordamchi masalani
+hal qilsa «ish topdim» tugmasini bosadi va xabar hokim bilan
+bandlik rahbariga «ish bilan ta'minlandi» bo'lib yetib boradi.
+
+**Nega kutib turibdi:** u `JoylashuvXabari` jadvalini qo'shadi.
+Migratsiya endi qurish ichida ishlamaydi (ataylab), shuning uchun
+jadvalsiz kod chiqsa `/bandlik` sahifasi 500 beradi.
+
+**Qaytarib qo'yish tartibi:**
+
+```bash
+# 1. Migratsiya — PRODUCTION bazaga, koddan OLDIN
+DATABASE_URL="<production>" DIRECT_URL="<production>" npm run db:deploy
+
+# 2. Jadval haqiqatan paydo bo'lganini tekshirish
+DATABASE_URL="<production>" npx prisma db execute \
+  --stdin <<< 'SELECT 1 FROM "JoylashuvXabari" LIMIT 1;'
+
+# 3. Endi kodni tiklash
+git revert 6662a65   # «Telegram zanjiri vaqtincha qaytarildi»
+npm run sinov && npm run build
+git push origin claude/kelajak-com-memory-osvycd
+```
+
+Kod yo'qolmagan — u tarixda turibdi va bitta `git revert` bilan
+qaytadi.
+
 ## Orqaga qaytarish
 
 Migratsiya faqat qo'shgani uchun **kodni qaytarish yetarli**:
