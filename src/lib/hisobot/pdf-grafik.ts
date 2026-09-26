@@ -386,7 +386,24 @@ function doiraChiz(doc: jsPDF, d: Diagramma, joy: Joy): void {
     ),
     14
   );
-  const nomEni = Math.max(joy.x + joy.eni - izohX - raqamEni - 6, 20);
+  /*
+   * Ном устуни ҚОЛГАН ЖОЙНИ ЭМАС, ЎЗИГА КЕРАГИНИ олади.
+   *
+   * Илгари бу ерда «қолган кенглик» ҳисобланарди. Натижада ном
+   * чапда, рақам эса саҳифанинг ўнг четида турар, орада узун
+   * бўш майдон қоларди — «Эркак ⋯⋯⋯⋯⋯⋯ 19 · 51,4%». Босилган
+   * ҳужжатда кўз бу жуфтликни осонгина адаштиради, айниқса
+   * бешта бўлак бўлганда.
+   *
+   * Энди устун энг узун номга қараб ўлчанади ва рақам номдан
+   * дарҳол кейин туради. Жой етмаса — кесилади, чунки рақам
+   * номдан муҳимроқ.
+   */
+  doc.setFont('Hisobot', 'normal');
+  doc.setFontSize(6.6);
+  const kerakli = Math.max(...d.nomlar.map((nom) => doc.getTextWidth(nom)), 14);
+  const bori = joy.x + joy.eni - izohX - 4.4 - raqamEni - 3;
+  const nomEni = Math.max(Math.min(kerakli, bori), 20);
 
   d.nomlar.forEach((nom, i) => {
     const v = qiymatlar[i] ?? 0;
@@ -406,7 +423,7 @@ function doiraChiz(doc: jsPDF, d: Diagramma, joy: Joy): void {
     doc.setFontSize(6.6);
     doc.text(
       `${raqam(v, false)} · ${String(Math.round((v / jami) * 1000) / 10).replace('.', ',')}%`,
-      izohX + 4.4 + nomEni + raqamEni + 2,
+      izohX + 4.4 + nomEni + 3 + raqamEni,
       y,
       { align: 'right' }
     );
