@@ -102,7 +102,30 @@ export interface TahlilNatijasi {
     bazaXonadon: number;
     bazaAholi: number;
     xatlovXonadon: number;
+    /**
+     * Хатловда ТОПИЛГАН ишсиз — анкетадаги «нечта ишсиз»
+     * рақамларининг йиғиндиси.
+     *
+     * Ҳокимнинг «ишсизлар қанча» деган саволига ҲАҚИҚИЙ
+     * жавоб шу: хатлов шунча одамни топди.
+     */
+    xatlovdaTopilgan: number;
+    /**
+     * Шахсий анкетаси тўлдирилганлар — `UnemployedPerson`
+     * ёзувлари сони.
+     *
+     * `xatlovdaTopilgan` дан КАМ бўлиши мумкин ва бу хато
+     * эмас: фарқ — ҳали суҳбат ўтказилмаган одамлар.
+     */
     aniqlangan: number;
+    /**
+     * Топилган, аммо шахсий анкетаси ЙЎҚ одамлар сони.
+     *
+     * Бу — ХАТО эмас, БАЖАРИЛМАГАН ИШ. Улар билан суҳбат
+     * ўтказилмаган, яъни бандлик маркази уларга таклиф
+     * бера олмайди.
+     */
+    anketasiz: number;
     joylashtirilgan: number;
     radEtgan: number;
     /**
@@ -438,6 +461,22 @@ async function tahlilniHisobla(
         by: ['mahallaId'],
         where: { ...mahallaFiltri, holati: { not: 'QORALAMA' } },
         _count: true,
+        /*
+         * ── ХАТЛОВДА ТОПИЛГАН ИШСИЗ ──
+         *
+         * Бу `UnemployedPerson` ёзувлари сони ЭМАС.
+         *
+         * Анкетада ходим «бу хонадонда 3 та ишсиз бор» деб
+         * ёзади, кейин ҳар бирига шахсий анкета тўлдиради.
+         * Иккинчисига улгурмаса — одам ТОПИЛГАН, аммо
+         * бандлик маркази учун КЎРИНМАЙДИ.
+         *
+         * Илгари панел фақат ёзувлар сонини кўрсатарди ва
+         * ҳоким «хатловда 70 та кўрдим, панелда 41 та» деб
+         * ҳақли равишда шубҳаланди. Иккови ҳам тўғри эди —
+         * улар БОШҚА-БОШҚА саволнинг жавоби.
+         */
+        _sum: { ishsizlarSoni: true },
       }),
 
       prisma.actionPlan.groupBy({
@@ -550,6 +589,11 @@ async function tahlilniHisobla(
 
   // ── Mahalla qamrovi ──
   const xonadonSoni = new Map(xonadonlar.map((x) => [x.mahallaId, x._count]));
+  /** Маҳалла кесимида: хатловда топилган ишсиз */
+  const topilganSoni = new Map(
+    xonadonlar.map((x) => [x.mahallaId, x._sum.ishsizlarSoni ?? 0])
+  );
+  const xatlovdaTopilgan = Array.from(topilganSoni.values()).reduce((s, n) => s + n, 0);
 
   const qamrov: MahallaQamrovi[] = mahallalar.map((m) => {
     const b = mahallaBosqich.get(m.id) ?? new Map<IshsizHolati, number>();
@@ -620,7 +664,14 @@ async function tahlilniHisobla(
       bazaXonadon: mahallalar.reduce((s, m) => s + m.xonadon, 0),
       bazaAholi: mahallalar.reduce((s, m) => s + m.aholi, 0),
       xatlovXonadon: xonadonlar.reduce((s, x) => s + x._count, 0),
+      xatlovdaTopilgan,
       aniqlangan,
+      /*
+       * Манфий бўлиб кетмаслиги учун `max(0)`: аллақачон
+       * жойлашган одамнинг хонадони қайта хатловдан ўтса,
+       * ёзувлар сони анкетадаги рақамдан ошиши мумкин.
+       */
+      anketasiz: Math.max(0, xatlovdaTopilgan - aniqlangan),
       joylashtirilgan,
       radEtgan,
       uzoqIshsiz,

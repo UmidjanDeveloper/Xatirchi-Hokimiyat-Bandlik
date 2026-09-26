@@ -10,6 +10,7 @@ import {
   House,
   Plane,
   TrendingUp,
+  UserCheck,
   Users,
 } from 'lucide-react';
 import { joriySessiya, tahlilKoradi } from '@/lib/auth';
@@ -297,17 +298,45 @@ export default async function PanelSahifasi({
             qiymat={raqam(bosh.xatlovXonadon)}
             izoh={tr(`${raqam(bosh.bazaXonadon)} тадан · ${percent(bosh.xatlovXonadon, bosh.bazaXonadon)}%`)}
           />
+          {/*
+            ── ИККИТА БОШҚА-БОШҚА РАҚАМ ──
+
+            Илгари бу ерда БИТТА карта турарди: «Аниқланган
+            ишсиз» ва у шахсий анкета ёзувларини санарди.
+            Ҳоким эса хатловда бошқа рақам кўрган эди ва
+            ҳақли равишда «маълумот хато» деди.
+
+            Иккови ҳам тўғри эди, фақат БОШҚА саволнинг
+            жавоби:
+
+              топилган — хатлов нечта ишсизни ТОПДИ
+              анкетали — нечтаси билан СУҲБАТ ўтказилди
+
+            Энди иккови ҳам кўринади, фарқи эса учинчи
+            картада: у хато эмас, БАЖАРИЛМАГАН ИШ.
+          */}
           <Kpi
             ikonka={<Users className="h-4 w-4" />}
-            nomi={tr("Аниқланган ишсиз")}
+            nomi={tr("Хатловда топилган ишсиз")}
+            qiymat={raqam(bosh.xatlovdaTopilgan)}
+            izoh={tr(`Рўйхатда ${raqam(bosh.bazaIshsiz)} та · ${percent(bosh.xatlovdaTopilgan, bosh.bazaIshsiz)}%`)}
+          />
+          <Kpi
+            ikonka={<UserCheck className="h-4 w-4" />}
+            nomi={tr("Шахсий анкетаси бор")}
             qiymat={raqam(bosh.aniqlangan)}
-            izoh={tr(`Рўйхатда ${raqam(bosh.bazaIshsiz)} та · ${percent(bosh.aniqlangan, bosh.bazaIshsiz)}%`)}
+            izoh={
+              bosh.anketasiz > 0
+                ? tr(`${raqam(bosh.anketasiz)} та фуқаро билан ҳали суҳбат ўтказилмаган`)
+                : tr('Барчаси билан суҳбат ўтказилган')
+            }
+            ogoh={bosh.anketasiz > 0}
           />
           <Kpi
             ikonka={<Briefcase className="h-4 w-4" />}
             nomi={tr("Жойлаштирилган")}
             qiymat={raqam(bosh.joylashtirilgan)}
-            izoh={tr(`Аниқланганларнинг ${percent(bosh.joylashtirilgan, bosh.aniqlangan)}%`)}
+            izoh={tr(`Топилганларнинг ${percent(bosh.joylashtirilgan, bosh.xatlovdaTopilgan)}%`)}
             yaxshi
           />
           <Kpi
@@ -563,6 +592,7 @@ function Kpi({
   qiymat,
   izoh,
   yaxshi,
+  ogoh,
   yol,
 }: {
   ikonka: React.ReactNode;
@@ -570,6 +600,8 @@ function Kpi({
   qiymat: string;
   izoh: string;
   yaxshi?: boolean;
+  /** Эътибор талаб қилади — изоҳ сариқ бўлади */
+  ogoh?: boolean;
   /** Берилса — карточка босилади ва тўлиқ бўлимга олиб ўтади */
   yol?: string;
 }) {
@@ -582,7 +614,9 @@ function Kpi({
       <p className={`raqam mt-2 text-2xl font-bold ${yaxshi ? 'text-ok' : 'text-ink'}`}>
         {qiymat}
       </p>
-      <p className="mt-0.5 text-xs text-ink-faint">{izoh}</p>
+      <p className={`mt-0.5 text-xs ${ogoh ? 'font-medium text-warn' : 'text-ink-faint'}`}>
+        {izoh}
+      </p>
     </>
   );
 
