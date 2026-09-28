@@ -151,7 +151,18 @@ const SINOVLAR: Sinov[] = [
       for (const m of migratsiyalar()) {
         if (ESKI_ISTISNO.has(m.nomi)) continue;
         const kod = sqlKodi(m.sql);
-        for (const satr of kod.split(';')) {
+        /*
+         * `DO $$ ... EXCEPTION WHEN duplicate_object` блоки —
+         * Postgres'даги СТАНДАРТ йўл. `CREATE TYPE` ва
+         * `ADD CONSTRAINT` да `IF NOT EXISTS` умуман йўқ,
+         * шунинг учун такрорга чидамлиликни фақат шу блок
+         * билан бериш мумкин.
+         *
+         * Блок ичидаги гапларни алоҳида текшириш нотўғри
+         * бўларди: улар аллақачон қўриқланган.
+         */
+        const bloksiz = kod.replace(/DO\s*\$\$[\s\S]*?END\s*\$\$\s*;/gi, '');
+        for (const satr of bloksiz.split(';')) {
           const t = satr.trim();
           if (!t) continue;
           const qoshadi = /\bADD\s+(COLUMN|VALUE)\b|\bCREATE\s+(TABLE|INDEX|TYPE)\b/i.test(t);
