@@ -114,6 +114,21 @@ export interface MahallaUlushi {
   engYuqoriBall: number;
   /** Эълон айнан шу маҳаллада очилганми */
   ozMahallasi: boolean;
+  /**
+   * Шу маҳаллада хабарни ОЛАДИГАН ходим борми.
+   *
+   * Хабар Telegram орқали кетади ва `ish-orni-xabari.ts`
+   * `telegramChatId: { not: null }` шартини қўяди — боғламаган
+   * ходим навбатга умуман тушмайди.
+   *
+   * Илгари бу жимгина бўларди: тақсимотда маҳалла турар,
+   * «хабар беринг» деб ёзилар, аммо хабар ҳеч қаерга бормасди.
+   * Бандлик раҳбари эса эълон тарқатилди деб ўйларди.
+   *
+   * Занжирда энг ёмон теши — кўринмайдигани. Энди у кўринади
+   * ва кейинги қадам аниқ: ўша маҳаллага телефон қилиш.
+   */
+  xabarYetadi: boolean;
 }
 
 /**
@@ -141,6 +156,8 @@ export interface TaqsimotNatijasi {
    */
   pastMoslik: boolean;
   chegara: number;
+  /** Хабар етмайдиган маҳаллалар сони — умумий огоҳлантириш учун */
+  xabarsizMahalla: number;
 }
 
 export async function orinTaqsimoti(
@@ -195,8 +212,29 @@ export async function orinTaqsimoti(
     yigma = yig(20);
   }
   if (yigma.size === 0) {
-    return { ulushlar: [], jami: 0, pastMoslik, chegara };
+    return { ulushlar: [], jami: 0, pastMoslik, chegara, xabarsizMahalla: 0 };
   }
+
+  /*
+   * ХАБАР ҚАЙСИ МАҲАЛЛАГА ҲАҚИҚАТАН ЕТАДИ.
+   *
+   * Шарт `ish-orni-xabari.ts` даги билан АЙНАН бир хил бўлиши
+   * керак: фаол, YETTILIK роли ва Telegram боғланган. Акс
+   * ҳолда экранда бир нарса, амалда бошқа нарса бўлади —
+   * бу энг ёмон тури, чунки ҳеч ким сезмайди.
+   *
+   * `scripts/joylashuv-sinov.ts` иккала шартни солиштиради.
+   */
+  const yetadiganlar = await prisma.user.findMany({
+    where: {
+      rol: 'YETTILIK',
+      faol: true,
+      mahallaId: { in: [...yigma.keys()] },
+      telegramChatId: { not: null },
+    },
+    select: { mahallaId: true },
+  });
+  const yetadi = new Set(yetadiganlar.map((x) => x.mahallaId).filter((x): x is string => !!x));
 
   const ulushlar: MahallaUlushi[] = [...yigma.entries()]
     .map(([mahallaId, v]) => ({
@@ -205,6 +243,7 @@ export async function orinTaqsimoti(
       nomzodlar: v.soni,
       engYuqoriBall: v.eng,
       ozMahallasi: mahallaId === orin.mahallaId,
+      xabarYetadi: yetadi.has(mahallaId),
     }))
     .sort((a, b) => {
       // Эълон очилган маҳалла — ҳар доим биринчи
@@ -213,12 +252,23 @@ export async function orinTaqsimoti(
       return b.engYuqoriBall - a.engYuqoriBall;
     });
 
+  /* Паст мослик ҳолатида рўйхат қисқа бўлсин — 70 та маҳалла керак эмас */
+  const korinadigan = pastMoslik ? ulushlar.slice(0, 5) : ulushlar;
+
   return {
-    /* Паст мослик ҳолатида рўйхат қисқа бўлсин — 70 та маҳалла керак эмас */
-    ulushlar: pastMoslik ? ulushlar.slice(0, 5) : ulushlar,
+    ulushlar: korinadigan,
     jami: ulushlar.reduce((s, x) => s + x.nomzodlar, 0),
     pastMoslik,
     chegara,
+    /*
+     * Огоҳлантириш КЎРИНАДИГАН рўйхат бўйича саналади.
+     *
+     * Паст мослик ҳолатида рўйхат бештага қисқаради. Агар
+     * огоҳлантириш тўлиқ рўйхат бўйича ҳисобланса, экранда
+     * бешта маҳалла турар, тепада эса «еттитаси хабар олмайди»
+     * деб ёзиларди — ходим қолган иккитасини қидириб тополмасди.
+     */
+    xabarsizMahalla: korinadigan.filter((x) => !x.xabarYetadi).length,
   };
 }
 

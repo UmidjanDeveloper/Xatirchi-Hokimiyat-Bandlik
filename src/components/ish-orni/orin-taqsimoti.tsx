@@ -1,4 +1,4 @@
-import { MapPin } from 'lucide-react';
+import { AlertTriangle, MapPin } from 'lucide-react';
 import { matnchi } from '@/lib/alifbo-server';
 import { orinTaqsimoti, TAQSIMOT_CHEGARASI } from '@/lib/taqsimot';
 
@@ -65,8 +65,30 @@ export async function OrinTaqsimoti({ orinId }: { orinId: string }) {
       <p className="mt-1 text-xs text-ink-faint">
         {natija.pastMoslik
           ? tr(`Мослиги ${TAQSIMOT_CHEGARASI}% дан юқори фуқаро топилмади — қуйида ЭНГ ЯҚИН маҳаллалар кўрсатилган. Улар билан ишлаш мумкин, аммо талабни юмшатиш ёки қўшимча ўқитиш керак бўлиши эҳтимоли юқори.`)
-          : tr(`Жами ${natija.jami} та мос фуқаро, ${natija.ulushlar.length} та маҳаллада. Мослик ${TAQSIMOT_CHEGARASI}% дан юқори бўлганлар саналган. Шу маҳалла раисларига хабар беринг — эълон уларнинг саҳифасида ҳам кўринади.`)}
+          : tr(`Жами ${natija.jami} та мос фуқаро, ${natija.ulushlar.length} та маҳаллада. Мослик ${TAQSIMOT_CHEGARASI}% дан юқори бўлганлар саналган. Хабар шу маҳалла ходимларига Telegram орқали ўз-ўзидан кетади.`)}
       </p>
+
+      {/*
+        ХАБАР ЕТМАЙДИГАН МАҲАЛЛАЛАР — ОЧИҚ АЙТИЛАДИ.
+
+        Хабар фақат Telegram'ни боғлаган ходимга кетади. Боғламаган
+        маҳалла тақсимотда турарди-ю, хабарни олмасди — ва буни
+        ҳеч ким билмасди. Бандлик раҳбари эълон тарқалди деб
+        ўйларди, ходим эса эълон борлигини ҳам билмасди.
+
+        Энди сон тепада турибди ва кейинги қадам аниқ: ўша
+        маҳаллага телефон қилиш ёки ходимга ботни боғлатиш.
+      */}
+      {natija.xabarsizMahalla > 0 && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-md bg-warn-bg px-2.5 py-2 text-xs text-warn">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            {tr(
+              `${natija.xabarsizMahalla} та маҳалла ходими Telegram'ни боғламаган — уларга хабар БОРМАЙДИ. Қуйида белги билан кўрсатилган; уларга телефон қилинг.`
+            )}
+          </span>
+        </p>
+      )}
 
       <div className="mt-3 space-y-1.5">
         {natija.ulushlar.map((u) => (
@@ -76,6 +98,11 @@ export async function OrinTaqsimoti({ orinId }: { orinId: string }) {
               {u.ozMahallasi && (
                 <span className="ml-1.5 rounded bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent">
                   {tr('эълон шу ерда')}
+                </span>
+              )}
+              {!u.xabarYetadi && (
+                <span className="ml-1.5 rounded bg-warn-bg px-1.5 py-0.5 text-[11px] font-medium text-warn">
+                  {tr('хабар бормайди')}
                 </span>
               )}
             </span>

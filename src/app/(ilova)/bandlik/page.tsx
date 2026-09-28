@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TasdiqlashNavbati } from '@/components/telegram/tasdiqlash-navbati';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import {
@@ -96,6 +97,7 @@ export default async function BandlikSahifasi({
     xarita,
     vHisob,
     vNavbat,
+    tasdiqNavbati,
   ] = await Promise.all([
     // 1. Suhbat kutayotganlar - eng birinchi navbat
     prisma.unemployedPerson.findMany({
@@ -196,6 +198,30 @@ export default async function BandlikSahifasi({
     vaucherHisobi(mahallaId),
     vaucherNavbati(mahallaId),
 
+
+    /*
+     * ── МАҲАЛЛА ХОДИМЛАРИ ХАБАРИ ──
+     *
+     * Telegram'даги «иш топдим» тугмаси босилганда шу
+     * навбатга тушади. Марказ тасдиқлагунча фуқаро расман
+     * жойлаштирилмайди — шунинг учун навбат КЎРИНАДИГАН
+     * жойда туриши керак.
+     */
+    prisma.joylashuvXabari.findMany({
+      where: {
+        holati: 'XABAR_QILINDI',
+        ...(mahallaId ? { ishsiz: { mahallaId } } : {}),
+      },
+      orderBy: { muddat: 'asc' },
+      take: 20,
+      select: {
+        id: true,
+        muddat: true,
+        ishsiz: { select: { fish: true, mahalla: { select: { nomiKirill: true } } } },
+        vacancy: { select: { lavozim: true, korxonaNomi: true } },
+        xabarchi: { select: { fullName: true } },
+      },
+    }),
   ]);
 
   /*
@@ -465,6 +491,24 @@ export default async function BandlikSahifasi({
       <DublikatRoyxati chegara={10} />
 
       {/* ── Moslashtirish taxtasi ── */}
+      {/*
+        Навбат ЭНГ ТЕПАДА: тасдиқланмаган хабар — бу
+        ҳужжатсиз турган рақам. Пастга қўйилса, марказ уни
+        кунлар давомида кўрмай ўтиб кетарди.
+      */}
+      <TasdiqlashNavbati
+        yozuvlar={tasdiqNavbati.map((x) => ({
+          id: x.id,
+          fish: x.ishsiz.fish,
+          mahallaNomi: x.ishsiz.mahalla.nomiKirill,
+          lavozim: x.vacancy.lavozim,
+          korxonaNomi: x.vacancy.korxonaNomi,
+          xabarchi: x.xabarchi.fullName,
+          muddat: x.muddat.toLocaleDateString('ru-RU'),
+          kechikkan: x.muddat.getTime() < Date.now(),
+        }))}
+      />
+
       <section className="karta p-4 sm:p-5">
         <h2 className="text-sm font-bold text-ink">{tr('Мослаштириш тахтаси')}</h2>
         <p className="mt-1 text-xs text-ink-faint">

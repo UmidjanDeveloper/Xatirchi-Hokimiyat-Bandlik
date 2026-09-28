@@ -677,6 +677,13 @@ const SINOVLAR: Sinov[] = [
         'rasmUrl', 'imzoYoli', // файл йўллари
         'ishsizlar', 'topshiriqlar', 'kesmalar', 'itVaucherlar', 'vacancy',
         'mahalla', 'xodim', 'household', 'mutaxassis', // боғланишлар
+        /*
+         * «Иш топдим» хабарлари — ЖАРАЁН ёзуви, анкета майдони
+         * эмас. Ҳокимлик жадвалида фуқаронинг ҲОЛАТИ кўринади
+         * (жойлаштирилдими, йўқми); хабарнинг ўзи эса бандлик
+         * панелида, тасдиқлаш навбатида турибди.
+         */
+        'joylashuvXabarlari',
       ]);
 
       const ayblilar: string[] = [];

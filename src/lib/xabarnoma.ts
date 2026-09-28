@@ -159,10 +159,26 @@ const ENG_KOP_URINISH = 3;
  * ўрнига сохта функция берилади ва «юборилди», «хато»,
  * «уриниш сони» ҳолатлари текширилади.
  */
-export type Yuboruvchi = (chatId: string, matn: string) => Promise<void>;
+/**
+ * Telegram тугмаси.
+ *
+ * `belgi` — фуқаро босганда серверга қайтадиган қиймат.
+ * Telegram уни 64 БАЙТ билан чегаралайди, шунинг учун
+ * қисқа: `ish:<эълон>:<фуқаро>`.
+ */
+export interface Tugma {
+  yozuv: string;
+  belgi: string;
+}
+
+export type Yuboruvchi = (
+  chatId: string,
+  matn: string,
+  tugmalar?: Tugma[]
+) => Promise<void>;
 
 /** Haqiqiy Telegram jo'natuvchisi */
-export const telegramYuboruvchi: Yuboruvchi = async (chatId, matn) => {
+export const telegramYuboruvchi: Yuboruvchi = async (chatId, matn, tugmalar) => {
   if (!TOKEN) throw new Error('TELEGRAM_BOT_TOKEN sozlanmagan');
 
   const javob = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
@@ -174,6 +190,19 @@ export const telegramYuboruvchi: Yuboruvchi = async (chatId, matn) => {
       parse_mode: 'HTML',
       /* Ҳаволалар кўриниши хабарни узайтиради — ўчирилган */
       disable_web_page_preview: true,
+      /*
+       * Ҳар тугма АЛОҲИДА қаторда: исмлар узун ва ёнма-ён
+       * қўйилса телефонда қирқилиб кўринарди.
+       */
+      ...(tugmalar?.length
+        ? {
+            reply_markup: {
+              inline_keyboard: tugmalar.map((t) => [
+                { text: t.yozuv, callback_data: t.belgi },
+              ]),
+            },
+          }
+        : {}),
     }),
   });
 
@@ -198,6 +227,81 @@ export interface NavbatNatijasi {
  * ёзилади. Уч мартадан кейин тўхтайди — бот блокланган бўлса,
  * чексиз уриниш фойдасиз ва навбатни тиқилиб қолдиради.
  */
+/** Тугманинг белгиси — `callback_data` шакли */
+export const ISH_BELGISI = 'ish';
+
+/** Битта хабарда кўрсатиладиган энг кўп номзод */
+export const ENG_KOP_TUGMA = 5;
+
+/**
+ * Хабарга қандай тугма керак.
+ *
+ * Ҳозирча биттагина ҳолат: янги иш ўрни эълони. Маҳалла
+ * ходимига ЎЗ маҳалласидаги мос номзодлар исми билан
+ * чиқарилади ва ҳар бирига «иш топдим» тугмаси қўйилади.
+ *
+ * ── Нега исм юборилади ──
+ *
+ * Илгари хабарда фақат СОН турарди: «маҳаллангизда 3 та мос
+ * фуқаро бор, иловадан кўринг». Ходим иловани очиши, эълонни
+ * топиши, рўйхатни солиштириши керак эди — ва кўпинча
+ * очмасди.
+ *
+ * Исм эса ўша заҳоти ишга тушади: ходим одамни танийди,
+ * қўнғироқ қилади. ТЕЛЕФОН РАҚАМИ ЮБОРИЛМАЙДИ — у иловада
+ * қолади: исм кимлигини айтиш учун етарли, рақам эса
+ * Telegram серверида қолиб кетарди.
+ */
+async function xabarTugmalari(x: {
+  turi: XabarTuri;
+  bogliqTuri: string | null;
+  bogliqId: string | null;
+  userId: string;
+}): Promise<Tugma[]> {
+  if (x.turi !== 'YANGI_ISH_ORNI' || x.bogliqTuri !== 'Vacancy' || !x.bogliqId) return [];
+
+  const [xodim, orin] = await Promise.all([
+    prisma.user.findUnique({ where: { id: x.userId }, select: { mahallaId: true } }),
+    prisma.vacancy.findUnique({
+      where: { id: x.bogliqId },
+      select: { id: true, faol: true },
+    }),
+  ]);
+  /* Маҳаллага бириктирилмаган ходимга тугма чиқмайди:
+     у қайси фуқаро ҳақида гап кетаётганини билмайди */
+  if (!xodim?.mahallaId || !orin?.faol) return [];
+
+  const nomzodlar = await prisma.unemployedPerson.findMany({
+    where: {
+      mahallaId: xodim.mahallaId,
+      /* Аллақачон жойлаштирилганга тугма керак эмас */
+      vacancyId: null,
+      holati: { in: ['ANIQLANDI', 'SUHBAT_OTKAZILDI', 'TAKLIF_BERILDI'] },
+      /* Шу эълонга хабар қилинганлар ҳам тушиб қолади */
+      joylashuvXabarlari: { none: { vacancyId: orin.id } },
+    },
+    orderBy: { fish: 'asc' },
+    take: ENG_KOP_TUGMA,
+    select: { id: true, fish: true },
+  });
+
+  return nomzodlar.map((n) => ({
+    yozuv: `✅ ${qisqaIsm(n.fish)} — иш топдим`,
+    belgi: `${ISH_BELGISI}:${orin.id}:${n.id}`,
+  }));
+}
+
+/**
+ * Telegram тугмасининг ёзуви 64 белгига яқинлашса телефонда
+ * қирқилади. Исмни «Фамилия И.О.» шаклига келтирамиз.
+ */
+function qisqaIsm(fish: string): string {
+  const qism = fish.trim().split(/\s+/);
+  if (qism.length < 2) return fish.slice(0, 28);
+  const bosh = qism.slice(1).map((q) => q[0]?.toUpperCase() + '.').join('');
+  return `${qism[0]} ${bosh}`.slice(0, 28);
+}
+
 export async function navbatniYubor(
   yuboruvchi: Yuboruvchi = telegramYuboruvchi,
   chegara = 50
@@ -236,7 +340,18 @@ export async function navbatniYubor(
     }
 
     try {
-      await yuboruvchi(chatId, x.matn);
+      /*
+       * Тугмалар ЮБОРИШ пайтида ҳисобланади, навбатга
+       * қўйилганда эмас.
+       *
+       * Сабаби: навбат билан юбориш ораси соатлаб бўлиши
+       * мумкин. Ўша орада фуқаро аллақачон жойлашиб кетган
+       * бўлса, унга тугма чиқмаслиги керак — акс ҳолда ходим
+       * босар ва «аллақачон жойлаштирилган» деган жавоб
+       * оларди.
+       */
+      const tugmalar = await xabarTugmalari(x);
+      await yuboruvchi(chatId, x.matn, tugmalar);
       await prisma.xabarnoma.update({
         where: { id: x.id },
         data: {
@@ -360,7 +475,15 @@ export function ishOrniMatni(x: {
       ? `Сизнинг маҳаллангизда <b>${x.nomzodlar} та</b> мос фуқаро бор.`
       : 'Маҳаллангизда мос фуқаро топилмади — аммо сиз одамларни рўйхатдан яхшироқ биласиз.',
     '',
-    'Исм ва телефонни иловадан кўринг: /xatlov',
+    /*
+     * Тугмалар хабарнинг тагида чиқади. Уларни нима
+     * қилишини АЙТИБ қўйиш керак: ходим «бу нима, босаман
+     * деб нотўғри иш қилиб қўймайманми» деб ўйламасин.
+     */
+    ...(x.nomzodlar > 0
+      ? ['Кимдир ишга жойлашса — исми ёнидаги тугмани босинг. Бандлик маркази тасдиқлайди.']
+      : []),
+    'Телефон рақамлари иловада: /xatlov',
   ].join('\n');
 }
 
