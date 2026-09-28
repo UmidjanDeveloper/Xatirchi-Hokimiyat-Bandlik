@@ -55,39 +55,55 @@ git push
 
 Migratsiya yo'q bo'lsa 3–4 qadamlar tashlab ketiladi.
 
-## KUTIB TURGAN ISH: Telegram zanjiri
+## Migratsiya endi AVTOMATIK
 
-**Holati:** kod tayyor, migratsiya hali production bazaga
-yoyilmagan. Shuning uchun kod shoxdan vaqtincha qaytarilgan.
+Ilgari bu yerda «migratsiyani qo'lda yurgizing» deb yozilgandi.
+Endi kerak emas.
 
-**Nima qiladi:** bandlik rahbari bo'sh ish o'rni qo'yganda
-mahalla hokim yordamchilariga botdan xabar boradi — «sizning
-falonchi fuqaroyingizga shu o'rin mos keladi». Yordamchi masalani
-hal qilsa «ish topdim» tugmasini bosadi va xabar hokim bilan
-bandlik rahbariga «ish bilan ta'minlandi» bo'lib yetib boradi.
+`npm run build` ichida qo'riqchi skript turibdi:
 
-**Nega kutib turibdi:** u `JoylashuvXabari` jadvalini qo'shadi.
-Migratsiya endi qurish ichida ishlamaydi (ataylab), shuning uchun
-jadvalsiz kod chiqsa `/bandlik` sahifasi 500 beradi.
-
-**Qaytarib qo'yish tartibi:**
-
-```bash
-# 1. Migratsiya — PRODUCTION bazaga, koddan OLDIN
-DATABASE_URL="<production>" DIRECT_URL="<production>" npm run db:deploy
-
-# 2. Jadval haqiqatan paydo bo'lganini tekshirish
-DATABASE_URL="<production>" npx prisma db execute \
-  --stdin <<< 'SELECT 1 FROM "JoylashuvXabari" LIMIT 1;'
-
-# 3. Endi kodni tiklash
-git revert 6662a65   # «Telegram zanjiri vaqtincha qaytarildi»
-npm run sinov && npm run build
-git push origin claude/kelajak-com-memory-osvycd
+```
+prisma generate → scripts/migratsiya-yoy.mjs → next build
 ```
 
-Kod yo'qolmagan — u tarixda turibdi va bitta `git revert` bilan
-qaytadi.
+Qo'riqchi `VERCEL_ENV` ni tekshiradi:
+
+| Qayerda | VERCEL_ENV | Nima qiladi |
+|---|---|---|
+| Mahalliy qurish | yo'q | o'tkazib yuboradi |
+| CI (GitHub Actions) | yo'q | o'tkazib yuboradi |
+| Vercel preview | `preview` | o'tkazib yuboradi |
+| **Vercel production** | `production` | migratsiyani yoyadi |
+
+Ya'ni faqat haqiqiy productionga chiqishda tegadi. Preview
+deploy yoki mahalliy qurish production bazasiga tega olmaydi.
+
+### Nega bu xavfsiz
+
+Tartib: migratsiya → qurish (2–5 daqiqa) → deploy. Oraliqda
+baza YANGI, kod hali ESKI.
+
+Bu oraliq faqat migratsiya o'chirsa yoki nom almashtirsa
+xavfli bo'lardi. Loyihada esa qat'iy qoida bor: yangi
+migratsiyalar FAQAT QO'SHADI. `scripts/migratsiya-sinov.ts`
+DROP, RENAME, ALTER TYPE va SET NOT NULL ni topsa yiqiladi —
+ya'ni bunday kod CI dan o'tmaydi.
+
+Faqat qo'shadigan migratsiya uchun «baza yangi, kod eski»
+oralig'i bexavf: eski kod yangi jadval haqida bilmaydi.
+
+### Migratsiya yiqilsa
+
+Skript yiqiladi → `next build` boshlanmaydi → deploy bo'lmaydi
+→ saytda eski kod ishlayveradi, bazaga tegilmagan.
+
+Ataylab shunday: yarim qo'llangan baza ustida ishlagan saytdan
+ko'ra, eski-yu butun sayt yaxshi.
+
+### Qo'lda yurgizish ham qoldi
+
+`npm run db:deploy` joyida turibdi — favqulodda holat yoki
+mahalliy baza uchun.
 
 ## Orqaga qaytarish
 

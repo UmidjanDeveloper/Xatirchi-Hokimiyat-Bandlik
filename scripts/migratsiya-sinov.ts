@@ -96,17 +96,75 @@ const XAVFLI: { naqsh: RegExp; nomi: string }[] = [
 const SINOVLAR: Sinov[] = [
   {
     /*
-     * Build миграцияни бажармаслиги ШАРТ. Бу битта сатр,
-     * аммо у 70 та ходимнинг иш кунини ҳимоя қилади.
+     * ── ҚОИДА ЎЗГАРДИ ──
+     *
+     * Илгари бу ерда «миграция build ичида ИШЛАМАСЛИГИ шарт»
+     * деб турарди. Сабаб тўғри эди: `prisma migrate deploy`
+     * тўғридан-тўғри build ичида турарди ва ҲАР ҚАНДАЙ
+     * қурилишда — preview деплойларда ҳам — production
+     * базасига тегарди.
+     *
+     * Аммо қўлда юргизиш ҳам ишламади: у ҳар сафар одам ва
+     * ноутбук талаб қилади, ва ўтказиб юборилса база эски
+     * қолиб янги код 500 берарди.
+     *
+     * Ечим — ўртада қўриқчи: `scripts/migratsiya-yoy.mjs`.
+     * У `VERCEL_ENV === 'production'` бўлмаса ҲЕЧ НАРСА
+     * қилмайди. Маҳаллий қурилиш, CI ва preview деплойлар
+     * production базасига тега олмайди.
+     *
+     * Шунинг учун қоида энди бошқача: миграция build ичида
+     * БЎЛИШИ мумкин, аммо ФАҚАТ қўриқчи орқали.
      */
-    nomi: 'Миграция `build` ичида ИШЛАМАЙДИ',
+    nomi: 'Build миграцияни ТЎҒРИДАН-ТЎҒРИ юргизмайди',
     tekshir: () => {
       const build = PAKET.scripts.build ?? '';
-      if (/migrate\s+deploy/.test(build)) {
+      /*
+       * `prisma migrate deploy` build сатрида бўлмаслиги керак.
+       * Қўриқчи скрипт эса бўлиши мумкин — у ичида шартни
+       * текширади.
+       */
+      if (/prisma\s+migrate\s+deploy/.test(build)) {
         console.log(`     build: ${build}`);
         return false;
       }
       return true;
+    },
+  },
+  {
+    nomi: 'Build қўриқчи скриптни чақиради',
+    tekshir: () => {
+      const build = PAKET.scripts.build ?? '';
+      const bor = build.includes('scripts/migratsiya-yoy.mjs');
+      if (!bor) console.log(`     build: ${build}`);
+      return bor;
+    },
+  },
+  {
+    /*
+     * Қўриқчининг ЎЗИ текширилади. Шарт йўқолса, ҳар preview
+     * деплой production базасига миграция юборарди — ва буни
+     * ҳеч ким сезмасди.
+     */
+    nomi: "Қўриқчи фақат VERCEL_ENV=production да ишлайди",
+    tekshir: () => {
+      const kod = readFileSync('scripts/migratsiya-yoy.mjs', 'utf8');
+      return (
+        kod.includes("process.env.VERCEL_ENV") &&
+        kod.includes("MUHIT !== 'production'") &&
+        /process\.exit\(0\)/.test(kod)
+      );
+    },
+  },
+  {
+    /*
+     * Миграция йиқилса, деплой ДАВОМ ЭТМАСЛИГИ керак. Акс
+     * ҳолда ярим қўлланган база устига янги код чиқарди.
+     */
+    nomi: 'Миграция йиқилса деплой тўхтайди',
+    tekshir: () => {
+      const kod = readFileSync('scripts/migratsiya-yoy.mjs', 'utf8');
+      return kod.includes('natija.status !== 0') && /process\.exit\(natija\.status/.test(kod);
     },
   },
   {
