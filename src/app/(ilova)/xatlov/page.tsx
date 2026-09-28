@@ -3,7 +3,7 @@ import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { OchirishTugmasi } from '@/components/arxiv/ochirish-tugmasi';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
-import { FileText, HousePlus, TriangleAlert, Users } from 'lucide-react';
+import { FileText, HousePlus, Send, TriangleAlert, Users } from 'lucide-react';
 import { joriySessiya, mahallaFiltri } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
@@ -85,6 +85,7 @@ export default async function XatlovlarSahifasi({
     vHisob,
     vNavbat,
     men,
+    anketaSoni,
   ] = await Promise.all([
     prisma.household.findMany({
       where: {
@@ -225,6 +226,19 @@ export default async function XatlovlarSahifasi({
       where: { id: sessiya.userId },
       select: { telegramChatId: true, telegramSana: true },
     }),
+
+    /*
+     * ШАХСИЙ АНКЕТАСИ ТЎЛДИРИЛГАНЛАР СОНИ.
+     *
+     * Хатлов «бу хонадонда 3 та ишсиз бор» дейди, аммо ҳар
+     * бирига алоҳида анкета керак — ва айнан ШУ ходим тўлдиради.
+     *
+     * Илгари саҳифада фақат топилган сон турарди. Ходим 134 та
+     * ишсиз топганини кўрар, 97 таси билан ҳали суҳбат
+     * ўтказилмаганини эса кўрмасди — яъни ўз ишининг қолган
+     * қисмини кўрмасди.
+     */
+    prisma.unemployedPerson.count({ where: filtr.mahallaId ? { mahallaId: filtr.mahallaId } : {} }),
   ]);
 
   /*
@@ -234,6 +248,8 @@ export default async function XatlovlarSahifasi({
    */
   const yuborilganSoni = sanoq._count;
   const topilganIshsiz = sanoq._sum.ishsizlarSoni ?? 0;
+  /** Топилган-у анкетаси ҳали тўлдирилмаганлар — ходимнинг қолган иши */
+  const kutayotgan = Math.max(0, topilganIshsiz - anketaSoni);
 
   /* Рўйхат тўлиб кетганми — экранда айтилади */
   const royxatToldi = xatlovlar.length >= RO_YXAT_HAJMI;
@@ -249,6 +265,37 @@ export default async function XatlovlarSahifasi({
         чизиқ умуман кўринмайди.
       */}
       <XatlovNavbati />
+
+      {/*
+        ── TELEGRAM УЛАНМАГАН БЎЛСА — ТЕПАДА АЙТИЛАДИ ──
+
+        Улаш блоки саҳифанинг ЭНГ ПАСТИДА турибди: харита,
+        диаграммалар ва рўйхатдан кейин. Ходим эса дала ишида —
+        у ерга умуман айлантирмайди.
+
+        Натижа рақамда кўринди: 70 та ходимдан 0 таси уламаган.
+        Занжир коди тайёр, аммо биринчи ҳалқаси ҳеч қачон
+        бошланмайди.
+
+        Шунинг учун улаган ходим ҳеч нарса кўрмайди, УЛАМАГАНИ
+        эса тепада бир қатор кўради — нима йўқотаётгани билан.
+        Улаш блокининг ўзи жойида қолади.
+      */}
+      {!men?.telegramChatId && (
+        <Link
+          href="#telegram"
+          className="quti-ogoh flex items-start gap-2 no-underline"
+        >
+          <Send className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="text-sm">
+            <span className="font-medium">{tr('Telegram уланмаган')}</span>
+            {' — '}
+            {tr(
+              'маҳаллангизга мос бўш иш ўрни чиқса, хабар келмайди. Улаш бир дақиқа: пастдаги «Telegram» бўлимидан кодни олинг.'
+            )}
+          </span>
+        </Link>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -306,11 +353,27 @@ export default async function XatlovlarSahifasi({
             qiymat={`${yuborilganSoni} / ${mahalla.xonadon}`}
             izoh={tr(`${percent(yuborilganSoni, mahalla.xonadon)}% қамров`)}
           />
+          {/*
+            НОМИ ТЎҒРИЛАНДИ.
+
+            Карта «Аниқланган ишсиз» деб аталарди, аммо сон
+            хатлов ТОПГАН ишсизники эди. Ҳоким худди шу чалкашлик
+            туфайли ҳисоботдаги рақамни хато деб ҳисоблаган.
+            Панелда ва ҳисоботда номи аллақачон тўғриланган —
+            ходим саҳифаси ортда қолган эди.
+
+            Изоҳда энди ходимнинг ЎЗ иши турибди: нечта анкета
+            тўлдирилган ва нечтаси кутмоқда.
+          */}
           <Karta
             ikonka={<Users className="h-4 w-4" />}
-            nomi={tr("Аниқланган ишсиз")}
+            nomi={tr('Хатловда топилган ишсиз')}
             qiymat={`${topilganIshsiz} / ${mahalla.ishsiz}`}
-            izoh={tr(`Рўйхатда ${mahalla.ishsiz} та`)}
+            izoh={
+              kutayotgan > 0
+                ? tr(`${anketaSoni} тасининг анкетаси бор, ${kutayotgan} таси кутмоқда`)
+                : tr(`Рўйхатда ${mahalla.ishsiz} та`)
+            }
           />
           <Karta
             ikonka={<TriangleAlert className="h-4 w-4" />}
@@ -391,6 +454,7 @@ export default async function XatlovlarSahifasi({
         Ходим кун бўйи саҳифани очиб ўтирмайди — у дала ишида.
         Уласа, мос эълон чиққанда хабар ЎЗИ боради.
       */}
+      <div id="telegram" className="scroll-mt-4" />
       <UlanishBlogi
         ulangan={Boolean(men?.telegramChatId)}
         ulanganSana={men?.telegramSana ? formatDate(men.telegramSana).split(',')[0] : null}
