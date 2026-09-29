@@ -32,6 +32,7 @@ const WEBHOOK = kodiOl(readFileSync('src/app/api/telegram/webhook/route.ts', 'ut
 const ROUT = kodiOl(readFileSync('src/app/api/joylashuv-xabari/[id]/route.ts', 'utf8'));
 const ORIN_XABARI = kodiOl(readFileSync('src/lib/ish-orni-xabari.ts', 'utf8'));
 const TAQSIMOT = kodiOl(readFileSync('src/lib/taqsimot.ts', 'utf8'));
+const ULANISH = kodiOl(readFileSync('src/lib/xabarnoma.ts', 'utf8'));
 const ORIN_ROUT = kodiOl(
   readFileSync('src/app/api/ish-orinlari/[id]/joylashtirish/route.ts', 'utf8')
 );
@@ -248,6 +249,35 @@ const SINOVLAR: Sinov[] = [
       if (!bir) console.log(`     yuboruvchi=${JSON.stringify(a)} ekran=${JSON.stringify(b)}`);
       return bir && a.faol && a.telegram;
     },
+  },
+  {
+    /*
+     * Хабар эълон қўйилган ПАЙТДА ясалади. Кейин уланган ходим
+     * ўзидан олдинги эълонлардан бехабар қоларди — эълон эса
+     * ҳали очиқ.
+     */
+    nomi: 'Уланганда очиқ эълонлар юборилади',
+    tekshir: () =>
+      ORIN_XABARI.includes('export async function ulangandaOchiqOrinlar') &&
+      WEBHOOK.includes('ulangandaOchiqOrinlar(ulanish.userId)') &&
+      ULANISH.includes('userId: xodim.id'),
+  },
+  {
+    /*
+     * Ходим Telegram ни узиб, яна улаши мумкин. Ҳар улаганида
+     * ўша эълонлар қайтадан келса — шовқин.
+     */
+    nomi: 'Аллақачон юборилган эълон ҚАЙТА юборилмайди',
+    tekshir: () =>
+      ORIN_XABARI.includes('prisma.xabarnoma.findMany') &&
+      ORIN_XABARI.includes('borlar.has(o.id)'),
+  },
+  {
+    /* Ўн бешта эълон кетма-кет тушса, ходим уларни ўқимайди */
+    nomi: 'Уланганда юбориладиган эълон сони чекланган',
+    tekshir: () =>
+      ORIN_XABARI.includes('export const ULANGANDA_ENG_KOP') &&
+      ORIN_XABARI.includes('take: ULANGANDA_ENG_KOP'),
   },
   {
     nomi: 'Экранда огоҳлантириш ва белги бор',

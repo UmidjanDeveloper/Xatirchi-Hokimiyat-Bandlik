@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ISH_BELGISI } from '@/lib/xabarnoma';
 import { ishTopildiXabari } from '@/lib/joylashuv-xabari';
+import { ulangandaOchiqOrinlar } from '@/lib/ish-orni-xabari';
 import { z } from 'zod';
 import {
   kodniUlash,
+  navbatniDarhol,
   telegramSozlanganmi,
   telegramYuboruvchi,
   ulanishMatni,
@@ -119,6 +121,30 @@ export async function POST(request: Request) {
     await telegramYuboruvchi(String(chatId), javob);
   } catch (e) {
     console.error('Telegram javobini yuborib bolmadi:', e);
+  }
+
+  /*
+   * ── УЛАНГАНДАН КЕЙИН: ОЧИҚ ЭЪЛОНЛАР ──
+   *
+   * Хабар эълон қўйилган пайтда ясалади. Ходим кейинроқ
+   * уланса, ундан олдинги эълонлардан бехабар қолади —
+   * эълон эса ҳали очиқ ва одам кутяпти.
+   *
+   * Шунинг учун уланиш ҳам хабар сабаби бўлади: маҳалласидаги
+   * очиқ эълонлар (энг янги бештаси) навбатга қўйилади ва
+   * дарҳол юборилади.
+   *
+   * Хато ютилади: уланишнинг ЎЗИ муваффақиятли бўлди ва
+   * ходим буни аллақачон кўрди. Эълонлар келмаса — камчилик,
+   * аммо уланишни бекор қилиш сабаби эмас.
+   */
+  if (ulanish.ok) {
+    try {
+      const soni = await ulangandaOchiqOrinlar(ulanish.userId);
+      if (soni > 0) await navbatniDarhol();
+    } catch (e) {
+      console.error('Ulangandan keyin ochiq elonlarni yuborib bolmadi:', e);
+    }
   }
 
   return NextResponse.json({ ok: true });

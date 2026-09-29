@@ -74,7 +74,7 @@ export async function ulanishKodi(userId: string): Promise<string> {
 export async function kodniUlash(
   kod: string,
   chatId: string
-): Promise<{ ok: true; fullName: string } | { ok: false; sabab: string }> {
+): Promise<{ ok: true; userId: string; fullName: string } | { ok: false; sabab: string }> {
   const xodim = await prisma.user.findUnique({
     where: { telegramKodi: kod.trim().toUpperCase() },
     select: { id: true, fullName: true, telegramKodiVaqti: true, faol: true },
@@ -99,7 +99,12 @@ export async function kodniUlash(
     },
   });
 
-  return { ok: true, fullName: xodim.fullName };
+  /*
+   * `userId` ҳам қайтарилади: уланишдан КЕЙИН ходимга
+   * маҳалласидаги очиқ эълонлар юборилади ва вебхукка унинг
+   * id си керак бўлади.
+   */
+  return { ok: true, userId: xodim.id, fullName: xodim.fullName };
 }
 
 /** Bog'lanishni uzadi */
