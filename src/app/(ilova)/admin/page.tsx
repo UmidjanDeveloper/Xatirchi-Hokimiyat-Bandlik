@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { matnchi } from '@/lib/alifbo-server';
-import { joriySessiya } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { FAOL_ELON } from '@/lib/elon-muddati';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
@@ -40,18 +40,16 @@ const AMAL_NOMI: Record<string, string> = {
   OZGARTIRISH: 'Ўзгартирди',
   OCHIRISH: 'Ўчирди',
   EKSPORT: 'Экспорт қилди',
-  PAROL_ALMASHTIRILDI: 'Паролини алмаштирди',
-};
+  PAROL_ALMASHTIRILDI: 'Паролини алмаштирди' };
 
 export default async function AdminSahifasi({
-  searchParams,
-}: {
+  searchParams }: {
   searchParams: { davr?: string; mfy?: string };
 }) {
   const tr = matnchi();
   const davr = davrOqi(searchParams.davr);
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (sessiya.rol !== 'ADMIN') redirect('/');
 
@@ -80,14 +78,11 @@ export default async function AdminSahifasi({
         faol: true,
         parolAlmashtirilsin: true,
         oxirgiKirish: true,
-        mahalla: { select: { nomiKirill: true } },
-      },
-    }),
+        mahalla: { select: { nomiKirill: true } } } }),
     prisma.auditLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 60,
-      include: { user: { select: { fullName: true, username: true } } },
-    }),
+      include: { user: { select: { fullName: true, username: true } } } }),
     Promise.all([
       prisma.household.count({ where: mahallaShart }),
       prisma.unemployedPerson.count({ where: mahallaShart }),

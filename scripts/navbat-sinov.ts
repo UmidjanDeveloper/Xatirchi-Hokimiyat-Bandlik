@@ -25,11 +25,20 @@ const KOD_QOBIQ = kodiOl(readFileSync('src/components/shell/app-shell.tsx', 'utf
 import {
   MAX_URINISH,
   avtomatikYuboriladimi,
+  begona,
+  egasiz,
+  egasizlarniOlish,
+  etiborTalabQiladi,
+  kalitYasa,
+  meniki,
   navbatdanOchir,
   navbatgaQosh,
   navbatniOqi,
   navbatniYubor,
+  qoralamaOqi,
+  qoralamaSaqla,
   urinishBelgila,
+  chiqishdaTozala,
   type YuborishNatijasi,
 } from '../src/lib/offline';
 
@@ -212,10 +221,10 @@ const SINOVLAR: Sinov[] = [
       const k = KOD_OFFLINE;
       const q = KOD_QOBIQ;
       return (
-        k.includes('export function chiqishdaTozala()') &&
+        k.includes('export function chiqishdaTozala(egasi?: string)') &&
         k.includes('window.localStorage.removeItem(QORALAMA_KEY)') &&
         /* Қобиқ уни ҲАҚИҚАТАН чақирсин — ёзиб қўйиб унутилмасин */
-        q.includes('const qoldiq = chiqishdaTozala();')
+        q.includes('const qoldiq = chiqishdaTozala(username);')
       );
     },
   },
@@ -230,13 +239,189 @@ const SINOVLAR: Sinov[] = [
       const k = KOD_OFFLINE;
       const q = KOD_QOBIQ;
       return (
-        k.includes('if (navbat === 0) window.localStorage.removeItem(NAVBAT_KEY);') &&
+        k.includes('if (hammasi.length === 0) window.localStorage.removeItem(NAVBAT_KEY);') &&
         q.includes('if (qoldiq.navbat > 0)') &&
         q.includes('window.confirm')
       );
     },
   },
 
+  // ═══════════════════════════════════════════════════════════
+  //  C — НАВБАТНИНГ ЭГАСИ
+  //
+  //  Телефон битта, ходим иккита бўлиши мумкин. Бировнинг иши
+  //  бошқанинг номидан жўнаб кетмаслиги керак.
+  // ═══════════════════════════════════════════════════════════
+  {
+    nomi: 'Навбат ёзуви эгаси билан сақланади',
+    tekshir: () => {
+      tozala();
+      navbatgaQosh({ a: 1 }, 'mfy_baxshijar', 'k-1');
+      const y = navbatniOqi()[0];
+      return y.egasi === 'mfy_baxshijar' && y.kalit === 'k-1';
+    },
+  },
+  {
+    nomi: 'ФАҚАТ ўзиники юборилади — ҳамкасбники тегилмайди',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ kim: 'a' }, 'xodim_a');
+      navbatgaQosh({ kim: 'b' }, 'xodim_b');
+
+      const yuborilganlar: unknown[] = [];
+      const n = await navbatniYubor(async (m) => {
+        yuborilganlar.push(m);
+        return 'saqlandi';
+      }, 'xodim_a');
+
+      const qolgan = navbatniOqi();
+      return (
+        n.yuborildi === 1 &&
+        yuborilganlar.length === 1 &&
+        (yuborilganlar[0] as { kim: string }).kim === 'a' &&
+        qolgan.length === 1 &&
+        qolgan[0].egasi === 'xodim_b'
+      );
+    },
+  },
+  {
+    nomi: 'Эгасиз эски ёзув ҳеч кимнинг номидан жўнамайди',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 1 }); /* эски шакл — эгаси йўқ */
+      const n = await navbatniYubor(async () => 'saqlandi', 'xodim_a');
+      return n.yuborildi === 0 && navbatniOqi().length === 1 && egasiz(navbatniOqi()).length === 1;
+    },
+  },
+  {
+    nomi: 'Ходим тасдиқласа, эгасиз ёзув уники бўлади',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 1 });
+      const olindi = egasizlarniOlish('xodim_a');
+      const n = await navbatniYubor(async () => 'saqlandi', 'xodim_a');
+      return olindi === 1 && n.yuborildi === 1 && navbatniOqi().length === 0;
+    },
+  },
+  {
+    nomi: 'meniki / begona / egasiz — учаласи ажратилади',
+    tekshir: () => {
+      tozala();
+      navbatgaQosh({ a: 1 }, 'xodim_a');
+      navbatgaQosh({ b: 1 }, 'xodim_b');
+      navbatgaQosh({ c: 1 });
+      const n = navbatniOqi();
+      return meniki(n, 'xodim_a').length === 1 && begona(n, 'xodim_a').length === 1 && egasiz(n).length === 1;
+    },
+  },
+  {
+    nomi: 'Чиқишда ФАҚАТ ўзининг қораламаси ўчади',
+    tekshir: () => {
+      tozala();
+      qoralamaSaqla('bir', { x: 1 }, 'xodim_a');
+      qoralamaSaqla('ikki', { x: 2 }, 'xodim_b');
+      const q = chiqishdaTozala('xodim_a');
+      return (
+        q.qoralama === 1 &&
+        qoralamaOqi('bir', 'xodim_a') === null &&
+        (qoralamaOqi('ikki', 'xodim_b') as { x: number }).x === 2
+      );
+    },
+  },
+  {
+    nomi: 'Ҳамкасбнинг қораламаси очилмайди',
+    tekshir: () => {
+      tozala();
+      qoralamaSaqla('bir', { x: 1 }, 'xodim_a');
+      return qoralamaOqi('bir', 'xodim_b') === null && (qoralamaOqi('bir', 'xodim_a') as { x: number }).x === 1;
+    },
+  },
+  {
+    nomi: 'Чиқишда навбат сони ФАҚАТ ўзиники бўйича саналади',
+    tekshir: () => {
+      tozala();
+      navbatgaQosh({ a: 1 }, 'xodim_a');
+      navbatgaQosh({ b: 1 }, 'xodim_b');
+      navbatgaQosh({ b2: 1 }, 'xodim_b');
+      return chiqishdaTozala('xodim_a').navbat === 1 && navbatniOqi().length === 3;
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  //  D — ИДЕМПОТЕНТЛИК: ТАКРОР ва ЗИДДИЯТ АЖРАТИЛАДИ
+  // ═══════════════════════════════════════════════════════════
+  {
+    nomi: 'ЗИДДИЯТ (409) ёзувни ЎЧИРМАЙДИ — иш йўқолмайди',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 1 }, 'xodim_a', 'k-1');
+      const n = await navbatniYubor(
+        async () => ({ holat: 'ziddiyat' as const, mavjudId: 'xon-7' }),
+        'xodim_a'
+      );
+      const qolgan = navbatniOqi();
+      return (
+        n.ziddiyat === 1 &&
+        n.yuborildi === 0 &&
+        n.takror === 0 &&
+        qolgan.length === 1 &&
+        qolgan[0].ziddiyat === 'xon-7'
+      );
+    },
+  },
+  {
+    nomi: 'Зиддиятли ёзув автоматик қайта юборилмайди',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 1 }, 'xodim_a', 'k-1');
+      await navbatniYubor(async () => ({ holat: 'ziddiyat' as const, mavjudId: 'x' }), 'xodim_a');
+      let urinish = 0;
+      const n = await navbatniYubor(async () => { urinish++; return 'saqlandi'; }, 'xodim_a');
+      return urinish === 0 && n.etibor === 1 && etiborTalabQiladi(navbatniOqi()[0]);
+    },
+  },
+  {
+    nomi: 'Зиддиятли ёзув қолганларини тўсиб қўймайди',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 'yomon' }, 'xodim_a');
+      navbatgaQosh({ a: 'yaxshi' }, 'xodim_a');
+      const n = await navbatniYubor(async (m) => {
+        const x = m as { a: string };
+        return x.a === 'yomon' ? { holat: 'ziddiyat' as const, mavjudId: 'x' } : 'saqlandi';
+      }, 'xodim_a');
+      return n.yuborildi === 1 && n.ziddiyat === 1 && navbatniOqi().length === 1;
+    },
+  },
+  {
+    nomi: 'ТАКРОР (ўз калитимиз) — ёзув навбатдан чиқади',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 1 }, 'xodim_a', 'k-1');
+      const n = await navbatniYubor(async () => ({ holat: 'takror' as const }), 'xodim_a');
+      return n.takror === 1 && navbatniOqi().length === 0;
+    },
+  },
+  {
+    nomi: 'Идемпотентлик калити ҳар сафар янги бўлади',
+    tekshir: () => {
+      const a = kalitYasa();
+      const b = kalitYasa();
+      return a.length >= 8 && a.length <= 64 && a !== b;
+    },
+  },
+  {
+    nomi: 'Сервер калитни ҚАЙТА ЮБОРИШДА ҳам бир хил олади',
+    tekshir: async () => {
+      tozala();
+      const k = kalitYasa();
+      navbatgaQosh({ a: 1 }, 'xodim_a', k);
+      const korilgan: (string | undefined)[] = [];
+      await navbatniYubor(async (_m, y) => { korilgan.push(y.kalit); return 'aloqa-yoq'; }, 'xodim_a');
+      await navbatniYubor(async (_m, y) => { korilgan.push(y.kalit); return 'saqlandi'; }, 'xodim_a');
+      return korilgan.length === 2 && korilgan[0] === k && korilgan[1] === k;
+    },
+  },
 ];
 
 /* tsx CJS га ўгиради — юқори даражадаги `await` ишламайди */

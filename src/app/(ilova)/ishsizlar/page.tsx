@@ -3,7 +3,8 @@ import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import type { IshsizHolati, Prisma } from '@prisma/client';
-import { joriySessiya, mahallaFiltri } from '@/lib/auth';
+import { mahallaFiltri } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { formatPhone, percent } from '@/lib/utils';
 import { MALUMOT, kirillcha } from '@/lib/constants';
@@ -34,8 +35,7 @@ export function generateMetadata() {
 const SAHIFA_HAJMI = 30;
 
 export default async function IshsizlarSahifasi({
-  searchParams,
-}: {
+  searchParams }: {
   searchParams: {
     holati?: string;
     mahalla?: string;
@@ -49,7 +49,7 @@ export default async function IshsizlarSahifasi({
 }) {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   /*
    * ── РОЛ ҚЎРИҚЧИСИ ──
@@ -99,10 +99,8 @@ export default async function IshsizlarSahifasi({
             { fish: { contains: searchParams.q, mode: 'insensitive' } },
             { xohlaganIsh: { contains: searchParams.q, mode: 'insensitive' } },
             { mutaxassisligi: { contains: searchParams.q, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
-  };
+          ] }
+      : {}) };
 
   const [royxat, jami, bosqichlar, mahallalar] = await Promise.all([
     prisma.unemployedPerson.findMany({
@@ -123,22 +121,18 @@ export default async function IshsizlarSahifasi({
         ishdanBoshaganSana: true,
         ishgaKirganSana: true,
         household: { select: { ishsizlikMuddatiOy: true } },
-        mahalla: { select: { nomiKirill: true } },
-      },
-    }),
+        mahalla: { select: { nomiKirill: true } } } }),
     prisma.unemployedPerson.count({ where }),
     // Voronka - filtrga bog'liq emas, umumiy manzarani ko'rsatadi
     prisma.unemployedPerson.groupBy({
       by: ['holati'],
       where: majburiy,
-      _count: true,
-    }),
+      _count: true }),
     majburiy.mahallaId
       ? []
       : prisma.mahalla.findMany({
           orderBy: { nomi: 'asc' },
-          select: { id: true, nomiKirill: true },
-        }),
+          select: { id: true, nomiKirill: true } }),
   ]);
 
   const bosqichSoni = (h: IshsizHolati) =>
@@ -329,8 +323,7 @@ function Sahifalash({
   sahifa,
   jami,
   hajm,
-  searchParams,
-}: {
+  searchParams }: {
   sahifa: number;
   jami: number;
   hajm: number;

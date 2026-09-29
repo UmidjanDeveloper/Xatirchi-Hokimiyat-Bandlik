@@ -12,28 +12,81 @@ const Kirish = z.object({
 });
 
 /**
- * Bir IP dan 15 daqiqada 10 ta urinish.
+ * ============================================================
+ *  КИРИШ ЧЕГАРАСИ — ИККИ ЎЛЧОВДА
  *
- * Xodim parolini unutsa 3-4 marta urinadi, keyin administratorga
- * qo'ng'iroq qiladi. 10 ta chegara uni bezovta qilmaydi, lekin
- * parolni terib topishga urinishni amalda imkonsiz qiladi.
+ *  Аввал чегара ФАҚАТ IP бўйича эди ва иккита қарама-қарши
+ *  камчилиги бор эди.
+ *
+ *  1. ЖУДА ҚАТТИҚ. Ҳокимлик биносида ўнлаб ходим битта
+ *     интернетдан чиқади — ташқаридан уларнинг ҳаммаси
+ *     БИТТА IP. Эрталаб ҳамма бирданига киради: тўртинчи
+ *     ходим паролни хато терса, бешинчиси умуман кира
+ *     олмасди. Чорраҳадаги ходим эса ўзи нима
+ *     қилганини билмасди — «жуда кўп уриниш» деган ёзув
+ *     чиқарди, холос.
+ *
+ *  2. ЖУДА ЮМШОҚ. Ҳужумчи учун IP — арзон нарса. Мобил
+ *     интернетни ўчириб-ёқиш кифоя: янги IP, янги ўнта
+ *     уриниш. Яъни БИТТА ҳисобни териб топишга уриниш
+ *     амалда чекланмаган эди.
+ *
+ *  Энди иккита алоҳида ҳисоб юритилади:
+ *
+ *    · ҲИСОБ бўйича — қайси IP дан келишидан қатъи назар.
+ *      Айнан шу ҳимоя: `yettilik_uyshun` ҳисобига 15
+ *      дақиқада 7 тадан кўп уриниш бўлмайди.
+ *
+ *    · IP бўйича — кенгроқ, бутун идора сиғади. Бу «ҳисоб
+ *      номларини теришга» қарши: ҳужумчи битта IP дан
+ *      юзлаб ҳар хил логин синаб кўра олмайди.
+ *
+ *  Иккови ҳам хотирада (`rate-limit.ts` га қаранг) ва
+ *  serverless нусхалари бўйича тарқалади — яъни тахминий.
+ *  Аниқ кафолат керак бўлса, Upstash Redis га ўтилади.
+ * ============================================================
  */
-const CHEGARA = 10;
+
+/** Битта ҲИСОБГА 15 дақиқада нечта уриниш */
+const HISOB_CHEGARASI = 7;
+
+/**
+ * Битта IP дан 15 дақиқада нечта уриниш.
+ *
+ * Идорада 10-15 ходим битта чиқишдан фойдаланади ва эрталаб
+ * деярли бир вақтда киради. 60 — уларга бемалол етади, аммо
+ * логинларни теришга уринишни тўхтатади.
+ */
+const IP_CHEGARASI = 60;
+
 const OYNA_MS = 15 * 60 * 1000;
+
+/** Чегара калитлари — иккита жойда бир хил ёзилиши учун */
+function hisobKaliti(username: string): string {
+  return `kirish:hisob:${username.trim().toLowerCase()}`;
+}
+function ipKaliti(ip: string): string {
+  return `kirish:ip:${ip}`;
+}
+
+/** 429 жавоби — қанча кутишни ходимга АЙТАМИЗ */
+function juda_kop(retryAfter: number, hisobmi: boolean): NextResponse {
+  const daqiqa = Math.max(1, Math.ceil(retryAfter / 60));
+  return NextResponse.json(
+    {
+      xabar: hisobmi
+        ? `Bu hisobga juda ko‘p urinish bo‘ldi. ${daqiqa} daqiqadan so‘ng qayta urinib ko‘ring yoki administratorga murojaat qiling.`
+        : `Juda ko‘p urinish bo‘ldi. ${daqiqa} daqiqadan so‘ng qayta urinib ko‘ring.`,
+    },
+    { status: 429, headers: { 'Retry-After': String(Math.max(1, retryAfter)) } }
+  );
+}
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  const chegara = checkRateLimit(`kirish:${ip}`, CHEGARA, OYNA_MS);
+  const ipChegarasi = checkRateLimit(ipKaliti(ip), IP_CHEGARASI, OYNA_MS);
 
-  if (!chegara.allowed) {
-    const daqiqa = Math.ceil(chegara.retryAfter / 60);
-    return NextResponse.json(
-      {
-        xabar: `Juda ko‘p urinish bo‘ldi. ${daqiqa} daqiqadan so‘ng qayta urinib ko‘ring.`,
-      },
-      { status: 429 }
-    );
-  }
+  if (!ipChegarasi.allowed) return juda_kop(ipChegarasi.retryAfter, false);
 
   let tana: unknown;
   try {
@@ -52,6 +105,22 @@ export async function POST(request: Request) {
 
   const { username, parol } = natija.data;
 
+  /*
+   * ── ҲИСОБ БЎЙИЧА ЧЕГАРА ──
+   *
+   * Логин ЎҚИЛГАНДАН кейин, лекин базага мурожаатдан ОЛДИН.
+   *
+   * Шундай қилинишининг сабаби: чегарага урилган сўров
+   * базани умуман безовта қилмаслиги керак — акс ҳолда
+   * ҳужумчи чегарадан ўтолмаса ҳам базани юклайверарди.
+   *
+   * Ҳисоб мавжудми-йўқми — фарқи йўқ. Мавжуд бўлмаган
+   * логинни чегарадан чиқариб қўйсак, жавоб вақти орқали
+   * «бундай логин бор» деган хабар оқиб кетарди.
+   */
+  const hisobChegarasi = checkRateLimit(hisobKaliti(username), HISOB_CHEGARASI, OYNA_MS);
+  if (!hisobChegarasi.allowed) return juda_kop(hisobChegarasi.retryAfter, true);
+
   const user = await prisma.user.findUnique({
     where: { username: username.trim().toLowerCase() },
     select: {
@@ -63,6 +132,7 @@ export async function POST(request: Request) {
       mahallaId: true,
       faol: true,
       parolAlmashtirilsin: true,
+      sessiyaVersiyasi: true,
     },
   });
 
@@ -94,6 +164,8 @@ export async function POST(request: Request) {
     fullName: user.fullName,
     rol: user.rol,
     mahallaId: user.mahallaId,
+    /* Сессия авлоди — парол алмашганда эски cookie ўлади */
+    v: user.sessiyaVersiyasi,
   });
 
   cookies().set(SESSION_COOKIE, token, {
@@ -104,9 +176,18 @@ export async function POST(request: Request) {
     expires: new Date(exp),
   });
 
-  // Muvaffaqiyatli kirishdan keyin chegara tozalanadi - bir kompyuterdan
-  // navbatma-navbat kirayotgan xodimlar bir-birini bloklamasligi uchun.
-  resetRateLimit(`kirish:${ip}`);
+  /*
+   * ── МУВАФФАҚИЯТДАН КЕЙИН ҲИСОБ ТОЗАЛАНАДИ ──
+   *
+   * Ходим паролни икки марта хато териб, учинчисида тўғри
+   * кирса, ўша иккита хато уни кейинроқ бекордан-бекорга
+   * блокка тушириб қўймаслиги керак.
+   *
+   * IP калити ҲАМ тозаланади: битта идорадан навбатма-навбат
+   * кирадиган ходимлар бир-бирининг ҳисобини ейишмасин.
+   */
+  resetRateLimit(hisobKaliti(username));
+  resetRateLimit(ipKaliti(ip));
 
   await prisma.user.update({
     where: { id: user.id },

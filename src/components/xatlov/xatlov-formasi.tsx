@@ -21,7 +21,7 @@ import {
   yuborishgaTayyormi,
   type XatlovRaqamlari,
 } from '@/lib/xatlov-tekshiruvi';
-import { navbatgaQosh, qoralamaOchir, qoralamaOqi, qoralamaSaqla } from '@/lib/offline';
+import { kalitYasa, navbatgaQosh, qoralamaOchir, qoralamaOqi, qoralamaSaqla } from '@/lib/offline';
 import { bosHolat, yuborishUchun, type XatlovHolati } from './holat';
 import { QADAMLAR } from './qadamlar';
 
@@ -35,6 +35,14 @@ interface Props {
   mahallalar: Mahalla[];
   /** Tahrirlanayotgan xatlov - yangi bo'lsa `null` */
   boshlangich?: { id: string; holat: XatlovHolati } | null;
+  /**
+   * Анкетани тўлдираётган ходимнинг логини.
+   *
+   * Телефон битта, ходим эса иккита бўлиши мумкин. Қоралама ва
+   * навбат ШУ логин билан белгиланади — ҳамкасб кирганда
+   * бировнинг иши унинг номидан жўнаб кетмасин.
+   */
+  egasi?: string;
 }
 
 /** Brauzer xotirasidagi qoralama kaliti */
@@ -58,6 +66,15 @@ const QORALAMA_ID = 'joriy-xatlov';
 interface Qoralama {
   id: string | null;
   holat: XatlovHolati;
+  /**
+   * Идемпотентлик калити.
+   *
+   * Анкета БИРИНЧИ марта очилганда ясалади ва қайта
+   * юборишларда ЎЗГАРМАЙДИ — сервер ўз юборишимизни шундан
+   * таниди. Қораламада сақланади: телефон ўчиб-ёнса ҳам
+   * калит ўша-ўша қолади.
+   */
+  kalit?: string;
 }
 
 /**
@@ -67,8 +84,8 @@ interface Qoralama {
  * улар эски шаклда — тўғридан-тўғри `XatlovHolati`. Янги код
  * уларни ташлаб юбормаслиги керак.
  */
-function qoralamaniOqi(): Qoralama | null {
-  const xom = qoralamaOqi<Qoralama | XatlovHolati>(QORALAMA_ID);
+function qoralamaniOqi(egasi?: string): Qoralama | null {
+  const xom = qoralamaOqi<Qoralama | XatlovHolati>(QORALAMA_ID, egasi);
   if (!xom) return null;
   if (typeof xom === 'object' && 'holat' in xom && xom.holat) {
     return xom as Qoralama;
@@ -81,12 +98,26 @@ function qoralamaTolami(q: Qoralama | null): boolean {
   return Boolean(q && (q.holat?.manzil || q.holat?.oilaBoshligi));
 }
 
-export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
+export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
   const { t: tr } = useAlifbo();
 
   const router = useRouter();
 
   const [id, setId] = useState<string | null>(boshlangich?.id ?? null);
+
+  /*
+   * ── ИДЕМПОТЕНТЛИК КАЛИТИ ──
+   *
+   * Анкета очилганда БИР МАРТА ясалади ва то юборилгунча
+   * ўзгармайди — қораламада ҳам шу калит сақланади.
+   *
+   * Тайёр ёзувни таҳрирлашда (`boshlangich` бор) калит
+   * керак эмас: у мавжуд ёзувни янгилайди ва амал ўз-ўзидан
+   * идемпотент.
+   */
+  const [kalit, setKalit] = useState<string | undefined>(() =>
+    boshlangich ? undefined : kalitYasa()
+  );
   const [qadam, setQadam] = useState(0);
   /*
    * Ходим ҚАЙСИ қадамларни очган.
@@ -153,9 +184,9 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
     if (boshlangich || tiklandi.current) return;
     tiklandi.current = true;
 
-    const saqlangan = qoralamaniOqi();
+    const saqlangan = qoralamaniOqi(egasi);
     if (qoralamaTolami(saqlangan)) setKutayotganQoralama(saqlangan);
-  }, [boshlangich]);
+  }, [boshlangich, egasi]);
 
   /*
     Ходим танламагунича хотирага ЁЗМАЙМИЗ — акс ҳолда бўш
@@ -169,9 +200,9 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
   useEffect(() => {
     if (qoralamaKutmoqda) return;
     if (!h.manzil && !h.oilaBoshligi) return;
-    const ok = qoralamaSaqla(QORALAMA_ID, { id, holat: h } satisfies Qoralama);
+    const ok = qoralamaSaqla(QORALAMA_ID, { id, holat: h, kalit } satisfies Qoralama, egasi);
     setXotiraXatosi(!ok);
-  }, [h, id, qoralamaKutmoqda]);
+  }, [h, id, kalit, egasi, qoralamaKutmoqda]);
 
   const yangila = useCallback(
     <K extends keyof XatlovHolati>(kalit: K, qiymat: XatlovHolati[K]) => {
@@ -225,7 +256,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       const javob = await fetch('/api/xatlov', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turi: 'qoralama', id, malumot: yuborishUchun(h).xonadon }),
+        body: JSON.stringify({ turi: 'qoralama', id, kalit, malumot: yuborishUchun(h).xonadon }),
       });
       const natija = await javob.json().catch(() => ({}));
 
@@ -287,7 +318,7 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
       const javob = await fetch('/api/xatlov', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turi: 'yakuniy', id, malumot: yuborishUchun(h) }),
+        body: JSON.stringify({ turi: 'yakuniy', id, kalit, malumot: yuborishUchun(h) }),
       });
       const natija = await javob.json().catch(() => ({}));
 
@@ -321,7 +352,11 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
        * bilan o'zi ketadi. Qoralama `id` si ham birga boradi -
        * busiz navbat yangi yozuv yaratishga urinardi.
        */
-      const navbat = navbatgaQosh({ turi: 'yakuniy', id, malumot: yuborishUchun(h) });
+      const navbat = navbatgaQosh(
+        { turi: 'yakuniy', id, kalit, malumot: yuborishUchun(h) },
+        egasi,
+        kalit
+      );
 
       setServerXatosi(
         navbat.ok
@@ -478,6 +513,13 @@ export function XatlovFormasi({ mahallalar, boshlangich }: Props) {
               onClick={() => {
                 setH(kutayotganQoralama.holat);
                 setId(kutayotganQoralama.id);
+                /*
+                 * Калит ҳам қораламадан тикланади. Акс ҳолда
+                 * давом эттирилган анкета ЯНГИ калит билан
+                 * кетар ва сервер уни бошқа хатлов деб
+                 * қабул қиларди.
+                 */
+                if (kutayotganQoralama.kalit) setKalit(kutayotganQoralama.kalit);
                 setKutayotganQoralama(null);
               }}
               className="tugma-asosiy rounded-md px-3.5 py-2 text-xs font-semibold"

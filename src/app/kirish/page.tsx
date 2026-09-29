@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { joriySessiya } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { KirishFormasi } from '@/components/auth/kirish-formasi';
 import { AlifboProvider, AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
 import { Gerb } from '@/components/shared/gerb';
@@ -18,7 +18,7 @@ export function generateMetadata() {
   return { title: matnchi()('Кириш — Хатирчи бандлик платформаси') };
 }
 
-export default function KirishSahifasi({
+export default async function KirishSahifasi({
   searchParams,
 }: {
   searchParams: { keyin?: string };
@@ -26,8 +26,27 @@ export default function KirishSahifasi({
   const tr = matnchi();
   const alifbo = alifboServer();
 
-  // Allaqachon kirgan bo'lsa, login sahifasini ko'rsatishning ma'nosi yo'q
-  if (joriySessiya()) redirect('/');
+  /*
+   * ── НЕГА `joriySessiya()` ЭМАС ──
+   *
+   * Аввал бу ерда cookie'нинг ЎЗИ текширилар эди. Cookie бор
+   * бўлса — «кирган» деб ҳисобланиб, `/` га юборилар эди.
+   *
+   * Cookie ЯРОҚСИЗ бўлганда (парол алмашган, рол ўзгарган,
+   * ҳисоб ўчирилган) бу ёпиқ ҳалқа ясарди:
+   *
+   *     /admin → саҳифа сессияни рад этади → /kirish
+   *     /kirish → cookie бор → /
+   *     / → сессияни рад этади → /kirish …
+   *
+   *  Браузер ERR_TOO_MANY_REDIRECTS беради ва ходим сайтга
+   *  УМУМАН кира олмайди: кириш саҳифаси ҳам очилмайди.
+   *  Ягона чора — cookie'ни қўлда ўчириш бўларди.
+   *
+   *  Энди БАЗА сўралади: cookie яроқсиз бўлса, кириш формаси
+   *  чизилади ва кейинги кириш эски cookie устига ёзади.
+   */
+  if (await joriyXodim()) redirect('/');
 
   return (
     <AlifboProvider boshlangich={alifbo}>

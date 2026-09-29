@@ -9,6 +9,7 @@ import {
   KeyRound,
   Loader2,
   Pencil,
+  ScanEye,
   Search,
   X,
 } from 'lucide-react';
@@ -151,6 +152,47 @@ export function XodimRoyxati({
     } catch {
       setXato(tr('Алоқа йўқ. Қайта уриниб кўринг.'));
       return null;
+    } finally {
+      setIshlayapti(null);
+    }
+  }
+
+  /**
+   * Кўриш режимини ёқади ва ЎША ХОДИМНИНГ бош саҳифасига
+   * олиб боради.
+   *
+   * Администратор ҳисобидан чиқмайди: cookie ўша-ўша,
+   * фақат ичига «кўз» ёзилади. Ёзиш амаллари шу заҳоти
+   * тўсилади (`korish-rejimi.ts`).
+   */
+  async function korishRejimi(id: string, ismi: string) {
+    setXato(null);
+    setIshlayapti(id);
+    try {
+      const javob = await fetch('/api/admin/korish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id }),
+      });
+      const natija = (await javob.json().catch(() => ({}))) as {
+        xabar?: string;
+        nishon?: { rol?: Rol };
+      };
+      if (!javob.ok) {
+        setXato(natija.xabar ?? tr('Кўриш режимини ёқиб бўлмади'));
+        return;
+      }
+      /*
+       * Ходимнинг ЎЗ бош саҳифасига борамиз — у кирганда
+       * қаерга тушса, ўша ерга. `/` шуни ҳисоблайди.
+       *
+       * `refresh()` шарт: сервер компонентлари эски
+       * cookie билан чизилган ва кэшда турибди.
+       */
+      router.push('/');
+      router.refresh();
+    } catch {
+      setXato(tr('Алоқа йўқ. Қайта уриниб кўринг.') + ` (${ismi})`);
     } finally {
       setIshlayapti(null);
     }
@@ -330,6 +372,35 @@ export function XodimRoyxati({
                   <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
                   {tr('Янгилаш')}
                 </button>
+
+                {/*
+                  ── КЎРИШ РЕЖИМИ ──
+
+                  Битта браузерда битта cookie бўлади, шунинг
+                  учун администратор панели билан маҳалла
+                  ходимининг панелини ЁНМА-ЁН очиб бўлмасди:
+                  иккинчисига кирилган заҳоти биринчиси
+                  алмашарди.
+
+                  Бу тугма ҳисобдан ЧИҚАРМАЙДИ. У сайтни ўша
+                  ходимнинг кўзи билан чизади — фақат ўқиш
+                  учун. Тепада доимий лента туради ва бир
+                  босишда ортга қайтарилади.
+
+                  Фаолсизлантирилган ҳисоб учун маъно йўқ: у
+                  тизимга умуман кира олмайди.
+                */}
+                {x.faol && (
+                  <button
+                    type="button"
+                    onClick={() => korishRejimi(x.id, x.fullName)}
+                    disabled={ishlayapti === x.id}
+                    className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+                  >
+                    <ScanEye className="h-3.5 w-3.5" aria-hidden="true" />
+                    {tr('Кўзи билан кўриш')}
+                  </button>
+                )}
 
                 <button
                   type="button"

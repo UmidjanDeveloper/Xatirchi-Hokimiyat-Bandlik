@@ -1,5 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/lib/sessiya-nomi';
+import {
+  USUL_SARLAVHASI,
+  istisnomi,
+  kozniOqi,
+  ozgartirishmi,
+} from '@/lib/korish-rejimi';
 
 /**
  * ============================================================
@@ -64,15 +70,64 @@ const OCHIQ = [
   '/api/cron',
 ];
 
+/**
+ * Сўров усулини ичкарига олиб кирадиган жавоб.
+ *
+ * Next'нинг сервер компонентларида ҳам, `talabQil()` да ҳам
+ * сўровнинг ЎЗИ йўқ — фақат сарлавҳалар бор. Шунинг учун
+ * усулни миддлевар сарлавҳага ёзиб беради.
+ *
+ * Мижоз ўша номдаги сарлавҳани юборса ҳам зарари йўқ: биз
+ * уни ҲАР САФАР устидан ёзамиз.
+ */
+function otkaz(req: NextRequest): NextResponse {
+  const sarlavhalar = new Headers(req.headers);
+  sarlavhalar.set(USUL_SARLAVHASI, req.method);
+  return NextResponse.next({ request: { headers: sarlavhalar } });
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (OCHIQ.some((y) => pathname === y || pathname.startsWith(`${y}/`))) {
-    return NextResponse.next();
+    return otkaz(req);
   }
 
-  const bor = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
-  if (bor) return NextResponse.next();
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  const bor = Boolean(token);
+
+  if (bor) {
+    /*
+     * ── КЎРИШ РЕЖИМИ ЁЗИШГА ЙЎЛ ҚЎЙМАЙДИ ──
+     *
+     * Администратор «ходимнинг кўзи билан» қараб турганда
+     * ҳар қандай ўзгартириш ЎША ХОДИМНИНГ номидан
+     * ёзиларди — журналда бегона исм қоларди.
+     *
+     * Тўсиқ шу ерда, йўлнинг оғзида: бирон йўл
+     * `talabQil()` ни чақиришни унутган бўлса ҳам, ёзиш
+     * бу ердан ўтмайди.
+     *
+     * Иккита истисно `korish-rejimi.ts` да ёзилган: кўз
+     * режимидан чиқиш ва тизимдан чиқиш.
+     */
+    if (
+      pathname.startsWith('/api/') &&
+      ozgartirishmi(req.method) &&
+      !istisnomi(pathname) &&
+      kozniOqi(token)
+    ) {
+      return NextResponse.json(
+        {
+          xabar:
+            'Ko‘rish rejimida o‘zgartirish mumkin emas. Avval o‘z hisobingizga qayting.',
+          korish: true,
+        },
+        { status: 403 }
+      );
+    }
+    return otkaz(req);
+  }
 
   // API so'rovlari yo'naltirilmaydi - ular JSON kutadi
   if (pathname.startsWith('/api/')) {

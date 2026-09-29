@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
-import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
+import { bandlikIshi, mahallaFiltri } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate } from '@/lib/utils';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
@@ -23,17 +24,15 @@ const SAHIFA_HAJMI = 30;
 const HOLAT: Record<string, { matn: string; sinf: string }> = {
   QORALAMA: { matn: 'Қоралама', sinf: 'bg-warn-bg text-warn' },
   YUBORILGAN: { matn: 'Юборилган', sinf: 'bg-info-bg text-info' },
-  TASDIQLANGAN: { matn: 'Тасдиқланган', sinf: 'bg-ok-bg text-ok' },
-};
+  TASDIQLANGAN: { matn: 'Тасдиқланган', sinf: 'bg-ok-bg text-ok' } };
 
 export default async function XonadonlarSahifasi({
-  searchParams,
-}: {
+  searchParams }: {
   searchParams: { mahalla?: string; q?: string; sahifa?: string };
 }) {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
 
@@ -50,10 +49,8 @@ export default async function XonadonlarSahifasi({
           OR: [
             { oilaBoshligi: { contains: searchParams.q, mode: 'insensitive' } },
             { manzil: { contains: searchParams.q, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
-  };
+          ] }
+      : {}) };
 
   const [royxat, jami, mahallalar] = await Promise.all([
     prisma.household.findMany({
@@ -70,16 +67,13 @@ export default async function XonadonlarSahifasi({
         ishsizlarSoni: true,
         updatedAt: true,
         mahalla: { select: { nomiKirill: true } },
-        xodim: { select: { fullName: true } },
-      },
-    }),
+        xodim: { select: { fullName: true } } } }),
     prisma.household.count({ where }),
     majburiy.mahallaId
       ? []
       : prisma.mahalla.findMany({
           orderBy: { nomi: 'asc' },
-          select: { id: true, nomiKirill: true },
-        }),
+          select: { id: true, nomiKirill: true } }),
   ]);
 
   const oxirgi = Math.max(1, Math.ceil(jami / SAHIFA_HAJMI));

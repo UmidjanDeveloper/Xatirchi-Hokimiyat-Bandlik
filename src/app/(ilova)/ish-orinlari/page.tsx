@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { matnchi } from '@/lib/alifbo-server';
-import { bandlikIshi, joriySessiya, mahallaFiltri } from '@/lib/auth';
+import { bandlikIshi, mahallaFiltri } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { FAOL_ELON, qolganKun } from '@/lib/elon-muddati';
 import { formatDate, formatPhone } from '@/lib/utils';
@@ -29,7 +30,7 @@ const YOPILGAN_CHEGARASI = 12;
 export default async function IshOrinlariSahifasi() {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
 
@@ -39,19 +40,16 @@ export default async function IshOrinlariSahifasi() {
     prisma.vacancy.findMany({
       where: { ...filtr, ...FAOL_ELON() },
       orderBy: { createdAt: 'desc' },
-      include: { mahalla: { select: { nomiKirill: true } } },
-    }),
+      include: { mahalla: { select: { nomiKirill: true } } } }),
     prisma.vacancy.findMany({
       where: { ...filtr, faol: false },
       orderBy: { yopilganSana: 'desc' },
       take: YOPILGAN_CHEGARASI,
-      include: { mahalla: { select: { nomiKirill: true } } },
-    }),
+      include: { mahalla: { select: { nomiKirill: true } } } }),
     prisma.mahalla.findMany({
       where: filtr.mahallaId ? { id: filtr.mahallaId } : undefined,
       orderBy: { nomi: 'asc' },
-      select: { id: true, nomiKirill: true },
-    }),
+      select: { id: true, nomiKirill: true } }),
   ]);
 
   /*

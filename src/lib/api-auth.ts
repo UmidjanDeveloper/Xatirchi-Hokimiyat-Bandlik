@@ -13,10 +13,20 @@ import { cookies, headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import type { Rol } from '@prisma/client';
 import { SESSION_COOKIE, sessiyaOqi, type Sessiya } from './auth';
+import { USUL_SARLAVHASI, ozgartirishmi } from './korish-rejimi';
 import { prisma } from './prisma';
 
 export interface Qoriqchi {
   sessiya: Sessiya;
+  /**
+   * Кўриш режимида — қайси ходимнинг кўзи билан қаралаяпти.
+   *
+   * Бу режимда ёзиш амаллари умуман ўтмайди, шунинг учун
+   * кўпчилик йўл буни умуман билиши шарт эмас. Фақат ўқиш
+   * учун — масалан жавобда «кўриш режими» деб белгилаш
+   * керак бўлса.
+   */
+  korish?: { nishonId: string };
 }
 
 /** Sessiyani o'qiydi; yaroqsiz bo'lsa `null` */
@@ -42,7 +52,21 @@ export function taqiqlangan(xabar = 'Bu amal uchun huquqingiz yetarli emas.') {
  *   if (q instanceof NextResponse) return q;
  *   // bu yerdan keyin q.sessiya ishonchli
  */
-export async function talabQil(rollar?: Rol[]): Promise<Qoriqchi | NextResponse> {
+export async function talabQil(
+  rollar?: Rol[],
+  /**
+   * ── НЕГА ОЧИҚ КАЛИТ, СЎРОВ ЙЎЛИ ЭМАС ──
+   *
+   * Аввал йўл `x-invoke-path` ёки `referer` дан аниқланарди.
+   * Иккови ҳам ИШОНЧСИЗ: биринчиси Next'нинг ички майдони ва
+   * версиядан версияга ўзгаради, иккинчисини браузер умуман
+   * юбормаслиги мумкин.
+   *
+   * Истисно — БИР МАРТА, ва у чақирадиган йўлнинг ўзида
+   * ёзилган. Ўқиганда кўринади, унутилса эса тўсилади.
+   */
+  sozlama?: { parolsizHam?: boolean }
+): Promise<Qoriqchi | NextResponse> {
   const sessiya = sorovSessiyasi();
   if (!sessiya) return ruxsatYoq();
 
@@ -51,18 +75,106 @@ export async function talabQil(rollar?: Rol[]): Promise<Qoriqchi | NextResponse>
   // holat har so'rovda tekshiriladi - faqat cookie'ga ishonish kifoya emas.
   const user = await prisma.user.findUnique({
     where: { id: sessiya.userId },
-    select: { faol: true, rol: true, mahallaId: true },
+    select: {
+      faol: true,
+      rol: true,
+      mahallaId: true,
+      sessiyaVersiyasi: true,
+      parolAlmashtirilsin: true,
+    },
   });
 
   if (!user || !user.faol) {
     return ruxsatYoq('Hisobingiz faol emas. Administratorga murojaat qiling.');
   }
 
-  const joriy: Sessiya = { ...sessiya, rol: user.rol, mahallaId: user.mahallaId };
+  /*
+   * ── СЕССИЯ АВЛОДИ ──
+   *
+   * Парол алмашганда базадаги рақам ошади ва эски cookie
+   * яроқсиз бўлади.
+   *
+   * Эски cookie'да бу майдон УМУМАН бўлмайди. Уни рад
+   * этмаймиз: миграция тушган пайтда ҳамма ходим бирданига
+   * чиқиб кетиши — хавфсизлик эмас, тўхташ. Улар ўз муддати
+   * (12 соат) билан ўзи тугайди.
+   */
+  if (sessiya.v !== undefined && sessiya.v !== user.sessiyaVersiyasi) {
+    return ruxsatYoq('Паролингиз алмашган. Қайта киринг.');
+  }
 
-  if (rollar && !rollar.includes(user.rol)) return taqiqlangan();
+  /*
+   * ── МАЖБУРИЙ ПАРОЛ АЛМАШТИРИШ — API ДАРАЖАСИДА ҲАМ ──
+   *
+   * Аввал бу талаб фақат САҲИФАДА амал қиларди: қобиқ
+   * `/parol-almashtirish` га йўналтирарди.
+   *
+   * Аммо API'ни саҳифасиз ҳам чақириш мумкин. Яъни
+   * администратор берган бошланғич парол билан кирган одам
+   * уни алмаштирмасдан туриб хатлов юбора оларди — ва ўша
+   * парол ҳамон администраторнинг рўйхатида очиқ турарди.
+   *
+   * Иккита йўл истисно: паролнинг ўзини алмаштириш ва
+   * чиқиш. Улар бўлмаса, одам қулф ичида қолиб кетарди.
+   */
+  if (user.parolAlmashtirilsin && !sozlama?.parolsizHam) {
+    return NextResponse.json(
+      { xabar: 'Аввал паролингизни алмаштиринг', parolAlmashtirilsin: true },
+      { status: 403 }
+    );
+  }
 
-  return { sessiya: joriy };
+  /*
+   * ── КЎРИШ РЕЖИМИ ──
+   *
+   * Cookie'даги «кўз» — администратор бошқа ходимнинг кўзи
+   * билан қараяпти дегани (`korish-rejimi.ts`).
+   *
+   * Бу ерда ИККИ иш қилинади:
+   *
+   *  1. ЁЗИШ ТЎСИЛАДИ. Акс ҳолда амал ходимнинг номидан
+   *     журналга тушар ва «буни ким қилди» деган саволга
+   *     ёлғон жавоб қоларди. Миддлевар ҳам шуни қилади —
+   *     бу иккинчи қават: бирон йўл ўзгариб, миддлевар
+   *     четлаб ўтилса ҳам тўсиқ жойида қолади.
+   *
+   *  2. РЎЙХАТЛАР ЎША ХОДИМНИКИ бўлади: рол ва маҳалла
+   *     нишондан олинади. Шунда администратор МФЙ ходими
+   *     нимани кўришини айнан кўради.
+   */
+  const koz = sessiya.koz;
+  let korish: { nishonId: string } | undefined;
+  let rol = user.rol;
+  let mahallaId = user.mahallaId;
+
+  if (koz && koz !== sessiya.userId && user.rol === 'ADMIN') {
+    const usul = headers().get(USUL_SARLAVHASI);
+    if (ozgartirishmi(usul)) {
+      return NextResponse.json(
+        {
+          xabar: 'Ko‘rish rejimida o‘zgartirish mumkin emas. Avval o‘z hisobingizga qayting.',
+          korish: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    const nishon = await prisma.user.findUnique({
+      where: { id: koz },
+      select: { id: true, rol: true, mahallaId: true, faol: true },
+    });
+    if (nishon && nishon.faol) {
+      korish = { nishonId: nishon.id };
+      rol = nishon.rol;
+      mahallaId = nishon.mahallaId;
+    }
+  }
+
+  const joriy: Sessiya = { ...sessiya, rol, mahallaId };
+
+  if (rollar && !rollar.includes(rol)) return taqiqlangan();
+
+  return { sessiya: joriy, ...(korish ? { korish } : {}) };
 }
 
 /** So'rov yuborgan qurilmaning IP manzili - audit jurnali uchun */

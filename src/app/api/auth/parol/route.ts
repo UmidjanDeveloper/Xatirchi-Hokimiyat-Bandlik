@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { parolTogrimi, parolXeshla, parolYaroqlimi } from '@/lib/auth';
+import { cookies } from 'next/headers';
+import { SESSION_COOKIE, parolTogrimi, parolXeshla, parolYaroqlimi, sessiyaYarat } from '@/lib/auth';
 import { jurnal, talabQil } from '@/lib/api-auth';
 
 const Almashtirish = z.object({
@@ -11,7 +12,12 @@ const Almashtirish = z.object({
 
 /** Xodim o'z parolini almashtiradi */
 export async function POST(request: Request) {
-  const q = await talabQil();
+  /*
+   * `parolsizHam` — мажбурий алмаштириш талабидан озод.
+   * Бу йўлнинг ЎЗИ парол алмаштиради; тўсилса, одам қулф
+   * ичида қоларди.
+   */
+  const q = await talabQil(undefined, { parolsizHam: true });
   if (q instanceof NextResponse) return q;
 
   const natija = Almashtirish.safeParse(await request.json().catch(() => null));
@@ -65,9 +71,47 @@ export async function POST(request: Request) {
       passwordHash: parolXeshla(yangi),
       parolAlmashtirilsin: false,
       berilganParol: null,
+      /*
+       * ── ЭСКИ СЕССИЯЛАР ЎЛАДИ ──
+       *
+       * Парол алмаштиришнинг маъноси шу: эски парол билан
+       * кирган ҳар ким чиқиб кетсин.
+       *
+       * Бусиз парол алмаштириш деярли бефойда эди —
+       * cookie имзоланган payload ва уни бекор қилиб
+       * бўлмасди: ўғри яна 12 соат ичкарида қоларди.
+       */
+      sessiyaVersiyasi: { increment: 1 },
     },
   });
   await jurnal(q.sessiya.userId, 'PAROL_ALMASHTIRILDI');
+
+  /*
+   * ЎЗ cookie'мизни ҳам янгилаймиз — акс ҳолда парол
+   * алмаштирган одамнинг ўзи ҳам дарҳол чиқиб кетарди.
+   */
+  const yangilangan = await prisma.user.findUnique({
+    where: { id: q.sessiya.userId },
+    select: { sessiyaVersiyasi: true, username: true, fullName: true, rol: true, mahallaId: true },
+  });
+
+  if (yangilangan) {
+    const { token, exp } = sessiyaYarat({
+      userId: q.sessiya.userId,
+      username: yangilangan.username,
+      fullName: yangilangan.fullName,
+      rol: yangilangan.rol,
+      mahallaId: yangilangan.mahallaId,
+      v: yangilangan.sessiyaVersiyasi,
+    });
+    cookies().set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      expires: new Date(exp),
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

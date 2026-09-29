@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
-import { joriySessiya, mahallaFiltri } from '@/lib/auth';
+import { mahallaFiltri } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { XatlovFormasi } from '@/components/xatlov/xatlov-formasi';
 
@@ -19,7 +20,7 @@ export function generateMetadata() {
 export default async function YangiXatlov() {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   /*
    * ── РОЛ ҚЎРИҚЧИСИ ──
@@ -38,8 +39,7 @@ export default async function YangiXatlov() {
   const mahallalar = await prisma.mahalla.findMany({
     where: filtr.mahallaId ? { id: filtr.mahallaId } : undefined,
     orderBy: { nomi: 'asc' },
-    select: { id: true, nomi: true, nomiKirill: true },
-  });
+    select: { id: true, nomi: true, nomiKirill: true } });
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -50,7 +50,7 @@ export default async function YangiXatlov() {
         </p>
       </div>
 
-      <XatlovFormasi mahallalar={mahallalar} />
+      <XatlovFormasi mahallalar={mahallalar} egasi={sessiya.username} />
     </div>
   );
 }

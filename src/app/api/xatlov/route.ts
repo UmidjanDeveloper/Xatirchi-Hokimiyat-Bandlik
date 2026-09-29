@@ -89,9 +89,29 @@ export async function GET(request: Request) {
 //  YARATISH / SAQLASH
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * ИДЕМПОТЕНТЛИК КАЛИТИ — браузер ясайди, сервер эслаб қолади.
+ *
+ * Узунлиги чекланган: `localStorage` дан келадиган ҳар қандай
+ * матн бўлиши мумкин ва уни индексга чегарасиз қўйиб бўлмайди.
+ * `randomUUID` 36 белги, эски браузерлар учун захира вариант
+ * ҳам шу атрофда.
+ */
+const Kalit = z.string().min(8).max(64).optional();
+
 const Tana = z.discriminatedUnion('turi', [
-  z.object({ turi: z.literal('qoralama'), id: z.string().cuid().nullish(), malumot: QoralamaSxemasi }),
-  z.object({ turi: z.literal('yakuniy'), id: z.string().cuid().nullish(), malumot: YuborishSxemasi }),
+  z.object({
+    turi: z.literal('qoralama'),
+    id: z.string().cuid().nullish(),
+    kalit: Kalit,
+    malumot: QoralamaSxemasi,
+  }),
+  z.object({
+    turi: z.literal('yakuniy'),
+    id: z.string().cuid().nullish(),
+    kalit: Kalit,
+    malumot: YuborishSxemasi,
+  }),
 ]);
 
 /**
@@ -196,6 +216,15 @@ export async function POST(request: Request) {
   }
 
   const { turi, id } = natija.data;
+  /*
+   * ── КАЛИТ ФАҚАТ ЯНГИ ЁЗУВ УЧУН ──
+   *
+   * `id` берилган бўлса — бу МАВЖУД ёзувни янгилаш ва у
+   * ўз-ўзидан идемпотент: иккинчи марта юборилса, натижа
+   * ўша-ўша бўлади. Калит эса ЯРАТИШ амалини такрорлашдан
+   * сақлайди.
+   */
+  const kalit_i = id ? undefined : natija.data.kalit;
   const xonadon = turi === 'qoralama' ? natija.data.malumot : natija.data.malumot.xonadon;
   const ishsizlar = turi === 'yakuniy' ? natija.data.malumot.ishsizlar : [];
 
@@ -259,6 +288,34 @@ export async function POST(request: Request) {
   }
 
   const kalit = takrorKaliti(xonadon.manzil ?? '', xonadon.oilaBoshligi ?? '');
+
+  /*
+   * ── ШУ КАЛИТ БИЛАН АЛЛАҚАЧОН КЕЛГАНМИ ──
+   *
+   * Оффлайн навбат ўша сўровни қайта-қайта юборади: алоқа
+   * жавоб келишидан олдин узилса, браузер ёзув етиб
+   * борганини БИЛМАЙДИ.
+   *
+   * Базага қараб оламиз. Топилса — иккинчи ёзув яратмаймиз
+   * ва ўша ёзувнинг `id` сини қайтарамиз. Браузер уни
+   * навбатдан бемалол ўчиради: иш жойида.
+   */
+  if (kalit_i) {
+    const avvalgi = await prisma.household
+      .findUnique({
+        where: { idempotentlikKaliti: kalit_i },
+        select: { id: true, holati: true },
+      })
+      .catch(() => null);
+    if (avvalgi) {
+      return NextResponse.json({
+        ok: true,
+        id: avvalgi.id,
+        holati: avvalgi.holati,
+        takror: true,
+      });
+    }
+  }
 
   /*
    * Tug'ilgan yil SANADAN olinadi.
@@ -328,6 +385,7 @@ export async function POST(request: Request) {
     jamiAzo: xonadon.jamiAzo ?? 0,
     telefon: telefonSaqlashUchun(xonadon.telefon ?? '') ?? xonadon.telefon ?? null,
     takrorKaliti: kalit,
+    ...(kalit_i ? { idempotentlikKaliti: kalit_i } : {}),
     holati: turi === 'yakuniy' ? ('YUBORILGAN' as const) : ('QORALAMA' as const),
     xodimId: q.sessiya.userId,
 
@@ -554,33 +612,70 @@ export async function POST(request: Request) {
     // Takror xatlov - `@@unique([mahallaId, takrorKaliti])`
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       /*
-       * ── ХОДИМГА ЧИҚИШ ЙЎЛИ БЕРАМИЗ ──
+       * ── ИККИТА ҲАР ХИЛ 409 ──
        *
-       * Илгари бу ерда фақат «бу хонадон аллақачон хатловдан
-       * ўтган» деб ёзиларди. Ходим эса бутун анкетани
-       * тўлдирган ва энди тиқилиб қоларди: на сақлай олади,
-       * на мавжудини топа олади.
+       * Аввал бу ерда фарқ йўқ эди: ҳар қандай тўқнашув
+       * «бу хонадон аллақачон хатловдан ўтган» деб
+       * қайтарилар, браузер эса уни МУВАФФАҚИЯТ деб
+       * ҳисоблаб, ёзувни телефон навбатидан ўчирарди.
        *
-       * Иккита ҳолат бўлади ва иккисида ҳам жавоб битта —
-       * МАВЖУД ЁЗУВНИ ОЧИШ:
-       *   · ростдан ҳам бошқа ходим аллақачон киритган;
-       *   · алоқа узилиб, биринчи юбориш аслида ўтиб кетган
-       *     ва ходим иккинчи марта босган.
+       * Ҳолат биринчиси бўлса — тўғри:
+       *   · алоқа узилиб, БИЗНИНГ биринчи юборишимиз аслида
+       *     ўтиб кетган. Ёзув базада, иш йўқолмади.
        *
-       * Шунинг учун ёзувнинг `id` си ҳам қайтарилади ва форма
-       * ундан ҳавола ясайди.
+       * Иккинчиси бўлса — маълумот ЙЎҚОЛАРДИ:
+       *   · ҳамкасб ўша манзилни аввалроқ киритган ёки бир
+       *     манзилда иккита ҳақиқий оила яшайди. Бизнинг
+       *     анкетамиз ҲЕЧ ҚАЕРГА сақланмаган, лекин экранда
+       *     «юборилди» деб ёзиларди.
+       *
+       * Фарқни идемпотентлик калити қилади.
        */
       const mavjud = await prisma.household
         .findFirst({
           where: { mahallaId: xonadon.mahallaId, takrorKaliti: kalit },
-          select: { id: true, holati: true },
+          select: { id: true, holati: true, idempotentlikKaliti: true },
         })
         .catch(() => null);
 
+      /*
+       * ── ЎЗ ЮБОРИШИМИЗ ──
+       *
+       * Тўқнашган ёзувнинг калити БИЗНИКИ. Демак биринчи
+       * юборишимиз ўтган, фақат жавоби келмаган. Бу хато
+       * эмас — 200 қайтарамиз ва браузер навбатдан
+       * бемалол ўчиради.
+       *
+       * Иккита индекс ҳам шу ерга олиб келади: калит
+       * бўйича ҳам, манзил бўйича ҳам. Шунинг учун
+       * `P2002` нинг қайси майдонда эканини текширмаймиз —
+       * натижа барибир битта.
+       */
+      if (kalit_i && mavjud?.idempotentlikKaliti === kalit_i) {
+        return NextResponse.json({
+          ok: true,
+          id: mavjud.id,
+          holati: mavjud.holati,
+          takror: true,
+        });
+      }
+
+      /*
+       * ── ҲАҚИҚИЙ ЗИДДИЯТ ──
+       *
+       * Ёзув БОШҚАНИКИ. Ходимга мавжуд ёзувнинг ҳаволаси
+       * берилади — иккисини солиштириш ОДАМНИНГ иши:
+       * ростдан ҳам ўша хонадонми ёки бир манзилда иккита
+       * оила яшайдими.
+       *
+       * Браузер буни муваффақият деб ҲИСОБЛАМАЙДИ ва
+       * навбатдан ўчирмайди.
+       */
       return NextResponse.json(
         {
           xabar:
             'Bu xonadon allaqachon xatlovdan o‘tgan. Shu manzil va oila boshlig‘i bo‘yicha yozuv mavjud.',
+          ziddiyat: true,
           mavjudId: mavjud?.id ?? null,
           mavjudHolati: mavjud?.holati ?? null,
         },

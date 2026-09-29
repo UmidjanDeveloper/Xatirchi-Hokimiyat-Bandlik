@@ -1,7 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
-import { joriySessiya, mahallaFiltri, mahallagaRuxsat } from '@/lib/auth';
+import { mahallaFiltri, mahallagaRuxsat } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { xatlovniYukla } from '@/lib/xatlov-yuklash';
 import { XatlovFormasi } from '@/components/xatlov/xatlov-formasi';
@@ -20,7 +21,7 @@ export function generateMetadata() {
 export default async function TahrirSahifasi({ params }: { params: { id: string } }) {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   /*
    * ── РОЛ ҚЎРИҚЧИСИ ──
@@ -51,8 +52,7 @@ export default async function TahrirSahifasi({ params }: { params: { id: string 
   const mahallalar = await prisma.mahalla.findMany({
     where: filtr.mahallaId ? { id: filtr.mahallaId } : undefined,
     orderBy: { nomi: 'asc' },
-    select: { id: true, nomi: true, nomiKirill: true },
-  });
+    select: { id: true, nomi: true, nomiKirill: true } });
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -63,7 +63,11 @@ export default async function TahrirSahifasi({ params }: { params: { id: string 
         <p className="mt-1 text-sm text-ink-muted">{xatlov.holat.oilaBoshligi}</p>
       </div>
 
-      <XatlovFormasi mahallalar={mahallalar} boshlangich={{ id: xatlov.id, holat: xatlov.holat }} />
+      <XatlovFormasi
+        mahallalar={mahallalar}
+        boshlangich={{ id: xatlov.id, holat: xatlov.holat }}
+        egasi={sessiya.username}
+      />
     </div>
   );
 }

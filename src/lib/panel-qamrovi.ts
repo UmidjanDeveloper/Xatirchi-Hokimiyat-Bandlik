@@ -26,6 +26,7 @@
  *  дан бошқасини ишлатмайди.
  * ============================================================
  */
+import type { Rol } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { mahallaFiltri, type Sessiya } from '@/lib/auth';
@@ -69,7 +70,7 @@ export interface PanelQamrovi {
  * унга 404 эмас, ишлайдиган панел керак.
  */
 export async function panelQamroviniOl(
-  sessiya: Sessiya,
+  sessiya: { rol: Rol; mahallaId: string | null },
   mfy?: string | null
 ): Promise<PanelQamrovi> {
   const majburiy = mahallaFiltri(sessiya).mahallaId;

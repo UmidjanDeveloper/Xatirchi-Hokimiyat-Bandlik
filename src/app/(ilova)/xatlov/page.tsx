@@ -4,7 +4,8 @@ import { OchirishTugmasi } from '@/components/arxiv/ochirish-tugmasi';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import { FileText, HousePlus, Send, TriangleAlert, Users } from 'lucide-react';
-import { joriySessiya, mahallaFiltri } from '@/lib/auth';
+import { mahallaFiltri } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { formatDate, percent } from '@/lib/utils';
@@ -46,18 +47,16 @@ const RO_YXAT_HAJMI = 100;
 const HOLAT_NISHONI: Record<string, { matn: string; sinf: string }> = {
   QORALAMA: { matn: 'Қоралама', sinf: 'bg-warn-bg text-warn' },
   YUBORILGAN: { matn: 'Юборилган', sinf: 'bg-info-bg text-info' },
-  TASDIQLANGAN: { matn: 'Тасдиқланган', sinf: 'bg-ok-bg text-ok' },
-};
+  TASDIQLANGAN: { matn: 'Тасдиқланган', sinf: 'bg-ok-bg text-ok' } };
 
 export default async function XatlovlarSahifasi({
-  searchParams,
-}: {
+  searchParams }: {
   searchParams: { davr?: string };
 }) {
   const tr = matnchi();
   const davr = davrOqi(searchParams.davr);
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   /*
    * ── РОЛ ҚЎРИҚЧИСИ ──
@@ -95,8 +94,7 @@ export default async function XatlovlarSahifasi({
         // tugallanmagan ishini ko'rsatishning ma'nosi yo'q.
         ...(sessiya.rol === 'YETTILIK'
           ? { OR: [{ holati: { not: 'QORALAMA' } }, { xodimId: sessiya.userId }] }
-          : {}),
-      },
+          : {}) },
       /*
        * Рўйхат КЎРСАТИШ учун — энг янги юзтаси.
        *
@@ -116,9 +114,7 @@ export default async function XatlovlarSahifasi({
         updatedAt: true,
         mahalla: { select: { nomiKirill: true } },
         xodim: { select: { fullName: true } },
-        _count: { select: { ishsizlar: true } },
-      },
-    }),
+        _count: { select: { ishsizlar: true } } } }),
     /*
      * ══════════════════════════════════════════════════════
      *  КЎРСАТКИЧЛАР — АЛОҲИДА СЎРОВ БИЛАН
@@ -146,8 +142,7 @@ export default async function XatlovlarSahifasi({
     prisma.household.aggregate({
       where: { ...filtr, holati: { not: 'QORALAMA' } },
       _count: true,
-      _sum: { ishsizlarSoni: true },
-    }),
+      _sum: { ishsizlarSoni: true } }),
 
     /*
      *  Қоралама сони ҳам БАЗАДАН.
@@ -163,14 +158,12 @@ export default async function XatlovlarSahifasi({
      *  ишини санашнинг маъноси йўқ.
      */
     prisma.household.count({
-      where: { ...filtr, holati: 'QORALAMA', xodimId: sessiya.userId },
-    }),
+      where: { ...filtr, holati: 'QORALAMA', xodimId: sessiya.userId } }),
 
     filtr.mahallaId
       ? prisma.mahalla.findUnique({
           where: { id: filtr.mahallaId },
-          select: { nomiKirill: true, xonadon: true, ishsiz: true },
-        })
+          select: { nomiKirill: true, xonadon: true, ishsiz: true } })
       : null,
     /*
      * Динамика — ФАҚАТ ўз МФЙ си бўйича.
@@ -224,8 +217,7 @@ export default async function XatlovlarSahifasi({
     /* Telegram уланганми — фақат шу ходимнинг ўз ҳолати */
     prisma.user.findUnique({
       where: { id: sessiya.userId },
-      select: { telegramChatId: true, telegramSana: true },
-    }),
+      select: { telegramChatId: true, telegramSana: true } }),
 
     /*
      * ШАХСИЙ АНКЕТАСИ ТЎЛДИРИЛГАНЛАР СОНИ.
@@ -264,7 +256,7 @@ export default async function XatlovlarSahifasi({
         буни биринчи қарашда кўриши керак. Навбат бўш бўлса —
         чизиқ умуман кўринмайди.
       */}
-      <XatlovNavbati />
+      <XatlovNavbati egasi={sessiya.username} />
 
       {/*
         ── TELEGRAM УЛАНМАГАН БЎЛСА — ТЕПАДА АЙТИЛАДИ ──
@@ -600,8 +592,7 @@ function Karta({
   ikonka,
   nomi,
   qiymat,
-  izoh,
-}: {
+  izoh }: {
   ikonka: React.ReactNode;
   nomi: string;
   qiymat: string;

@@ -88,6 +88,22 @@ model User {
   /// bo'lsa xodim o'z parolini qo'ygan va saqlangani ESKIRGAN.
   parolAlmashtirilsin Boolean @default(true)
 
+  /// SESSIYA AVLODI.
+  ///
+  /// ── Nega kerak ──
+  ///
+  /// Sessiya cookie'si imzolangan payload — serverda uning
+  /// nusxasi yo'q. Ya'ni uni BEKOR QILIB bo'lmaydi: parol
+  /// o'zgarsa ham, eski cookie 12 soat ishlayveradi.
+  ///
+  /// Amalda bu shuni bildiradi: xodimning paroli o'g'irlangani
+  /// bilinib, parol almashtirilsa ham, o'g'ri hali ham ichkarida.
+  ///
+  /// Bu raqam cookie ichiga yoziladi va har so'rovda
+  /// solishtiriladi. Parol almashganda bittaga oshadi —
+  /// eski cookie'lar o'sha zahoti yaroqsiz bo'ladi.
+  sessiyaVersiyasi Int @default(1)
+
   // ── TELEGRAM ──
 
   /// Telegram chat ID - xabar aynan shu raqamga yuboriladi.
@@ -587,6 +603,34 @@ model Household {
   arxivSababi String?
 
   takrorKaliti String
+
+  /// ============================================================
+  ///  ИДЕМПОТЕНТЛИК КАЛИТИ
+  ///
+  ///  `takrorKaliti` МАЗМУН калити: манзил + оила бошлиғи.
+  ///  Иккита ҳар хил ходим бир хонадонни киритса, у иккисида
+  ///  ҳам БИР ХИЛ чиқади.
+  ///
+  ///  Бу эса ЮБОРИШ калити: браузер уни ҳар бир хатлов учун
+  ///  бир марта яратади ва қайта юборишларда ўзгартирмайди.
+  ///
+  ///  Иккаласи бор бўлгани учун сервер 409 нинг сабабини
+  ///  ажрата олади:
+  ///
+  ///    · мавжуд ёзувнинг калити БИЗНИКИ    → ўз юборишимиз
+  ///      ўтиб кетган, жавоби келмаган. Такрор, зарари йўқ;
+  ///
+  ///    · калити бошқа ёки йўқ              → ҲАҚИҚИЙ зиддият.
+  ///      Ходимнинг иши сақланмади ва уни ўчириб бўлмайди.
+  ///
+  ///  Илгари фарқ йўқ эди ва иккови ҳам «сақланди» деб
+  ///  ҳисобланарди — ходимнинг бир соатлик иши жимгина
+  ///  йўқоларди.
+  ///
+  ///  `null` бўлиши мумкин: эски ёзувларда ва серверда
+  ///  яратилганларда (импорт, кўчириш) калит йўқ.
+  /// ============================================================
+  idempotentlikKaliti String? @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -3,7 +3,8 @@ import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
 import { notFound, redirect } from 'next/navigation';
 import { BriefcaseBusiness, House, Phone } from 'lucide-react';
-import { joriySessiya, bandlikIshi } from '@/lib/auth';
+import { bandlikIshi } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { jurnal } from '@/lib/api-auth';
 import { formatDate, formatPhone } from '@/lib/utils';
@@ -19,8 +20,7 @@ import { orinlarniTop, nomzodMaydonlari } from '@/lib/moslashtirish';
 import { MoslikNishoni } from '@/components/ish-orni/moslik-nishoni';
 import {
   BekorQilishTugmasi,
-  JoylashtirishTugmasi,
-} from '@/components/ish-orni/joylashtirish-tugmasi';
+  JoylashtirishTugmasi } from '@/components/ish-orni/joylashtirish-tugmasi';
 import { DalilBlogi } from '@/components/dalil/dalil-blogi';
 import { odamTasdigi } from '@/lib/joylashuv-dalili';
 
@@ -41,7 +41,7 @@ const sana = (d: Date | null): string => (d ? d.toISOString().slice(0, 10) : '')
 export default async function IshsizSahifasi({ params }: { params: { id: string } }) {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   /*
    * ── РОЛ ҚЎРИҚЧИСИ ──
@@ -72,8 +72,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
        */
       itVaucherlar: {
         orderBy: { berilganSana: 'desc' },
-        include: { bergan: { select: { fullName: true } } },
-      },
+        include: { bergan: { select: { fullName: true } } } },
       /*
        * Жойлаштиришнинг далиллари — энг янгиси биринчи.
        *
@@ -86,9 +85,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
         orderBy: { createdAt: 'desc' },
         include: {
           kiritgan: { select: { fullName: true } },
-          tasdiqlagan: { select: { fullName: true } },
-        },
-      },
+          tasdiqlagan: { select: { fullName: true } } } },
       vacancy: {
         select: {
           id: true,
@@ -96,11 +93,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           lavozim: true,
           telefon: true,
           maosh: true,
-          mahalla: { select: { nomiKirill: true } },
-        },
-      },
-    },
-  });
+          mahalla: { select: { nomiKirill: true } } } } } });
 
   if (!p) notFound();
 
@@ -112,8 +105,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
 
   await jurnal(sessiya.userId, 'KORISH', {
     obyektTuri: 'UnemployedPerson',
-    obyektId: p.id,
-  });
+    obyektId: p.id });
 
   /*
    * Мос бўш иш ўринлари.
@@ -176,8 +168,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
     ishJoyi: p.ishJoyi ?? '',
     ishLavozimi: p.ishLavozimi ?? '',
     ishgaKirganSana: sana(p.ishgaKirganSana),
-    radSababi: p.radSababi ?? '',
-  };
+    radSababi: p.radSababi ?? '' };
 
   const joriyBosqich = ISHSIZ_HOLATI[p.holati].bosqich;
 
@@ -243,8 +234,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
                   <div
                     className="h-1.5 rounded-full transition-colors"
                     style={{
-                      background: otilgan ? `var(--step-${bosqich})` : 'var(--border)',
-                    }}
+                      background: otilgan ? `var(--step-${bosqich})` : 'var(--border)' }}
                   />
                   <p
                     className={`mt-1.5 truncate text-[10px] leading-tight ${
@@ -436,8 +426,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           createdAt: d.createdAt,
           kiritganId: d.kiritganId,
           kiritganNomi: d.kiritgan?.fullName ?? null,
-          tasdiqlaganNomi: d.tasdiqlagan?.fullName ?? null,
-        }))}
+          tasdiqlaganNomi: d.tasdiqlagan?.fullName ?? null }))}
       />
 
       {/* ── Chora-tadbirlar ── */}
@@ -492,8 +481,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
                 boshqaYonalish: amaldagiVaucher.boshqaYonalish,
                 berilganSana: amaldagiVaucher.berilganSana,
                 izoh: amaldagiVaucher.izoh,
-                berganNomi: amaldagiVaucher.bergan.fullName,
-              }
+                berganNomi: amaldagiVaucher.bergan.fullName }
             : null
         }
       />

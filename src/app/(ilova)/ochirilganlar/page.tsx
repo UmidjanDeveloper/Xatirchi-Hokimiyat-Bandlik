@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { Archive } from 'lucide-react';
 import { matnchi } from '@/lib/alifbo-server';
-import { joriySessiya, mahallaFiltri } from '@/lib/auth';
+import { mahallaFiltri } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { arxivRoyxati } from '@/lib/arxiv';
 import { QaytarishTugmasi } from '@/components/arxiv/qaytarish-tugmasi';
 import { formatDate } from '@/lib/utils';
@@ -33,7 +34,7 @@ export const dynamic = 'force-dynamic';
 export default async function OchirilganlarSahifasi() {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   /*
    * ── РОЛ ҚЎРИҚЧИСИ ──

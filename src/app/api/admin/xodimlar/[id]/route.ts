@@ -220,6 +220,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             berilganParol: shifrla(d.yangiParol),
             parolBerilganVaqt: new Date(),
             parolAlmashtirilsin: d.almashtirilsin === true,
+            /*
+             * ── ЭСКИ СЕССИЯЛАР ЎЛАДИ ──
+             *
+             * Администратор паролни тиклашининг ОДАТДАГИ
+             * сабаби — парол бошқа одамга маълум бўлиб
+             * қолгани. Эски cookie қолса, бу иш бефойда
+             * бўларди: ўша одам яна 12 соат ичкарида турарди.
+             *
+             * Рол ва маҳалла ўзгариши бу ерда ошмайди —
+             * улар ҳар сўровда БАЗАДАН ўқилади, яъни дарҳол
+             * кучга киради. Ходимни иш ўртасида чиқариб
+             * юборишнинг ҳожати йўқ.
+             */
+            sessiyaVersiyasi: { increment: 1 },
           }
         : {}),
     },

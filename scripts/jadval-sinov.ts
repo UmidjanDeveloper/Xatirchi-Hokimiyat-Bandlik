@@ -672,6 +672,13 @@ const SINOVLAR: Sinov[] = [
         'arxivchiId', // ички калитлар
         'viloyat', 'tuman', // доимий қиймат
         'takrorKaliti', // такрорни топиш учун ички калит
+        /*
+         * Идемпотентлик калити — браузер ясайдиган ЮБОРИШ
+         * калити. Оффлайн навбат қайта юборганда сервер ўз
+         * ёзувимизни шундан таниди. Анкета майдони эмас ва
+         * ҳокимлик жадвалида унинг ўрни йўқ.
+         */
+        'idempotentlikKaliti',
         'createdAt', 'updatedAt', 'arxivSanasi', 'arxivSababi', // хизмат майдонлари
         'aiXulosa', 'aiXulosaVaqti', 'aiManbasi', // хатлов эмас, ҳисоблаб чиқарилган
         'rasmUrl', 'imzoYoli', // файл йўллари

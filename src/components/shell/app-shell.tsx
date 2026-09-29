@@ -17,6 +17,8 @@ import { initials } from '@/lib/utils';
 
 interface Props {
   fullName: string;
+  /** Логин — телефон хотирасидаги ёзувлар шунга боғланган */
+  username: string;
   rol: Rol;
   /** YETTILIK roli uchun - qaysi mahallaga biriktirilgan */
   mahallaNomi?: string | null;
@@ -31,7 +33,7 @@ function Ikonka({ nomi, className }: { nomi: string; className?: string }) {
   return K ? <K className={className} /> : <Ikonkalar.Circle className={className} />;
 }
 
-export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
+export function AppShell({ fullName, username, rol, mahallaNomi, children }: Props) {
   const { t: tr } = useAlifbo();
 
   const yol = usePathname();
@@ -52,7 +54,12 @@ export function AppShell({ fullName, rol, mahallaNomi, children }: Props) {
      * йўқотиш ходимнинг бир соатлик ишини йўқотиш дегани.
      * Шунинг учун аввал сўраймиз.
      */
-    const qoldiq = chiqishdaTozala();
+    /*
+     * ФАҚАТ чиқаётган ходимнинг ёзувлари тегилади. Ҳамкасби
+     * ўша телефонда иш қолдирган бўлса, у ЖОЙИДА қолади:
+     * ўчириш ҳам маълумотни йўқотиш дегани.
+     */
+    const qoldiq = chiqishdaTozala(username);
     if (qoldiq.navbat > 0) {
       const davom = window.confirm(
         tr('Юборилмаган хатлов бор:') +

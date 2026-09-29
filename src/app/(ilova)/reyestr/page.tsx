@@ -4,13 +4,12 @@ import type { Metadata } from 'next';
 import { BadgeCheck, FileClock, ShieldQuestion } from 'lucide-react';
 import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
-import { joriySessiya } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import {
   DALIL_MUDDATI_KUN,
   tasdiqHisobi,
   tasdiqsizlar,
-  tekshirishKutayotganlar,
-} from '@/lib/joylashuv-dalili';
+  tekshirishKutayotganlar } from '@/lib/joylashuv-dalili';
 import { DALIL_NOMI } from '@/lib/dalil-nomlari';
 import { ReyestrYuklash } from '@/components/dalil/reyestr-yuklash';
 import { formatDate } from '@/lib/utils';
@@ -43,7 +42,7 @@ const raqam = (n: number) => n.toLocaleString('ru-RU');
 export default async function ReyestrSahifasi() {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (!yolgaRuxsat(sessiya.rol, '/reyestr')) redirect(boshSahifa(sessiya.rol));
 
@@ -216,8 +215,7 @@ function Katak({
   qiymat,
   izoh,
   rang,
-  ikonka,
-}: {
+  ikonka }: {
   nomi: string;
   qiymat: string;
   izoh: string;

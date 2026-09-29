@@ -91,6 +91,28 @@ export interface Sessiya {
   rol: Rol;
   /// YETTILIK roli uchun - faqat shu mahallani ko'radi
   mahallaId: string | null;
+  /**
+   * Sessiya AVLODI (`User.sessiyaVersiyasi` nusxasi).
+   *
+   * Parol almashganda bazadagi raqam oshadi va bu cookie
+   * yaroqsiz bo'ladi. Qisqa nom — cookie har so'rovda
+   * yuboriladi.
+   *
+   * Ixtiyoriy: eski cookie'larda bu maydon umuman yo'q va
+   * ular o'z muddati bilan tugaydi.
+   */
+  v?: number;
+  /**
+   * КЎЗ — администратор қайси ходимнинг кўзи билан қараяпти.
+   *
+   * Бўш бўлса — оддий сессия. Тўлдирилган бўлса, сайт ЎША
+   * ходимнинг роли ва маҳалласи билан чизилади, ёзиш
+   * амаллари эса УМУМАН ишламайди (`korish-rejimi.ts`).
+   *
+   * Ҳисоб эса ўзгармайди: `userId` ҳамон администраторники
+   * ва журналда ҳам ўша туради.
+   */
+  koz?: string;
   /// Muddati (ms)
   exp: number;
 }
@@ -194,12 +216,46 @@ export function aiXulosaSoraydi(rol: Rol): boolean {
  * so'rovda qo'lda yozish o'rniga shu yordamchi ishlatiladi - bir joyda
  * unutilsa, butun tumandagi oilalar ma'lumoti ochilib qolardi.
  */
-export function mahallaFiltri(sessiya: Sessiya): { mahallaId?: string } {
-  if (sessiya.rol === 'YETTILIK' && sessiya.mahallaId) {
-    return { mahallaId: sessiya.mahallaId };
+/**
+ * Маҳалла фильтри.
+ *
+ * Бутун сессия эмас, ФАҚАТ иккита майдон сўралади: рол ва
+ * маҳалла. Шунда уни ҳам cookie'дан, ҳам базадан келган
+ * маълумот билан чақириш мумкин — ва базадагиси ишлатилиши
+ * кафолатланади.
+ */
+export function mahallaFiltri(sessiya: {
+  rol: Rol;
+  mahallaId: string | null;
+}): { mahallaId?: string } {
+  if (sessiya.rol === 'YETTILIK') {
+    /*
+     * ── МАҲАЛЛАСИЗ ХОДИМ ҲЕЧ НАРСА КЎРМАЙДИ ──
+     *
+     * Аввал бу ерда `return {}` турарди — БЎШ фильтр. Яъни
+     * маҳалласи белгиланмаган МФЙ ходими бутун туманнинг
+     * оилаларини кўрарди.
+     *
+     * Бу осон юз берадиган ҳол: администратор янги ходим
+     * очиб, маҳалла бириктиришни кейинга қолдиради. Ходим
+     * эса ўша орада тизимга киради.
+     *
+     * Ҳеч қачон мос келмайдиган калит қайтарилади: рўйхат
+     * бўш чиқади ва ходим «менга маҳалла бириктирилмаган»
+     * деган экранни кўради.
+     */
+    return { mahallaId: sessiya.mahallaId ?? HECH_QAYSI_MAHALLA };
   }
   return {};
 }
+
+/**
+ * Ҳеч қачон мос келмайдиган маҳалла калити.
+ *
+ * `cuid` ҳарф билан бошланади ва бундай белгилар бўлмайди —
+ * яъни бу қиймат билан биронта ёзув топилмайди.
+ */
+export const HECH_QAYSI_MAHALLA = '__mahalla-biriktirilmagan__';
 
 /** Xodim shu mahalladagi yozuvga tega oladimi */
 export function mahallagaRuxsat(
@@ -214,6 +270,10 @@ export function mahallagaRuxsat(
   sessiya: Pick<Sessiya, 'rol' | 'mahallaId'>,
   mahallaId: string
 ): boolean {
+  /*
+   * Маҳалласи йўқ ходим ҲЕЧ БИР ёзувга тега олмайди:
+   * `null === mahallaId` ҳеч қачон рост бўлмайди.
+   */
   if (sessiya.rol === 'YETTILIK') return sessiya.mahallaId === mahallaId;
   return true;
 }

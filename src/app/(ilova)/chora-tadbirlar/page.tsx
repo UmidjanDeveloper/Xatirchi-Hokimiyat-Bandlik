@@ -4,7 +4,8 @@ import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
 import { AlertOctagon, CalendarClock, CheckCircle2 } from 'lucide-react';
-import { joriySessiya, mahallaFiltri } from '@/lib/auth';
+import { mahallaFiltri } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { topshiriqQamrovi } from '@/lib/panel-qamrovi';
 import { formatDate, percent } from '@/lib/utils';
@@ -13,8 +14,7 @@ import {
   TOPSHIRIQ_HOLATI,
   kechikkanlarShartI,
   korinadiganHolat,
-  qolganKun,
-} from '@/lib/chora-tadbir';
+  qolganKun } from '@/lib/chora-tadbir';
 import { ChoraHolati } from '@/components/chora/chora-holati';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 
@@ -33,13 +33,12 @@ export function generateMetadata() {
 const RO_YXAT_HAJMI = 200;
 
 export default async function ChoraTadbirlarSahifasi({
-  searchParams,
-}: {
+  searchParams }: {
   searchParams: { tashkilot?: string; holati?: string };
 }) {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   /*
    * ── РОЛ ҚЎРИҚЧИСИ ──
@@ -73,8 +72,7 @@ export default async function ChoraTadbirlarSahifasi({
       ? kechikkanlarShartI(hozir)
       : searchParams.holati
         ? { holati: searchParams.holati as never }
-        : {}),
-  };
+        : {}) };
 
   /*
    * Ҳоким ФАҚАТ ЎҚИЙДИ: у топшириқни ўзи бажармайди, натижасини
@@ -93,9 +91,7 @@ export default async function ChoraTadbirlarSahifasi({
       take: RO_YXAT_HAJMI,
       include: {
         household: { select: { id: true, oilaBoshligi: true, manzil: true } },
-        ishsiz: { select: { id: true, fish: true } },
-      },
-    }),
+        ishsiz: { select: { id: true, fish: true } } } }),
     prisma.actionPlan.count({ where: mahallaSharti }),
     prisma.actionPlan.count({ where: { ...mahallaSharti, holati: 'BAJARILDI' } }),
     prisma.actionPlan.count({ where: { ...mahallaSharti, ...kechikkanlarShartI(hozir) } }),
@@ -104,8 +100,7 @@ export default async function ChoraTadbirlarSahifasi({
       by: ['masulTashkilot'],
       where: { ...mahallaSharti, ...kechikkanlarShartI(hozir) },
       _count: true,
-      orderBy: { _count: { masulTashkilot: 'desc' } },
-    }),
+      orderBy: { _count: { masulTashkilot: 'desc' } } }),
   ]);
 
   return (
@@ -306,8 +301,7 @@ function KpiKarta({
   nomi,
   qiymat,
   izoh,
-  xavfli,
-}: {
+  xavfli }: {
   ikonka: React.ReactNode;
   nomi: string;
   qiymat: string;
@@ -331,8 +325,7 @@ function KpiKarta({
 function Filtr({
   faol,
   yol,
-  children,
-}: {
+  children }: {
   faol: boolean;
   yol: string;
   children: React.ReactNode;

@@ -10,9 +10,9 @@ import {
   Plane,
   Target,
   UserCheck,
-  UserX,
-} from 'lucide-react';
-import { bandlikIshi, joriySessiya } from '@/lib/auth';
+  UserX } from 'lucide-react';
+import { bandlikIshi } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { panelQamroviniOl } from '@/lib/panel-qamrovi';
 import { prisma } from '@/lib/prisma';
 import { FAOL_ELON } from '@/lib/elon-muddati';
@@ -58,14 +58,13 @@ function moslikIzohi(m: Moslik, tr: (matn: string) => string): string {
 }
 
 export default async function BandlikSahifasi({
-  searchParams,
-}: {
+  searchParams }: {
   searchParams: { davr?: string; mfy?: string };
 }) {
   const tr = matnchi();
   const davr = davrOqi(searchParams.davr);
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
 
@@ -110,9 +109,7 @@ export default async function BandlikSahifasi({
         telefon: true,
         holati: true,
         xohlaganIsh: true,
-        mahalla: { select: { nomiKirill: true } },
-      },
-    }),
+        mahalla: { select: { nomiKirill: true } } } }),
 
     // 2. Suhbatdan o'tgan, lekin taklif berilmagan
     prisma.unemployedPerson.findMany({
@@ -126,9 +123,7 @@ export default async function BandlikSahifasi({
         holati: true,
         xohlaganIsh: true,
         mutaxassisligi: true,
-        mahalla: { select: { nomiKirill: true } },
-      },
-    }),
+        mahalla: { select: { nomiKirill: true } } } }),
 
     prisma.vacancy.findMany({
       where: { ...filtr, ...FAOL_ELON() },
@@ -142,9 +137,7 @@ export default async function BandlikSahifasi({
         maosh: true,
         ornlarSoni: true,
         mahallaId: true,
-        mahalla: { select: { nomiKirill: true } },
-      },
-    }),
+        mahalla: { select: { nomiKirill: true } } } }),
 
     /*
      * Иш истаклари — мослаштириш учун.
@@ -160,8 +153,7 @@ export default async function BandlikSahifasi({
         ...filtr,
         xohlaganIsh: { not: null },
         vacancyId: null,
-        holati: { in: ['ANIQLANDI', 'SUHBAT_OTKAZILDI', 'TAKLIF_BERILDI'] },
-      },
+        holati: { in: ['ANIQLANDI', 'SUHBAT_OTKAZILDI', 'TAKLIF_BERILDI'] } },
       select: {
         id: true,
         fish: true,
@@ -180,13 +172,10 @@ export default async function BandlikSahifasi({
         haydovchilikToifasi: true,
         takliflar: true,
         vacancyId: true,
-        mahalla: { select: { nomiKirill: true } },
-      },
-    }),
+        mahalla: { select: { nomiKirill: true } } } }),
 
     prisma.unemployedPerson.count({
-      where: { ...filtr, takliflar: { has: 'Xorijga mehnat migratsiyasi' } },
-    }),
+      where: { ...filtr, takliflar: { has: 'Xorijga mehnat migratsiyasi' } } }),
 
     tahlilOl(mahallaId, davr),
 
@@ -210,8 +199,7 @@ export default async function BandlikSahifasi({
     prisma.joylashuvXabari.findMany({
       where: {
         holati: 'XABAR_QILINDI',
-        ...(mahallaId ? { ishsiz: { mahallaId } } : {}),
-      },
+        ...(mahallaId ? { ishsiz: { mahallaId } } : {}) },
       orderBy: { muddat: 'asc' },
       take: 20,
       select: {
@@ -219,9 +207,7 @@ export default async function BandlikSahifasi({
         muddat: true,
         ishsiz: { select: { fish: true, mahalla: { select: { nomiKirill: true } } } },
         vacancy: { select: { lavozim: true, korxonaNomi: true } },
-        xabarchi: { select: { fullName: true } },
-      },
-    }),
+        xabarchi: { select: { fullName: true } } } }),
   ]);
 
   /*
@@ -291,11 +277,9 @@ export default async function BandlikSahifasi({
             yonalish: v.yonalish,
             talablar: v.talablar,
             maosh: v.maosh,
-            mahallaId: v.mahallaId,
-          },
+            mahallaId: v.mahallaId },
           n
-        ),
-      }));
+        ) }));
 
       const tartib = (a: (typeof baholangan)[number], b: (typeof baholangan)[number]) => {
         const at = a.moslik.tosiq ? 1 : 0;
@@ -312,8 +296,7 @@ export default async function BandlikSahifasi({
         hisob,
         ozMahallasi,
         korsatiladigan: [...ozMahallasi, ...boshqalar].slice(0, KORSATILADIGAN),
-        jamiNomzod: barchasi.length,
-      };
+        jamiNomzod: barchasi.length };
     })
     .filter((v) => v.jamiNomzod > 0 && !v.hisob.toldimi)
     // Avval o'z mahallasida nomzodi borlar - ular bilan bugun ish qilinadi
@@ -505,8 +488,7 @@ export default async function BandlikSahifasi({
           korxonaNomi: x.vacancy.korxonaNomi,
           xabarchi: x.xabarchi.fullName,
           muddat: x.muddat.toLocaleDateString('ru-RU'),
-          kechikkan: x.muddat.getTime() < Date.now(),
-        }))}
+          kechikkan: x.muddat.getTime() < Date.now() }))}
       />
 
       <section className="karta p-4 sm:p-5">
@@ -640,8 +622,7 @@ function Kpi({
   qiymat,
   xavfli,
   yol,
-  izoh,
-}: {
+  izoh }: {
   ikonka: React.ReactNode;
   nomi: string;
   qiymat: number;
@@ -695,8 +676,7 @@ function Navbat({
   izoh,
   royxat,
   jami,
-  yol,
-}: {
+  yol }: {
   sarlavha: string;
   izoh: string;
   royxat: NavbatOdami[];

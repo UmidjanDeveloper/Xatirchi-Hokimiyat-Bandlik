@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
-import { joriySessiya } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { faolBeruvchilar, moderatsiyaRoyxati } from '@/lib/ish-beruvchi';
 import { Moderatsiya } from '@/components/beruvchi/moderatsiya';
 import { formatDate, formatPhone } from '@/lib/utils';
@@ -30,19 +30,17 @@ export const dynamic = 'force-dynamic';
 const HOLAT_NOMI: Record<string, string> = {
   TASDIQLANDI: 'Тасдиқланган',
   RAD_ETILDI: 'Рад этилган',
-  KUTILMOQDA: 'Кутилмоқда',
-};
+  KUTILMOQDA: 'Кутилмоқда' };
 
 const NISHON: Record<string, string> = {
   TASDIQLANDI: 'bg-ok-bg text-ok',
   RAD_ETILDI: 'bg-danger-bg text-danger',
-  KUTILMOQDA: 'bg-warn-bg text-warn',
-};
+  KUTILMOQDA: 'bg-warn-bg text-warn' };
 
 export default async function IshBeruvchilarSahifasi() {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (!yolgaRuxsat(sessiya.rol, '/ish-beruvchilar')) redirect(boshSahifa(sessiya.rol));
 
@@ -68,8 +66,7 @@ export default async function IshBeruvchilarSahifasi() {
           masulShaxs: b.masulShaxs,
           telefon: b.telefon,
           mahallaNomi: b.mahalla?.nomiKirill ?? null,
-          createdAt: b.createdAt,
-        }))}
+          createdAt: b.createdAt }))}
         elonlar={navbat.elonlar.map((e) => ({
           id: e.id,
           lavozim: e.lavozim,
@@ -80,8 +77,7 @@ export default async function IshBeruvchilarSahifasi() {
           maoshMln: e.maosh ? Math.round(Number(e.maosh) / 1_000_000) : null,
           telefon: e.telefon,
           masulShaxs: e.ishBeruvchi?.masulShaxs ?? null,
-          createdAt: e.createdAt,
-        }))}
+          createdAt: e.createdAt }))}
       />
 
       {/* ── КЎРИБ ЧИҚИЛГАНЛАР ── */}

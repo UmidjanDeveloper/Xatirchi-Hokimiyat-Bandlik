@@ -40,6 +40,65 @@ export interface NavbatYozuvi {
   malumot: unknown;
   qoshilganVaqt: string;
   urinishlar: number;
+  /**
+   * ЁЗУВНИ КИМ ТЎЛДИРГАН — логини.
+   *
+   * ── Нима учун керак ──
+   *
+   * Телефон битта, ходим эса иккита бўлиши мумкин: аккумулятор
+   * ўтирган, телефон синган, ходим касал — иккинчиси ўз ҳисоби
+   * билан ҲАМКАСБИНИНГ телефонига киради.
+   *
+   * Навбат эса `localStorage` да ва у ҳисобга боғланмаган.
+   * Илгари биринчи ходимнинг юборилмаган хатловлари иккинчиси
+   * кирган заҳоти ЎЗИ жўнаб кетарди — сервер эса уларни
+   * иккинчи ходимнинг иши деб ёзиб қўярди. Журналда нотўғри
+   * исм, «ким хатлов қилди» деган саволга нотўғри жавоб.
+   *
+   * ── Эски ёзувлар ──
+   *
+   * Бу майдон қўшилгунга қадар навбатга тушганларда у йўқ
+   * (`undefined`). Уларни ҳеч кимга ЁЗИБ бермаймиз: ходим
+   * ўзи «бу менинг ишим» деб тасдиқласа, ўшанда эгаси
+   * белгиланади.
+   */
+  egasi?: string;
+  /**
+   * ИДЕМПОТЕНТЛИК КАЛИТИ — сервер такрорни шундан таниди.
+   *
+   * `takrorKaliti` (манзил + оила бошлиғи) МАЗМУН калити:
+   * иккита ҳар хил ходим бир хил хонадонни киритса ҳам у
+   * бир хил чиқади. Бу эса ЮБОРИШ калити — ҳар бир хатлов
+   * учун бир марта яратилади ва қайта юборишларда ўзгармайди.
+   */
+  kalit?: string;
+  /**
+   * Сервер «бу хонадон бошқа ёзувда бор» деди (409) ва у
+   * ёзув БИЗНИКИ эмас. Мавжуд ёзувнинг `id` си — ходим
+   * очиб солиштириши учун.
+   */
+  ziddiyat?: string;
+}
+
+/**
+ * Идемпотентлик калитини ясайди.
+ *
+ * `crypto.randomUUID` ХАВФСИЗ контекстда (https ёки
+ * localhost) бор, аммо эски Android браузерларида йўқ ва
+ * ундоқ жойда чақирув хато билан йиқилади. Захира варианти
+ * криптографик эмас, лекин бу ерда шарт ҳам эмас: калит сир
+ * эмас, у фақат ЎЗ юборишимизни таниш учун.
+ */
+export function kalitYasa(): string {
+  try {
+    const c = (globalThis as { crypto?: Crypto }).crypto;
+    if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+  } catch {
+    /* захирага ўтамиз */
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
 }
 
 function xotiraBormi(): boolean {
@@ -58,11 +117,11 @@ function xotiraBormi(): boolean {
  * Qoralamani saqlaydi.
  * @returns saqlandimi - `false` bo'lsa foydalanuvchiga aytish SHART
  */
-export function qoralamaSaqla(id: string, malumot: unknown): boolean {
+export function qoralamaSaqla(id: string, malumot: unknown, egasi?: string): boolean {
   if (!xotiraBormi()) return false;
   try {
     const barchasi = qoralamalarniOqi();
-    barchasi[id] = { malumot, vaqt: new Date().toISOString() };
+    barchasi[id] = { malumot, vaqt: new Date().toISOString(), egasi };
     window.localStorage.setItem(QORALAMA_KEY, JSON.stringify(barchasi));
     return true;
   } catch {
@@ -95,7 +154,14 @@ function eskirganmi(vaqt: string): boolean {
   return Date.now() - t > QORALAMA_KUNI * 24 * 60 * 60 * 1000;
 }
 
-export function qoralamalarniOqi(): Record<string, { malumot: unknown; vaqt: string }> {
+export interface Qoralama {
+  malumot: unknown;
+  vaqt: string;
+  /** Кимнинг қораламаси — логини. Эскиларида йўқ. */
+  egasi?: string;
+}
+
+export function qoralamalarniOqi(): Record<string, Qoralama> {
   if (!xotiraBormi()) return {};
   try {
     const xom = window.localStorage.getItem(QORALAMA_KEY);
@@ -109,9 +175,9 @@ export function qoralamalarniOqi(): Record<string, { malumot: unknown; vaqt: str
      * лекин уни ишга тушириш керак бўларди — ва аввал ё
      * кечроқ кимдир чақиришни унутарди.
      */
-    const toza: Record<string, { malumot: unknown; vaqt: string }> = {};
+    const toza: Record<string, Qoralama> = {};
     let tashlandi = 0;
-    for (const [id, y] of Object.entries(parsed as Record<string, { malumot: unknown; vaqt: string }>)) {
+    for (const [id, y] of Object.entries(parsed as Record<string, Qoralama>)) {
       if (y && typeof y === 'object' && !eskirganmi(y.vaqt)) toza[id] = y;
       else tashlandi++;
     }
@@ -128,9 +194,20 @@ export function qoralamalarniOqi(): Record<string, { malumot: unknown; vaqt: str
   }
 }
 
-export function qoralamaOqi<T>(id: string): T | null {
+/**
+ * Қораламани ўқийди.
+ *
+ * `egasi` берилса ва ёзув БОШҚА ходимники бўлса — `null`.
+ * Эгаси белгиланмаган эски ёзувлар ҳаммага очиқ қолади: улар
+ * шу ўзгаришдан ОЛДИН ёзилган ва етти кунда ўзи тугайди
+ * (`QORALAMA_KUNI`), ходимнинг ярим соатлик ишини эса
+ * бекорга йўқотиб бўлмайди.
+ */
+export function qoralamaOqi<T>(id: string, egasi?: string): T | null {
   const y = qoralamalarniOqi()[id];
-  return y ? (y.malumot as T) : null;
+  if (!y) return null;
+  if (egasi !== undefined && y.egasi !== undefined && y.egasi !== egasi) return null;
+  return y.malumot as T;
 }
 
 export function qoralamaOchir(id: string): void {
@@ -173,8 +250,17 @@ export type NavbatNatijasi =
   | { ok: true }
   | { ok: false; sabab: 'xotira-yoq' | 'navbat-toldi' | 'yozib-bolmadi' };
 
-/** Xatlovni navbatga qo'shadi */
-export function navbatgaQosh(malumot: unknown): NavbatNatijasi {
+/**
+ * Xatlovni navbatga qo'shadi.
+ *
+ * @param egasi  ходимнинг логини — ёзув ЎШАНИКИ бўлиб қолади
+ * @param kalit  идемпотентлик калити (сервер такрорни шундан таниди)
+ */
+export function navbatgaQosh(
+  malumot: unknown,
+  egasi?: string,
+  kalit?: string
+): NavbatNatijasi {
   if (!xotiraBormi()) return { ok: false, sabab: 'xotira-yoq' };
 
   const navbat = navbatniOqi();
@@ -185,9 +271,53 @@ export function navbatgaQosh(malumot: unknown): NavbatNatijasi {
     malumot,
     qoshilganVaqt: new Date().toISOString(),
     urinishlar: 0,
+    ...(egasi ? { egasi } : {}),
+    ...(kalit ? { kalit } : {}),
   });
 
   return navbatYoz(navbat) ? { ok: true } : { ok: false, sabab: 'yozib-bolmadi' };
+}
+
+/**
+ * ── КИМНИКИ ──
+ *
+ * Учта гуруҳ бўлади ва учовига муносабат ҳар хил:
+ *
+ *   · МЕНИКИ    — ўзи юборилади;
+ *   · БЕГОНА    — бошқа ходимнинг иши. ТЕГМАЙМИЗ ва
+ *                 ўчирмаймиз: эгаси кирганда ўзи юборади;
+ *   · ЭГАСИЗ    — бу майдон қўшилгунча ёзилганлар. Ходим
+ *                 «бу менинг ишим» деб тасдиқласа юборилади.
+ */
+export function meniki(navbat: NavbatYozuvi[], egasi: string): NavbatYozuvi[] {
+  return navbat.filter((y) => y.egasi === egasi);
+}
+
+export function begona(navbat: NavbatYozuvi[], egasi: string): NavbatYozuvi[] {
+  return navbat.filter((y) => y.egasi !== undefined && y.egasi !== egasi);
+}
+
+export function egasiz(navbat: NavbatYozuvi[]): NavbatYozuvi[] {
+  return navbat.filter((y) => y.egasi === undefined);
+}
+
+/**
+ * Эгасиз ёзувларни жорий ходимга ёзиб беради.
+ *
+ * Фақат ходим ЎЗИ тасдиқлаганда чақирилади — автоматик эмас.
+ * Акс ҳолда бу майдоннинг умуман маъноси қолмасди.
+ */
+export function egasizlarniOlish(egasi: string): number {
+  if (!xotiraBormi()) return 0;
+  const navbat = navbatniOqi();
+  let olindi = 0;
+  const yangi = navbat.map((y) => {
+    if (y.egasi !== undefined) return y;
+    olindi++;
+    return { ...y, egasi };
+  });
+  if (olindi > 0) navbatYoz(yangi);
+  return olindi;
 }
 
 export function navbatdanOchir(localId: string): void {
@@ -211,19 +341,41 @@ export function urinishBelgila(localId: string): void {
  * bor va ularga munosabat ham har xil bo'lishi kerak.
  *
  *  · `saqlandi`  - server qabul qildi, navbatdan chiqariladi;
- *  · `takror`    - server "bu xonadon allaqachon bor" dedi (409).
- *                  Bu ham MUVAFFAQIYAT: aloqa javob kelishidan
- *                  oldin uzilgan bo'lsa, yozuv aslida saqlangan
- *                  bo'ladi. Uni navbatda qoldirish - xodimga
- *                  abadiy "yuborilmagan" deb ko'rsatib turish;
+ *  · `takror`    - сервер «бу ЁЗУВНИ аллақачон қабул қилганман»
+ *                  деди. Яъни ўзимизнинг олдинги юборишимиз
+ *                  ўтиб кетган, фақат жавоби келмаган. Ёзув
+ *                  жойида — навбатдан чиқарамиз;
+ *  · `ziddiyat`  - сервер «бу манзил ва оила бошлиғи бўйича
+ *                  ёзув бор, лекин у СЕНИКИ эмас» деди (409).
+ *                  Буни муваффақият деб ҳисоблаб бўлмайди:
+ *                  бизнинг ёзувимиз ҲЕЧ ҚАЕРГА сақланмади.
+ *                  Навбатда қолади ва ходимга кўрсатилади —
+ *                  иккита ёзувни солиштириш ОДАМНИНГ иши;
  *  · `yaroqsiz`  - ma'lumotda xato bor (400). Qayta-qayta
  *                  yuborish foydasiz, lekin O'CHIRIB HAM
  *                  BO'LMAYDI: bu xodimning bir soatlik ishi.
  *                  Navbatda qoladi va xodimga ko'rsatiladi;
  *  · `aloqa-yoq` - tarmoq yo'q yoki server javob bermadi.
  *                  Qolganlariga urinish ham behuda - to'xtaymiz.
+ *
+ *  ── НЕГА `takror` ва `ziddiyat` АЖРАТИЛДИ ──
+ *
+ *  Илгари 409 нинг ҳаммаси `takror` эди ва ёзув навбатдан
+ *  ЎЧИРИЛАРДИ. Бир хил манзилда иккита ҳақиқий оила яшаса
+ *  ёки ҳамкасб ўша хонадонни аввалроқ киритган бўлса,
+ *  ходимнинг бир соатлик иши ЖИМГИНА йўқоларди — экранда эса
+ *  «юборилди» деб ёзиларди.
+ *
+ *  Энди фарқни СЕРВЕР қилади: юборишда идемпотентлик калити
+ *  кетади ва сервер «бу ўша калит» деса — ростдан ҳам
+ *  такрор; калит бошқа бўлса — зиддият.
  */
-export type YuborishNatijasi = 'saqlandi' | 'takror' | 'yaroqsiz' | 'aloqa-yoq';
+export type YuborishNatijasi =
+  | 'saqlandi'
+  | 'takror'
+  | 'ziddiyat'
+  | 'yaroqsiz'
+  | 'aloqa-yoq';
 
 /**
  * Shundan ortiq urinishdan keyin yozuv "e'tibor talab qiladi"
@@ -234,49 +386,107 @@ export type YuborishNatijasi = 'saqlandi' | 'takror' | 'yaroqsiz' | 'aloqa-yoq';
  */
 export const MAX_URINISH = 5;
 
-/** Yozuv avtomatik yuborishga yaroqlimi */
+/**
+ * Yozuv avtomatik yuborishga yaroqlimi.
+ *
+ * Зиддиятга тушган ёзув қайта юборилмайди: сервер уни ҳар
+ * сафар бир хил рад этади, навбат эса ҳар гал шу ердан
+ * тўсилиб турарди.
+ */
 export function avtomatikYuboriladimi(y: NavbatYozuvi): boolean {
-  return y.urinishlar < MAX_URINISH;
+  return y.urinishlar < MAX_URINISH && !y.ziddiyat;
+}
+
+/** Ходим кўриб чиқиши керак бўлган ёзув */
+export function etiborTalabQiladi(y: NavbatYozuvi): boolean {
+  return !avtomatikYuboriladimi(y);
+}
+
+/** Зиддиятни ёзиб қўяди — ёзув навбатда ҚОЛАДИ */
+export function ziddiyatBelgila(localId: string, mavjudId: string): void {
+  if (!xotiraBormi()) return;
+  navbatYoz(
+    navbatniOqi().map((y) =>
+      y.localId === localId ? { ...y, ziddiyat: mavjudId || 'nomalum' } : y
+    )
+  );
 }
 
 export interface NavbatNatijalari {
   /** Serverga yangi yozilganlar */
   yuborildi: number;
-  /** Server "allaqachon bor" degani - ular ham yo'qolmadi */
+  /** Server «бу ёзувни аллақачон олганман» деди — улар ҳам жойида */
   takror: number;
-  /** Navbatda qolgani */
+  /** Бошқа ёзув билан тўқнашди — ходим кўриб чиқиши керак */
+  ziddiyat: number;
+  /** Navbatda qolgani (ФАҚАТ ўзиники) */
   qoldi: number;
-  /** E'tibor talab qiladiganlar (urinish chegarasidan oshgan) */
+  /** E'tibor talab qiladiganlar (urinish chegarasidan oshgan yoki ziddiyatli) */
   etibor: number;
   /** Aloqa yo'qligi sababli to'xtadimi */
   aloqaYoq: boolean;
 }
 
 /**
+ * Битта ёзувни юбориш натижаси.
+ *
+ * Зиддиятда мавжуд ёзувнинг `id` си ҳам қайтади — ходим
+ * иккисини солиштириши учун ҳавола ясалади.
+ */
+export interface BittaNatija {
+  holat: YuborishNatijasi;
+  mavjudId?: string | null;
+}
+
+/**
  * Navbatni serverga yuborishga urinadi.
  *
+ * ФАҚАТ `egasi` га тегишли ёзувлар юборилади. Бошқа
+ * ходимнинг иши ҳам, эгасиз эски ёзувлар ҳам тегилмайди:
+ * уларни бу ҳисоб номидан жўнатиш — журналга ёлғон ёзиш
+ * дегани.
+ *
  * @param yubor bitta yozuvni yuboradigan funksiya
+ * @param egasi ходимнинг логини
  */
 export async function navbatniYubor(
-  yubor: (malumot: unknown) => Promise<YuborishNatijasi>
+  yubor: (malumot: unknown, yozuv: NavbatYozuvi) => Promise<YuborishNatijasi | BittaNatija>,
+  egasi?: string
 ): Promise<NavbatNatijalari> {
-  const navbat = navbatniOqi().filter(avtomatikYuboriladimi);
+  const hammasi = navbatniOqi();
+  const mening = egasi === undefined ? hammasi : meniki(hammasi, egasi);
+  const navbat = mening.filter(avtomatikYuboriladimi);
+
   let yuborildi = 0;
   let takror = 0;
+  let ziddiyat = 0;
   let aloqaYoq = false;
 
   for (const yozuv of navbat) {
-    let natija: YuborishNatijasi;
+    let javob: YuborishNatijasi | BittaNatija;
     try {
-      natija = await yubor(yozuv.malumot);
+      javob = await yubor(yozuv.malumot, yozuv);
     } catch {
-      natija = 'aloqa-yoq';
+      javob = 'aloqa-yoq';
     }
+    const natija = typeof javob === 'string' ? javob : javob.holat;
+    const mavjudId = typeof javob === 'string' ? null : (javob.mavjudId ?? null);
 
     if (natija === 'saqlandi' || natija === 'takror') {
       navbatdanOchir(yozuv.localId);
       if (natija === 'takror') takror++;
       else yuborildi++;
+      continue;
+    }
+
+    if (natija === 'ziddiyat') {
+      /*
+       * Ёзув НАВБАТДА ҚОЛАДИ. Уринишлар сонини ҳам
+       * оширмаймиз: зиддият «ҳали етиб бормади» эмас,
+       * «одам қарамагунча ҳал бўлмайди» дегани.
+       */
+      ziddiyatBelgila(yozuv.localId, mavjudId ?? '');
+      ziddiyat++;
       continue;
     }
 
@@ -287,12 +497,13 @@ export async function navbatniYubor(
     }
   }
 
-  const qolgan = navbatniOqi();
+  const qolgan = egasi === undefined ? navbatniOqi() : meniki(navbatniOqi(), egasi);
   return {
     yuborildi,
     takror,
+    ziddiyat,
     qoldi: qolgan.length,
-    etibor: qolgan.filter((y) => !avtomatikYuboriladimi(y)).length,
+    etibor: qolgan.filter(etiborTalabQiladi).length,
     aloqaYoq,
   };
 }
@@ -310,19 +521,41 @@ export async function navbatniYubor(
  * нечта ёзув қолганини қайтаради — чақирувчи ходимни
  * огоҳлантириши учун.
  */
-export function chiqishdaTozala(): { qoralama: number; navbat: number } {
+export function chiqishdaTozala(egasi?: string): { qoralama: number; navbat: number } {
   if (!xotiraBormi()) return { qoralama: 0, navbat: 0 };
+
   let qoralama = 0;
   try {
-    qoralama = Object.keys(qoralamalarniOqi()).length;
-    window.localStorage.removeItem(QORALAMA_KEY);
+    const barchasi = qoralamalarniOqi();
+    /*
+     * ФАҚАТ чиқаётган ходимнинг қораламалари ўчирилади.
+     * Ҳамкасбининг ярим тўлдирилган анкетаси телефонда
+     * қолиши керак — уни ўчириш ҳам маълумотни йўқотиш.
+     *
+     * Эгаси белгиланмаган эски ёзувлар ҳам ўчирилади: улар
+     * шу ўзгаришдан олдин ёзилган ва қайси ҳисобга
+     * тегишлилиги номаълум — телефонда очиқ матнда исм,
+     * манзил ва даромад бўлиб қолгандан кўра ўчгани яхши.
+     */
+    const qoladigan: Record<string, Qoralama> = {};
+    for (const [id, y] of Object.entries(barchasi)) {
+      if (egasi !== undefined && y.egasi !== undefined && y.egasi !== egasi) {
+        qoladigan[id] = y;
+      } else {
+        qoralama++;
+      }
+    }
+    if (Object.keys(qoladigan).length === 0) window.localStorage.removeItem(QORALAMA_KEY);
+    else window.localStorage.setItem(QORALAMA_KEY, JSON.stringify(qoladigan));
   } catch {
     /* ўчириб бўлмаса — зарари йўқ */
   }
+
   let navbat = 0;
   try {
-    navbat = navbatniOqi().length;
-    if (navbat === 0) window.localStorage.removeItem(NAVBAT_KEY);
+    const hammasi = navbatniOqi();
+    navbat = egasi === undefined ? hammasi.length : meniki(hammasi, egasi).length;
+    if (hammasi.length === 0) window.localStorage.removeItem(NAVBAT_KEY);
   } catch {
     /* ўқиб бўлмаса — навбат ҳам йўқ деб ҳисоблаймиз */
   }

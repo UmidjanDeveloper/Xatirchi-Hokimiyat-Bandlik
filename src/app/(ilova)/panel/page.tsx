@@ -12,9 +12,9 @@ import {
   Tv,
   TrendingUp,
   UserCheck,
-  Users,
-} from 'lucide-react';
-import { joriySessiya, tahlilKoradi } from '@/lib/auth';
+  Users } from 'lucide-react';
+import { tahlilKoradi } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { panelQamroviniOl } from '@/lib/panel-qamrovi';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { DARAJA_KORINISHI, tavsiyalarniHisobla } from '@/lib/tavsiyalar';
@@ -23,13 +23,11 @@ import {
   ByudjetBlogi,
   KechikkanlarBlogi,
   KursTalabiBlogi,
-  Voronka,
-} from '@/components/panel/diagrammalar';
+  Voronka } from '@/components/panel/diagrammalar';
 import {
   MahallalarJadvali,
   MahallaUstunlari,
-  ToifaDoirasi,
-} from '@/components/panel/grafiklar';
+  ToifaDoirasi } from '@/components/panel/grafiklar';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { MahallaTanlash } from '@/components/panel/mahalla-tanlash';
@@ -65,14 +63,13 @@ const pul = (som: number) =>
       : raqam(som);
 
 export default async function PanelSahifasi({
-  searchParams,
-}: {
+  searchParams }: {
   searchParams: { davr?: string; mfy?: string };
 }) {
   const tr = matnchi();
   const davr = davrOqi(searchParams.davr);
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (!tahlilKoradi(sessiya.rol)) redirect('/');
 
@@ -615,8 +612,7 @@ function Kpi({
   izoh,
   yaxshi,
   ogoh,
-  yol,
-}: {
+  yol }: {
   ikonka: React.ReactNode;
   nomi: string;
   qiymat: string;

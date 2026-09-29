@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { matnchi } from '@/lib/alifbo-server';
-import { joriySessiya } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
@@ -30,7 +30,7 @@ export function generateMetadata() {
 export default async function MahallaXodimlariSahifasi() {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (sessiya.rol !== 'BANDLIK_RAHBAR' && sessiya.rol !== 'ADMIN') redirect('/');
 
@@ -49,13 +49,10 @@ export default async function MahallaXodimlariSahifasi() {
         faol: true,
         parolAlmashtirilsin: true,
         oxirgiKirish: true,
-        mahalla: { select: { nomiKirill: true } },
-      },
-    }),
+        mahalla: { select: { nomiKirill: true } } } }),
     prisma.mahalla.findMany({
       orderBy: { nomi: 'asc' },
-      select: { id: true, nomi: true, nomiKirill: true },
-    }),
+      select: { id: true, nomi: true, nomiKirill: true } }),
   ]);
 
   const faolSoni = xodimlar.filter((x) => x.faol).length;

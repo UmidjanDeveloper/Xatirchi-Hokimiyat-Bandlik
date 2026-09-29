@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
-import { joriySessiya } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { AppShell } from '@/components/shell/app-shell';
 import { SessiyaQorovuli } from '@/components/shell/sessiya-qorovuli';
+import { KorishLentasi } from '@/components/shell/korish-lentasi';
+import { ROL_NOMI } from '@/components/shell/navigatsiya';
 import { AlifboProvider } from '@/components/alifbo/alifbo-provider';
 import { alifboServer } from '@/lib/alifbo-server';
 
@@ -14,34 +15,52 @@ import { alifboServer } from '@/lib/alifbo-server';
  * cookie borligini ko'radi, haqiqiy qo'riqchi shu.
  */
 export default async function IlovaLayout({ children }: { children: React.ReactNode }) {
-  const sessiya = joriySessiya();
-  if (!sessiya) redirect('/kirish');
-
-  const user = await prisma.user.findUnique({
-    where: { id: sessiya.userId },
-    select: {
-      username: true,
-      fullName: true,
-      rol: true,
-      faol: true,
-      parolAlmashtirilsin: true,
-      mahalla: { select: { nomiKirill: true } },
-    },
-  });
-
-  // Xodim ishdan bo'shatilgan bo'lsa, cookie hali yaroqli bo'lsa ham kirmaydi
-  if (!user || !user.faol) redirect('/kirish');
+  /*
+   * ── БИТТА ҚОРОВУЛ ──
+   *
+   * Аввал бу ерда cookie ўқилиб, базадан алоҳида сўров
+   * кетарди, саҳифалар эса ЯНА cookie'ни ўқирди. Иккита
+   * манба — иккита ҳақиқат.
+   *
+   * Энди иккови ҳам `joriyXodim()` ни чақиради. У `cache()`
+   * билан ўралган, яъни битта сўров ичида базага барибир
+   * битта мурожаат кетади.
+   */
+  const xodim = await joriyXodim();
+  if (!xodim) redirect('/kirish');
 
   // Boshlang'ich parol almashtirilmaguncha boshqa sahifalar ochilmaydi
-  if (user.parolAlmashtirilsin) redirect('/parol-almashtirish');
+  if (xodim.parolAlmashtirilsin) redirect('/parol-almashtirish');
 
   const alifbo = alifboServer();
 
   return (
     <AlifboProvider boshlangich={alifbo}>
+      {/*
+        ── КЎРИШ РЕЖИМИ ──
+
+        Администратор бошқа ходимнинг кўзи билан қараётган
+        бўлса, экраннинг энг тепасида доимий лента туради.
+        У қобиқдан ТАШҚАРИДА: қобиқ сурилиб кетса ҳам лента
+        жойида қолсин.
+      */}
+      {xodim.korish && (
+        <KorishLentasi
+          nishonIsmi={xodim.fullName}
+          nishonRoli={ROL_NOMI[xodim.rol]}
+          haqiqiyIsm={xodim.korish.haqiqiyIsm}
+        />
+      )}
       <AppShell
-        fullName={user.fullName}
-        rol={user.rol}
+        fullName={xodim.fullName}
+        /*
+          Қобиққа ҲАҚИҚИЙ логин берилади. Чиқишда телефон
+          хотираси ЎША ҳисобники бўйича тозаланади — кўриш
+          режимида бегона ходимнинг қораламаси ўчиб
+          кетмасин.
+        */
+        username={xodim.korish?.haqiqiyUsername ?? xodim.username}
+        rol={xodim.rol}
         /*
           Qobiq HAM kirill nomini oladi va uni o'zi o'giradi.
           Ilgari lotin uchun `nomi` ustuni ishlatilardi va natijada
@@ -53,7 +72,7 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
           Endi butun interfeys bitta manbadan - kirill nomidan -
           o'giriladi, shuning uchun hamma joyda bir xil yoziladi.
         */
-        mahallaNomi={user.mahalla?.nomiKirill}
+        mahallaNomi={xodim.mahallaNomi}
       >
         {/*
           Бир браузерда битта cookie бўлади: иккинчи ойнада
@@ -62,7 +81,13 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
           йўл қўймайди — акс ҳолда амаллар бошқа одам номидан
           бажарилиб кетарди.
         */}
-        <SessiyaQorovuli username={user.username} />
+        {/*
+          Қоровулга ҲАҚИҚИЙ ҳисоб берилади. Кўриш режимида
+          экранда бошқа ходимнинг панели турибди, лекин
+          cookie ҳамон администраторники — қоровул ўшани
+          солиштиради ва бекордан-бекорга огоҳлантирмайди.
+        */}
+        <SessiyaQorovuli username={xodim.korish?.haqiqiyUsername ?? xodim.username} />
         {children}
       </AppShell>
     </AlifboProvider>

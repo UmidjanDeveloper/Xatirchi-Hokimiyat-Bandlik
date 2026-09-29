@@ -208,6 +208,30 @@ Yettilik a'zosi uchun mahalla **majburiy**: u bo'sh bo'lsa, xodim butun
 tumandagi oilalar ma'lumotini ko'rib qolardi. Shuning uchun tekshiruv
 foydalanuvchi yaratish paytida turadi.
 
+### Ko'rish rejimi — «xodimning ko'zi bilan»
+
+Brauzerda **bitta cookie** bo'ladi va u barcha oyna va varaqlarga
+tegishli. Shuning uchun bitta Chrome'da ham administrator panelini,
+ham mahalla xodimining panelini ochib bo'lmaydi: ikkinchisiga
+kirilgan zahoti birinchisi almashadi.
+
+Tekshiruvchi uchun bu azob edi — «xodimga nima ko'rinadi» degan
+savolga javob olish uchun har safar chiqib, boshqa hisob bilan
+kirib, keyin yana qaytish kerak bo'lardi.
+
+Endi administrator **o'z hisobidan chiqmaydi**. Xodimlar
+ro'yxatidagi **«Ko'zi bilan ko'rish»** tugmasi saytni o'sha
+xodimning roli, mahallasi va ro'yxatlari bilan chizadi.
+
+Rejim **faqat o'qish uchun**: `POST`, `PUT`, `PATCH`, `DELETE` —
+hammasi to'siladi. Aks holda amal xodimning nomidan jurnalga
+tushar va «buni kim qildi» degan savolga yolg'on javob qolardi.
+
+To'siq ikki qavat: middleware yo'lning og'zida va `talabQil()` har
+yo'lning ichida. Ekran tepasida esa **doimiy lenta** turadi — u
+yopilmaydi va bir bosishda o'z hisobiga qaytaradi. Rejimning
+yoqilgani ham, o'chirilgani ham audit jurnaliga yoziladi.
+
 ---
 
 ## Asosiy imkoniyatlar
@@ -717,10 +741,20 @@ oladi. Shuning uchun:
 - **Audit jurnali** — kim qachon qaysi yozuvni ochgani yoziladi
 - **Parol scrypt bilan xeshlanadi**; taqqoslash `timingSafeEqual`
   orqali (oddiy `===` xeshni javob vaqti orqali oshkor qiladi)
-- **Login urinishlari cheklangan** — 15 daqiqada 10 ta
+- **Login urinishlari ikki o'lchovda cheklangan** — bitta hisobga 15
+  daqiqada 7 ta, bitta IP dan 60 ta. Faqat IP bo'yicha cheklash
+  noto'g'ri edi: hokimiyat binosida o'nlab xodim bitta internetdan
+  chiqadi va to'rtinchisi parolni xato terganda beshinchisi umuman
+  kira olmasdi; hujumchi uchun esa IP almashtirish arzon
 - **Sessiya 12 soat** (bir ish kuni) va har so'rovda bazadan
-  tekshiriladi: xodim ishdan bo'shatilgan bo'lsa, cookie yaroqli
-  bo'lsa ham kira olmaydi
+  tekshiriladi — **sahifalarda ham, API'da ham**. Xodim ishdan
+  bo'shatilsa yoki roli pasaytirilsa, cookie yaroqli bo'lsa ham
+  o'sha zahoti to'xtaydi
+- **Parol almashsa, eski cookie o'ladi.** Sessiya imzolangan cookie
+  va serverda nusxasi yo'q, ya'ni «chiqarib yuborish» ishlamasdi:
+  o'g'irlangan cookie o'z 12 soatini to'liq yashardi. Endi har
+  hisobda `sessiyaVersiyasi` bor — parol almashganda u oshadi va
+  barcha eski cookie'lar darhol yaroqsiz bo'ladi
 - **Qidiruv tizimlari indekslamaydi** (`robots: noindex`)
 - **AI ga shaxsiy ma'lumot yuborilmaydi** — faqat sonlar va katalog
   qiymatlari; erkin matn butunlay chiqarib tashlanadi (`npm run sinov`

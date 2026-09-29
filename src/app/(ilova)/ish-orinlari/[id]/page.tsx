@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, Phone, Users } from 'lucide-react';
 import { matnchi } from '@/lib/alifbo-server';
-import { bandlikIshi, joriySessiya, mahallagaRuxsat } from '@/lib/auth';
+import { bandlikIshi, mahallagaRuxsat } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate, formatPhone } from '@/lib/utils';
 import { KASB_YONALISHI, MALUMOT, kirillcha } from '@/lib/constants';
@@ -13,8 +14,7 @@ import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { MoslikNishoni } from '@/components/ish-orni/moslik-nishoni';
 import {
   BekorQilishTugmasi,
-  JoylashtirishTugmasi,
-} from '@/components/ish-orni/joylashtirish-tugmasi';
+  JoylashtirishTugmasi } from '@/components/ish-orni/joylashtirish-tugmasi';
 import { OrinHolatiTugmasi } from '@/components/ish-orni/orin-holati-tugmasi';
 
 export function generateMetadata() {
@@ -26,14 +26,13 @@ const KORINADIGAN = 12;
 
 export default async function IshOrniSahifasi({
   params,
-  searchParams,
-}: {
+  searchParams }: {
   params: { id: string };
   searchParams: { tuman?: string };
 }) {
   const tr = matnchi();
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
 
@@ -50,11 +49,7 @@ export default async function IshOrniSahifasi({
           holati: true,
           ishgaKirganSana: true,
           malumoti: true,
-          mahalla: { select: { nomiKirill: true } },
-        },
-      },
-    },
-  });
+          mahalla: { select: { nomiKirill: true } } } } } });
 
   if (!orin) notFound();
   if (!mahallagaRuxsat(sessiya, orin.mahallaId)) redirect('/ish-orinlari');
@@ -80,8 +75,7 @@ export default async function IshOrniSahifasi({
           yonalish: orin.yonalish,
           talablar: orin.talablar,
           maosh: orin.maosh,
-          mahallaId: orin.mahallaId,
-        },
+          mahallaId: orin.mahallaId },
         tumanBoyicha
       );
 

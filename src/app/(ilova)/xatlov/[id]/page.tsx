@@ -3,7 +3,8 @@ import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
 import { notFound, redirect } from 'next/navigation';
 import { CheckCircle2, Pencil, UserRound } from 'lucide-react';
-import { aiXulosaSoraydi, joriySessiya, mahallagaRuxsat } from '@/lib/auth';
+import { aiXulosaSoraydi, mahallagaRuxsat } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { OchirishTugmasi } from '@/components/arxiv/ochirish-tugmasi';
 import { jurnal } from '@/lib/api-auth';
@@ -26,8 +27,7 @@ import {
   MOLIYA_TURI,
   UY_HOLATI,
   kirillcha,
-  TOMORQA_FOYDALANISH,
-} from '@/lib/constants';
+  TOMORQA_FOYDALANISH } from '@/lib/constants';
 import { HolatNishoni } from '@/components/ishsiz/holat-nishoni';
 import { TarixBlogi } from '@/components/xonadon/tarix-blogi';
 import { ChoraQoshish } from '@/components/chora/chora-qoshish';
@@ -59,8 +59,7 @@ function Qator({ nomi, qiymat }: { nomi: string; qiymat: React.ReactNode }) {
 function Bolim({
   raqam,
   sarlavha,
-  children,
-}: {
+  children }: {
   raqam: string;
   sarlavha: string;
   children: React.ReactNode;
@@ -89,7 +88,7 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
   };
 
 
-  const sessiya = joriySessiya();
+  const sessiya = await joriyXodim();
   if (!sessiya) redirect('/kirish');
   /*
    * ── РОЛ ҚЎРИҚЧИСИ ──
@@ -110,9 +109,7 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
       mahalla: { select: { nomiKirill: true } },
       xodim: { select: { fullName: true, position: true } },
       ishsizlar: { orderBy: { createdAt: 'asc' } },
-      topshiriqlar: { orderBy: { muddat: 'asc' } },
-    },
-  });
+      topshiriqlar: { orderBy: { muddat: 'asc' } } } });
 
   if (!x) notFound();
   if (!mahallagaRuxsat(sessiya, x.mahallaId)) redirect('/xatlov');
