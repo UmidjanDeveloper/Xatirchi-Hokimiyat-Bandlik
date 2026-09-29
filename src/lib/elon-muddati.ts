@@ -47,8 +47,29 @@ export const ODATIY_MUDDAT_KUN = 30;
 export function FAOL_ELON(hozir: Date = new Date()): Prisma.VacancyWhereInput {
   return {
     faol: true,
+    /*
+     * ── МОДЕРАЦИЯ ШАРТИ ──
+     *
+     * Иш берувчи ботдан туриб эълон қўя олади, ва у ҳали
+     * ҳеч кимнинг кўзидан ўтмаган бўлиши мумкин.
+     *
+     * Шарт АЙНАН шу ерда — «кучдаги эълон» деган тушунчанинг
+     * ўзида. Ҳар бир сўровга алоҳида қўшилса, биттасида
+     * эсдан чиқарди ва текширилмаган эълон ўша жойдан
+     * чиқиб кетарди: масалан, туман ҳисоботидаги «очиқ иш
+     * ўрни» сонида.
+     *
+     * Эски ёзувлар ва ходим қўйган эълонлар `TASDIQLANDI`
+     * бўлади — сон ўзгармайди.
+     */
+    moderatsiya: 'TASDIQLANDI',
     OR: [{ amalQilishMuddati: null }, { amalQilishMuddati: { gte: hozir } }],
   };
+}
+
+/** Модерация кутаётган эълонлар */
+export function MODERATSIYA_KUTMOQDA(): Prisma.VacancyWhereInput {
+  return { faol: true, moderatsiya: 'KUTILMOQDA' };
 }
 
 /** Бу эълон ҳозир кучдами */

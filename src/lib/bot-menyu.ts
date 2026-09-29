@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { FAOL_ELON } from './elon-muddati';
+import { FAOL_ELON, MODERATSIYA_KUTMOQDA } from './elon-muddati';
 import type { Tugma } from './xabarnoma';
 
 /**
@@ -113,13 +113,26 @@ export async function boshMenyu(userId: string): Promise<MenyuNatijasi> {
 
   /* ── Бандлик раҳбари ва администратор ── */
   if (rahbarmi) {
-    const [orinlar, jamiXodim, ulangan] = await Promise.all([
-      prisma.vacancy.count({ where: FAOL_ELON() }),
-      prisma.user.count({ where: { rol: 'YETTILIK', faol: true } }),
-      prisma.user.count({
-        where: { rol: 'YETTILIK', faol: true, telegramChatId: { not: null } },
-      }),
-    ]);
+    const [orinlar, jamiXodim, ulangan, kutayotganElon, kutayotganBeruvchi] =
+      await Promise.all([
+        prisma.vacancy.count({ where: FAOL_ELON() }),
+        prisma.user.count({ where: { rol: 'YETTILIK', faol: true } }),
+        prisma.user.count({
+          where: { rol: 'YETTILIK', faol: true, telegramChatId: { not: null } },
+        }),
+        /*
+         * ── МОДЕРАЦИЯ НАВБАТИ ──
+         *
+         * Иш берувчи эълон қўйиб, жавоб кутиб ўтиради. Агар
+         * раҳбар буни фақат хабар келганда кўрса, ўтказиб
+         * юбориши мумкин — хабар бошқа хабарлар орасида
+         * кўмилиб кетади.
+         *
+         * Меню эса ҳар сафар очилганда кўринади.
+         */
+        prisma.vacancy.count({ where: MODERATSIYA_KUTMOQDA() }),
+        prisma.ishBeruvchi.count({ where: { holati: 'KUTILMOQDA' } }),
+      ]);
 
     return {
       matn: [
@@ -132,6 +145,14 @@ export async function boshMenyu(userId: string): Promise<MenyuNatijasi> {
           ? [
               '',
               `⚠️ ${raqam(jamiXodim - ulangan)} та ходим уланмаган — уларнинг маҳалласига эълон хабари бормайди.`,
+            ]
+          : []),
+        ...(kutayotganElon > 0 || kutayotganBeruvchi > 0
+          ? [
+              '',
+              '⏳ <b>Кўриб чиқиш кутилмоқда:</b>',
+              ...(kutayotganElon > 0 ? [`   ${raqam(kutayotganElon)} та эълон`] : []),
+              ...(kutayotganBeruvchi > 0 ? [`   ${raqam(kutayotganBeruvchi)} та иш берувчи`] : []),
             ]
           : []),
         '',

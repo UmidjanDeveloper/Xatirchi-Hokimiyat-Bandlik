@@ -79,52 +79,151 @@ function raqam(n: number): string {
 
 /* ── Ҳолат ────────────────────────────────────────────────── */
 
+/**
+ * ============================================================
+ *  СУҲБАТ ОМБОРИ
+ *
+ *  ── Нега икки хил ──
+ *
+ *  Айнан шу етти қадамли суҳбатни ИККИ ХИЛ одам ўтайди:
+ *  бандлик раҳбари ва иш берувчи.
+ *
+ *  Раҳбар — `User`, унинг суҳбати `BotSuhbati` да. Иш берувчи
+ *  эса `User` ЭМАС: унинг сайт сессияси ҳам, пароли ҳам йўқ,
+ *  ва бўлмаслиги ҳам керак. Унинг суҳбати ўз ёзувида туради.
+ *
+ *  ── Нега суҳбат коди нусхаланмади ──
+ *
+ *  Етти қадам, ҳар бирида савол, текширув ва хато матни. Уни
+ *  иккинчи марта ёзиш — иккита бир-биридан аста-секин
+ *  узоқлашадиган нусха дегани: бирида маош текшируви
+ *  тузатилиб, иккинчисида эскисича қолади.
+ *
+ *  Шунинг учун суҳбат БИТТА, сақлаш жойи эса алмашади.
+ * ============================================================
+ */
+export interface SuhbatOmbori {
+  boshla(): Promise<void>;
+  oqi(): Promise<{ bosqich: Qadam; malumot: Malumot } | null>;
+  saqla(bosqich: Qadam, malumot: Malumot): Promise<void>;
+  ochir(): Promise<void>;
+}
+
+/** Суҳбат эскирдими */
+const eskirgan = (yangilangan: Date): boolean =>
+  Date.now() - yangilangan.getTime() > SUHBAT_MUDDATI_DAQIQA * 60_000;
+
+/** Ҳокимият ходими — суҳбат `BotSuhbati` да */
+export function xodimOmbori(userId: string): SuhbatOmbori {
+  return {
+    async boshla() {
+      await prisma.botSuhbati.upsert({
+        where: { userId },
+        create: { userId, turi: ELON_TURI, bosqich: 'mahalla', malumot: {} },
+        update: { turi: ELON_TURI, bosqich: 'mahalla', malumot: {} },
+      });
+    },
+    async oqi() {
+      const s = await prisma.botSuhbati.findUnique({
+        where: { userId },
+        select: { bosqich: true, malumot: true, updatedAt: true, turi: true },
+      });
+      if (!s || s.turi !== ELON_TURI) return null;
+
+      /*
+       * Эскирган суҳбат ташланади.
+       *
+       * Раҳбар ярим йўлда тўхтаб, эртаси куни ботга бошқа
+       * сабабдан ёзиши мумкин — ва тасодифан эски саволга
+       * жавоб бериб қўйиши мумкин эди.
+       */
+      if (eskirgan(s.updatedAt)) {
+        await prisma.botSuhbati.deleteMany({ where: { userId } });
+        return null;
+      }
+      return { bosqich: s.bosqich as Qadam, malumot: (s.malumot ?? {}) as Malumot };
+    },
+    async saqla(bosqich, malumot) {
+      await prisma.botSuhbati.update({
+        where: { userId },
+        data: { bosqich, malumot: malumot as object },
+      });
+    },
+    async ochir() {
+      await prisma.botSuhbati.deleteMany({ where: { userId } });
+    },
+  };
+}
+
+/** Иш берувчи — суҳбат ўз ёзувида */
+export function beruvchiOmbori(beruvchiId: string): SuhbatOmbori {
+  return {
+    async boshla() {
+      await prisma.ishBeruvchi.update({
+        where: { id: beruvchiId },
+        data: { bosqich: 'mahalla', suhbat: {}, suhbatVaqti: new Date() },
+      });
+    },
+    async oqi() {
+      const b = await prisma.ishBeruvchi.findUnique({
+        where: { id: beruvchiId },
+        select: { bosqich: true, suhbat: true, suhbatVaqti: true },
+      });
+      if (!b?.bosqich || !b.suhbatVaqti) return null;
+
+      /*
+       * ── НЕГА ҚАДАМ ТЕКШИРИЛАДИ ──
+       *
+       * Битта устунда ИККИ ХИЛ суҳбат сақланади: рўйхатдан
+       * ўтиш (`r.` билан бошланади) ва эълон қўйиш.
+       *
+       * Текширувсиз рўйхатдан ўтаётган одамнинг жавоби
+       * эълон суҳбатига тушиб кетарди: унинг «корхона номи»
+       * қадами иккала рўйхатда ҳам бор.
+       */
+      if (!(QADAMLAR as readonly string[]).includes(b.bosqich)) return null;
+
+      /*
+       * Иш берувчининг суҳбати ҳам эскиради, ва бу ундан ҳам
+       * муҳимроқ: у ботни камдан-кам очади ва ярим қолган
+       * суҳбат бир ҳафтадан кейин кутилмаганда давом этиб
+       * кетиши мумкин эди.
+       */
+      if (eskirgan(b.suhbatVaqti)) {
+        await prisma.ishBeruvchi.update({
+          where: { id: beruvchiId },
+          data: { bosqich: null, suhbat: {}, suhbatVaqti: null },
+        });
+        return null;
+      }
+      return { bosqich: b.bosqich as Qadam, malumot: (b.suhbat ?? {}) as Malumot };
+    },
+    async saqla(bosqich, malumot) {
+      await prisma.ishBeruvchi.update({
+        where: { id: beruvchiId },
+        data: { bosqich, suhbat: malumot as object, suhbatVaqti: new Date() },
+      });
+    },
+    async ochir() {
+      await prisma.ishBeruvchi.update({
+        where: { id: beruvchiId },
+        data: { bosqich: null, suhbat: {}, suhbatVaqti: null },
+      });
+    },
+  };
+}
+
 export async function suhbatniBoshla(userId: string): Promise<Javob> {
-  await prisma.botSuhbati.upsert({
-    where: { userId },
-    create: { userId, turi: ELON_TURI, bosqich: 'mahalla', malumot: {} },
-    update: { turi: ELON_TURI, bosqich: 'mahalla', malumot: {} },
-  });
+  return omborBoshla(xodimOmbori(userId));
+}
+
+export async function omborBoshla(ombor: SuhbatOmbori): Promise<Javob> {
+  await ombor.boshla();
   return soragich('mahalla', {});
 }
 
 export async function suhbatniBekorQil(userId: string): Promise<void> {
-  await prisma.botSuhbati.deleteMany({ where: { userId } });
-}
-
-async function suhbatniOl(
-  userId: string
-): Promise<{ bosqich: Qadam; malumot: Malumot } | null> {
-  const s = await prisma.botSuhbati.findUnique({
-    where: { userId },
-    select: { bosqich: true, malumot: true, updatedAt: true, turi: true },
-  });
-  if (!s || s.turi !== ELON_TURI) return null;
-
-  /*
-   * Эскирган суҳбат ташланади.
-   *
-   * Раҳбар ярим йўлда тўхтаб, эртаси куни ботга бошқа сабабдан
-   * ёзиши мумкин — ва тасодифан эски саволга жавоб бериб
-   * қўйиши мумкин эди.
-   */
-  const yosh = Date.now() - s.updatedAt.getTime();
-  if (yosh > SUHBAT_MUDDATI_DAQIQA * 60_000) {
-    await prisma.botSuhbati.deleteMany({ where: { userId } });
-    return null;
-  }
-
-  return {
-    bosqich: s.bosqich as Qadam,
-    malumot: (s.malumot ?? {}) as Malumot,
-  };
-}
-
-async function saqla(userId: string, bosqich: Qadam, malumot: Malumot): Promise<void> {
-  await prisma.botSuhbati.update({
-    where: { userId },
-    data: { bosqich, malumot: malumot as object },
-  });
+  await xodimOmbori(userId).ochir();
 }
 
 /* ── Саволлар ─────────────────────────────────────────────── */
@@ -260,7 +359,11 @@ function soragich(bosqich: Qadam, m: Malumot): Javob {
  * қисми ишласин.
  */
 export async function matnliJavob(userId: string, matn: string): Promise<Javob | null> {
-  const s = await suhbatniOl(userId);
+  return omborMatn(xodimOmbori(userId), matn);
+}
+
+export async function omborMatn(ombor: SuhbatOmbori, matn: string): Promise<Javob | null> {
+  const s = await ombor.oqi();
   if (!s) return null;
 
   const m = { ...s.malumot };
@@ -306,7 +409,7 @@ export async function matnliJavob(userId: string, matn: string): Promise<Javob |
 
       m.mahallaId = topilgan[0].id;
       m.mahallaNomi = topilgan[0].nomiKirill;
-      await saqla(userId, 'korxona', m);
+      await ombor.saqla('korxona', m);
       return soragich('korxona', m);
     }
 
@@ -315,7 +418,7 @@ export async function matnliJavob(userId: string, matn: string): Promise<Javob |
         return { matn: 'Корхона номи жуда қисқа. Қайтадан ёзинг.', tugmalar: [] };
       }
       m.korxonaNomi = matn.trim().slice(0, 120);
-      await saqla(userId, 'lavozim', m);
+      await ombor.saqla('lavozim', m);
       return soragich('lavozim', m);
 
     case 'lavozim':
@@ -323,7 +426,7 @@ export async function matnliJavob(userId: string, matn: string): Promise<Javob |
         return { matn: 'Лавозим жуда қисқа. Қайтадан ёзинг.', tugmalar: [] };
       }
       m.lavozim = matn.trim().slice(0, 120);
-      await saqla(userId, 'ornlar', m);
+      await ombor.saqla('ornlar', m);
       return soragich('ornlar', m);
 
     case 'ornlar': {
@@ -332,7 +435,7 @@ export async function matnliJavob(userId: string, matn: string): Promise<Javob |
         return { matn: 'Ўрин сони 1 дан 500 гача бўлиши керак.', tugmalar: [] };
       }
       m.ornlarSoni = n;
-      await saqla(userId, 'maosh', m);
+      await ombor.saqla('maosh', m);
       return soragich('maosh', m);
     }
 
@@ -345,7 +448,7 @@ export async function matnliJavob(userId: string, matn: string): Promise<Javob |
         };
       }
       m.maosh = son;
-      await saqla(userId, 'telefon', m);
+      await ombor.saqla('telefon', m);
       return soragich('telefon', m);
     }
 
@@ -358,7 +461,7 @@ export async function matnliJavob(userId: string, matn: string): Promise<Javob |
         };
       }
       m.telefon = matn.trim().slice(0, 40);
-      await saqla(userId, 'muddat', m);
+      await ombor.saqla('muddat', m);
       return soragich('muddat', m);
     }
 
@@ -370,7 +473,11 @@ export async function matnliJavob(userId: string, matn: string): Promise<Javob |
 
 /** Тугмали жавоб */
 export async function tugmaliJavob(userId: string, belgi: string): Promise<Javob | null> {
-  const s = await suhbatniOl(userId);
+  return omborTugma(xodimOmbori(userId), belgi);
+}
+
+export async function omborTugma(ombor: SuhbatOmbori, belgi: string): Promise<Javob | null> {
+  const s = await ombor.oqi();
   if (!s) return null;
   const m = { ...s.malumot };
 
@@ -383,32 +490,32 @@ export async function tugmaliJavob(userId: string, belgi: string): Promise<Javob
     if (!mfy) return { matn: 'Маҳалла топилмади.', tugmalar: [] };
     m.mahallaId = mfy.id;
     m.mahallaNomi = mfy.nomiKirill;
-    await saqla(userId, 'korxona', m);
+    await ombor.saqla('korxona', m);
     return soragich('korxona', m);
   }
 
   if (belgi.startsWith(`${ELON.ORIN}:`)) {
     m.ornlarSoni = Number.parseInt(belgi.split(':')[1], 10) || 1;
-    await saqla(userId, 'maosh', m);
+    await ombor.saqla('maosh', m);
     return soragich('maosh', m);
   }
 
   if (belgi.startsWith(`${ELON.MUDDAT}:`)) {
     const kun = Number.parseInt(belgi.split(':')[1], 10);
     m.muddatKun = kun > 0 ? kun : null;
-    await saqla(userId, 'tasdiq', m);
+    await ombor.saqla('tasdiq', m);
     return soragich('tasdiq', m);
   }
 
   if (belgi === ELON.OTKAZ) {
     if (s.bosqich === 'maosh') {
       m.maosh = null;
-      await saqla(userId, 'telefon', m);
+      await ombor.saqla('telefon', m);
       return soragich('telefon', m);
     }
     if (s.bosqich === 'telefon') {
       m.telefon = null;
-      await saqla(userId, 'muddat', m);
+      await ombor.saqla('muddat', m);
       return soragich('muddat', m);
     }
   }
@@ -425,7 +532,20 @@ export async function tugmaliJavob(userId: string, belgi: string): Promise<Javob
 export async function elonniYarat(
   userId: string
 ): Promise<{ ok: true; id: string; lavozim: string } | { ok: false; sabab: string }> {
-  const s = await suhbatniOl(userId);
+  return omborYarat(xodimOmbori(userId), null);
+}
+
+/**
+ * Эълонни яратади.
+ *
+ * `ishBeruvchiId` берилса — эълон ИШ БЕРУВЧИНИКИ ва у
+ * модерациядан ўтмагунча ҳеч қаерда кўринмайди.
+ */
+export async function omborYarat(
+  ombor: SuhbatOmbori,
+  ishBeruvchiId: string | null
+): Promise<{ ok: true; id: string; lavozim: string } | { ok: false; sabab: string }> {
+  const s = await ombor.oqi();
   if (!s || s.bosqich !== 'tasdiq') return { ok: false, sabab: 'Суҳбат топилмади' };
 
   const m = s.malumot;
@@ -448,15 +568,32 @@ export async function elonniYarat(
       telefon: m.telefon ?? null,
       amalQilishMuddati: muddat,
       faol: true,
+      ishBeruvchiId,
+      /*
+       * ── МОДЕРАЦИЯ ──
+       *
+       * Ҳокимият ходими қўйган эълон дарҳол тарқалади: у
+       * тизимнинг ичидаги одам ва унинг ҳар бир амали
+       * журналда.
+       *
+       * Иш берувчи эса ташқаридаги одам. Унинг эълони 70 та
+       * маҳалла ходимига хабар юборади ва туман ҳисоботига
+       * киради — шунинг учун у аввал кўздан ўтади.
+       */
+      moderatsiya: ishBeruvchiId ? 'KUTILMOQDA' : 'TASDIQLANDI',
     },
     select: { id: true, lavozim: true },
   });
 
-  await prisma.botSuhbati.deleteMany({ where: { userId } });
+  await ombor.ochir();
   return { ok: true, id: orin.id, lavozim: orin.lavozim };
 }
 
 /** Суҳбат бормиин — вебхук матнни кимга беришини шундан билади */
 export async function suhbatBormi(userId: string): Promise<boolean> {
-  return (await suhbatniOl(userId)) !== null;
+  return (await xodimOmbori(userId).oqi()) !== null;
+}
+
+export async function omborSuhbatiBormi(ombor: SuhbatOmbori): Promise<boolean> {
+  return (await ombor.oqi()) !== null;
 }

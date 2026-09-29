@@ -16,6 +16,20 @@ import {
 import { ishOrniXabarlari } from '@/lib/ish-orni-xabari';
 import { SAVOL, kodShaklimi, savolgaJavob, tumanKartasi, yordamMatni } from '@/lib/bot-savol';
 import {
+  BERUVCHI,
+  beruvchiMenyusi,
+  beruvchiTop,
+  beruvchiniHalQil,
+  elonniHalQil,
+  elonniModeratsiyagaYubor,
+  royxatMatni,
+  royxatSuhbati,
+  royxatniBoshla,
+  royxatniYubor,
+  tanishtirish,
+} from '@/lib/ish-beruvchi';
+import { beruvchiOmbori, omborBoshla, omborMatn, omborSuhbatiBormi, omborTugma, omborYarat } from '@/lib/bot-elon';
+import {
   boshMenyu,
   fuqarolarRoyxati,
   MENYU,
@@ -33,6 +47,7 @@ import {
   telegramSozlanganmi,
   telegramYuboruvchi,
   ulanishMatni,
+  type Tugma,
 } from '@/lib/xabarnoma';
 
 /*
@@ -151,6 +166,29 @@ export async function POST(request: Request) {
    * матнлар КОД эмас, саволларга жавоб. Шунинг учун суҳбат
    * кодни текширишдан ОЛДИН келади.
    */
+  /*
+   * ── ИШ БЕРУВЧИ ──
+   *
+   * У ҳокимият ходими эмас, коди ҳам йўқ. Унинг матни —
+   * рўйхат саволига ёки эълон саволига жавоб.
+   *
+   * Текширув кодни текширишдан ОЛДИН: акс ҳолда «Оқ Олтин
+   * МЧЖ» деб ёзилган корхона номи «код топилмади» деган
+   * жавоб оларди.
+   */
+  const beruvchi = await beruvchiTop(String(chatId));
+  if (beruvchi) {
+    const javobi = await beruvchiMatni(beruvchi.id, matn);
+    if (javobi) {
+      try {
+        await telegramYuboruvchi(String(chatId), javobi.matn, javobi.tugmalar);
+      } catch (e) {
+        console.error('Ish beruvchiga javob yuborib bolmadi:', e);
+      }
+      return NextResponse.json({ ok: true });
+    }
+  }
+
   const suhbatchi = await chatXodimi(String(chatId));
   if (suhbatchi && (await suhbatBormi(suhbatchi))) {
     const j = await matnliJavob(suhbatchi, matn);
@@ -259,6 +297,29 @@ async function chatXodimi(chatId: string): Promise<string | null> {
 }
 
 /**
+ * Иш берувчининг матни — рўйхат саволига ёки эълон саволига.
+ *
+ * `null` қайтса, матн унга тегишли эмас ва оддий йўлга
+ * тушади.
+ */
+async function beruvchiMatni(
+  beruvchiId: string,
+  matn: string
+): Promise<{ matn: string; tugmalar: Tugma[] } | null> {
+  /* Рўйхатдан ўтиш суҳбати */
+  if (await royxatSuhbati(beruvchiId)) {
+    return royxatMatni(beruvchiId, matn);
+  }
+  /* Эълон суҳбати — ходимникидан ФАРҚСИЗ, фақат омбор бошқа */
+  const ombor = beruvchiOmbori(beruvchiId);
+  if (await omborSuhbatiBormi(ombor)) {
+    return omborMatn(ombor, matn);
+  }
+  /* Суҳбат йўқ — менюни кўрсатамиз */
+  return beruvchiMenyusi(beruvchiId);
+}
+
+/**
  * Саволга жавоб беради.
  *
  * Хато ютилади ва ўрнига кўрсатма юборилади: бот ЖИМ
@@ -283,7 +344,25 @@ async function savolniJavobla(userId: string, chatId: string, matn: string): Pro
 /** Менюни юборади — уланганга ўз меню, уланмаганга кўрсатма */
 async function menyuniKorsat(chatId: string): Promise<void> {
   const userId = await chatXodimi(chatId);
-  const n: MenyuNatijasi = userId ? await boshMenyu(userId) : ulanmaganMatni();
+
+  /*
+   * ── КИМ ЁЗДИ ──
+   *
+   * Учта ҳолат бор: ҳокимият ходими, иш берувчи ва нотаниш
+   * одам.
+   *
+   * Аввал фақат иккитаси бор эди ва нотаниш одамга «сайтдан
+   * код олинг» деб ёзиларди. Иш берувчида эса на сайт
+   * ҳисоби бор, на код оладиган жойи — у бу матнни ўқиб,
+   * ботни ёпарди.
+   */
+  const beruvchi = userId ? null : await beruvchiTop(chatId);
+
+  const n: MenyuNatijasi = userId
+    ? await boshMenyu(userId)
+    : beruvchi
+      ? await beruvchiMenyusi(beruvchi.id)
+      : tanishtirish();
   try {
     await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
   } catch (e) {
@@ -391,6 +470,19 @@ async function tugmaBosildi(q: {
   }
 
   /*
+   * ── ИШ БЕРУВЧИ ЗАНЖИРИ ТУГМАЛАРИ ──
+   *
+   * Икки томон бор: иш берувчининг ўзи (рўйхат ва эълон) ва
+   * раҳбар (модерация). Иккови ҳам `b.` билан бошланади,
+   * аммо ҳуқуқлари БУТУНЛАЙ бошқа — шунинг учун иккита
+   * алоҳида блок.
+   */
+  if (belgi.startsWith('b.')) {
+    await beruvchiTugmasi(belgi, chatId, String(q.from.id), javob);
+    return;
+  }
+
+  /*
    * ── САВОЛ-ЖАВОБ ТУГМАЛАРИ ──
    *
    * Жавоб матнидаги «Туман бўйича» тугмаси. У ҳам уланишни
@@ -436,6 +528,23 @@ async function tugmaBosildi(q: {
    * жавобгарлик бор.
    */
   if (belgi.startsWith('e.')) {
+    /*
+     * ── ЭЪЛОН СУҲБАТИНИ ИККИ ХИЛ ОДАМ ЎТАДИ ──
+     *
+     * Саволлар, тугмалар ва текширувлар АЙНАН бир хил —
+     * фарқ фақат сақлаш жойида ва натижада: раҳбарнинг
+     * эълони дарҳол тарқалади, иш берувчиники эса
+     * модерацияга боради.
+     *
+     * Иш берувчи аввал текширилади: у `User` эмас ва
+     * қуйидаги сўров уни топа олмайди.
+     */
+    const beruvchi = await beruvchiTop(chatId);
+    if (beruvchi) {
+      await beruvchiElonTugmasi(beruvchi.id, beruvchi.holati, belgi, chatId, javob);
+      return;
+    }
+
     const kim = await prisma.user.findFirst({
       where: { telegramChatId: String(q.from.id), faol: true },
       select: { id: true, rol: true },
@@ -633,4 +742,279 @@ async function callbackJavobi(callbackId: string, matn: string): Promise<void> {
       show_alert: true,
     }),
   });
+}
+
+/**
+ * ============================================================
+ *  ИШ БЕРУВЧИ ЗАНЖИРИНИНГ ТУГМАЛАРИ
+ *
+ *  ── Нега модерация тугмалари АЛОҲИДА текширилади ──
+ *
+ *  `b.qabul` ва `b.eq` — раҳбарнинг тугмалари. Уларни босиш
+ *  эълонни 70 та ходимга тарқатади.
+ *
+ *  Тугма белгиси эса Telegram'дан келади ва уни қўлда
+ *  ўзгартириб юбориш мумкин. Сессия йўқ, шунинг учун
+ *  текширув АЙНАН шу ерда: белги `b.` билан бошлангани
+ *  етарли эмас, босган одам раҳбар бўлиши шарт.
+ * ============================================================
+ */
+async function beruvchiTugmasi(
+  belgi: string,
+  chatId: string,
+  fromId: string,
+  javob: (matn: string) => Promise<void>
+): Promise<void> {
+  const [belgisi, qiymat] = belgi.split(':');
+
+  /* ── РАҲБАР ТОМОНИ: МОДЕРАЦИЯ ── */
+  const moderatsiya = [
+    BERUVCHI.QABUL,
+    BERUVCHI.RAD,
+    BERUVCHI.ELON_QABUL,
+    BERUVCHI.ELON_RAD,
+  ] as string[];
+
+  if (moderatsiya.includes(belgisi)) {
+    const kim = await prisma.user.findFirst({
+      where: { telegramChatId: fromId, faol: true },
+      select: { id: true, rol: true },
+    });
+    if (!kim) {
+      await javob('Сиз уланмагансиз');
+      return;
+    }
+    if (kim.rol !== 'BANDLIK_RAHBAR' && kim.rol !== 'ADMIN') {
+      await javob('Бу амал сиз учун эмас');
+      return;
+    }
+    if (!qiymat) {
+      await javob('Тугма эскирган');
+      return;
+    }
+
+    /* ── Иш берувчини ҳал қилиш ── */
+    if (belgisi === BERUVCHI.QABUL || belgisi === BERUVCHI.RAD) {
+      const qabul = belgisi === BERUVCHI.QABUL;
+      const n = await beruvchiniHalQil({ beruvchiId: qiymat, userId: kim.id, qabul });
+      if (!n.ok) {
+        await javob('Аллақачон ҳал қилинган');
+        return;
+      }
+      await javob(qabul ? 'Тасдиқланди' : 'Рад этилди');
+
+      await telegramYuboruvchi(
+        chatId,
+        qabul
+          ? `<b>${n.korxonaNomi}</b> тасдиқланди — энди эълон қўя олади.`
+          : `<b>${n.korxonaNomi}</b> рад этилди.`
+      );
+
+      /*
+       * Иш берувчининг ЎЗИГА ҳам хабар. Усиз у жимликда
+       * қоларди: ариза юборган-у, жавоб келмаган.
+       */
+      if (n.chatId) {
+        try {
+          const m = await beruvchiMenyusi(qiymat);
+          await telegramYuboruvchi(n.chatId, m.matn, m.tugmalar);
+        } catch (e) {
+          console.error('Ish beruvchiga javob yuborib bolmadi:', e);
+        }
+      }
+      return;
+    }
+
+    /* ── Эълонни ҳал қилиш ── */
+    const qabul = belgisi === BERUVCHI.ELON_QABUL;
+    const n = await elonniHalQil({ vacancyId: qiymat, userId: kim.id, qabul });
+    if (!n.ok) {
+      await javob('Аллақачон ҳал қилинган');
+      return;
+    }
+    await javob(qabul ? 'Тасдиқланди' : 'Рад этилди');
+
+    let kimga = 0;
+    if (qabul) {
+      /*
+       * Тарқатиш АЛОҲИДА: хато бўлса ҳам эълон тасдиқланган
+       * бўлиб қолиши керак — раҳбарнинг қарори бажарилди.
+       */
+      try {
+        kimga = await ishOrniXabarlari(qiymat);
+        await navbatniDarhol();
+      } catch (e) {
+        console.error('Elon xabarlarini tarqatib bolmadi:', e);
+      }
+    }
+
+    await telegramYuboruvchi(
+      chatId,
+      qabul
+        ? [
+            `<b>${n.lavozim}</b> тасдиқланди.`,
+            '',
+            kimga > 0
+              ? `${kimga} та маҳалла ходимига хабар кетди.`
+              : 'Ҳозирча ҳеч бир ходимга хабар кетмади — уланганлар йўқ ёки мос маҳалла топилмади.',
+          ].join('\n')
+        : `<b>${n.lavozim}</b> рад этилди.`
+    );
+
+    if (n.chatId) {
+      try {
+        await telegramYuboruvchi(
+          n.chatId,
+          qabul
+            ? `✅ <b>${n.lavozim}</b> эълонингиз тасдиқланди — туманнинг маҳалла ходимларига хабар кетди.`
+            : `❌ <b>${n.lavozim}</b> эълонингиз қабул қилинмади. Бандлик маркази билан боғланинг.`
+        );
+      } catch (e) {
+        console.error('Ish beruvchiga elon javobini yuborib bolmadi:', e);
+      }
+    }
+    return;
+  }
+
+  /* ── ИШ БЕРУВЧИ ТОМОНИ ── */
+
+  if (belgisi === BERUVCHI.XODIM) {
+    const n = ulanmaganMatni();
+    await javob('');
+    await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+    return;
+  }
+
+  if (belgisi === BERUVCHI.ROYXAT) {
+    const n = await royxatniBoshla(chatId);
+    await javob('');
+    await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+    return;
+  }
+
+  const beruvchi = await beruvchiTop(chatId);
+  if (!beruvchi) {
+    await javob('Аввал рўйхатдан ўтинг');
+    return;
+  }
+
+  if (belgisi === BERUVCHI.BEKOR) {
+    await prisma.ishBeruvchi.update({
+      where: { id: beruvchi.id },
+      data: { bosqich: null, suhbat: {}, suhbatVaqti: null },
+    });
+    await javob('Бекор қилинди');
+    const n = await beruvchiMenyusi(beruvchi.id);
+    await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+    return;
+  }
+
+  if (belgisi === BERUVCHI.YUBOR) {
+    const n = await royxatniYubor(beruvchi.id);
+    await javob('');
+    await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+    /* Раҳбарга хабар навбатда — дарҳол юборамиз */
+    await navbatniDarhol().catch((e) => console.error('Navbatni yurgizib bolmadi:', e));
+    return;
+  }
+
+  if (belgisi === BERUVCHI.MENYU) {
+    const n = await beruvchiMenyusi(beruvchi.id);
+    await javob('');
+    await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+    return;
+  }
+
+  /*
+   * ── ЭЪЛОН ҚЎЙИШ ──
+   *
+   * Фақат ТАСДИҚЛАНГАН иш берувчи. Акс ҳолда тасдиқланмаган
+   * одам ҳар куни ўнта сохта эълон юбориб, раҳбарнинг
+   * навбатини тиқиб ташлаши мумкин эди.
+   */
+  if (beruvchi.holati !== 'TASDIQLANDI') {
+    await javob('Аризангиз ҳали тасдиқланмаган');
+    return;
+  }
+
+  const ombor = beruvchiOmbori(beruvchi.id);
+
+  if (belgisi === BERUVCHI.ELON) {
+    const n = await omborBoshla(ombor);
+    await javob('');
+    await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+    return;
+  }
+
+  await javob('Тугма эскирган');
+}
+
+/**
+ * Иш берувчининг эълон суҳбати тугмалари.
+ *
+ * Суҳбат коди ЎША — фақат омбор бошқа ва якуни бошқа:
+ * эълон дарҳол тарқалмайди, модерацияга боради.
+ */
+async function beruvchiElonTugmasi(
+  beruvchiId: string,
+  holati: string,
+  belgi: string,
+  chatId: string,
+  javob: (matn: string) => Promise<void>
+): Promise<void> {
+  if (holati !== 'TASDIQLANDI') {
+    await javob('Аризангиз ҳали тасдиқланмаган');
+    return;
+  }
+
+  const ombor = beruvchiOmbori(beruvchiId);
+
+  if (belgi === ELON.BEKOR) {
+    await ombor.ochir();
+    await javob('Бекор қилинди');
+    const n = await beruvchiMenyusi(beruvchiId);
+    await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+    return;
+  }
+
+  if (belgi === ELON.TASDIQ) {
+    const natija = await omborYarat(ombor, beruvchiId);
+    if (!natija.ok) {
+      await javob(natija.sabab);
+      return;
+    }
+    await javob('Юборилди');
+
+    /*
+     * Хабар тарқатилмайди — эълон ҳали ҳеч кимнинг кўзидан
+     * ўтмаган. Раҳбарга модерация хабари кетади.
+     */
+    try {
+      await elonniModeratsiyagaYubor(natija.id);
+      await navbatniDarhol();
+    } catch (e) {
+      console.error('Moderatsiya xabarini yuborib bolmadi:', e);
+    }
+
+    await telegramYuboruvchi(
+      chatId,
+      [
+        '<b>Эълонингиз юборилди</b>',
+        '',
+        natija.lavozim,
+        '',
+        'Бандлик маркази кўриб чиқади. Тасдиқлангач, туманнинг барча маҳалла ходимига хабар боради ва жавоб шу ерга келади.',
+      ].join('\n')
+    );
+    return;
+  }
+
+  const j = await omborTugma(ombor, belgi);
+  if (j) {
+    await javob('');
+    await telegramYuboruvchi(chatId, j.matn, j.tugmalar);
+    return;
+  }
+
+  await javob('Тугма эскирган');
 }

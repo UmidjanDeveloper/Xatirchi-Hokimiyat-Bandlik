@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { FAOL_ELON } from './elon-muddati';
+import { FAOL_ELON, MODERATSIYA_KUTMOQDA } from './elon-muddati';
 import { JOYLASHGAN, KUN_MS, XATLANGAN } from './bandlik-holatlari';
 import { tasdiqHisobi } from './joylashuv-dalili';
 
@@ -113,10 +113,13 @@ export interface TumanHolati {
   xodim: number;
   ulanganXodim: number;
   ulanmaganXodim: number;
+
+  /** Иш берувчидан келган-у, ҳали кўриб чиқилмаган эълонлар */
+  moderatsiyaKutmoqda: number;
 }
 
 export async function tumanHolati(hozir: Date = new Date()): Promise<TumanHolati> {
-  const [mahallalar, xatlov, anketa, joylashgan, elon, boshlagan, kechikkan, xodim, ulangan, dalil] =
+  const [mahallalar, xatlov, anketa, joylashgan, elon, boshlagan, kechikkan, xodim, ulangan, dalil, moderatsiya] =
     await Promise.all([
       prisma.mahalla.aggregate({ _count: true, _sum: { xonadon: true, ishsiz: true } }),
 
@@ -155,6 +158,15 @@ export async function tumanHolati(hozir: Date = new Date()): Promise<TumanHolati
        * мумкин эмас қилиб қўяди.
        */
       tasdiqHisobi(),
+
+      /*
+       * Модерация навбати — брифингда айтилади.
+       *
+       * Иш берувчи эълон қўйиб, жавоб кутади. Кечиккан жавоб
+       * — йўқолган иш ўрни: у бошқа йўл билан одам топади
+       * ва иккинчи марта ёзмайди.
+       */
+      prisma.vacancy.count({ where: MODERATSIYA_KUTMOQDA() }),
     ]);
 
   const jamiMahalla = mahallalar._count;
@@ -189,6 +201,7 @@ export async function tumanHolati(hozir: Date = new Date()): Promise<TumanHolati
     xodim,
     ulanganXodim: ulangan,
     ulanmaganXodim: xodim - ulangan,
+    moderatsiyaKutmoqda: moderatsiya,
   };
 }
 

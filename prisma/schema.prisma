@@ -121,10 +121,11 @@ model User {
   joylashuvHalQilgan JoylashuvXabari[]  @relation("JoylashuvHalQilgan")
 
   /// Botdagi tugallanmagan suhbat
-  botSuhbati          BotSuhbati?
+  botSuhbati              BotSuhbati?
   /// Kiritgan va tekshirgan joylashuv dalillari
-  kiritganDalillar    JoylashuvDalili[] @relation("DalilKiritgan")
-  tasdiqlaganDalillar JoylashuvDalili[] @relation("DalilTasdiqlagan")
+  kiritganDalillar        JoylashuvDalili[] @relation("DalilKiritgan")
+  tasdiqlaganDalillar     JoylashuvDalili[] @relation("DalilTasdiqlagan")
+  halQilganIshBeruvchilar IshBeruvchi[]     @relation("IshBeruvchiHalQilgan")
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -187,12 +188,13 @@ model Mahalla {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  xodimlar     User[]
-  xonadonlar   Household[]
-  ishsizlar    UnemployedPerson[]
-  ishOrinlar   Vacancy[]
-  itVaucherlar ItVaucher[]
-  kesmalar     HouseholdKesma[]
+  xodimlar       User[]
+  xonadonlar     Household[]
+  ishsizlar      UnemployedPerson[]
+  ishOrinlar     Vacancy[]
+  itVaucherlar   ItVaucher[]
+  kesmalar       HouseholdKesma[]
+  ishBeruvchilar IshBeruvchi[]
 
   @@index([nomi])
 }
@@ -830,6 +832,12 @@ enum XabarTuri {
   /// Hokimga va rahbarlarga har kuni ertalab ketadigan xulosa.
   /// Rahbar tizimga kirmaydi - shuning uchun tizim o'zi aytadi.
   ERTALABKI_BRIFING
+
+  /// Yangi ish beruvchi ro'yxatdan o'tmoqchi — ko'rib chiqish kerak
+  ISH_BERUVCHI_ARIZASI
+
+  /// Ish beruvchi e'lon qo'ydi — moderatsiya kutmoqda
+  ELON_MODERATSIYADA
 }
 
 /// Xabarning yo'li
@@ -1135,6 +1143,27 @@ model Vacancy {
   /// lekin shakl o'zi bir oy qo'yib beradi.
   amalQilishMuddati DateTime?
 
+  /// E'LONNI KIM QO'YGAN.
+  ///
+  /// `null` - hokimiyat xodimi qo'ygan (sayt yoki bot orqali).
+  /// To'ldirilgan bo'lsa - ish beruvchining o'zi qo'ygan va u
+  /// moderatsiyadan o'tishi kerak.
+  ishBeruvchiId String?
+  ishBeruvchi   IshBeruvchi? @relation(fields: [ishBeruvchiId], references: [id], onDelete: SetNull)
+
+  /// MODERATSIYA.
+  ///
+  /// ── Nega birlamchi qiymat TASDIQLANDI ──
+  ///
+  /// Migratsiya ustunni qo'shganda, eski kod hali ishlab
+  /// turadi va u bu ustunni to'ldirmaydi. Birlamchi qiymat
+  /// KUTILMOQDA bo'lsa, o'sha oradagi har bir e'lon jimgina
+  /// ko'rinmay qolardi - xodim e'lon qo'yardi, xabar esa hech
+  /// kimga bormasdi.
+  ///
+  /// Ish beruvchi qo'ygan e'londa KUTILMOQDA ANIQ yoziladi.
+  moderatsiya ModeratsiyaHolati @default(TASDIQLANDI)
+
   faol           Boolean           @default(true)
   /// Nega yopilgani. `faol = false` bo'lganda to'ldiriladi.
   ///
@@ -1152,6 +1181,7 @@ model Vacancy {
   joylashganlar      UnemployedPerson[]
   joylashuvXabarlari JoylashuvXabari[]
 
+  @@index([moderatsiya])
   @@index([mahallaId, faol])
   @@index([yonalish, faol])
   @@index([faol, amalQilishMuddati])
@@ -1372,4 +1402,81 @@ model JoylashuvDalili {
   @@index([ishsizId, holati])
   @@index([turi, holati])
   @@index([createdAt])
+}
+
+/// Ish beruvchining ro'yxatdan o'tish holati.
+enum IshBeruvchiHolati {
+  /// Ariza yuborildi, bandlik markazi hali ko'rmadi
+  KUTILMOQDA
+  /// Tasdiqlandi - endi e'lon qo'ya oladi
+  TASDIQLANDI
+  /// Rad etildi - sababi yoziladi
+  RAD_ETILDI
+}
+
+/// E'lonning moderatsiya holati.
+///
+/// ── Nega kerak ──
+///
+/// E'lon 70 ta mahalla xodimiga xabar yuboradi va tuman
+/// hisobotiga kiradi. Ish beruvchi esa hokimiyat xodimi emas:
+/// uning yozganini hech kim ko'rmasdan tarqatib bo'lmaydi.
+enum ModeratsiyaHolati {
+  KUTILMOQDA
+  TASDIQLANDI
+  RAD_ETILDI
+}
+
+/// ISH BERUVCHI - bot orqali e'lon qo'yadigan korxona.
+///
+/// ── Nega alohida jadval, User emas ──
+///
+/// Ish beruvchini `User` qilib qo'yish oson edi: telegram
+/// ulanishi, suhbat holati va xabar navbati tayyor turibdi.
+///
+/// Qilinmadi. `User` - bu SAYTGA kiradigan odam, va uning roli
+/// o'nlab joyda tekshiriladi. Yangi rol qo'shilsa, o'sha
+/// o'nlab tekshiruvning har biri "bu rol bilan nima qilamiz"
+/// degan savolga javob berishi kerak bo'lardi - va bittasi
+/// esdan chiqsa, tashqaridagi odam ichkaridagi ma'lumotni
+/// ko'rib qolardi.
+///
+/// Alohida jadvalda bu xavf UMUMAN yo'q: ish beruvchining
+/// sayt sessiyasi ham, paroli ham yo'q.
+model IshBeruvchi {
+  id             String            @id @default(cuid())
+  telegramChatId String            @unique
+  holati         IshBeruvchiHolati @default(KUTILMOQDA)
+
+  korxonaNomi String
+  masulShaxs  String
+  telefon     String
+
+  /// Korxona qaysi MFY hududida
+  mahallaId String?
+  mahalla   Mahalla? @relation(fields: [mahallaId], references: [id], onDelete: SetNull)
+
+  /// Rad etilsa - sababi. Ish beruvchi buni botda ko'radi.
+  radSababi String?
+
+  /// Kim ko'rib chiqdi
+  halQilganId     String?
+  halQilgan       User?     @relation("IshBeruvchiHalQilgan", fields: [halQilganId], references: [id], onDelete: SetNull)
+  halQilinganSana DateTime?
+
+  /// Botdagi ko'p qadamli suhbat holati.
+  ///
+  /// `BotSuhbati` jadvali ishlatilmadi: u `User` ga bog'langan
+  /// va ish beruvchi User emas. Suhbat shu yerda - bitta ish
+  /// beruvchida bir vaqtda bitta suhbat bo'ladi.
+  bosqich     String?
+  suhbat      Json      @default("{}")
+  suhbatVaqti DateTime?
+
+  elonlar Vacancy[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([holati])
 }

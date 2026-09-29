@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { BERUVCHI } from './beruvchi-belgilari';
 import type { Prisma, XabarTuri } from '@prisma/client';
 import { prisma, type Tranzaksiya } from './prisma';
 
@@ -282,13 +283,58 @@ export const ENG_KOP_TUGMA = 5;
  * қолади: исм кимлигини айтиш учун етарли, рақам эса
  * Telegram серверида қолиб кетарди.
  */
-async function xabarTugmalari(x: {
+/**
+ * Хабарнинг тугмалари — ЮБОРИШ пайтида ясалади.
+ *
+ * Экспорт қилинган, чунки синов уни бевосита чақиради:
+ * навбат орқали синаш ишончсиз — навбатда бошқа хабарлар
+ * ҳам турибди ва улар биринчи тушиб қолиши мумкин.
+ */
+export async function xabarTugmalari(x: {
   turi: XabarTuri;
   bogliqTuri: string | null;
   bogliqId: string | null;
   userId: string;
 }): Promise<Tugma[]> {
-  if (x.turi !== 'YANGI_ISH_ORNI' || x.bogliqTuri !== 'Vacancy' || !x.bogliqId) return [];
+  if (!x.bogliqId) return [];
+
+  /*
+   * ── МОДЕРАЦИЯ ТУГМАЛАРИ ──
+   *
+   * Улар ҳам юбориш пайтида ясалади: агар раҳбар аризани
+   * навбат ишлагунча аллақачон ҳал қилган бўлса, тугма
+   * УМУМАН чиқмайди.
+   *
+   * Тугмани хабар билан бирга сақлаб қўйиш осонроқ эди,
+   * аммо унда бир марта ҳал қилинган ариза устида иккинчи
+   * тугма қолиб кетарди — ва уни босган одам «нега
+   * ишламаяпти» деб ўйларди.
+   */
+  if (x.turi === 'ISH_BERUVCHI_ARIZASI' && x.bogliqTuri === 'IshBeruvchi') {
+    const b = await prisma.ishBeruvchi.findUnique({
+      where: { id: x.bogliqId },
+      select: { holati: true },
+    });
+    if (b?.holati !== 'KUTILMOQDA') return [];
+    return [
+      { yozuv: '✅ Тасдиқлаш', belgi: `${BERUVCHI.QABUL}:${x.bogliqId}` },
+      { yozuv: '✖️ Рад этиш', belgi: `${BERUVCHI.RAD}:${x.bogliqId}` },
+    ];
+  }
+
+  if (x.turi === 'ELON_MODERATSIYADA' && x.bogliqTuri === 'Vacancy') {
+    const e = await prisma.vacancy.findUnique({
+      where: { id: x.bogliqId },
+      select: { moderatsiya: true },
+    });
+    if (e?.moderatsiya !== 'KUTILMOQDA') return [];
+    return [
+      { yozuv: '✅ Тасдиқлаш', belgi: `${BERUVCHI.ELON_QABUL}:${x.bogliqId}` },
+      { yozuv: '✖️ Рад этиш', belgi: `${BERUVCHI.ELON_RAD}:${x.bogliqId}` },
+    ];
+  }
+
+  if (x.turi !== 'YANGI_ISH_ORNI' || x.bogliqTuri !== 'Vacancy') return [];
 
   const [xodim, orin] = await Promise.all([
     prisma.user.findUnique({ where: { id: x.userId }, select: { mahallaId: true } }),

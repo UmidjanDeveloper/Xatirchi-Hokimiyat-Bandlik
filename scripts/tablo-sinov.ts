@@ -93,6 +93,7 @@ const holat = (o: Partial<TumanHolati> = {}): TumanHolati => ({
   joylashtirilgan: 19,
   tasdiqlanganJoylashuv: 7,
   dalilsizJoylashuv: 0,
+  moderatsiyaKutmoqda: 0,
   ochiqOrin: 9,
   boshlaganMahalla: 2,
   boshlamaganMahalla: 68,

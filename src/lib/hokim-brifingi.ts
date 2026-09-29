@@ -151,6 +151,11 @@ export async function brifingYasa(hozir: Date = new Date()): Promise<Brifing> {
       `• <b>${raqam(h.ulanmaganXodim)} та ходим</b> ботга уланмаган — уларнинг маҳалласига эълон хабари бормайди`
     );
   }
+  if (h.moderatsiyaKutmoqda > 0) {
+    etibor.push(
+      `• <b>${raqam(h.moderatsiyaKutmoqda)} та эълон</b> иш берувчидан келган, ҳали кўриб чиқилмаган`
+    );
+  }
   if (h.dalilsizJoylashuv > 0) {
     etibor.push(
       `• <b>${raqam(h.dalilsizJoylashuv)} та жойлаштириш</b> 30 кундан бери ҳужжатсиз — рақам текширилмаган`
