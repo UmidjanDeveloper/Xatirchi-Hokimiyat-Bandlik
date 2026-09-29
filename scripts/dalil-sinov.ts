@@ -154,7 +154,35 @@ const SINOVLAR: Sinov[] = [
      */
     nomi: 'Сарлавҳа муқова остидан топилади',
     tekshir: async () => {
-      const b = readFileSync('/tmp/reyestr-sinov.xlsx');
+      /*
+       * ── ФАЙЛ ШУ ЕРДА ЯСАЛАДИ ──
+       *
+       * Аввал бу синов `/tmp/reyestr-sinov.xlsx` ни ўқирди —
+       * қўлда ясаб қолдирилган файл. Менинг компьютеримда у
+       * бор эди, CI нинг тоза машинасида эса йўқ: синов ўша
+       * ерда ENOENT билан йиқиларди, лекин мен «ўтди» деб
+       * ҳисобот берардим.
+       *
+       * Атроф-муҳитга таянган синов — синов эмас. Энди
+       * муқова ҳам, жадвал ҳам шу ернинг ўзида ясалади.
+       */
+      const XLSX = await import('xlsx');
+      const ws = XLSX.utils.aoa_to_sheet([
+        ['ХАТИРЧИ ТУМАНИ БЎЙИЧА МАЪЛУМОТНОМА'],
+        ['2026 йил сентябр ҳолатига'],
+        [],
+        ['№', 'Ф.И.Ш.', 'Туғилган санаси', 'Иш жойи (корхона)'],
+        [1, 'Tursunov Tolib Yusupovich', '15.08.1982', ''],
+        [2, 'Hakimova Hilola Qodirovna', '12.07.2001', ''],
+        [3, 'Hakimova Hilola Soatovna', '03.09.1973', 'ЯНГИ ЙЎЛ МЧЖ'],
+        [4, 'Nazarova Nodira Rahimovna', '21.06.1987', ''],
+        [5, 'Qodirov Qodir Anvarovich', '09.02.1995', 'ОҚ ОЛТИН МЧЖ'],
+        [6, 'Aliyev Anvar Sobirovich', '12.05.1990', ''],
+      ]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Reyestr');
+      const b: Buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
       const o = reyestrniOqi(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
       return o.ok && o.satrlar.length === 6 && o.ustunlar.ism.includes('Ф.И.Ш');
     },

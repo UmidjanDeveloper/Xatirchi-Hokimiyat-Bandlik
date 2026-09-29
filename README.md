@@ -858,12 +858,30 @@ src/app/(ilova)/
 | `npm run lint` | Kod uslubi tekshiruvi |
 | `npm run tekshir` | **Joylashtirishdan oldingi tekshiruv** |
 | `npm run ai-tekshir` | AI kaliti va modelni tekshirish |
-| `npm run sinov` | Transliteratsiya va moslik hisobi sinovlari |
+| `npm run sinov` | Barcha sinovlar (781 ta) |
+| `npm run ci-taqlid` | **CI ni mahalliy takrorlash** — toza papka, toza baza |
 | `npm run db:deploy` | Migratsiyalarni bazaga qo'llash (server) |
 | `npm run db:migrate` | Yangi migratsiya yaratish (ishlab chiqish) |
 | `npm run db:seed` | 70 MFY, raislar va administratorni yaratish |
 | `npm run db:studio` | Bazani brauzerda ko'rish |
 | `npm run db:push` | Sxemani migratsiyasiz urish (faqat mahalliy sinov) |
+
+### `npm run sinov` va `npm run ci-taqlid` farqi
+
+`npm run sinov` sinovlarni **shu papkada va shu bazada** yurgizadi.
+Bu tez, lekin **yetarli emas**: sinov papkada yotib qolgan
+vaqtinchalik faylga yoki qo'lda yaratilgan hisobga tayanib
+qolishi mumkin. U holda mahalliy natija yashil bo'ladi-yu, CI
+qizil turadi.
+
+Shunday ikki marta bo'ldi — biri bazadagi rahbar hisoblari,
+ikkinchisi `/tmp` dagi Excel fayli. Ikkovi ham «781/781 o'tdi»
+degan hisobotning ostida yashiringan edi.
+
+`npm run ci-taqlid` esa CI ning uchta shartini takrorlaydi:
+**toza papka** (faqat git kuzatadigan fayllar), **toza baza**
+(har safar yangidan) va **toza muhit** (`TZ=UTC`). Kodni
+jo'natishdan oldin shu buyruq yurgiziladi.
 
 ---
 
