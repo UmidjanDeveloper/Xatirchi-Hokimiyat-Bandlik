@@ -51,6 +51,22 @@ const REYESTR_SAHIFASI = readFileSync('src/app/(ilova)/reyestr/page.tsx', 'utf8'
 
 let mahallaId = '';
 let xodimId = '';
+/**
+ * Далилни ТЕКШИРАДИГАН одам.
+ *
+ * ── Нега синов уни ўзи яратади ──
+ *
+ * Қоида: ўзи киритган далилни ўзи тасдиқлай олмайди. Демак
+ * синовга ИККИТА одам керак.
+ *
+ * Аввал иккинчиси базадан изланарди — «BANDLIK_RAHBAR ёки
+ * ADMIN, фақат биринчиси эмас». Локал базада бундай одам бор
+ * эди, тоза CI базасида эса йўқ: `seed` фақат 70 та МФЙ
+ * ходимини яратади.
+ *
+ * Атроф-муҳитга таянган синов — синов эмас.
+ */
+let tekshiruvchiId = '';
 const tozalanadi: string[] = [];
 
 async function tayyorla() {
@@ -67,6 +83,18 @@ async function tayyorla() {
     select: { id: true },
   });
   xodimId = x.id;
+
+  const t = await prisma.user.create({
+    data: {
+      username: `sinov_dalil_tekshiruvchi_${Date.now()}`,
+      fullName: 'Sinov Tekshiruvchi',
+      passwordHash: 'x',
+      rol: 'BANDLIK_RAHBAR',
+      faol: true,
+    },
+    select: { id: true },
+  });
+  tekshiruvchiId = t.id;
 }
 
 async function fuqaroYarat(p: {
@@ -98,12 +126,16 @@ async function tozala() {
     await prisma.unemployedPerson.deleteMany({ where: { id: { in: tozalanadi } } });
     tozalanadi.length = 0;
   }
-  if (xodimId) {
+  for (const id of [xodimId, tekshiruvchiId].filter(Boolean)) {
     await prisma.joylashuvDalili.updateMany({
-      where: { kiritganId: xodimId },
+      where: { kiritganId: id },
       data: { kiritganId: null },
     });
-    await prisma.user.delete({ where: { id: xodimId } }).catch(() => undefined);
+    await prisma.joylashuvDalili.updateMany({
+      where: { tasdiqlaganId: id },
+      data: { tasdiqlaganId: null },
+    });
+    await prisma.user.delete({ where: { id } }).catch(() => undefined);
   }
 }
 
@@ -393,13 +425,7 @@ const SINOVLAR: Sinov[] = [
       const id = await fuqaroYarat({ fish: noyob('Tasdiqlandi Keyin') });
       const d = await dalilQoshish({ ishsizId: id, turi: 'BUYRUQ', kiritganId: xodimId });
 
-      const boshqa = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] }, id: { not: xodimId } },
-        select: { id: true },
-      });
-      if (!boshqa) return false;
-
-      await dalilniHalQil({ dalilId: d.id, userId: boshqa.id, tasdiqlandi: true });
+      await dalilniHalQil({ dalilId: d.id, userId: tekshiruvchiId, tasdiqlandi: true });
       return (await odamTasdigi(id)).tasdiqlangan;
     },
   },
@@ -539,13 +565,7 @@ const SINOVLAR: Sinov[] = [
       const id = await fuqaroYarat({ fish: noyob('Navbatdan Chiqadi') });
       const d = await dalilQoshish({ ishsizId: id, turi: 'BUYRUQ', kiritganId: xodimId });
 
-      const boshqa = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] }, id: { not: xodimId } },
-        select: { id: true },
-      });
-      if (!boshqa) return false;
-
-      await dalilniHalQil({ dalilId: d.id, userId: boshqa.id, tasdiqlandi: true });
+      await dalilniHalQil({ dalilId: d.id, userId: tekshiruvchiId, tasdiqlandi: true });
 
       const navbat = await tekshirishKutayotganlar(200);
       return !navbat.some((n) => n.dalilId === d.id);

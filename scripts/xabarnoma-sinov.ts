@@ -109,13 +109,59 @@ async function orinTozala(xodimId: string, orinId: string) {
 
 /* ── «Рад этди» занжири — ҳақиқий базада ── */
 
+/**
+ * ============================================================
+ *  СИНОВ ЎЗ МАЪЛУМОТИНИ ЎЗИ ЯРАТАДИ
+ *
+ *  ── Нега бу қоида пайдо бўлди ──
+ *
+ *  Бу учта синов ЛОКАЛДА ўтарди ва CI'да йиқиларди. Сабаби:
+ *  улар «базада раҳбар бор» деб ўйларди.
+ *
+ *  Локал базада бор эди — уни мен қўлда яратганман. Тоза CI
+ *  базасида эса `prisma db seed` фақат 70 та МФЙ ходимини
+ *  яратади, биронта раҳбар йўқ. Хабар юбориладиган одам
+ *  бўлмагач, «хабар кетдими» деган текширув йиқиларди.
+ *
+ *  Оқибати ундан ёмонроқ бўлди: мен бир неча марта
+ *  «736/736 ўтди» деб ҳисобот бердим — локалда рост, CI'да
+ *  ёлғон.
+ *
+ *  Қоида: синов ўзига керак ҳар бир ёзувни ЎЗИ яратади ва
+ *  ўзи тозалайди. Атроф-муҳитга таянган синов — синов эмас.
+ * ============================================================
+ */
+async function rahbarYarat(rol: 'BANDLIK' | 'BANDLIK_RAHBAR' | 'HOKIM' | 'ADMIN') {
+  return prisma.user.create({
+    data: {
+      username: `sinov_${rol.toLowerCase()}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      fullName: `Sinov ${rol}`,
+      passwordHash: 'x',
+      rol,
+      faol: true,
+    },
+    select: { id: true },
+  });
+}
+
 async function radSinovi(): Promise<{
   xodimId: string;
   odamId: string;
   orinId: string;
   mahallaId: string;
+  rahbarId: string;
 }> {
   const mahalla = await prisma.mahalla.findFirst({ select: { id: true } });
+
+  /*
+   * ХАБАРНИ ОЛАДИГАН ОДАМ.
+   *
+   * `FUQARO_RAD_ETDI` → BANDLIK ёки BANDLIK_RAHBAR
+   * `XODIM_UZILDI`    → BANDLIK_RAHBAR ёки ADMIN
+   *
+   * Битта BANDLIK_RAHBAR иккаласини ҳам қоплайди.
+   */
+  const rahbar = await rahbarYarat('BANDLIK_RAHBAR');
   const xodim = await prisma.user.create({
     data: {
       username: `sinov_rad_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -147,16 +193,35 @@ async function radSinovi(): Promise<{
     },
     select: { id: true },
   });
-  return { xodimId: xodim.id, odamId: odam.id, orinId: orin.id, mahallaId: mahalla!.id };
+  return {
+    xodimId: xodim.id,
+    odamId: odam.id,
+    orinId: orin.id,
+    mahallaId: mahalla!.id,
+    rahbarId: rahbar.id,
+  };
 }
 
-async function radTozala(r: { xodimId: string; odamId: string; orinId: string }) {
+async function radTozala(r: {
+  xodimId: string;
+  odamId: string;
+  orinId: string;
+  rahbarId?: string;
+}) {
   await prisma.xabarnoma.deleteMany({
-    where: { OR: [{ bogliqId: r.odamId }, { bogliqId: r.xodimId }, { userId: r.xodimId }] },
+    where: {
+      OR: [
+        { bogliqId: r.odamId },
+        { bogliqId: r.xodimId },
+        { userId: r.xodimId },
+        ...(r.rahbarId ? [{ userId: r.rahbarId }] : []),
+      ],
+    },
   });
   await prisma.unemployedPerson.delete({ where: { id: r.odamId } });
   await prisma.vacancy.delete({ where: { id: r.orinId } });
   await prisma.user.delete({ where: { id: r.xodimId } });
+  if (r.rahbarId) await prisma.user.delete({ where: { id: r.rahbarId } }).catch(() => undefined);
 }
 
 /* ── Ботдан эълон қўйиш — тўлиқ суҳбат ── */
@@ -211,13 +276,78 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Брифинг фақат раҳбарларга кетади, маҳалла ходимига эмас',
     tekshir: async () => {
       const { brifingniYubor } = await import('../src/lib/hokim-brifingi');
-      await prisma.xabarnoma.deleteMany({ where: { turi: 'ERTALABKI_BRIFING' } });
-      const soni = await brifingniYubor();
-      const yettilikka = await prisma.xabarnoma.count({
-        where: { turi: 'ERTALABKI_BRIFING', user: { rol: 'YETTILIK' } },
+
+      /*
+       * Иккала ТОМОН ҳам синов томонидан яратилади: хабарни
+       * ОЛИШИ керак бўлган ҳоким ва ОЛМАСЛИГИ керак бўлган
+       * маҳалла ходими.
+       *
+       * Аввал бу синов «базада раҳбар бор» деб ўйларди ва
+       * тоза базада йиқиларди. Ундан ташқари у суст эди:
+       * `yettilikka === 0` ҳеч ким хабар олмаганда ҳам рост
+       * бўлаверарди.
+       */
+      const hokim = await rahbarYarat('HOKIM');
+      const mahalla = await prisma.mahalla.findFirst({ select: { id: true } });
+      const xodim = await prisma.user.create({
+        data: {
+          username: `sinov_brif_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          fullName: 'Sinov Xodimi',
+          passwordHash: 'x',
+          rol: 'YETTILIK',
+          mahallaId: mahalla!.id,
+        },
+        select: { id: true },
       });
-      await prisma.xabarnoma.deleteMany({ where: { turi: 'ERTALABKI_BRIFING' } });
-      return soni > 0 && yettilikka === 0;
+
+      try {
+        await prisma.xabarnoma.deleteMany({ where: { turi: 'ERTALABKI_BRIFING' } });
+        const soni = await brifingniYubor();
+
+        const hokimga = await prisma.xabarnoma.count({
+          where: { turi: 'ERTALABKI_BRIFING', userId: hokim.id },
+        });
+        const xodimga = await prisma.xabarnoma.count({
+          where: { turi: 'ERTALABKI_BRIFING', userId: xodim.id },
+        });
+
+        return soni > 0 && hokimga === 1 && xodimga === 0;
+      } finally {
+        await prisma.xabarnoma.deleteMany({ where: { turi: 'ERTALABKI_BRIFING' } });
+        await prisma.user.delete({ where: { id: hokim.id } }).catch(() => undefined);
+        await prisma.user.delete({ where: { id: xodim.id } }).catch(() => undefined);
+      }
+    },
+  },
+  {
+    /*
+     * Cron қайта чақирилиши ОДДИЙ ҳол: Vercel жавобни
+     * ололмаса қайта уринади, администратор тугмани иккинчи
+     * марта босади.
+     *
+     * Ҳимоясиз бўлса, раҳбарнинг телефонига бир хил брифинг
+     * уч марта келарди — ва у тўртинчисини умуман очмасди.
+     */
+    nomi: 'Брифинг бир кунда БИР МАРТА юборилади',
+    tekshir: async () => {
+      const { brifingniYubor } = await import('../src/lib/hokim-brifingi');
+      const hokim = await rahbarYarat('HOKIM');
+      try {
+        await prisma.xabarnoma.deleteMany({ where: { turi: 'ERTALABKI_BRIFING' } });
+
+        const birinchi = await brifingniYubor();
+        const ikkinchi = await brifingniYubor();
+        const uchinchi = await brifingniYubor();
+
+        const hokimga = await prisma.xabarnoma.count({
+          where: { turi: 'ERTALABKI_BRIFING', userId: hokim.id },
+        });
+
+        return birinchi > 0 && ikkinchi === 0 && uchinchi === 0 && hokimga === 1;
+      } finally {
+        await prisma.xabarnoma.deleteMany({ where: { turi: 'ERTALABKI_BRIFING' } });
+        await prisma.user.delete({ where: { id: hokim.id } }).catch(() => undefined);
+      }
     },
   },
   {

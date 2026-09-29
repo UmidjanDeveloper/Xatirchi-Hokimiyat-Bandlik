@@ -185,21 +185,64 @@ export async function brifingYasa(hozir: Date = new Date()): Promise<Brifing> {
  * маҳалласи керак, ва у меню орқали кўради.
  */
 export async function brifingniYubor(hozir: Date = new Date()): Promise<number> {
-  const { matn } = await brifingYasa(hozir);
-
   const oluvchilar = await prisma.user.findMany({
     where: { rol: { in: ['HOKIM', 'BANDLIK_RAHBAR', 'ADMIN'] }, faol: true },
     select: { id: true },
   });
   if (oluvchilar.length === 0) return 0;
 
-  const xabarlar: YangiXabar[] = oluvchilar.map((o) => ({
+  /*
+   * ── БИР КУНДА БИР МАРТА ──
+   *
+   * Cron қайта чақирилиши ОДДИЙ ҳол: Vercel жавобни ололмаса
+   * қайта уринади, администратор «ишладими» деб тугмани
+   * иккинчи марта босади, ёки иккита муҳит бир хил базага
+   * қарайди.
+   *
+   * Ҳимоясиз бўлса, раҳбарнинг телефонига бир хил брифинг
+   * уч марта келарди — ва у тўртинчисини умуман очмасди.
+   *
+   * Калит — ТОШКЕНТ кунининг санаси. Сервер UTC да, шунинг
+   * учун `toISOString()` кечқурун соат бешдан кейин эртанги
+   * кунни ёзиб қўярди ва ўша кечада иккинчи брифинг ўтиб
+   * кетарди.
+   */
+  const kalit = kunKaliti(hozir);
+
+  const allaqachon = await prisma.xabarnoma.findMany({
+    where: {
+      turi: 'ERTALABKI_BRIFING',
+      bogliqTuri: 'Brifing',
+      bogliqId: kalit,
+      userId: { in: oluvchilar.map((o) => o.id) },
+    },
+    select: { userId: true },
+  });
+  const borlar = new Set(allaqachon.map((x) => x.userId));
+
+  const yangilar = oluvchilar.filter((o) => !borlar.has(o.id));
+  if (yangilar.length === 0) return 0;
+
+  /*
+   * Матн ФАҚАТ юбориладиган одам бўлса ясалади: у ўнлаб
+   * сўров қилади ва такрор чақирувда бекорга ишлатилмасин.
+   */
+  const { matn } = await brifingYasa(hozir);
+
+  const xabarlar: YangiXabar[] = yangilar.map((o) => ({
     userId: o.id,
     turi: 'ERTALABKI_BRIFING' as const,
     matn,
     bogliqTuri: 'Brifing',
-    bogliqId: hozir.toISOString().slice(0, 10),
+    bogliqId: kalit,
   }));
 
   return xabarQoshish(xabarlar);
+}
+
+/** Тошкент вақти бўйича `YYYY-MM-DD` — такрорни тўхтатувчи калит */
+export function kunKaliti(hozir: Date = new Date()): string {
+  const boshi = kunBoshi(hozir);
+  /* Кун боши ҲАҚИҚИЙ он; Тошкентга суриб, санасини оламиз */
+  return new Date(boshi.getTime() + 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }

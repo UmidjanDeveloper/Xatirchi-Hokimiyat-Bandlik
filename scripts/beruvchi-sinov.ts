@@ -53,6 +53,34 @@ const ELON_KODI = readFileSync('src/lib/bot-elon.ts', 'utf8');
 const CHAT = () => `sinov-beruvchi-${Date.now()}-${Math.floor(Math.random() * 9999)}`;
 const yaratilgan: string[] = [];
 
+/**
+ * Модерация қиладиган раҳбар.
+ *
+ * ── Нега синов уни ўзи яратади ──
+ *
+ * Аввал у базадан изланарди. Локал базада бор эди, тоза CI
+ * базасида эса йўқ: `seed` фақат 70 та МФЙ ходимини яратади,
+ * биронта раҳбар йўқ.
+ *
+ * Натижада бешта синов CI'да «null.id» билан йиқиларди —
+ * локалда эса бемалол ўтарди.
+ */
+let rahbarId = '';
+
+async function tayyorla() {
+  const r = await prisma.user.create({
+    data: {
+      username: `sinov_moderator_${Date.now()}`,
+      fullName: 'Sinov Moderator',
+      passwordHash: 'x',
+      rol: 'BANDLIK_RAHBAR',
+      faol: true,
+    },
+    select: { id: true },
+  });
+  rahbarId = r.id;
+}
+
 async function tozala() {
   if (yaratilgan.length === 0) return;
   const b = await prisma.ishBeruvchi.findMany({
@@ -83,6 +111,14 @@ async function tozala() {
     await prisma.ishBeruvchi.deleteMany({ where: { id: { in: idlar } } });
   }
   yaratilgan.length = 0;
+  if (rahbarId) {
+    await prisma.ishBeruvchi.updateMany({
+      where: { halQilganId: rahbarId },
+      data: { halQilganId: null },
+    });
+    await prisma.xabarnoma.deleteMany({ where: { userId: rahbarId } });
+    await prisma.user.delete({ where: { id: rahbarId } }).catch(() => undefined);
+  }
 }
 
 /** Рўйхатдан тўлиқ ўтган иш берувчи ясайди */
@@ -102,11 +138,7 @@ async function royxatdanOtgan(tasdiqlansinmi = true) {
   await royxatniYubor(b.id);
 
   if (tasdiqlansinmi) {
-    const rahbar = await prisma.user.findFirst({
-      where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-      select: { id: true },
-    });
-    await beruvchiniHalQil({ beruvchiId: b.id, userId: rahbar!.id, qabul: true });
+    await beruvchiniHalQil({ beruvchiId: b.id, userId: rahbarId, qabul: true });
   }
   return { id: b.id, chat };
 }
@@ -322,11 +354,7 @@ const SINOVLAR: Sinov[] = [
       const n = await elonQoy(id);
       if (!n.ok) return false;
 
-      const rahbar = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-        select: { id: true },
-      });
-      const h = await elonniHalQil({ vacancyId: n.id, userId: rahbar!.id, qabul: true });
+      const h = await elonniHalQil({ vacancyId: n.id, userId: rahbarId, qabul: true });
       if (!h.ok) return false;
 
       const kuchda = await prisma.vacancy.count({
@@ -348,11 +376,7 @@ const SINOVLAR: Sinov[] = [
       const n = await elonQoy(id);
       if (!n.ok) return false;
 
-      const rahbar = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-        select: { id: true },
-      });
-      await elonniHalQil({ vacancyId: n.id, userId: rahbar!.id, qabul: false });
+      await elonniHalQil({ vacancyId: n.id, userId: rahbarId, qabul: false });
 
       const e = await prisma.vacancy.findUnique({
         where: { id: n.id },
@@ -368,12 +392,8 @@ const SINOVLAR: Sinov[] = [
       const n = await elonQoy(id);
       if (!n.ok) return false;
 
-      const rahbar = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-        select: { id: true },
-      });
-      const a = await elonniHalQil({ vacancyId: n.id, userId: rahbar!.id, qabul: true });
-      const b = await elonniHalQil({ vacancyId: n.id, userId: rahbar!.id, qabul: false });
+      const a = await elonniHalQil({ vacancyId: n.id, userId: rahbarId, qabul: true });
+      const b = await elonniHalQil({ vacancyId: n.id, userId: rahbarId, qabul: false });
       return a.ok && !b.ok;
     },
   },
@@ -476,23 +496,17 @@ const SINOVLAR: Sinov[] = [
     tekshir: async () => {
       const { id } = await royxatdanOtgan(false);
 
-      const rahbar = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-        select: { id: true },
-      });
-      if (!rahbar) return false;
-
       const xabar = {
         turi: 'ISH_BERUVCHI_ARIZASI' as const,
         bogliqTuri: 'IshBeruvchi',
         bogliqId: id,
-        userId: rahbar.id,
+        userId: rahbarId,
       };
 
       /* Ҳал қилинмаган — тугма БОР */
       const oldin = await xabarTugmalari(xabar);
 
-      await beruvchiniHalQil({ beruvchiId: id, userId: rahbar.id, qabul: true });
+      await beruvchiniHalQil({ beruvchiId: id, userId: rahbarId, qabul: true });
 
       /* Ҳал қилинган — тугма ЙЎҚ */
       const keyin = await xabarTugmalari(xabar);
@@ -511,19 +525,15 @@ const SINOVLAR: Sinov[] = [
       const n = await elonQoy(id);
       if (!n.ok) return false;
 
-      const rahbar = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-        select: { id: true },
-      });
       const xabar = {
         turi: 'ELON_MODERATSIYADA' as const,
         bogliqTuri: 'Vacancy',
         bogliqId: n.id,
-        userId: rahbar!.id,
+        userId: rahbarId,
       };
 
       const oldin = await xabarTugmalari(xabar);
-      await elonniHalQil({ vacancyId: n.id, userId: rahbar!.id, qabul: true });
+      await elonniHalQil({ vacancyId: n.id, userId: rahbarId, qabul: true });
       const keyin = await xabarTugmalari(xabar);
 
       return oldin.length === 2 && keyin.length === 0;
@@ -573,11 +583,7 @@ const SINOVLAR: Sinov[] = [
       if (!n.ok) return false;
 
       /* Сайт йўли `elonniHalQil` ни чақиради — ўша функция */
-      const rahbar = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-        select: { id: true },
-      });
-      await elonniHalQil({ vacancyId: n.id, userId: rahbar!.id, qabul: true });
+      await elonniHalQil({ vacancyId: n.id, userId: rahbarId, qabul: true });
 
       return (await prisma.vacancy.count({ where: { ...FAOL_ELON(), id: n.id } })) === 1;
     },
@@ -586,14 +592,9 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Рад этиш сабаби сақланади ва иш берувчига кўринади',
     tekshir: async () => {
       const { id } = await royxatdanOtgan(false);
-      const rahbar = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-        select: { id: true },
-      });
-
       await beruvchiniHalQil({
         beruvchiId: id,
-        userId: rahbar!.id,
+        userId: rahbarId,
         qabul: false,
         sabab: 'Телефон рақами нотўғри',
       });
@@ -610,11 +611,7 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Рад этилгандан кейин қайта ариза бериш мумкин',
     tekshir: async () => {
       const { id, chat } = await royxatdanOtgan(false);
-      const rahbar = await prisma.user.findFirst({
-        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
-        select: { id: true },
-      });
-      await beruvchiniHalQil({ beruvchiId: id, userId: rahbar!.id, qabul: false });
+      await beruvchiniHalQil({ beruvchiId: id, userId: rahbarId, qabul: false });
 
       await royxatniBoshla(chat);
       const b = await prisma.ishBeruvchi.findUnique({
@@ -638,19 +635,29 @@ const SINOVLAR: Sinov[] = [
      */
     nomi: 'Ҳокимга ТУМАН менюси чиқади, маҳалла эмас',
     tekshir: async () => {
-      const hokim = await prisma.user.findFirst({
-        where: { rol: 'HOKIM', faol: true },
+      /* Ҳоким ҳам синов томонидан яратилади — базада бўлиши шарт эмас */
+      const hokim = await prisma.user.create({
+        data: {
+          username: `sinov_hokim_${Date.now()}`,
+          fullName: 'Sinov Hokim',
+          passwordHash: 'x',
+          rol: 'HOKIM',
+          faol: true,
+        },
         select: { id: true },
       });
-      if (!hokim) return false;
 
-      const m = await boshMenyu(hokim.id);
-      return (
-        m.matn.includes('Туман ҳокими') &&
-        m.matn.includes('Хатлов') &&
-        !m.tugmalar.some((t) => t.belgi === 'm.fuqarolar') &&
-        m.tugmalar.some((t) => t.belgi === 's.tuman')
-      );
+      try {
+        const m = await boshMenyu(hokim.id);
+        return (
+          m.matn.includes('Туман ҳокими') &&
+          m.matn.includes('Хатлов') &&
+          !m.tugmalar.some((t) => t.belgi === 'm.fuqarolar') &&
+          m.tugmalar.some((t) => t.belgi === 's.tuman')
+        );
+      } finally {
+        await prisma.user.delete({ where: { id: hokim.id } }).catch(() => undefined);
+      }
     },
   },
   /* ────────────────────────────────────────────────────────
@@ -703,6 +710,8 @@ const SINOVLAR: Sinov[] = [
 ];
 
 async function main() {
+  await tayyorla();
+
   let xato = 0;
   for (const s of SINOVLAR) {
     let ok = false;
