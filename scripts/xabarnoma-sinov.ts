@@ -159,7 +159,111 @@ async function radTozala(r: { xodimId: string; odamId: string; orinId: string })
   await prisma.user.delete({ where: { id: r.xodimId } });
 }
 
+/* ── Ботдан эълон қўйиш — тўлиқ суҳбат ── */
+
+async function elonRahbari() {
+  return prisma.user.create({
+    data: {
+      username: `sinov_elon_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      fullName: 'Sinov Rahbar',
+      passwordHash: 'x',
+      rol: 'BANDLIK_RAHBAR',
+    },
+    select: { id: true },
+  });
+}
+
 const SINOVLAR: Sinov[] = [
+  {
+    /*
+     * Еттита савол, кейин тасдиқлаш. Ҳар қадам базага
+     * ёзилади — Telegram'да «сеанс» йўқ.
+     */
+    nomi: 'Ботдан эълон қўйиш — бошидан охиригача',
+    tekshir: async () => {
+      const B = await import('../src/lib/bot-elon');
+      const r = await elonRahbari();
+      const mfy = await prisma.mahalla.findFirst({ select: { nomiKirill: true } });
+
+      await B.suhbatniBoshla(r.id);
+      await B.matnliJavob(r.id, mfy!.nomiKirill);
+      await B.matnliJavob(r.id, 'Sinov korxona');
+      await B.matnliJavob(r.id, 'Sinov lavozim');
+      await B.tugmaliJavob(r.id, `${B.ELON.ORIN}:3`);
+      await B.matnliJavob(r.id, '4.5');
+      await B.matnliJavob(r.id, '+998901234567');
+      await B.tugmaliJavob(r.id, `${B.ELON.MUDDAT}:30`);
+
+      const n = await B.elonniYarat(r.id);
+      let ok = false;
+      if (n.ok) {
+        const o = await prisma.vacancy.findUnique({
+          where: { id: n.id },
+          select: { ornlarSoni: true, maosh: true, amalQilishMuddati: true },
+        });
+        /* Маош ботда млн сўмда сўралади, базада сўмда сақланади */
+        ok =
+          o?.ornlarSoni === 3 &&
+          Number(o.maosh) === 4_500_000 &&
+          o.amalQilishMuddati !== null;
+        await prisma.vacancy.delete({ where: { id: n.id } });
+      }
+      const qoldi = await prisma.botSuhbati.count({ where: { userId: r.id } });
+      await prisma.user.delete({ where: { id: r.id } });
+      return ok && qoldi === 0;
+    },
+  },
+  {
+    /* Нотўғри маош қабул қилинмайди — эълон ёлғон чиқмаслиги керак */
+    nomi: 'Нотўғри маош рад этилади',
+    tekshir: async () => {
+      const B = await import('../src/lib/bot-elon');
+      const r = await elonRahbari();
+      const mfy = await prisma.mahalla.findFirst({ select: { nomiKirill: true } });
+
+      await B.suhbatniBoshla(r.id);
+      await B.matnliJavob(r.id, mfy!.nomiKirill);
+      await B.matnliJavob(r.id, 'Sinov korxona');
+      await B.matnliJavob(r.id, 'Sinov lavozim');
+      await B.tugmaliJavob(r.id, `${B.ELON.ORIN}:1`);
+      await B.matnliJavob(r.id, 'juda ko\'p');
+
+      const s = await prisma.botSuhbati.findUnique({
+        where: { userId: r.id },
+        select: { bosqich: true },
+      });
+      await prisma.botSuhbati.deleteMany({ where: { userId: r.id } });
+      await prisma.user.delete({ where: { id: r.id } });
+      /* Қадам ОЛДИНГА силжимаслиги керак */
+      return s?.bosqich === 'maosh';
+    },
+  },
+  {
+    /* Тугалланмаган суҳбатдан эълон яратиб бўлмайди */
+    nomi: 'Тўлиқ бўлмаган суҳбатдан эълон чиқмайди',
+    tekshir: async () => {
+      const B = await import('../src/lib/bot-elon');
+      const r = await elonRahbari();
+      await B.suhbatniBoshla(r.id);
+      const n = await B.elonniYarat(r.id);
+      await prisma.botSuhbati.deleteMany({ where: { userId: r.id } });
+      await prisma.user.delete({ where: { id: r.id } });
+      return !n.ok;
+    },
+  },
+  {
+    /* Бекор қилинса ҳолат ҚОЛМАСЛИГИ керак */
+    nomi: 'Бекор қилинган суҳбат тозаланади',
+    tekshir: async () => {
+      const B = await import('../src/lib/bot-elon');
+      const r = await elonRahbari();
+      await B.suhbatniBoshla(r.id);
+      await B.suhbatniBekorQil(r.id);
+      const qoldi = await prisma.botSuhbati.count({ where: { userId: r.id } });
+      await prisma.user.delete({ where: { id: r.id } });
+      return qoldi === 0;
+    },
+  },
   {
     nomi: 'Рад этиш ёзилади ва сабаби сақланади',
     tekshir: async () => {

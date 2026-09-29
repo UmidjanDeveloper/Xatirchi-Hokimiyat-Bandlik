@@ -120,6 +120,7 @@ export async function boshMenyu(userId: string): Promise<MenyuNatijasi> {
           : []),
       ].join('\n'),
       tugmalar: [
+        { yozuv: '➕ Янги иш ўрни қўйиш', belgi: 'e.boshla' },
         { yozuv: '👥 Ходимлар ҳолати', belgi: MENYU.XODIMLAR },
         { yozuv: '📋 Очиқ иш ўринлари', belgi: MENYU.ORINLAR },
         { yozuv: '🔌 Уланишни узиш', belgi: MENYU.UZISH },

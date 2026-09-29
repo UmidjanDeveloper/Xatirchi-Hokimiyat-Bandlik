@@ -5,6 +5,16 @@ import { ishTopildiXabari } from '@/lib/joylashuv-xabari';
 import { ulangandaOchiqOrinlar } from '@/lib/ish-orni-xabari';
 import { kimRadEtdi, RAD, radniYoz, sababniSora } from '@/lib/rad-etish';
 import {
+  ELON,
+  elonniYarat,
+  matnliJavob,
+  suhbatBormi,
+  suhbatniBekorQil,
+  suhbatniBoshla,
+  tugmaliJavob,
+} from '@/lib/bot-elon';
+import { ishOrniXabarlari } from '@/lib/ish-orni-xabari';
+import {
   boshMenyu,
   fuqarolarRoyxati,
   MENYU,
@@ -126,8 +136,31 @@ export async function POST(request: Request) {
    * эса улаш кўрсатмаси чиқади.
    */
   if (!kod || /^\/(start|menyu|menu|help|yordam)$/i.test(matn)) {
+    /* Меню очилса, ярим қолган суҳбат ташланади */
+    const kim = await chatXodimi(String(chatId));
+    if (kim) await suhbatniBekorQil(kim);
     await menyuniKorsat(String(chatId));
     return NextResponse.json({ ok: true });
+  }
+
+  /*
+   * ── ЭЪЛОН СУҲБАТИ ──
+   *
+   * Раҳбар «янги иш ўрни» тугмасини босган бўлса, кейинги
+   * матнлар КОД эмас, саволларга жавоб. Шунинг учун суҳбат
+   * кодни текширишдан ОЛДИН келади.
+   */
+  const suhbatchi = await chatXodimi(String(chatId));
+  if (suhbatchi && (await suhbatBormi(suhbatchi))) {
+    const j = await matnliJavob(suhbatchi, matn);
+    if (j) {
+      try {
+        await telegramYuboruvchi(String(chatId), j.matn, j.tugmalar);
+      } catch (e) {
+        console.error('Suhbat javobini yuborib bolmadi:', e);
+      }
+      return NextResponse.json({ ok: true });
+    }
   }
 
   const ulanish = await kodniUlash(kod, String(chatId));
@@ -298,6 +331,88 @@ async function tugmaBosildi(q: {
     } catch (e) {
       console.error('Menyu javobini yuborib bolmadi:', e);
     }
+    return;
+  }
+
+  /*
+   * ── ЭЪЛОН СУҲБАТИ ТУГМАЛАРИ ──
+   *
+   * Фақат бандлик раҳбари ва администратор эълон қўя олади:
+   * эълон 70 та ходимга хабар юборади, ва уни ким қўйганига
+   * жавобгарлик бор.
+   */
+  if (belgi.startsWith('e.')) {
+    const kim = await prisma.user.findFirst({
+      where: { telegramChatId: String(q.from.id), faol: true },
+      select: { id: true, rol: true },
+    });
+    if (!kim) {
+      await javob('Сиз уланмагансиз');
+      return;
+    }
+    if (kim.rol !== 'BANDLIK_RAHBAR' && kim.rol !== 'ADMIN') {
+      await javob('Эълонни фақат бандлик раҳбари қўяди');
+      return;
+    }
+
+    if (belgi === ELON.BOSHLA) {
+      const j = await suhbatniBoshla(kim.id);
+      await javob('');
+      await telegramYuboruvchi(chatId, j.matn, j.tugmalar);
+      return;
+    }
+
+    if (belgi === ELON.BEKOR) {
+      await suhbatniBekorQil(kim.id);
+      await javob('Бекор қилинди');
+      const n = await boshMenyu(kim.id);
+      await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+      return;
+    }
+
+    if (belgi === ELON.TASDIQ) {
+      const natija = await elonniYarat(kim.id);
+      if (!natija.ok) {
+        await javob(natija.sabab);
+        return;
+      }
+      await javob('Эълон жойлаштирилди');
+
+      /*
+       * Хабар тарқатиш АЛОҲИДА: хато бўлса ҳам эълон
+       * сақланиб қолиши керак — раҳбарнинг иши тугади.
+       */
+      let kimga = 0;
+      try {
+        kimga = await ishOrniXabarlari(natija.id);
+        await navbatniDarhol();
+      } catch (e) {
+        console.error('Elon xabarlarini tarqatib bolmadi:', e);
+      }
+
+      await telegramYuboruvchi(
+        chatId,
+        [
+          '<b>Эълон жойлаштирилди</b>',
+          '',
+          natija.lavozim,
+          '',
+          kimga > 0
+            ? `${kimga} та маҳалла ходимига хабар кетди.`
+            : 'Ҳозирча ҳеч бир ходимга хабар кетмади — уланганлар йўқ ёки мос маҳалла топилмади.',
+        ].join('\n')
+      );
+      return;
+    }
+
+    const j = await tugmaliJavob(kim.id, belgi);
+    if (j) {
+      await javob('');
+      await telegramYuboruvchi(chatId, j.matn, j.tugmalar);
+      return;
+    }
+
+    await javob('Тугма эскирган');
     return;
   }
 

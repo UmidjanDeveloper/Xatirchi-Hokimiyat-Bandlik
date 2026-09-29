@@ -122,6 +122,9 @@ model User {
 
   @@index([rol, faol])
   @@index([mahallaId])
+
+  /// Botdagi tugallanmagan suhbat
+  botSuhbati BotSuhbati?
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1242,4 +1245,33 @@ model JoylashuvXabari {
   @@unique([vacancyId, ishsizId])
   @@index([holati, muddat])
   @@index([xabarchiId, holati])
+}
+
+/// Botdagi ko'p qadamli suhbat holati.
+///
+/// Bot bir nechta savolni KETMA-KET beradi va oldingi
+/// javoblarni eslab turishi kerak. Telegram esa har xabarni
+/// alohida yuboradi - orada hech qanday "seans" yo'q.
+///
+/// Shuning uchun holat bazada: kim, qaysi bosqichda, nimalar
+/// terilgan.
+model BotSuhbati {
+  id String @id @default(cuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Qanday suhbat - hozircha faqat "ish-orni"
+  turi String
+
+  /// Qaysi savolda turibdi
+  bosqich String
+
+  /// Shu paytgacha terilganlar
+  malumot Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([updatedAt])
 }
