@@ -162,16 +162,27 @@ export async function ulangandaOchiqOrinlar(userId: string): Promise<number> {
     },
   });
 
-  const orinlar: typeof nomzodlar = [];
+  /*
+   * Мос номзодлар сони ҲАР ЭЪЛОН учун сақланади.
+   *
+   * Аввал бу ерда `nomzodlar: 0` деб қаттиқ ёзилган эди ва
+   * хабарда «мос фуқаро топилмади» деб чиқарди — остида эса
+   * бешта исм билан тугма турарди. Матн ва тугмалар
+   * бир-бирига зид келарди.
+   */
+  const orinlar: (typeof nomzodlar)[number][] = [];
+  const mosSoni = new Map<string, number>();
+
   for (const o of nomzodlar) {
     if (orinlar.length >= ULANGANDA_ENG_KOP) break;
-    /* Ўз маҳалласидаги эълон — тақсимотсиз ҳам тегишли */
-    if (o.mahallaId === xodim.mahallaId) {
-      orinlar.push(o);
-      continue;
-    }
     const t = await orinTaqsimoti(o.id);
-    if (t?.ulushlar.some((u) => u.mahallaId === xodim.mahallaId)) orinlar.push(o);
+    const ulush = t?.ulushlar.find((u) => u.mahallaId === xodim.mahallaId);
+
+    /* Ўз маҳалласидаги эълон — тақсимотда бўлмаса ҳам тегишли */
+    if (o.mahallaId === xodim.mahallaId || ulush) {
+      orinlar.push(o);
+      mosSoni.set(o.id, ulush?.nomzodlar ?? 0);
+    }
   }
   if (orinlar.length === 0) return 0;
 
@@ -215,7 +226,7 @@ export async function ulangandaOchiqOrinlar(userId: string): Promise<number> {
       korxonaNomi: o.korxonaNomi,
       mahallaNomi: o.mahalla.nomiKirill,
       bosh: o.ornlarSoni,
-      nomzodlar: 0,
+      nomzodlar: mosSoni.get(o.id) ?? 0,
     }),
     bogliqTuri: 'Vacancy',
     bogliqId: o.id,

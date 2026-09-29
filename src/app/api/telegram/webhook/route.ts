@@ -3,10 +3,21 @@ import { prisma } from '@/lib/prisma';
 import { ISH_BELGISI } from '@/lib/xabarnoma';
 import { ishTopildiXabari } from '@/lib/joylashuv-xabari';
 import { ulangandaOchiqOrinlar } from '@/lib/ish-orni-xabari';
+import {
+  boshMenyu,
+  fuqarolarRoyxati,
+  MENYU,
+  orinlarRoyxati,
+  ulanmaganMatni,
+  uzishSorovi,
+  xodimlarHolati,
+  type MenyuNatijasi,
+} from '@/lib/bot-menyu';
 import { z } from 'zod';
 import {
   kodniUlash,
   navbatniDarhol,
+  ulanishniUz,
   telegramSozlanganmi,
   telegramYuboruvchi,
   ulanishMatni,
@@ -101,7 +112,22 @@ export async function POST(request: Request) {
    * мумкин — иккала кўринишни ҳам қабул қиламиз.
    */
   const kod = matn.replace(/^\/start\s*/i, '').trim();
-  if (!kod) return NextResponse.json({ ok: true });
+
+  /*
+   * ── КОДСИЗ `/start` — МЕНЮ ──
+   *
+   * Аввал бу ерда шунчаки `return` турарди: ходим `/start`
+   * босса, экран ЖИМ қоларди. Ҳолбуки `/start` — ботда
+   * босиладиган биринчи тугма, ва у жим турса бот бузуқдек
+   * кўринади.
+   *
+   * Энди уланган ходимга ўз рақамлари ва тугмалари, уланмаганга
+   * эса улаш кўрсатмаси чиқади.
+   */
+  if (!kod || /^\/(start|menyu|menu|help|yordam)$/i.test(matn)) {
+    await menyuniKorsat(String(chatId));
+    return NextResponse.json({ ok: true });
+  }
 
   const ulanish = await kodniUlash(kod, String(chatId));
 
@@ -151,6 +177,31 @@ export async function POST(request: Request) {
 }
 
 /**
+ * Chat ID бўйича ходимни топади.
+ *
+ * Уланмаган бўлса `null` — унга меню эмас, улаш кўрсатмаси
+ * кўрсатилади.
+ */
+async function chatXodimi(chatId: string): Promise<string | null> {
+  const x = await prisma.user.findFirst({
+    where: { telegramChatId: chatId, faol: true },
+    select: { id: true },
+  });
+  return x?.id ?? null;
+}
+
+/** Менюни юборади — уланганга ўз меню, уланмаганга кўрсатма */
+async function menyuniKorsat(chatId: string): Promise<void> {
+  const userId = await chatXodimi(chatId);
+  const n: MenyuNatijasi = userId ? await boshMenyu(userId) : ulanmaganMatni();
+  try {
+    await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+  } catch (e) {
+    console.error('Menyuni yuborib bolmadi:', e);
+  }
+}
+
+/**
  * ── «ИШ ТОПДИМ» ТУГМАСИ ──
  *
  * Хавфсизлик шу ерда ҳал бўлади. Telegram'дан келган сўровда
@@ -178,7 +229,78 @@ async function tugmaBosildi(q: {
     }
   };
 
-  const qism = (q.data ?? '').split(':');
+  const belgi = q.data ?? '';
+  const chatId = String(q.message?.chat.id ?? q.from.id);
+
+  /*
+   * ── МЕНЮ ТУГМАЛАРИ ──
+   *
+   * Улар `m.` билан бошланади ва эълонга боғлиқ эмас.
+   * Ҳар бири учун ходим УЛАНГАН бўлиши шарт: акс ҳолда
+   * бегона одам ботга ёзиб, тугма белгисини тахмин қилиб
+   * маҳалла маълумотини кўра оларди.
+   */
+  if (belgi.startsWith('m.')) {
+    const userId = await chatXodimi(String(q.from.id));
+    if (!userId) {
+      await javob('Сиз уланмагансиз');
+      return;
+    }
+
+    let n: MenyuNatijasi;
+    switch (belgi) {
+      case MENYU.ORINLAR:
+        n = await orinlarRoyxati(userId);
+        break;
+      case MENYU.FUQAROLAR:
+        n = await fuqarolarRoyxati(userId);
+        break;
+      case MENYU.XODIMLAR: {
+        /* Фақат раҳбар ва администратор */
+        const rol = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { rol: true },
+        });
+        if (rol?.rol !== 'BANDLIK_RAHBAR' && rol?.rol !== 'ADMIN') {
+          await javob('Бу бўлим сиз учун эмас');
+          return;
+        }
+        n = await xodimlarHolati();
+        break;
+      }
+      case MENYU.UZISH:
+        n = uzishSorovi();
+        break;
+      case MENYU.UZISH_TASDIQ:
+        await ulanishniUz(userId);
+        await javob('Уланиш узилди');
+        try {
+          await telegramYuboruvchi(
+            chatId,
+            [
+              'Уланиш узилди. Бўш иш ўринлари ҳақида хабар энди келмайди.',
+              '',
+              'Қайта улаш учун сайтдан янги код олинг.',
+            ].join('\n')
+          );
+        } catch (e) {
+          console.error('Uzish xabarini yuborib bolmadi:', e);
+        }
+        return;
+      default:
+        n = await boshMenyu(userId);
+    }
+
+    await javob('');
+    try {
+      await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+    } catch (e) {
+      console.error('Menyu javobini yuborib bolmadi:', e);
+    }
+    return;
+  }
+
+  const qism = belgi.split(':');
   if (qism.length !== 3 || qism[0] !== ISH_BELGISI) {
     await javob('Тугма эскирган');
     return;
