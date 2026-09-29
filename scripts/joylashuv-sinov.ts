@@ -264,6 +264,18 @@ const SINOVLAR: Sinov[] = [
   },
   {
     /*
+     * Эълон БОШҚА маҳаллада қўйилиб, мос номзодлар бу
+     * маҳаллада бўлиши — энг кўп учрайдиган ҳол. Аввал код
+     * фақат ўз маҳалласига қарарди ва айнан шу ҳолни
+     * ўтказиб юборарди.
+     */
+    nomi: 'Бошқа маҳалладаги мос эълон ҳам ҳисобга олинади',
+    tekshir: () =>
+      ORIN_XABARI.includes('orinTaqsimoti(o.id)') &&
+      ORIN_XABARI.includes('u.mahallaId === xodim.mahallaId'),
+  },
+  {
+    /*
      * Ходим Telegram ни узиб, яна улаши мумкин. Ҳар улаганида
      * ўша эълонлар қайтадан келса — шовқин.
      */
@@ -273,11 +285,18 @@ const SINOVLAR: Sinov[] = [
       ORIN_XABARI.includes('borlar.has(o.id)'),
   },
   {
-    /* Ўн бешта эълон кетма-кет тушса, ходим уларни ўқимайди */
+    /*
+     * Ўн бешта эълон кетма-кет тушса, ходим уларни ўқимайди.
+     *
+     * Иккита чегара бор: нечта эълон КЎРИБ чиқилади
+     * (тақсимот ҳисоби оғир) ва нечтаси ЮБОРИЛАДИ.
+     */
     nomi: 'Уланганда юбориладиган эълон сони чекланган',
     tekshir: () =>
       ORIN_XABARI.includes('export const ULANGANDA_ENG_KOP') &&
-      ORIN_XABARI.includes('take: ULANGANDA_ENG_KOP'),
+      ORIN_XABARI.includes('export const TEKSHIRILADIGAN') &&
+      ORIN_XABARI.includes('take: TEKSHIRILADIGAN') &&
+      ORIN_XABARI.includes('orinlar.length >= ULANGANDA_ENG_KOP'),
   },
   {
     nomi: 'Экранда огоҳлантириш ва белги бор',

@@ -55,7 +55,148 @@ async function tozala(userId: string) {
   await prisma.user.delete({ where: { id: userId } });
 }
 
+/**
+ * Уланган ходимга ОЧИҚ эълонлар кетиши.
+ *
+ * ── Нега бу синов ҳақиқий базада ──
+ *
+ * Бу мантиқни аввал фақат МАНБАНИ ЎҚИБ текширгандим: «кодда
+ * шундай сатр борми». Синов ўтарди, амалда эса ишламасди —
+ * икки марта. Сабаби оддий: кодда сатр бор бўлиши уни ТЎҒРИ
+ * ишлашини билдирмайди.
+ *
+ * Шунинг учун бу ерда ҳақиқий ёзувлар яратилади ва
+ * функциянинг ЎЗИ юргизилади.
+ */
+async function ochiqOrinSinovi(
+  tayyorla: (xodimId: string, orinId: string) => Promise<void>
+): Promise<{ soni: number; xodimId: string; orinId: string }> {
+  const { ulangandaOchiqOrinlar } = await import('../src/lib/ish-orni-xabari');
+
+  const mahalla = await prisma.mahalla.findFirst({ select: { id: true } });
+  const xodim = await prisma.user.create({
+    data: {
+      username: `sinov_orin_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      fullName: 'Sinov Xodimi',
+      passwordHash: 'x',
+      rol: 'YETTILIK',
+      mahallaId: mahalla!.id,
+      telegramChatId: 'sinov-chat',
+    },
+    select: { id: true },
+  });
+  const orin = await prisma.vacancy.create({
+    data: {
+      mahallaId: mahalla!.id,
+      korxonaNomi: 'Sinov korxona',
+      lavozim: 'Sinov lavozim',
+      ornlarSoni: 1,
+      faol: true,
+    },
+    select: { id: true },
+  });
+
+  await tayyorla(xodim.id, orin.id);
+  const soni = await ulangandaOchiqOrinlar(xodim.id);
+  return { soni, xodimId: xodim.id, orinId: orin.id };
+}
+
+async function orinTozala(xodimId: string, orinId: string) {
+  await prisma.xabarnoma.deleteMany({ where: { userId: xodimId } });
+  await prisma.vacancy.delete({ where: { id: orinId } });
+  await prisma.user.delete({ where: { id: xodimId } });
+}
+
 const SINOVLAR: Sinov[] = [
+  {
+    nomi: 'Уланган ходим ўз маҳалласидаги очиқ эълонни ОЛАДИ',
+    tekshir: async () => {
+      const r = await ochiqOrinSinovi(async () => {});
+      const bor = await prisma.xabarnoma.count({
+        where: { userId: r.xodimId, turi: 'YANGI_ISH_ORNI', bogliqId: r.orinId },
+      });
+      await orinTozala(r.xodimId, r.orinId);
+      return r.soni >= 1 && bor === 1;
+    },
+  },
+  {
+    /*
+     * ЭНГ МУҲИМ СИНОВ.
+     *
+     * Эълон қўйилганда ходим уланмаган бўлса, хабар ясалиб
+     * кейин БЕКОР қилинади. Ходим уни ҳеч қачон олмаган.
+     * Код эса уни «аллақачон кетган» деб ўтказиб юборарди —
+     * ва айнан шу сабабдан ҳеч нарса келмасди.
+     */
+    nomi: 'БЕКОР қилинган хабар «юборилган» деб ҳисобланмайди',
+    tekshir: async () => {
+      const r = await ochiqOrinSinovi(async (xodimId, orinId) => {
+        await prisma.xabarnoma.create({
+          data: {
+            userId: xodimId,
+            turi: 'YANGI_ISH_ORNI',
+            holati: 'BEKOR',
+            matn: 'eski',
+            bogliqTuri: 'Vacancy',
+            bogliqId: orinId,
+          },
+        });
+      });
+      const yangi = await prisma.xabarnoma.count({
+        where: {
+          userId: r.xodimId,
+          turi: 'YANGI_ISH_ORNI',
+          holati: 'KUTILMOQDA',
+          bogliqId: r.orinId,
+        },
+      });
+      await orinTozala(r.xodimId, r.orinId);
+      return yangi === 1;
+    },
+  },
+  {
+    /* Ҳақиқатан кетган хабар эса ҚАЙТА юборилмайди */
+    nomi: 'ЮБОРИЛГАН хабар қайта юборилмайди',
+    tekshir: async () => {
+      const r = await ochiqOrinSinovi(async (xodimId, orinId) => {
+        await prisma.xabarnoma.create({
+          data: {
+            userId: xodimId,
+            turi: 'YANGI_ISH_ORNI',
+            holati: 'YUBORILDI',
+            matn: 'eski',
+            bogliqTuri: 'Vacancy',
+            bogliqId: orinId,
+            yuborilganSana: new Date(),
+          },
+        });
+      });
+      const yangi = await prisma.xabarnoma.count({
+        where: {
+          userId: r.xodimId,
+          turi: 'YANGI_ISH_ORNI',
+          holati: 'KUTILMOQDA',
+          bogliqId: r.orinId,
+        },
+      });
+      await orinTozala(r.xodimId, r.orinId);
+      return yangi === 0;
+    },
+  },
+  {
+    /* Уланмаган ходимга юборадиган жой йўқ */
+    nomi: 'Уланмаган ходимга хабар ясалмайди',
+    tekshir: async () => {
+      const r = await ochiqOrinSinovi(async (xodimId) => {
+        await prisma.user.update({
+          where: { id: xodimId },
+          data: { telegramChatId: null },
+        });
+      });
+      await orinTozala(r.xodimId, r.orinId);
+      return r.soni === 0;
+    },
+  },
   {
     nomi: 'Хабар навбатга тушади',
     tekshir: async () => {

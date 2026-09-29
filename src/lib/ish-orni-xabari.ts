@@ -118,6 +118,15 @@ export async function ishOrniXabarlari(vacancyId: string): Promise<number> {
  */
 export const ULANGANDA_ENG_KOP = 5;
 
+/**
+ * Тақсимоти текшириладиган эълонлар сони.
+ *
+ * Ҳар эълон учун тақсимот алоҳида ҳисобланади ва у барча
+ * ишсизларни ўқийди. Чексиз қўйиб бўлмайди — шунинг учун
+ * фақат энг янгилари кўрилади.
+ */
+export const TEKSHIRILADIGAN = 12;
+
 export async function ulangandaOchiqOrinlar(userId: string): Promise<number> {
   const xodim = await prisma.user.findUnique({
     where: { id: userId },
@@ -127,28 +136,43 @@ export async function ulangandaOchiqOrinlar(userId: string): Promise<number> {
   if (!xodim?.mahallaId || !xodim.telegramChatId) return 0;
 
   /*
-   * Фақат ЎЗ маҳалласидаги эълонлар.
+   * ЭЪЛОН БОШҚА МАҲАЛЛАДА ҲАМ БЎЛИШИ МУМКИН.
    *
-   * Бошқа маҳалла эълонлари учун тақсимотни ҳар бирига
-   * алоҳида ҳисоблаш керак бўларди — ўнлаб эълонда бу оғир
-   * иш. Ўз маҳалласидагилар эса ҳар доим тегишли ва бир
-   * сўров билан олинади.
+   * Аввал бу ерда фақат «ўз маҳалласидаги эълонлар» деб
+   * ёзилган эди — тақсимотни ҳар эълон учун ҳисоблаш оғир
+   * деб. Аммо амалда энг кўп учрайдиган ҳол айнан бошқаси:
+   * эълон Алишер Навоий МФЙ да қўйилади, мос номзодлар эса
+   * Уйшунда. Уйшун ходими уланганда ундан ҳеч нарса олмасди.
    *
-   * Бошқа маҳалладаги мос эълонни ходим кейинги ЯНГИ эълонда
-   * олади — ўшанда тақсимот аллақачон ҳисобланади.
+   * Энди тақсимот ҳам текширилади. Оғирликни чеклаш учун
+   * фақат энг янги ${TEKSHIRILADIGAN} эълон кўриб чиқилади —
+   * ундан эскиси аллақачон ўз вақтида тарқалган.
    */
-  const orinlar = await prisma.vacancy.findMany({
-    where: { ...FAOL_ELON(), mahallaId: xodim.mahallaId },
+  const nomzodlar = await prisma.vacancy.findMany({
+    where: FAOL_ELON(),
     orderBy: { createdAt: 'desc' },
-    take: ULANGANDA_ENG_KOP,
+    take: TEKSHIRILADIGAN,
     select: {
       id: true,
       lavozim: true,
       korxonaNomi: true,
       ornlarSoni: true,
+      mahallaId: true,
       mahalla: { select: { nomiKirill: true } },
     },
   });
+
+  const orinlar: typeof nomzodlar = [];
+  for (const o of nomzodlar) {
+    if (orinlar.length >= ULANGANDA_ENG_KOP) break;
+    /* Ўз маҳалласидаги эълон — тақсимотсиз ҳам тегишли */
+    if (o.mahallaId === xodim.mahallaId) {
+      orinlar.push(o);
+      continue;
+    }
+    const t = await orinTaqsimoti(o.id);
+    if (t?.ulushlar.some((u) => u.mahallaId === xodim.mahallaId)) orinlar.push(o);
+  }
   if (orinlar.length === 0) return 0;
 
   /*
@@ -156,11 +180,24 @@ export async function ulangandaOchiqOrinlar(userId: string): Promise<number> {
    *
    * Ходим Telegram ни узиб, яна улаши мумкин — ва ҳар
    * улаганида ўша эълонлар қайтадан келса, бу шовқин бўларди.
+   *
+   * ── БЕКОР қилинган хабар «юборилган» ЭМАС ──
+   *
+   * Аввал бу сўров ҲАММА ҳолатни оларди. Натижада энг керакли
+   * ҳол ишламасди: эълон қўйилганда ходим уланмаган бўлса,
+   * хабар ясалиб, кейин БЕКОР қилинади («ходим Telegram ни
+   * уламаган»). Ходим уни ҲЕЧ ҚАЧОН олмаган — аммо код уни
+   * «аллақачон кетган» деб ўтказиб юборарди.
+   *
+   * Шунинг учун фақат ҲАҚИҚАТАН етган ёки навбатда турган
+   * хабарлар ҳисобга олинади. БЕКОР ва ХАТО — қайта
+   * юборилади, чунки ходим ҳозир уланди.
    */
   const yuborilgan = await prisma.xabarnoma.findMany({
     where: {
       userId,
       turi: 'YANGI_ISH_ORNI',
+      holati: { in: ['KUTILMOQDA', 'YUBORILDI'] },
       bogliqId: { in: orinlar.map((o) => o.id) },
     },
     select: { bogliqId: true },
