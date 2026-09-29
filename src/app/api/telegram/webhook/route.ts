@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { ISH_BELGISI } from '@/lib/xabarnoma';
 import { ishTopildiXabari } from '@/lib/joylashuv-xabari';
 import { ulangandaOchiqOrinlar } from '@/lib/ish-orni-xabari';
+import { kimRadEtdi, RAD, radniYoz, sababniSora } from '@/lib/rad-etish';
 import {
   boshMenyu,
   fuqarolarRoyxati,
@@ -297,6 +298,72 @@ async function tugmaBosildi(q: {
     } catch (e) {
       console.error('Menyu javobini yuborib bolmadi:', e);
     }
+    return;
+  }
+
+  /*
+   * ── «РАД ЭТДИ» — УЧ ҚАДАМ ──
+   *
+   *   r:<эълон>                  → кимни рад этди
+   *   rp:<эълон>:<фуқаро>        → нима сабабдан
+   *   rs:<эълон>:<фуқаро>:<код>  → ёзилади
+   *
+   * Уч қадам, чунки сабаб МАЖБУРИЙ: «рад этди» деган ялпи сон
+   * қарорга айланмайди, сабаб эса айланади.
+   */
+  const rq = belgi.split(':');
+  if (rq[0] === RAD.KIM || rq[0] === RAD.SABAB || rq[0] === RAD.YOZ) {
+    const xodim = await prisma.user.findFirst({
+      where: { telegramChatId: String(q.from.id), faol: true },
+      select: { id: true, mahallaId: true },
+    });
+    if (!xodim) {
+      await javob('Сиз уланмагансиз');
+      return;
+    }
+
+    if (rq[0] === RAD.KIM && rq.length === 2) {
+      const n = await kimRadEtdi(xodim.id, rq[1]);
+      await javob('');
+      await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+      return;
+    }
+
+    if (rq[0] === RAD.SABAB && rq.length === 3) {
+      const n = await sababniSora(rq[1], rq[2]);
+      await javob('');
+      await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
+      return;
+    }
+
+    if (rq[0] === RAD.YOZ && rq.length === 4) {
+      const natija = await radniYoz({
+        vacancyId: rq[1],
+        ishsizId: rq[2],
+        sababBelgisi: rq[3],
+        xabarchiId: xodim.id,
+        xabarchiMahallaId: xodim.mahallaId,
+      });
+      if (!natija.ok) {
+        await javob(natija.sabab);
+        return;
+      }
+      await javob('Ёзилди');
+      await navbatniDarhol();
+      await telegramYuboruvchi(
+        chatId,
+        [
+          '<b>Ёзилди</b>',
+          '',
+          `${natija.fish} — ${natija.sabab}`,
+          '',
+          'Бандлик марказига хабар берилди.',
+        ].join('\n')
+      );
+      return;
+    }
+
+    await javob('Тугма эскирган');
     return;
   }
 

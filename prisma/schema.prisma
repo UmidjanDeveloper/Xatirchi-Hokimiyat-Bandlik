@@ -809,6 +809,14 @@ enum XabarTuri {
   JOYLASHUV_TASDIQLANDI
   /// Bog'lashni tasdiqlash
   ULANISH
+
+  /// Mahalla xodimi «bu fuqaro ishdan bosh tortdi» dedi.
+  /// Bandlik markaziga - taklif mos kelmagan bo'lishi mumkin.
+  FUQARO_RAD_ETDI
+
+  /// Xodim Telegram ulanishini uzdi. Rahbar bilishi kerak:
+  /// o'sha mahallaga e'lon xabari endi bormaydi.
+  XODIM_UZILDI
 }
 
 /// Xabarning yo'li

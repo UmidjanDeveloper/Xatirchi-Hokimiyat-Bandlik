@@ -81,7 +81,7 @@ async function ochiqOrinSinovi(
       passwordHash: 'x',
       rol: 'YETTILIK',
       mahallaId: mahalla!.id,
-      telegramChatId: 'sinov-chat',
+      telegramChatId: `sinov-chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     },
     select: { id: true },
   });
@@ -107,7 +107,169 @@ async function orinTozala(xodimId: string, orinId: string) {
   await prisma.user.delete({ where: { id: xodimId } });
 }
 
+/* ── «Рад этди» занжири — ҳақиқий базада ── */
+
+async function radSinovi(): Promise<{
+  xodimId: string;
+  odamId: string;
+  orinId: string;
+  mahallaId: string;
+}> {
+  const mahalla = await prisma.mahalla.findFirst({ select: { id: true } });
+  const xodim = await prisma.user.create({
+    data: {
+      username: `sinov_rad_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      fullName: 'Sinov Xodimi',
+      passwordHash: 'x',
+      rol: 'YETTILIK',
+      mahallaId: mahalla!.id,
+      /* Уникал: `telegramChatId` ягона майдон */
+      telegramChatId: `sinov-chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    },
+    select: { id: true },
+  });
+  const odam = await prisma.unemployedPerson.create({
+    data: {
+      mahallaId: mahalla!.id,
+      fish: 'Sinov Fuqaro',
+      jinsi: 'ERKAK',
+      holati: 'ANIQLANDI',
+    },
+    select: { id: true },
+  });
+  const orin = await prisma.vacancy.create({
+    data: {
+      mahallaId: mahalla!.id,
+      korxonaNomi: 'Sinov korxona',
+      lavozim: 'Sinov lavozim',
+      ornlarSoni: 1,
+      faol: true,
+    },
+    select: { id: true },
+  });
+  return { xodimId: xodim.id, odamId: odam.id, orinId: orin.id, mahallaId: mahalla!.id };
+}
+
+async function radTozala(r: { xodimId: string; odamId: string; orinId: string }) {
+  await prisma.xabarnoma.deleteMany({
+    where: { OR: [{ bogliqId: r.odamId }, { bogliqId: r.xodimId }, { userId: r.xodimId }] },
+  });
+  await prisma.unemployedPerson.delete({ where: { id: r.odamId } });
+  await prisma.vacancy.delete({ where: { id: r.orinId } });
+  await prisma.user.delete({ where: { id: r.xodimId } });
+}
+
 const SINOVLAR: Sinov[] = [
+  {
+    nomi: 'Рад этиш ёзилади ва сабаби сақланади',
+    tekshir: async () => {
+      const { radniYoz } = await import('../src/lib/rad-etish');
+      const r = await radSinovi();
+      const n = await radniYoz({
+        vacancyId: r.orinId,
+        ishsizId: r.odamId,
+        sababBelgisi: '2',
+        xabarchiId: r.xodimId,
+        xabarchiMahallaId: r.mahallaId,
+      });
+      const odam = await prisma.unemployedPerson.findUnique({
+        where: { id: r.odamId },
+        select: { holati: true, radSababi: true },
+      });
+      const ok =
+        n.ok && odam?.holati === 'RAD_ETDI' && odam.radSababi === 'Маош кам деди';
+      await radTozala(r);
+      return ok;
+    },
+  },
+  {
+    /*
+     * Тугма белгиси Telegram'дан келади ва уни қўлда
+     * ўзгартириш мумкин. Сессия эса йўқ — текширув фақат
+     * кодда.
+     */
+    nomi: 'Бошқа маҳалла фуқаросини рад этиб БЎЛМАЙДИ',
+    tekshir: async () => {
+      const { radniYoz } = await import('../src/lib/rad-etish');
+      const r = await radSinovi();
+      const boshqa = await prisma.mahalla.findFirst({
+        where: { id: { not: r.mahallaId } },
+        select: { id: true },
+      });
+      const n = await radniYoz({
+        vacancyId: r.orinId,
+        ishsizId: r.odamId,
+        sababBelgisi: '1',
+        xabarchiId: r.xodimId,
+        xabarchiMahallaId: boshqa!.id,
+      });
+      const odam = await prisma.unemployedPerson.findUnique({
+        where: { id: r.odamId },
+        select: { holati: true },
+      });
+      const ok = !n.ok && odam?.holati === 'ANIQLANDI';
+      await radTozala(r);
+      return ok;
+    },
+  },
+  {
+    nomi: 'Рад этилганда бандлик марказига хабар боради',
+    tekshir: async () => {
+      const { radniYoz } = await import('../src/lib/rad-etish');
+      const r = await radSinovi();
+      await radniYoz({
+        vacancyId: r.orinId,
+        ishsizId: r.odamId,
+        sababBelgisi: '3',
+        xabarchiId: r.xodimId,
+        xabarchiMahallaId: r.mahallaId,
+      });
+      const soni = await prisma.xabarnoma.count({
+        where: { turi: 'FUQARO_RAD_ETDI', bogliqId: r.odamId },
+      });
+      await radTozala(r);
+      return soni > 0;
+    },
+  },
+  {
+    /*
+     * Узилган ходимнинг маҳалласига эълон хабари бормайди —
+     * занжир жимгина тўхтайди. Раҳбар буни ЎША КУНИ билиши
+     * керак.
+     */
+    nomi: 'Ходим узилганда раҳбарга хабар боради',
+    tekshir: async () => {
+      const { uzilganiniBildir } = await import('../src/lib/rad-etish');
+      const r = await radSinovi();
+      const soni = await uzilganiniBildir(r.xodimId);
+      const yozuv = await prisma.xabarnoma.count({
+        where: { turi: 'XODIM_UZILDI', bogliqId: r.xodimId },
+      });
+      await radTozala(r);
+      return soni > 0 && yozuv > 0;
+    },
+  },
+  {
+    /*
+     * `callback_data` 64 байт билан чекланган. Иккита cuid
+     * аллақачон 50 байт — чегара яқин.
+     */
+    nomi: 'Тугма белгилари 64 байтдан ошмайди',
+    tekshir: async () => {
+      const { kimRadEtdi, sababniSora } = await import('../src/lib/rad-etish');
+      const r = await radSinovi();
+      const k = await kimRadEtdi(r.xodimId, r.orinId);
+      const s = await sababniSora(r.orinId, r.odamId);
+      const eng = Math.max(
+        0,
+        ...k.tugmalar.map((t) => t.belgi.length),
+        ...s.tugmalar.map((t) => t.belgi.length)
+      );
+      if (eng > 64) console.log(`     eng uzun belgi: ${eng} bayt`);
+      await radTozala(r);
+      return eng > 0 && eng <= 64;
+    },
+  },
   {
     nomi: 'Уланган ходим ўз маҳалласидаги очиқ эълонни ОЛАДИ',
     tekshir: async () => {
