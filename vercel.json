@@ -4,8 +4,12 @@
   ],
   "crons": [
     {
-      "path": "/api/telegram/navbat",
+      "path": "/api/cron/brifing",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/telegram/navbat",
+      "schedule": "0 4 * * *"
     }
   ]
 }

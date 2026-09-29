@@ -820,6 +820,10 @@ enum XabarTuri {
   /// Xodim Telegram ulanishini uzdi. Rahbar bilishi kerak:
   /// o'sha mahallaga e'lon xabari endi bormaydi.
   XODIM_UZILDI
+
+  /// Hokimga va rahbarlarga har kuni ertalab ketadigan xulosa.
+  /// Rahbar tizimga kirmaydi - shuning uchun tizim o'zi aytadi.
+  ERTALABKI_BRIFING
 }
 
 /// Xabarning yo'li

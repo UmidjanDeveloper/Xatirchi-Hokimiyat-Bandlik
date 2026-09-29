@@ -176,6 +176,52 @@ async function elonRahbari() {
 const SINOVLAR: Sinov[] = [
   {
     /*
+     * Раҳбар тизимга кирмайди — тизим ўзи айтиши керак.
+     * Матнда иккала савол ҳам жавоб топиши шарт: «кеча нима
+     * бўлди» ва «жами қанча».
+     */
+    nomi: 'Брифингда КЕЧА ва ЖАМИ бўлимлари бор',
+    tekshir: async () => {
+      const { brifingYasa } = await import('../src/lib/hokim-brifingi');
+      const b = await brifingYasa();
+      return (
+        b.matn.includes('КЕЧА') &&
+        b.matn.includes('ЖАМИ') &&
+        b.matn.includes('ЭЪТИБОР') &&
+        b.matn.includes('Хатлов қамрови')
+      );
+    },
+  },
+  {
+    /*
+     * Ҳар куни бир хил рўйхат чиқса, раҳбар уни ўқимай
+     * қўяди — ва ўша куни ҳақиқий муаммо ҳам ўтиб кетади.
+     * Шунинг учун фақат ҲАҚИҚАТАН муаммо бўлганлари ёзилади.
+     */
+    nomi: 'Муаммо бўлмаса «ЭЪТИБОР» бўш эмас, аниқ айтилади',
+    tekshir: async () => {
+      const { brifingYasa } = await import('../src/lib/hokim-brifingi');
+      const b = await brifingYasa();
+      /* Ҳозирги базада муаммо бор — рўйхат бўш бўлмаслиги керак */
+      const bolim = b.matn.split('ЭЪТИБОР')[1] ?? '';
+      return bolim.trim().length > 0;
+    },
+  },
+  {
+    nomi: 'Брифинг фақат раҳбарларга кетади, маҳалла ходимига эмас',
+    tekshir: async () => {
+      const { brifingniYubor } = await import('../src/lib/hokim-brifingi');
+      await prisma.xabarnoma.deleteMany({ where: { turi: 'ERTALABKI_BRIFING' } });
+      const soni = await brifingniYubor();
+      const yettilikka = await prisma.xabarnoma.count({
+        where: { turi: 'ERTALABKI_BRIFING', user: { rol: 'YETTILIK' } },
+      });
+      await prisma.xabarnoma.deleteMany({ where: { turi: 'ERTALABKI_BRIFING' } });
+      return soni > 0 && yettilikka === 0;
+    },
+  },
+  {
+    /*
      * Еттита савол, кейин тасдиқлаш. Ҳар қадам базага
      * ёзилади — Telegram'да «сеанс» йўқ.
      */
