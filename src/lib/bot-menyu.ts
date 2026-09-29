@@ -37,6 +37,22 @@ export const MENYU = {
 
 const SAYT = 'https://www.xatirchibandlik.uz';
 
+/**
+ * Менюнинг охиридаги битта сатр.
+ *
+ * ── Нега керак ──
+ *
+ * Бот энди савол тушунади, аммо буни ҳеч ким БИЛМАЙДИ:
+ * Telegram да «бу ботга ёзиш мумкин» деган белги йўқ,
+ * тугмалар эса аксини айтади — «фақат босиш мумкин».
+ *
+ * Шунинг учун меню охирида битта мисол туради. Мисол
+ * умумий гапдан кучлироқ: «савол беринг» дегандан кўра
+ * «Уйшун» деб ёзиш мумкинлигини кўрсатган афзал.
+ */
+const SAVOL_IZOHI =
+  '💬 Савол ҳам ёзишингиз мумкин — масалан: <code>Уйшун</code> ёки <code>очиқ иш ўринлари</code>';
+
 function raqam(n: number): string {
   return n.toLocaleString('ru-RU').replace(/ /g, ' ');
 }
@@ -118,6 +134,8 @@ export async function boshMenyu(userId: string): Promise<MenyuNatijasi> {
               `⚠️ ${raqam(jamiXodim - ulangan)} та ходим уланмаган — уларнинг маҳалласига эълон хабари бормайди.`,
             ]
           : []),
+        '',
+        SAVOL_IZOHI,
       ].join('\n'),
       tugmalar: [
         { yozuv: '➕ Янги иш ўрни қўйиш', belgi: 'e.boshla' },
@@ -164,6 +182,8 @@ export async function boshMenyu(userId: string): Promise<MenyuNatijasi> {
       ...(kutayotgan > 0
         ? [`⏳ Анкетаси тўлдирилмаган: <b>${raqam(kutayotgan)}</b> та`]
         : []),
+      '',
+      SAVOL_IZOHI,
     ].join('\n'),
     tugmalar: [
       { yozuv: '📋 Очиқ иш ўринлари', belgi: MENYU.ORINLAR },

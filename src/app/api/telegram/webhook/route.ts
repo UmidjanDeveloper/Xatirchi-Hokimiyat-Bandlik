@@ -14,6 +14,7 @@ import {
   tugmaliJavob,
 } from '@/lib/bot-elon';
 import { ishOrniXabarlari } from '@/lib/ish-orni-xabari';
+import { SAVOL, kodShaklimi, savolgaJavob, tumanKartasi, yordamMatni } from '@/lib/bot-savol';
 import {
   boshMenyu,
   fuqarolarRoyxati,
@@ -163,7 +164,40 @@ export async function POST(request: Request) {
     }
   }
 
+  /*
+   * ── САВОЛ-ЖАВОБ ──
+   *
+   * Уланган ходим учун матн — бу КОД эмас, САВОЛ. Коднинг
+   * умри 15 дақиқа ва у уланишдан кейин ўчирилади; уланган
+   * одам иккинчи марта код терми.
+   *
+   * Шунинг учун тартиб: уланган бўлса — савол; уланмаган
+   * бўлса — код.
+   *
+   * Битта истисно бор. Ходим бошқа ҳисобга ўтмоқчи бўлса,
+   * уланган ҳолида ҳам код теради. Код шакли аниқ (олтита
+   * белги, чалкаштириладиган ҳарфларсиз), шунинг учун уни
+   * саволдан ажратиш мумкин: аввал код синаб кўрилади, топилмаса
+   * матн саволга ўтади.
+   */
+  const kodShakli = kodShaklimi(kod);
+
+  if (suhbatchi && !kodShakli) {
+    await savolniJavobla(suhbatchi, String(chatId), matn);
+    return NextResponse.json({ ok: true });
+  }
+
   const ulanish = await kodniUlash(kod, String(chatId));
+
+  /*
+   * Уланган ходим код шаклидаги СЎЗ ёзган бўлса («qamrov»
+   * олти ҳарф), у код эмас, савол эди. «Код топилмади» деб
+   * жавоб бериш — тупик: одам нима қилишни билмайди.
+   */
+  if (!ulanish.ok && suhbatchi) {
+    await savolniJavobla(suhbatchi, String(chatId), matn);
+    return NextResponse.json({ ok: true });
+  }
 
   /*
    * Жавоб ЮБОРИЛАДИ, навбатга қўйилмайди: ходим кодни ҳозир
@@ -222,6 +256,28 @@ async function chatXodimi(chatId: string): Promise<string | null> {
     select: { id: true },
   });
   return x?.id ?? null;
+}
+
+/**
+ * Саволга жавоб беради.
+ *
+ * Хато ютилади ва ўрнига кўрсатма юборилади: бот ЖИМ
+ * қолмаслиги керак. Жим бот — бузуқ бот, ва ходим уни
+ * иккинчи марта очмайди.
+ */
+async function savolniJavobla(userId: string, chatId: string, matn: string): Promise<void> {
+  try {
+    const j = await savolgaJavob(userId, matn);
+    await telegramYuboruvchi(chatId, j.matn, j.tugmalar);
+  } catch (e) {
+    console.error('Savolga javob berib bolmadi:', e);
+    try {
+      const y = yordamMatni(false);
+      await telegramYuboruvchi(chatId, y.matn, y.tugmalar);
+    } catch {
+      /* Telegram жавоб бермади — вебхук барибир OK қайтаради */
+    }
+  }
 }
 
 /** Менюни юборади — уланганга ўз меню, уланмаганга кўрсатма */
@@ -330,6 +386,44 @@ async function tugmaBosildi(q: {
       await telegramYuboruvchi(chatId, n.matn, n.tugmalar);
     } catch (e) {
       console.error('Menyu javobini yuborib bolmadi:', e);
+    }
+    return;
+  }
+
+  /*
+   * ── САВОЛ-ЖАВОБ ТУГМАЛАРИ ──
+   *
+   * Жавоб матнидаги «Туман бўйича» тугмаси. У ҳам уланишни
+   * талаб қилади: тугма белгисини тахмин қилиб, бегона одам
+   * туман кўрсаткичини олиб қўймасин.
+   */
+  if (belgi.startsWith('s.')) {
+    const kim = await prisma.user.findFirst({
+      where: { telegramChatId: String(q.from.id), faol: true },
+      select: { id: true, rol: true },
+    });
+    if (!kim) {
+      await javob('Сиз уланмагансиз');
+      return;
+    }
+
+    const keng =
+      kim.rol === 'HOKIM' ||
+      kim.rol === 'BANDLIK_RAHBAR' ||
+      kim.rol === 'ADMIN' ||
+      kim.rol === 'BANDLIK';
+
+    if (belgi === SAVOL.TUMAN && !keng) {
+      await javob('Туман кесими сиз учун эмас');
+      return;
+    }
+
+    const j = belgi === SAVOL.TUMAN ? await tumanKartasi() : yordamMatni(keng);
+    await javob('');
+    try {
+      await telegramYuboruvchi(chatId, j.matn, j.tugmalar);
+    } catch (e) {
+      console.error('Savol javobini yuborib bolmadi:', e);
     }
     return;
   }
