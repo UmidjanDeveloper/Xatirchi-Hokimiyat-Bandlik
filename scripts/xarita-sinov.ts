@@ -24,7 +24,16 @@ import {
   xaritaKaliti,
   xaritaniUla,
 } from '../src/lib/xarita/hududlar';
-import { OLCHOVLAR, daraja, olchovTop } from '../src/components/xarita/olchovlar';
+import {
+  OLCHOVLAR,
+  QADAM_SONI,
+  boshlanganmi,
+  daraja,
+  malumotBormi,
+  olchovTop,
+  oraliqMatni,
+  qadamlarniHisobla,
+} from '../src/components/xarita/olchovlar';
 import type { XaritaQatori } from '../src/lib/xarita/xarita-malumoti';
 
 type Sinov = { nomi: string; tekshir: () => boolean };
@@ -49,6 +58,12 @@ function kodiOl(matn: string): string {
 }
 
 const KOMPONENT_KODI = kodiOl(KOMPONENT);
+/*
+ * Ранг қоидаси компонентдан `olchovlar.ts` га кўчирилди —
+ * панелдаги харита ва девор таблоси битта функцияни
+ * чақиради. Шунинг учун текширув ҳам ЎША файлни ўқийди.
+ */
+const OLCHOV_KODI = kodiOl(readFileSync('src/components/xarita/olchovlar.ts', 'utf8'));
 const BANDLIK = readFileSync('src/app/(ilova)/bandlik/page.tsx', 'utf8');
 const XATLOV = readFileSync('src/app/(ilova)/xatlov/page.tsx', 'utf8');
 
@@ -240,21 +255,83 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Ранг НИСБИЙ — мутлақ фоиздан эмас',
     tekshir: () => {
       /*
-       * Хатловнинг биринчи ойларида барча МФЙ да қамров
-       * 0,3-0,6 фоиз бўлади. Мутлақ шкалада бутун харита бир
-       * хил рангга айланиб, ҳеч нима демай қоларди.
+       * ── НЕГА БУ СИНОВ КОД ЎҚИМАЙДИ ──
+       *
+       * Аввал бу ерда `const chorak = [0.25, 0.5, 0.75]` деган
+       * сатр ИЗЛАНАРДИ. Яъни синов формуланинг ёзилишини
+       * текширарди, натижасини эмас — формула бошқача ёзилса,
+       * синов йиқиларди; формула НОТЎҒРИ бўлса эса, ўтиб
+       * кетаверарди.
+       *
+       * Энди ҳисоб алоҳида функцияда ва уни ЧАҚИРИБ кўриш
+       * мумкин: хатловнинг биринчи ойидаги ҳақиқий сонлар
+       * берилади ва харита бир хил рангга айланиб қолмагани
+       * текширилади.
+       */
+      const olchov = olchovTop('qamrov');
+      const qatorlar = [0.2, 0.3, 0.4, 0.6, 0.9, 1.4].map((f, i) =>
+        qator({
+          hududId: `h${i}`,
+          bazaXonadon: 1000,
+          xatlovXonadon: Math.round(f * 10),
+          qamrovFoizi: f,
+        })
+      );
+
+      const { qadam } = qadamlarniHisobla(qatorlar, olchov);
+      const turlar = new Set(qadam.values());
+
+      /* Ҳаммаси 1,5 фоиздан паст — аммо ранг барибир фарқлайди */
+      return (
+        qadam.size === qatorlar.length &&
+        turlar.size >= 3 &&
+        qadam.get('h0') === 1 &&
+        qadam.get('h5') === QADAM_SONI
+      );
+    },
+  },
+  {
+    nomi: 'Легенда оралиғи рақам ва фоиз белгиси билан ёзилади',
+    tekshir: () => {
+      const olchov = olchovTop('qamrov');
+      const qatorlar = [4, 10, 20, 40].map((f, i) =>
+        qator({ hududId: `h${i}`, bazaXonadon: 100, xatlovXonadon: f, qamrovFoizi: f })
+      );
+      const { chegara } = qadamlarniHisobla(qatorlar, olchov);
+
+      const birinchi = oraliqMatni(1, chegara, olchov, qatorlar);
+      const oxirgi = oraliqMatni(QADAM_SONI, chegara, olchov, qatorlar);
+
+      /*
+       * Фоизли ўлчовда белги ҳам чиқиши керак: «< 10%», «> 20%».
+       * Бир пайтлар бу БИРИНЧИ қаторга қараб аниқланарди ва
+       * биринчи МФЙ нинг базада хонадони нол бўлса, легенда
+       * фоиз белгисини жимгина йўқотарди.
        */
       return (
-        KOMPONENT_KODI.includes('qadamXaritasi.qadam.get(') &&
-        KOMPONENT_KODI.includes('const chorak = [0.25, 0.5, 0.75]') &&
-        /* Эски мутлақ формула қайтиб келмасин */
-        !KOMPONENT_KODI.includes('Math.ceil(d * 5)')
+        birinchi.startsWith('<') &&
+        birinchi.includes('%') &&
+        oxirgi.startsWith('>') &&
+        oxirgi.includes('%') &&
+        oraliqMatni(2, chegara, olchov, qatorlar).includes('–')
       );
     },
   },
   {
     nomi: 'Тенг қийматлар бир рангга тушади',
-    tekshir: () => KOMPONENT.includes('if (eng === kam)'),
+    tekshir: () => {
+      /*
+       * Ўттизта МФЙ да ҳам қамров нол бўлса, улар сунъий
+       * равишда тўрт хил кўкка бўлиниб кетмаслиги керак —
+       * акс ҳолда харита фарқ БОР деб ёлғон гапирарди.
+       */
+      const olchov = olchovTop('qamrov');
+      const qatorlar = Array.from({ length: 30 }, (_, i) =>
+        qator({ hududId: `h${i}`, bazaXonadon: 500, xatlovXonadon: 5, qamrovFoizi: 1 })
+      );
+      const { qadam } = qadamlarniHisobla(qatorlar, olchov);
+      return new Set(qadam.values()).size === 1;
+    },
   },
   {
     nomi: 'Ранг қатори БИТТА тусда — қизил-яшил жуфти ишлатилмаган',
@@ -315,12 +392,29 @@ const SINOVLAR: Sinov[] = [
   },
   {
     nomi: 'Хатлов бошланмагани «бошланган-у ёмон» дан фарқланади',
-    tekshir: () =>
-      KOMPONENT_KODI.includes('const boshlanganmi') &&
-      KOMPONENT_KODI.includes('q.xatlovXonadon > 0') &&
-      /* Рўйхат икки бўлимга айнан шу шарт билан ажралади */
-      KOMPONENT_KODI.includes('qatorlar.filter(boshlanganmi)') &&
-      KOMPONENT_KODI.includes('.filter((q) => !boshlanganmi(q))'),
+    tekshir: () => {
+      const boshlangan = qator({ hududId: 'a', xatlovXonadon: 12, qamrovFoizi: 3 });
+      const boshlanmagan = qator({ hududId: 'b', xatlovXonadon: 0, qamrovFoizi: 0 });
+
+      /*
+       * Бошланмаган МФЙ ранг қаторига УМУМАН кирмайди: у
+       * «энг ёмон» эмас, «ҳали маълумот йўқ». Иккови бир
+       * қаторга қўйилса, ишламаётган маҳалла энг орқада
+       * тургандек кўринарди — ва ҳақиқатан орқада қолган,
+       * аммо ишлаётган маҳалла ўртада йўқолиб кетарди.
+       */
+      const { qadam } = qadamlarniHisobla([boshlangan, boshlanmagan], olchovTop('qamrov'));
+
+      return (
+        boshlanganmi(boshlangan) &&
+        !boshlanganmi(boshlanmagan) &&
+        qadam.has('a') &&
+        !qadam.has('b') &&
+        /* Рўйхат икки бўлимга айнан шу шарт билан ажралади */
+        KOMPONENT_KODI.includes('qatorlar.filter(boshlanganmi)') &&
+        KOMPONENT_KODI.includes('.filter((q) => !boshlanganmi(q))')
+      );
+    },
   },
   {
     nomi: 'Бошланмаган МФЙ га «0%» ёзилмайди — «навбатда» дейилади',
@@ -373,10 +467,27 @@ const SINOVLAR: Sinov[] = [
   },
   {
     nomi: 'База кесимида ҳар бир МФЙ рангли — кулранг қолмайди',
-    tekshir: () =>
-      KOMPONENT_KODI.includes('const malumotBormi') &&
-      KOMPONENT_KODI.includes('olchov.bazaviy || boshlanganmi(q)') &&
-      KOMPONENT_KODI.includes('if (!malumotBormi(q, olchov)) continue;'),
+    tekshir: () => {
+      /*
+       * Хатлов ҳали икки маҳаллада кетмоқда. Агар база
+       * кесими ҳам хатловга боғланса, 68 та шакл оппоқ
+       * қоларди — ҳоким очган биринчи экран бўм-бўш харита
+       * бўларди.
+       */
+      const baza = olchovTop('bazaIshsiz');
+      const qatorlar = [40, 120, 300, 700].map((n, i) =>
+        qator({ hududId: `h${i}`, xatlovXonadon: 0, bazaIshsiz: n })
+      );
+
+      const { qadam } = qadamlarniHisobla(qatorlar, baza);
+      const hammasiRangli = qatorlar.every((q) => malumotBormi(q, baza) && qadam.has(q.hududId));
+
+      /* Хатлов кесимида эса ЎША қаторлар кулранг қолиши керак */
+      const xatlov = olchovTop('qamrov');
+      const hechbiri = qatorlar.every((q) => !malumotBormi(q, xatlov));
+
+      return hammasiRangli && hechbiri && OLCHOV_KODI.includes('olchov.bazaviy || boshlanganmi(q)');
+    },
   },
   {
     nomi: 'Баландлик фақат ҚИЙМАТДАН чиқади — сунъий кўтариш йўқ',
@@ -502,19 +613,19 @@ const SINOVLAR: Sinov[] = [
        * бўлиб чиқарди. Тўртта қадамда фарқ 0,15 га чиқди.
        */
       return (
-        /const QADAM_SONI = 4;/.test(KOMPONENT_KODI) &&
+        /const QADAM_SONI = 4;/.test(OLCHOV_KODI) &&
         USLUB.includes('--xarita-4:') &&
         !USLUB.includes('--xarita-5:')
       );
     },
   },
   {
-    nomi: 'Легендада мавҳум «кам/кўп» эмас, РАҚАМ оралиғи',
+    nomi: 'Легендада мавҳум «кам/кўп» ёрлиғи қайтиб келмаган',
     tekshir: () =>
-      KOMPONENT_KODI.includes('const oraliqMatni') &&
       KOMPONENT_KODI.includes('oraliqMatni(n)') &&
       /* Эски мавҳум ёрлиқ қайтиб келмасин */
-      !KOMPONENT.includes("{tr('Кам')}"),
+      !KOMPONENT.includes("{tr('Кам')}") &&
+      !KOMPONENT.includes("{tr('Кўп')}"),
   },
   {
     nomi: 'База кесимида «ранг хатловга боғлиқ эмас» деб АЙТИЛАДИ',

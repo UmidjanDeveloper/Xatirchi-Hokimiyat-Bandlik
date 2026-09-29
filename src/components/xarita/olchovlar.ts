@@ -188,3 +188,131 @@ export function daraja(q: XaritaQatori, olchov: Olchov, engKattaHajm: number): n
   const h = olchov.hajm(q);
   return h > 0 ? Math.max(0, Math.min(1, h / engKattaHajm)) : null;
 }
+
+/* ──────────────────────────────────────────────────────────
+ *  РАНГ ҚАДАМЛАРИ
+ *
+ *  Иккита харита бор: панелдаги интерактив ва йўлакдаги
+ *  девор таблоси. Ранг қоидаси иккисида ҲАМ бир хил бўлиши
+ *  шарт — акс ҳолда бир хил маҳалла битта экранда тўқ, бошқа
+ *  экранда оч кўк бўлиб турарди ва қайси бири тўғри экани
+ *  билинмасди.
+ *
+ *  Шунинг учун қоида компонентдан чиқарилиб, шу файлга
+ *  кўчирилди: иккови ҳам ЎША функцияни чақиради.
+ * ────────────────────────────────────────────────────────── */
+
+/**
+ * Ранг қатори неча қадамдан иборат.
+ *
+ * Бештайди ва қўшни иккитасининг фарқи кўзга илинмасди —
+ * харита «ола-чипор» бўлиб кўринарди. Тўртта етади ва ҳар
+ * бирининг рақам оралиғи легендада ёзилади.
+ */
+export const QADAM_SONI = 4;
+
+/**
+ * МФЙ да хатлов бошланганми.
+ *
+ * Бу — танланган ўлчовга БОҒЛИҚ ЭМАС. «Чет элдагилар» кесимида
+ * чет элда биронта одами йўқ маҳалла ҳам хатловдан ўтган
+ * бўлиши мумкин: унинг қирқта хонадони тўлдирилган, шунчаки
+ * ҳеч ким чет элда эмас. «Маълумот йўқ» билан «маълумот бор,
+ * қиймати нол» — икки бошқа нарса.
+ */
+export const boshlanganmi = (q: XaritaQatori): boolean => q.xatlovXonadon > 0;
+
+/**
+ * Шу ўлчов бўйича бу МФЙ да маълумот борми.
+ *
+ * База ўлчовида — ҳар доим бор (свод жадвали биринчи кундан
+ * тўла). Хатлов ўлчовида — фақат иш бошланган жойда.
+ */
+export const malumotBormi = (q: XaritaQatori, olchov: Olchov): boolean =>
+  olchov.bazaviy || boshlanganmi(q);
+
+export interface QadamNatijasi {
+  /** Ҳудуд id си → 1 (кам) … 4 (кўп). Рўйхатда йўқ — маълумотсиз */
+  qadam: Map<string, number>;
+  /** Чораклар — легендадаги рақам оралиқлари шундан чиқади */
+  chegara: number[];
+}
+
+/**
+ * Ранг қадамларини ҳисоблайди.
+ *
+ * ── Нега қатъий чегара эмас (0-25-50-75) ──
+ *
+ * Қамров ҳозир ҳамма жойда 5 фоиздан паст. Қатъий чегара
+ * билан 70 та МФЙ нинг ҳаммаси ЭНГ ОЧ рангда бўлиб қоларди —
+ * харита бир текис оқариб, ундан ҳеч нарса ўқиб бўлмасди.
+ *
+ * Шунинг учун ранг тақсимотнинг ЎЗИДАН чиқарилади: жорий
+ * қийматлар чораклар бўйича бўлинади. «Кўп» ва «кам» —
+ * бугунги ҳолатга нисбатан, ва харита биринчи кундан бошлаб
+ * фарқни кўрсатади.
+ *
+ * Тенг қийматлар БИР гуруҳга тушади: нол фоизли ўттизта МФЙ
+ * сунъий равишда тўрт хил рангга бўлиниб кетмайди.
+ */
+export function qadamlarniHisobla(qatorlar: XaritaQatori[], olchov: Olchov): QadamNatijasi {
+  const qadam = new Map<string, number>();
+
+  const qiymatlar: { id: string; h: number }[] = [];
+  for (const q of qatorlar) {
+    if (!malumotBormi(q, olchov)) continue;
+    const f = olchov.foiz(q);
+    qiymatlar.push({ id: q.hududId, h: f !== null ? f : olchov.hajm(q) });
+  }
+  if (qiymatlar.length === 0) return { qadam, chegara: [] };
+
+  const saralangan = qiymatlar.map((x) => x.h).sort((a, b) => a - b);
+  const eng = saralangan[saralangan.length - 1];
+  const kam = saralangan[0];
+
+  /* Ҳамма бир хил — бўлишнинг маъноси йўқ, ўртача қадам */
+  if (eng === kam) {
+    for (const x of qiymatlar) qadam.set(x.id, 2);
+    return { qadam, chegara: [] };
+  }
+
+  const chorak = [0.25, 0.5, 0.75].map(
+    (u) => saralangan[Math.min(saralangan.length - 1, Math.floor(u * saralangan.length))]
+  );
+
+  for (const x of qiymatlar) {
+    let n = 1;
+    for (const c of chorak) if (x.h > c) n += 1;
+    qadam.set(x.id, Math.min(QADAM_SONI, n));
+  }
+  return { qadam, chegara: chorak };
+}
+
+/**
+ * Легендадаги рақам оралиғи: «30–49%», «50% дан юқори».
+ *
+ * Чегаралар чораклардан келади, яъни улар ЖОРИЙ тақсимотни
+ * тасвирлайди — аммо экранда мавҳум «кам/кўп» эмас, ўқиб
+ * бўладиган сон туради.
+ */
+export function oraliqMatni(
+  n: number,
+  chegara: number[],
+  olchov: Olchov,
+  qatorlar: XaritaQatori[]
+): string {
+  if (chegara.length === 0) return '';
+  /*
+   * Ўлчов фоизлими — бу БИРИНЧИ қаторга қараб эмас, бутун
+   * рўйхатга қараб аниқланади. Биринчи МФЙ нинг базада
+   * хонадони нол бўлса, фоизли ўлчов ҳам `null` қайтаради ва
+   * легенда фоиз белгисини йўқотиб қўярди.
+   */
+  const foizli = qatorlar.some((q) => olchov.foiz(q) !== null);
+  const yaxlit = (x: number) =>
+    foizli ? `${Math.round(x)}%` : Math.round(x).toLocaleString('ru-RU');
+
+  if (n === 1) return `< ${yaxlit(chegara[0])}`;
+  if (n === QADAM_SONI) return `> ${yaxlit(chegara[chegara.length - 1])}`;
+  return `${yaxlit(chegara[n - 2])}–${yaxlit(chegara[n - 1])}`;
+}

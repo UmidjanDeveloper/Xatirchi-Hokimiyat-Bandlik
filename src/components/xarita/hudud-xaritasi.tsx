@@ -8,7 +8,18 @@ import { lotinga } from '@/lib/alifbo';
 import { qidiruvKaliti } from '@/lib/qidiruv';
 import { HUDUDLAR, VIEW_BOX, CHEGARA } from '@/lib/xarita/hududlar';
 import type { XaritaQatori } from '@/lib/xarita/xarita-malumoti';
-import { OLCHOVLAR, daraja, olchovTop, type Olchov, type OlchovKaliti } from './olchovlar';
+import {
+  OLCHOVLAR,
+  QADAM_SONI,
+  boshlanganmi,
+  daraja,
+  malumotBormi,
+  olchovTop,
+  oraliqMatni as oraliqYoz,
+  qadamlarniHisobla,
+  type Olchov,
+  type OlchovKaliti,
+} from './olchovlar';
 
 /**
  * ============================================================
@@ -85,14 +96,6 @@ const ENG_BALAND = 12;
  */
 const ASOS_BALAND = 0;
 
-/*
- * Ранг қатори неча қадамдан иборат.
- *
- * Бештайди ва қўшни иккитасининг фарқи кўзга илинмасди —
- * харита «ола-чипор» бўлиб кўринарди. Тўртта етади ва ҳар
- * бирининг рақам оралиғи легендада ёзилади.
- */
-const QADAM_SONI = 4;
 
 /* Қизил контур билан белгиланадиган энг орқадаги ҳудудлар сони */
 const OGOH_SONI = 10;
@@ -129,25 +132,12 @@ const BOSHLANGICH = { qiya: 46, burilish: -7, masshtab: 1.12 };
 
 const raqam = (n: number) => n.toLocaleString('ru-RU');
 
-/**
- * МФЙ да хатлов бошланганми.
- *
- * Бу — танланган ўлчовга БОҒЛИҚ ЭМАС. «Чет элдагилар» кесимида
- * чет элда биронта одами йўқ маҳалла ҳам хатловдан ўтган
- * бўлиши мумкин: унинг қирқта хонадони тўлдирилган, шунчаки
- * ҳеч ким чет элда эмас. «Маълумот йўқ» билан «маълумот бор,
- * қиймати нол» — икки бошқа нарса.
+/*
+ * `boshlanganmi`, `malumotBormi`, `QADAM_SONI` ва ранг
+ * қадамлари `olchovlar.ts` да — уларни девор таблоси ҳам
+ * ЎША ердан ўқийди. Иккита харита битта қоида бўйича
+ * бўялиши шартлиги учун нусха қолдирилмади.
  */
-const boshlanganmi = (q: XaritaQatori): boolean => q.xatlovXonadon > 0;
-
-/**
- * Шу ўлчов бўйича бу МФЙ да маълумот борми.
- *
- * База ўлчовида — ҳар доим бор (свод жадвали биринчи кундан
- * тўла). Хатлов ўлчовида — фақат иш бошланган жойда.
- */
-const malumotBormi = (q: XaritaQatori, olchov: Olchov): boolean =>
-  olchov.bazaviy || boshlanganmi(q);
 
 /** Сақланган созлама калити */
 const SOZLAMA = 'xarita-uch-olchov';
@@ -512,52 +502,10 @@ export function HududXaritasi({
    * Тенг қийматлар БИР гуруҳга тушади: нол фоизли ўттизта МФЙ
    * сунъий равишда беш хил рангга бўлиниб кетмайди.
    */
-  const qadamXaritasi = useMemo(() => {
-    const natija = new Map<string, number>();
-
-    const qiymatlar: { id: string; h: number }[] = [];
-    for (const q of qatorlar) {
-      /*
-       * Хатлов бошланмаган МФЙ рангли қаторга КИРМАЙДИ.
-       *
-       * Илгари у энг ёруғ кўк бўларди — «кам, аммо бор» деган
-       * маънода. Аслида у «ҳали ҳеч нима йўқ»: ноль фоиз
-       * қамров билан 3 фоиз қамровни бир қаторга қўйиш
-       * иккисини ҳам бузади. Энди у нейтрал кулранг ва
-       * легендада «хатлов бошланмаган» деб турибди.
-       */
-      if (!malumotBormi(q, olchov)) continue;
-      const f = olchov.foiz(q);
-      qiymatlar.push({ id: q.hududId, h: f !== null ? f : olchov.hajm(q) });
-    }
-    if (qiymatlar.length === 0) return { qadam: natija, chegara: [] as number[] };
-
-    const saralangan = qiymatlar.map((x) => x.h).sort((a, b) => a - b);
-    const eng = saralangan[saralangan.length - 1];
-    const kam = saralangan[0];
-
-    /* Ҳамма бир хил — бўлишнинг маъноси йўқ, ўртача қадам */
-    if (eng === kam) {
-      for (const x of qiymatlar) natija.set(x.id, 2);
-      return { qadam: natija, chegara: [] as number[] };
-    }
-
-    /*
-     * Чегаралар ЧОРАКЛАР бўйича: ҳар гуруҳга тахминан ўн
-     * еттита МФЙ тушади. Улар легендада РАҚАМ билан ёзилади —
-     * «кам» ва «кўп» деган мавҳум сўз ўрнига «30 дан 49 гача».
-     */
-    const chorak = [0.25, 0.5, 0.75].map(
-      (u) => saralangan[Math.min(saralangan.length - 1, Math.floor(u * saralangan.length))]
-    );
-
-    for (const x of qiymatlar) {
-      let qadam = 1;
-      for (const c of chorak) if (x.h > c) qadam += 1;
-      natija.set(x.id, Math.min(QADAM_SONI, qadam));
-    }
-    return { qadam: natija, chegara: chorak };
-  }, [qatorlar, olchov]);
+  const qadamXaritasi = useMemo(
+    () => qadamlarniHisobla(qatorlar, olchov),
+    [qatorlar, olchov]
+  );
 
   /**
    * Легендадаги рақам оралиғи: «30–49», «50 дан юқори».
@@ -567,16 +515,7 @@ export function HududXaritasi({
    * бўладиган сон туради.
    */
   const oraliqMatni = useCallback(
-    (qadam: number): string => {
-      const c = qadamXaritasi.chegara;
-      if (c.length === 0) return '';
-      const yaxlit = (n: number) => (olchov.foiz(qatorlar[0] ?? ({} as XaritaQatori)) !== null
-        ? `${Math.round(n)}%`
-        : raqam(Math.round(n)));
-      if (qadam === 1) return `< ${yaxlit(c[0])}`;
-      if (qadam === QADAM_SONI) return `> ${yaxlit(c[c.length - 1])}`;
-      return `${yaxlit(c[qadam - 2])}–${yaxlit(c[qadam - 1])}`;
-    },
+    (qadam: number): string => oraliqYoz(qadam, qadamXaritasi.chegara, olchov, qatorlar),
     [qadamXaritasi, olchov, qatorlar]
   );
 

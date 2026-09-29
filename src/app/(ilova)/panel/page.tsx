@@ -9,6 +9,7 @@ import {
   GraduationCap,
   House,
   Plane,
+  Tv,
   TrendingUp,
   UserCheck,
   Users,
@@ -224,6 +225,26 @@ export default async function PanelSahifasi({
             */
             mahallaJadvali={sessiya.rol === 'HOKIM' || sessiya.rol === 'ADMIN'}
           />
+
+          {/*
+            ── ДЕВОР ТАБЛОСИ ──
+
+            Табло ўз саҳифасида, меню ва фильтрсиз — у
+            йўлакдаги телевизор учун. Аммо уни бир марта
+            ОЧИШ керак, ва ҳеч ким `/tablo` деб ёзишни
+            билмайди. Шунинг учун ҳавола шу ерда: ҳоким
+            панелни очганда кўзига тушади.
+
+            Янги ойнада очилади — панел ёпилиб қолмасин.
+          */}
+          <Link
+            href="/tablo"
+            target="_blank"
+            className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-medium text-ink-muted transition hover:border-accent hover:text-accent"
+          >
+            <Tv className="h-4 w-4" />
+            {tr('Девор таблоси')}
+          </Link>
         </div>
       </div>
 

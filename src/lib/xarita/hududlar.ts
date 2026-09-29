@@ -162,3 +162,92 @@ export function xaritaniUla(
 
   return { hududdanMahallaga, mahalladanHududga, bazadaYoq, xaritadaYoq };
 }
+
+/**
+ * Ҳудуднинг маркази — устига белги қўйиш учун.
+ *
+ * ── Нега нуқталарнинг ўртачаси ЕТМАЙДИ ──
+ *
+ * Аввал шундай қилинганди: контурнинг ҳамма нуқтаси
+ * қўшилиб, сонига бўлинарди. Натижада марказ контур зич
+ * чизилган томонга тортиларди — дарё бўйидаги эгри чекка
+ * юзлаб нуқтадан, текис чегара эса тўрттадан иборат
+ * бўлиши мумкин.
+ *
+ * Экранда бу кўринди: белги маҳалла шаклидан чиқиб, икки
+ * шакл орасидаги оқ тирқишда турди. Тўрт метр наридан у
+ * «белги адашган» эмас, «харитада тешик бор» бўлиб
+ * ўқиларди.
+ *
+ * Энди кўпбурчакнинг ҲАҚИҚИЙ оғирлик маркази ҳисобланади
+ * (шнурбоғ формуласи): у нуқталар зичлигига боғлиқ эмас,
+ * фақат ЮЗАга боғлиқ.
+ *
+ * ── Нега энг катта бўлак ──
+ *
+ * Иккита МФЙ нинг контури иккита алоҳида бўлакдан иборат
+ * (анклав). Иккови биргаликда ҳисобланса, марказ уларнинг
+ * ОРАСИДА — яъни бегона ҳудудда — қолиб кетарди. Шунинг
+ * учун фақат катта бўлак олинади.
+ */
+function bolakMarkazi(nuqtalar: { x: number; y: number }[]): {
+  x: number;
+  y: number;
+  yuza: number;
+} | null {
+  if (nuqtalar.length < 3) return null;
+
+  let ikkiYuza = 0;
+  let cx = 0;
+  let cy = 0;
+
+  for (let i = 0; i < nuqtalar.length; i++) {
+    const a = nuqtalar[i];
+    const b = nuqtalar[(i + 1) % nuqtalar.length];
+    const kesma = a.x * b.y - b.x * a.y;
+    ikkiYuza += kesma;
+    cx += (a.x + b.x) * kesma;
+    cy += (a.y + b.y) * kesma;
+  }
+
+  /* Юза нол — чизиқ ёки нуқта. Бундай контур бўлмаслиги керак */
+  if (ikkiYuza === 0) return null;
+
+  return {
+    x: cx / (3 * ikkiYuza),
+    y: cy / (3 * ikkiYuza),
+    yuza: Math.abs(ikkiYuza / 2),
+  };
+}
+
+function markazlarniHisobla(): Map<string, { x: number; y: number }> {
+  const natija = new Map<string, { x: number; y: number }>();
+
+  for (const h of HUDUDLAR) {
+    /* Контур `M` билан бўлакларга ажралади */
+    const bolaklar = h.d
+      .split('M')
+      .map((b) => b.trim())
+      .filter(Boolean);
+
+    let eng: { x: number; y: number; yuza: number } | null = null;
+
+    for (const bolak of bolaklar) {
+      const sonlar = bolak.match(/-?\d+(?:\.\d+)?/g);
+      if (!sonlar) continue;
+
+      const nuqtalar: { x: number; y: number }[] = [];
+      for (let i = 0; i + 1 < sonlar.length; i += 2) {
+        nuqtalar.push({ x: Number(sonlar[i]), y: Number(sonlar[i + 1]) });
+      }
+
+      const m = bolakMarkazi(nuqtalar);
+      if (m && (!eng || m.yuza > eng.yuza)) eng = m;
+    }
+
+    if (eng) natija.set(h.id, { x: eng.x, y: eng.y });
+  }
+  return natija;
+}
+
+export const MARKAZLAR = markazlarniHisobla();

@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
-import { FAOL_ELON } from './elon-muddati';
 import { xabarQoshish, type YangiXabar } from './xabarnoma';
+import { KUN_MS, faolMahallalar, harakat, kunBoshi, tumanHolati } from './tuman-holati';
+import { sanaUzun } from './hisobot/sana';
 
 /**
  * ============================================================
@@ -34,10 +35,8 @@ import { xabarQoshish, type YangiXabar } from './xabarnoma';
  * ============================================================
  */
 
-const KUN = 24 * 60 * 60 * 1000;
-
 function raqam(n: number): string {
-  return n.toLocaleString('ru-RU').replace(/ /g, ' ');
+  return n.toLocaleString('ru-RU').replace(/ /g, '\u00a0');
 }
 
 function foiz(qism: number, butun: number): string {
@@ -50,6 +49,9 @@ function foiz(qism: number, butun: number): string {
 function ozgarish(n: number, birlik: string): string {
   return n > 0 ? `+${raqam(n)} ${birlik}` : `ўзгармади`;
 }
+
+/** Кеча энг кўп ишлаган нечта маҳалла номи билан айтилади */
+const SAF_SONI = 3;
 
 export interface Brifing {
   matn: string;
@@ -64,129 +66,57 @@ export interface Brifing {
  * текшириш мумкин бўлади.
  */
 export async function brifingYasa(hozir: Date = new Date()): Promise<Brifing> {
-  const bugunBoshi = new Date(hozir);
-  bugunBoshi.setHours(0, 0, 0, 0);
-  const kechaBoshi = new Date(bugunBoshi.getTime() - KUN);
-
-  const kecha = { gte: kechaBoshi, lt: bugunBoshi };
-
-  const [
-    mahallalar,
-    xatlovJami,
-    xatlovKecha,
-    anketaJami,
-    anketaKecha,
-    joylashganJami,
-    joylashganKecha,
-    elonlar,
-    boshlagan,
-    kechikkan,
-    xodimlar,
-    ulangan,
-    radKecha,
-  ] = await Promise.all([
-    prisma.mahalla.aggregate({ _count: true, _sum: { xonadon: true, ishsiz: true } }),
-    prisma.household.aggregate({
-      where: { holati: { not: 'QORALAMA' } },
-      _count: true,
-      _sum: { ishsizlarSoni: true },
-    }),
-    prisma.household.count({ where: { holati: { not: 'QORALAMA' }, createdAt: kecha } }),
-    prisma.unemployedPerson.count(),
-    prisma.unemployedPerson.count({ where: { createdAt: kecha } }),
-    prisma.unemployedPerson.count({
-      where: { holati: { in: ['JOYLASHTIRILDI', 'TASDIQLANDI'] } },
-    }),
-    prisma.unemployedPerson.count({
-      where: { holati: { in: ['JOYLASHTIRILDI', 'TASDIQLANDI'] }, updatedAt: kecha },
-    }),
-    prisma.vacancy.count({ where: FAOL_ELON() }),
-    prisma.household.groupBy({
-      by: ['mahallaId'],
-      where: { holati: { not: 'QORALAMA' } },
-      _count: true,
-    }),
-    prisma.actionPlan.count({
-      where: {
-        holati: { in: ['KUTILMOQDA', 'BAJARILMOQDA', 'KECHIKDI'] },
-        muddat: { lt: hozir },
-      },
-    }),
-    prisma.user.count({ where: { rol: 'YETTILIK', faol: true } }),
-    prisma.user.count({
-      where: { rol: 'YETTILIK', faol: true, telegramChatId: { not: null } },
-    }),
-    prisma.unemployedPerson.count({ where: { holati: 'RAD_ETDI', updatedAt: kecha } }),
-  ]);
-
-  const jamiMahalla = mahallalar._count;
-  const jamiXonadon = mahallalar._sum.xonadon ?? 0;
-  const topilgan = xatlovJami._sum.ishsizlarSoni ?? 0;
-  const anketasiz = Math.max(0, topilgan - anketaJami);
-  const boshlamagan = jamiMahalla - boshlagan.length;
+  const bugunBoshi = kunBoshi(hozir);
+  const kechaBoshi = new Date(bugunBoshi.getTime() - KUN_MS);
 
   /*
-   * ── КЕЧА ЭНГ КЎП ИШЛАГАН УЧТА МАҲАЛЛА ──
-   *
-   * Ном билан айтилади. Давлат тизимида кўринадиган мақтов
-   * рақамдан кучлироқ ишлайди — ва эртага бошқалар ҳам
-   * рўйхатга тушишни хоҳлайди.
+   * Учала сўров ҲАМ `tuman-holati` дан келади — табло ва
+   * брифинг бир хил рақам кўрсатишининг ягона кафолати шу.
    */
-  const kechaMahalla = await prisma.household.groupBy({
-    by: ['mahallaId'],
-    where: { holati: { not: 'QORALAMA' }, createdAt: kecha },
-    _count: true,
-    orderBy: { _count: { mahallaId: 'desc' } },
-    take: 3,
-  });
+  const [h, kecha, saf] = await Promise.all([
+    tumanHolati(hozir),
+    harakat(kechaBoshi, bugunBoshi),
+    faolMahallalar(kechaBoshi, bugunBoshi, SAF_SONI),
+  ]);
 
-  const nomlar = new Map(
-    (
-      await prisma.mahalla.findMany({
-        where: { id: { in: kechaMahalla.map((k) => k.mahallaId) } },
-        select: { id: true, nomiKirill: true },
-      })
-    ).map((m) => [m.id, m.nomiKirill])
-  );
-
-  const sana = kechaBoshi.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-  });
+  /*
+   * `toLocaleDateString('ru-RU')` ишлатилмайди — у «28 сентября»
+   * деб РУСЧА қайтаради. Ундан ташқари у СЕРВЕРНИНГ вақт
+   * минтақасини ўқийди: UTC да юрадиган серверда тонгги
+   * оралиқ бир кун орқага силжирди.
+   */
+  const sana = sanaUzun(kechaBoshi, false);
 
   const satrlar: string[] = [
     '<b>Хатирчи бандлик — эрталабки маълумот</b>',
-    `${sana} куни бўйича`,
+    `${sana} ҳолатига`,
     '',
     '<b>КЕЧА</b>',
-    `• Хатлов: ${ozgarish(xatlovKecha, 'хонадон')}`,
-    `• Шахсий анкета: ${ozgarish(anketaKecha, 'та')}`,
-    `• Ишга жойлашган: ${ozgarish(joylashganKecha, 'та')}`,
+    `• Хатлов: ${ozgarish(kecha.xatlov, 'хонадон')}`,
+    `• Шахсий анкета: ${ozgarish(kecha.anketa, 'та')}`,
+    `• Ишга жойлашган: ${ozgarish(kecha.joylashtirilgan, 'та')}`,
   ];
 
-  if (radKecha > 0) {
-    satrlar.push(`• Таклифдан бош тортган: ${raqam(radKecha)} та`);
+  if (kecha.radEtgan > 0) {
+    satrlar.push(`• Таклифдан бош тортган: ${raqam(kecha.radEtgan)} та`);
   }
 
-  if (kechaMahalla.length > 0) {
+  if (saf.length > 0) {
     satrlar.push(
       '',
       'Энг фаол маҳаллалар:',
-      ...kechaMahalla.map(
-        (k, i) =>
-          `  ${i + 1}. ${nomlar.get(k.mahallaId) ?? '—'} — ${raqam(k._count)} хонадон`
-      )
+      ...saf.map((s, i) => `  ${i + 1}. ${s.nomiKirill} — ${raqam(s.xonadon)} хонадон`)
     );
   }
 
   satrlar.push(
     '',
     '<b>ЖАМИ</b>',
-    `• Хатлов қамрови: ${raqam(xatlovJami._count)} / ${raqam(jamiXonadon)} · ${foiz(xatlovJami._count, jamiXonadon)}`,
-    `• Хатлов топган ишсиз: ${raqam(topilgan)} та`,
-    `• Шахсий анкетаси бор: ${raqam(anketaJami)} та`,
-    `• Ишга жойлаштирилган: ${raqam(joylashganJami)} та`,
-    `• Очиқ иш ўрни: ${raqam(elonlar)} та`
+    `• Хатлов қамрови: ${raqam(h.xatlovXonadon)} / ${raqam(h.bazaXonadon)} · ${foiz(h.xatlovXonadon, h.bazaXonadon)}`,
+    `• Хатлов топган ишсиз: ${raqam(h.topilganIshsiz)} та`,
+    `• Шахсий анкетаси бор: ${raqam(h.anketa)} та`,
+    `• Ишга жойлаштирилган: ${raqam(h.joylashtirilgan)} та`,
+    `• Очиқ иш ўрни: ${raqam(h.ochiqOrin)} та`
   );
 
   /*
@@ -198,25 +128,25 @@ export async function brifingYasa(hozir: Date = new Date()): Promise<Brifing> {
    */
   const etibor: string[] = [];
 
-  if (boshlamagan > 0) {
+  if (h.boshlamaganMahalla > 0) {
     etibor.push(
-      `• <b>${raqam(boshlamagan)} та маҳалла</b> хатловни ҳали бошламаган (${jamiMahalla} тадан)`
+      `• <b>${raqam(h.boshlamaganMahalla)} та маҳалла</b> хатловни ҳали бошламаган (${h.jamiMahalla} тадан)`
     );
   }
-  if (anketasiz > 0) {
+  if (h.anketasiz > 0) {
     etibor.push(
-      `• <b>${raqam(anketasiz)} та фуқаро</b> топилган, аммо шахсий анкетаси тўлдирилмаган — уларга таклиф бериб бўлмайди`
+      `• <b>${raqam(h.anketasiz)} та фуқаро</b> топилган, аммо шахсий анкетаси тўлдирилмаган — уларга таклиф бериб бўлмайди`
     );
   }
-  if (ulangan < xodimlar) {
+  if (h.ulanmaganXodim > 0) {
     etibor.push(
-      `• <b>${raqam(xodimlar - ulangan)} та ходим</b> ботга уланмаган — уларнинг маҳалласига эълон хабари бормайди`
+      `• <b>${raqam(h.ulanmaganXodim)} та ходим</b> ботга уланмаган — уларнинг маҳалласига эълон хабари бормайди`
     );
   }
-  if (kechikkan > 0) {
-    etibor.push(`• <b>${raqam(kechikkan)} та топшириқнинг</b> муддати ўтган`);
+  if (h.kechikkanTopshiriq > 0) {
+    etibor.push(`• <b>${raqam(h.kechikkanTopshiriq)} та топшириқнинг</b> муддати ўтган`);
   }
-  if (elonlar === 0) {
+  if (h.ochiqOrin === 0) {
     etibor.push('• Очиқ иш ўрни йўқ — таклиф қиладиган нарса қолмади');
   }
 
