@@ -120,11 +120,14 @@ model User {
   joylashuvXabarlari JoylashuvXabari[]  @relation("JoylashuvXabarchi")
   joylashuvHalQilgan JoylashuvXabari[]  @relation("JoylashuvHalQilgan")
 
+  /// Botdagi tugallanmagan suhbat
+  botSuhbati          BotSuhbati?
+  /// Kiritgan va tekshirgan joylashuv dalillari
+  kiritganDalillar    JoylashuvDalili[] @relation("DalilKiritgan")
+  tasdiqlaganDalillar JoylashuvDalili[] @relation("DalilTasdiqlagan")
+
   @@index([rol, faol])
   @@index([mahallaId])
-
-  /// Botdagi tugallanmagan suhbat
-  botSuhbati BotSuhbati?
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -710,6 +713,9 @@ model UnemployedPerson {
   /// Маҳалла ходими юборган «иш топдим» хабарлари
   joylashuvXabarlari JoylashuvXabari[]
 
+  /// Ishga joylashganini tasdiqlaydigan dalillar
+  dalillar JoylashuvDalili[]
+
   // ── Suhbat o'tkazgan mutaxassis ──
   suhbatSanasi DateTime?
   mutaxassisId String?
@@ -1278,4 +1284,92 @@ model BotSuhbati {
   updatedAt DateTime @updatedAt
 
   @@index([updatedAt])
+}
+
+/// Ishga joylashganlikni tasdiqlaydigan DALIL turi.
+///
+/// ── Nega tur kerak ──
+///
+/// Dalillarning kuchi bir xil emas. Davlat reyestridagi yozuv
+/// bilan "mahalla xodimi ko'rdi" degan yozuv ikki xil narsa:
+/// birinchisini tekshirib bo'ladi, ikkinchisiga faqat ishonish
+/// mumkin.
+///
+/// Hisobotda ikkovi ham ko'rinadi, ammo AJRATIB: "19 tasidan
+/// 7 tasi reyestr bilan tasdiqlangan" degan gap "19 tasi
+/// tasdiqlangan" dan butunlay boshqacha.
+enum DalilTuri {
+  /// Davlat reyestri ko'chirmasidan topildi - eng kuchli dalil
+  REYESTR
+  /// Mehnat shartnomasi nusxasi
+  SHARTNOMA
+  /// Ishga qabul qilish buyrug'i
+  BUYRUQ
+  /// Ish beruvchi yozma yoki telefon orqali tasdiqladi
+  ISH_BERUVCHI
+  /// Mahalla xodimi shaxsan ko'rdi
+  MAHALLA
+}
+
+/// Dalilning tekshiruv holati.
+enum DalilHolati {
+  /// Kiritildi, mutaxassis hali ko'rmadi
+  KIRITILDI
+  /// Tekshirildi va to'g'ri
+  TASDIQLANDI
+  /// Tekshirildi - dalil yaroqsiz yoki mos kelmadi
+  RAD_ETILDI
+}
+
+/// JOYLASHTIRISHNING DALILI.
+///
+/// ── Nega alohida jadval ──
+///
+/// "Ishga joylashtirildi" hozircha bitta bosish. Xodim tugmani
+/// bosadi va tuman raqami bittaga oshadi. Hech kim tekshirmaydi.
+///
+/// Hokim esa o'sha raqamni yuqoriga hisobot qilib beradi. Agar
+/// raqam noto'g'ri bo'lsa, u tuman darajasida noto'g'ri bo'ladi.
+///
+/// Dalil ALOHIDA jadvalda, chunki bitta joylashtirish bir necha
+/// marta tasdiqlanadi: ishga kirgan kuni shartnoma bilan, uch
+/// oydan keyin reyestr bilan. Fuqaro yozuvidagi bitta maydon
+/// buni ko'tara olmaydi - ikkinchi dalil birinchisini
+/// o'chirib yuborardi.
+model JoylashuvDalili {
+  id     String      @id @default(cuid())
+  turi   DalilTuri
+  holati DalilHolati @default(KIRITILDI)
+
+  ishsizId String
+  ishsiz   UnemployedPerson @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
+
+  /// Reyestr ko'chirmasidagi ish beruvchi nomi.
+  ///
+  /// Solishtirish uchun saqlanadi: tizimda "Oq Oltin MChJ"
+  /// yozilgan bo'lib, reyestrda boshqa korxona chiqsa - bu
+  /// xato emas, HODISA. Fuqaro boshqa joyga ishga kirgan va
+  /// buni hech kim yozmagan.
+  reyestrIshJoyi String?
+  /// Reyestr ko'chirmasi qaysi sanaga tegishli
+  reyestrSanasi  DateTime?
+
+  /// Qo'shimcha izoh yoki hujjat raqami
+  izoh String?
+
+  /// Dalilni kim kiritdi
+  kiritganId String?
+  kiritgan   User?   @relation("DalilKiritgan", fields: [kiritganId], references: [id], onDelete: SetNull)
+
+  /// Kim tekshirdi
+  tasdiqlaganId    String?
+  tasdiqlagan      User?     @relation("DalilTasdiqlagan", fields: [tasdiqlaganId], references: [id], onDelete: SetNull)
+  tasdiqlanganSana DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ishsizId, holati])
+  @@index([turi, holati])
+  @@index([createdAt])
 }

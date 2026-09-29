@@ -210,6 +210,12 @@ export function etiborYasa(h: TumanHolati): TabloEtibori[] {
       ogirlik: 'danger',
     });
   }
+  if (h.dalilsizJoylashuv > 0) {
+    hammasi.push({
+      matn: `${h.dalilsizJoylashuv} та жойлаштириш ҳужжатсиз`,
+      ogirlik: 'warn',
+    });
+  }
   if (h.anketasiz > 0) {
     hammasi.push({
       matn: `${h.anketasiz} та фуқаро анкетасиз`,

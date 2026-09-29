@@ -21,6 +21,8 @@ import {
   BekorQilishTugmasi,
   JoylashtirishTugmasi,
 } from '@/components/ish-orni/joylashtirish-tugmasi';
+import { DalilBlogi } from '@/components/dalil/dalil-blogi';
+import { odamTasdigi } from '@/lib/joylashuv-dalili';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -72,6 +74,21 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
         orderBy: { berilganSana: 'desc' },
         include: { bergan: { select: { fullName: true } } },
       },
+      /*
+       * Жойлаштиришнинг далиллари — энг янгиси биринчи.
+       *
+       * Битта жойлаштиришда бир нечта далил бўлади: ишга
+       * кирган куни шартнома, уч ойдан кейин реестр. Ҳаммаси
+       * кўринади — қайси манба нима деганини бекитиш
+       * текширувнинг ўзини бекор қилади.
+       */
+      dalillar: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          kiritgan: { select: { fullName: true } },
+          tasdiqlagan: { select: { fullName: true } },
+        },
+      },
       vacancy: {
         select: {
           id: true,
@@ -109,6 +126,9 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
     bandlikIshi(sessiya.rol) && !p.vacancyId && p.holati !== 'TASDIQLANDI'
       ? await orinlarniTop(nomzodMaydonlari(p))
       : [];
+
+  /* Жойлаштиришнинг далил ҳолати — муддат ва тасдиқ */
+  const tasdiq = await odamTasdigi(p.id);
 
   /*
    * AMALDAGI vaucher - bekor qilingan va tashlab ketilgani
@@ -382,6 +402,43 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           )}
         </section>
       )}
+
+      {/*
+        ── ЖОЙЛАШТИРИШНИНГ ДАЛИЛИ ──
+
+        Блок иш ўрни блокидан КЕЙИН туради: аввал «қаерга
+        жойлашди», кейин «буни нима тасдиқлайди». Тескари
+        тартибда савол мазмунсиз бўларди.
+
+        Ҳоким киритмайди ва тасдиқламайди — у ЎҚИЙДИ. Тасдиқ
+        бандлик марказининг иши, ҳужжат эса маҳалла
+        ходиминики.
+      */}
+      <DalilBlogi
+        ishsizId={p.id}
+        joylashgan={p.holati === 'JOYLASHTIRILDI' || p.holati === 'TASDIQLANDI'}
+        joriyUserId={sessiya.userId}
+        muddat={tasdiq.muddat}
+        muddatiOtgan={tasdiq.muddatiOtgan}
+        qoshaOladi={sessiya.rol !== 'HOKIM'}
+        tasdiqlayOladi={
+          sessiya.rol === 'BANDLIK' ||
+          sessiya.rol === 'BANDLIK_RAHBAR' ||
+          sessiya.rol === 'ADMIN'
+        }
+        dalillar={p.dalillar.map((d) => ({
+          id: d.id,
+          turi: d.turi,
+          holati: d.holati,
+          izoh: d.izoh,
+          reyestrIshJoyi: d.reyestrIshJoyi,
+          reyestrSanasi: d.reyestrSanasi,
+          createdAt: d.createdAt,
+          kiritganId: d.kiritganId,
+          kiritganNomi: d.kiritgan?.fullName ?? null,
+          tasdiqlaganNomi: d.tasdiqlagan?.fullName ?? null,
+        }))}
+      />
 
       {/* ── Chora-tadbirlar ── */}
       <section className="karta space-y-2 p-4 sm:p-5">

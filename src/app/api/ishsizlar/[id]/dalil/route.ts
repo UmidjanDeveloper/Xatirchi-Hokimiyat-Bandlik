@@ -1,0 +1,152 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { jurnal, talabQil } from '@/lib/api-auth';
+import { dalilQoshish, dalilniHalQil } from '@/lib/joylashuv-dalili';
+
+/**
+ * ============================================================
+ *  ҚЎЛДА КИРИТИЛАДИГАН ДАЛИЛ
+ *
+ *  Реестр кўчирмаси ойда бир марта келади, фуқаро эса бугун
+ *  ишга кирган бўлиши мумкин. Шартнома нусхаси ёки иш
+ *  берувчининг тасдиғи — шу оралиқни тўлдиради.
+ *
+ *  ── Нега қўлда киритилган далил ДАРҲОЛ тасдиқланмайди ──
+ *
+ *  Уни ЎША одам киритади — маҳалла ходими ёки мутахассис.
+ *  Ўзи ёзиб, ўзи тасдиқласа, текширувнинг маъноси қолмайди:
+ *  рақам яна битта босиш билан ошаверарди.
+ *
+ *  Шунинг учун қўлда киритилган далил «текширилмаган» бўлиб
+ *  туради ва уни БОШҚА одам — бандлик маркази — тасдиқлайди.
+ * ============================================================
+ */
+
+export const dynamic = 'force-dynamic';
+
+const Yangi = z.object({
+  turi: z.enum(['SHARTNOMA', 'BUYRUQ', 'ISH_BERUVCHI', 'MAHALLA']),
+  izoh: z.string().max(500).nullish(),
+});
+
+const HalQilish = z.object({
+  dalilId: z.string().min(1),
+  tasdiqlandi: z.boolean(),
+  izoh: z.string().max(500).nullish(),
+});
+
+export async function POST(request: Request, { params }: { params: { id: string } }) {
+  const q = await talabQil(['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN']);
+  if (q instanceof NextResponse) return q;
+
+  const xom = Yangi.safeParse(await request.json().catch(() => null));
+  if (!xom.success) {
+    return NextResponse.json({ ok: false, xabar: 'Maʼlumot notoʻgʻri' }, { status: 400 });
+  }
+
+  const odam = await prisma.unemployedPerson.findUnique({
+    where: { id: params.id },
+    select: { id: true, mahallaId: true, holati: true },
+  });
+  if (!odam) {
+    return NextResponse.json({ ok: false, xabar: 'Fuqaro topilmadi' }, { status: 404 });
+  }
+
+  /*
+   * ── МАҲАЛЛА ИЗОЛЯЦИЯСИ ──
+   *
+   * Маҳалла ходими фақат ўз МФЙ сидаги фуқарога далил
+   * қўшади. Бу қоида сайтнинг ҳамма жойида амал қилади ва
+   * янги йўл уни бузмаслиги керак.
+   */
+  if (q.sessiya.rol === 'YETTILIK') {
+    const xodim = await prisma.user.findUnique({
+      where: { id: q.sessiya.userId },
+      select: { mahallaId: true },
+    });
+    if (!xodim?.mahallaId || xodim.mahallaId !== odam.mahallaId) {
+      return NextResponse.json({ ok: false, xabar: 'Bu fuqaro sizning MFY ingizda emas' }, { status: 403 });
+    }
+  }
+
+  if (odam.holati !== 'JOYLASHTIRILDI' && odam.holati !== 'TASDIQLANDI') {
+    return NextResponse.json(
+      { ok: false, xabar: 'Fuqaro hali ishga joylashtirilmagan' },
+      { status: 400 }
+    );
+  }
+
+  const dalil = await dalilQoshish({
+    ishsizId: odam.id,
+    turi: xom.data.turi,
+    izoh: xom.data.izoh ?? null,
+    kiritganId: q.sessiya.userId,
+    /* Қўлда киритилган далилни БОШҚА одам тасдиқлайди */
+    tasdiqlangan: false,
+  });
+
+  await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
+    obyektTuri: 'JoylashuvDalili',
+    obyektId: dalil.id,
+    izoh: `Далил киритилди: ${xom.data.turi}`,
+  });
+
+  return NextResponse.json({ ok: true, id: dalil.id });
+}
+
+/** Мутахассис далилни текширди */
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  /*
+   * Тасдиқлашни МАҲАЛЛА ХОДИМИ қила олмайди: у далилни ўзи
+   * киритади, ва ўзи тасдиқласа текширувнинг маъноси
+   * қолмайди.
+   */
+  const q = await talabQil(['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN']);
+  if (q instanceof NextResponse) return q;
+
+  const xom = HalQilish.safeParse(await request.json().catch(() => null));
+  if (!xom.success) {
+    return NextResponse.json({ ok: false, xabar: 'Maʼlumot notoʻgʻri' }, { status: 400 });
+  }
+
+  const dalil = await prisma.joylashuvDalili.findUnique({
+    where: { id: xom.data.dalilId },
+    select: { ishsizId: true, kiritganId: true },
+  });
+  if (!dalil || dalil.ishsizId !== params.id) {
+    return NextResponse.json({ ok: false, xabar: 'Dalil topilmadi' }, { status: 404 });
+  }
+
+  /*
+   * Ўзи киритган далилни ўзи тасдиқлай олмайди.
+   *
+   * Администратор ҳам истисно эмас: қоида техник эмас,
+   * ТАШКИЛИЙ — иккита одам кўрган рақам биттаси кўрганидан
+   * ишончлироқ.
+   */
+  if (dalil.kiritganId && dalil.kiritganId === q.sessiya.userId) {
+    return NextResponse.json(
+      { ok: false, xabar: 'Oʻzingiz kiritgan dalilni oʻzingiz tasdiqlay olmaysiz' },
+      { status: 403 }
+    );
+  }
+
+  const natija = await dalilniHalQil({
+    dalilId: xom.data.dalilId,
+    userId: q.sessiya.userId,
+    tasdiqlandi: xom.data.tasdiqlandi,
+    izoh: xom.data.izoh ?? undefined,
+  });
+  if (!natija.ok) {
+    return NextResponse.json({ ok: false, xabar: 'Dalil topilmadi' }, { status: 404 });
+  }
+
+  await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
+    obyektTuri: 'JoylashuvDalili',
+    obyektId: xom.data.dalilId,
+    izoh: xom.data.tasdiqlandi ? 'Далил тасдиқланди' : 'Далил рад этилди',
+  });
+
+  return NextResponse.json({ ok: true });
+}

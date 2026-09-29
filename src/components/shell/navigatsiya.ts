@@ -111,6 +111,22 @@ export const MENYU: MenyuBandi[] = [
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
   },
   {
+    /*
+     * «Тасдиқлаш» — рақамни ТЕКШИРАДИГАН саҳифа.
+     *
+     * Ҳоким ҳам киради: унга ёзиш керак эмас, аммо «19 тадан
+     * нечтаси ҳужжат билан тасдиқланган» деган саволга жавоб
+     * айнан унга керак.
+     *
+     * Маҳалла ходими кирмайди: кўчирмада бутун туман бўйича
+     * бегона фуқароларнинг исми бор.
+     */
+    yol: '/reyestr',
+    nomi: 'Тасдиқлаш',
+    ikonka: 'BadgeCheck',
+    rollar: ['BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'],
+  },
+  {
     yol: '/admin',
     nomi: 'Бошқарув',
     ikonka: 'Settings',

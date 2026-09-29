@@ -116,6 +116,14 @@ export async function brifingYasa(hozir: Date = new Date()): Promise<Brifing> {
     `• Хатлов топган ишсиз: ${raqam(h.topilganIshsiz)} та`,
     `• Шахсий анкетаси бор: ${raqam(h.anketa)} та`,
     `• Ишга жойлаштирилган: ${raqam(h.joylashtirilgan)} та`,
+    /*
+     * ── НЕГА ИККИНЧИ РАҚАМ ──
+     *
+     * Биринчиси — ходимнинг айтгани. Иккинчиси — ҳужжат билан
+     * тасдиқлангани. Иккови ёнма-ён турганда савол ўзи
+     * туғилади ва уни ҳеч ким бекитиб қўя олмайди.
+     */
+    `   ҳужжат билан тасдиқланган: ${raqam(h.tasdiqlanganJoylashuv)} та`,
     `• Очиқ иш ўрни: ${raqam(h.ochiqOrin)} та`
   );
 
@@ -141,6 +149,11 @@ export async function brifingYasa(hozir: Date = new Date()): Promise<Brifing> {
   if (h.ulanmaganXodim > 0) {
     etibor.push(
       `• <b>${raqam(h.ulanmaganXodim)} та ходим</b> ботга уланмаган — уларнинг маҳалласига эълон хабари бормайди`
+    );
+  }
+  if (h.dalilsizJoylashuv > 0) {
+    etibor.push(
+      `• <b>${raqam(h.dalilsizJoylashuv)} та жойлаштириш</b> 30 кундан бери ҳужжатсиз — рақам текширилмаган`
     );
   }
   if (h.kechikkanTopshiriq > 0) {

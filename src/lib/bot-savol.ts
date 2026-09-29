@@ -343,10 +343,14 @@ export async function tumanKartasi(): Promise<SavolJavobi> {
       `👤 Хатлов топган ишсиз: <b>${raqam(h.topilganIshsiz)}</b> та`,
       `📝 Шахсий анкетаси бор: <b>${raqam(h.anketa)}</b> та`,
       `✅ Ишга жойлаштирилган: <b>${raqam(h.joylashtirilgan)}</b> та`,
+      `      шундан ҳужжат билан тасдиқланган: <b>${raqam(h.tasdiqlanganJoylashuv)}</b> та`,
       `📋 Очиқ иш ўрни: <b>${raqam(h.ochiqOrin)}</b> та`,
       '',
       `🏘 Хатлов бошланган маҳалла: ${raqam(h.boshlaganMahalla)} / ${raqam(h.jamiMahalla)}`,
       `🔗 Ботга уланган ходим: ${raqam(h.ulanganXodim)} / ${raqam(h.xodim)}`,
+      ...(h.dalilsizJoylashuv > 0
+        ? [`⚠️ Ҳужжатсиз жойлаштириш: <b>${raqam(h.dalilsizJoylashuv)}</b> та`]
+        : []),
       ...(h.kechikkanTopshiriq > 0
         ? [`⚠️ Муддати ўтган топшириқ: <b>${raqam(h.kechikkanTopshiriq)}</b> та`]
         : []),

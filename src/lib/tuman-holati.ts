@@ -1,5 +1,13 @@
 import { prisma } from './prisma';
 import { FAOL_ELON } from './elon-muddati';
+import { JOYLASHGAN, KUN_MS, XATLANGAN } from './bandlik-holatlari';
+import { tasdiqHisobi } from './joylashuv-dalili';
+
+/*
+ * Доимийлар `bandlik-holatlari` да ва шу ердан ҳам чиқади:
+ * улар аввал шу файлда эди ва бошқа модуллар шундан олади.
+ */
+export { JOYLASHGAN, KUN_MS, XATLANGAN };
 
 /**
  * ============================================================
@@ -33,8 +41,6 @@ import { FAOL_ELON } from './elon-muddati';
  *  ўн битта хонадон чиқиб қоларди.
  * ============================================================
  */
-
-export const KUN_MS = 24 * 60 * 60 * 1000;
 
 /**
  * ── ВАҚТ МИНТАҚАСИ ──
@@ -72,12 +78,6 @@ export function haftaKuni(sana: Date): number {
   return new Date(sana.getTime() + TOSHKENT_MS).getUTCDay();
 }
 
-/** Хатловдан ўтган хонадон — қоралама эмас */
-export const XATLANGAN = { holati: { not: 'QORALAMA' } } as const;
-
-/** Ишга жойлашган деб саналадиган ҳолатлар */
-export const JOYLASHGAN = ['JOYLASHTIRILDI', 'TASDIQLANDI'] as const;
-
 export interface TumanHolati {
   jamiMahalla: number;
   /** Ҳокимлик свод жадвалидаги хонадон ва ишсизлар */
@@ -94,6 +94,16 @@ export interface TumanHolati {
   /** Топилган, аммо анкетаси тўлдирилмаганлар */
   anketasiz: number;
   joylashtirilgan: number;
+  /**
+   * Шундан ДАЛИЛ билан тасдиқлангани.
+   *
+   * Тизим «жойлаштирилди» деб турган ҳар бир ёзув — ходимнинг
+   * айтгани. Бу иккинчи рақам эса ҳужжат билан тасдиқлангани.
+   * Иккови ёнма-ён турганда савол ўзи туғилади.
+   */
+  tasdiqlanganJoylashuv: number;
+  /** Ўттиз кундан бери далилсиз турганлар */
+  dalilsizJoylashuv: number;
   ochiqOrin: number;
 
   boshlaganMahalla: number;
@@ -106,7 +116,7 @@ export interface TumanHolati {
 }
 
 export async function tumanHolati(hozir: Date = new Date()): Promise<TumanHolati> {
-  const [mahallalar, xatlov, anketa, joylashgan, elon, boshlagan, kechikkan, xodim, ulangan] =
+  const [mahallalar, xatlov, anketa, joylashgan, elon, boshlagan, kechikkan, xodim, ulangan, dalil] =
     await Promise.all([
       prisma.mahalla.aggregate({ _count: true, _sum: { xonadon: true, ishsiz: true } }),
 
@@ -136,6 +146,15 @@ export async function tumanHolati(hozir: Date = new Date()): Promise<TumanHolati
       prisma.user.count({
         where: { rol: 'YETTILIK', faol: true, telegramChatId: { not: null } },
       }),
+
+      /*
+       * Тасдиқ ҳисоби ҲАМ шу ердан чақирилади.
+       *
+       * Аввал панел ўзича ҳисоблаб, брифинг бошқача
+       * ҳисоблаши мумкин эди. Битта манба буни умуман
+       * мумкин эмас қилиб қўяди.
+       */
+      tasdiqHisobi(),
     ]);
 
   const jamiMahalla = mahallalar._count;
@@ -159,6 +178,8 @@ export async function tumanHolati(hozir: Date = new Date()): Promise<TumanHolati
      */
     anketasiz: Math.max(0, topilganIshsiz - anketa),
     joylashtirilgan: joylashgan,
+    tasdiqlanganJoylashuv: dalil.tasdiqlangan,
+    dalilsizJoylashuv: dalil.muddatiOtgan,
     ochiqOrin: elon,
 
     boshlaganMahalla: boshlagan.length,
