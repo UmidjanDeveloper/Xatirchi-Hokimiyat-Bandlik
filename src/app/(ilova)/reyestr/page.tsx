@@ -1,12 +1,19 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { BadgeCheck, ShieldQuestion } from 'lucide-react';
+import { BadgeCheck, FileClock, ShieldQuestion } from 'lucide-react';
 import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
 import { joriySessiya } from '@/lib/auth';
-import { DALIL_MUDDATI_KUN, tasdiqHisobi, tasdiqsizlar } from '@/lib/joylashuv-dalili';
+import {
+  DALIL_MUDDATI_KUN,
+  tasdiqHisobi,
+  tasdiqsizlar,
+  tekshirishKutayotganlar,
+} from '@/lib/joylashuv-dalili';
+import { DALIL_NOMI } from '@/lib/dalil-nomlari';
 import { ReyestrYuklash } from '@/components/dalil/reyestr-yuklash';
+import { formatDate } from '@/lib/utils';
 
 /**
  * ============================================================
@@ -40,7 +47,11 @@ export default async function ReyestrSahifasi() {
   if (!sessiya) redirect('/kirish');
   if (!yolgaRuxsat(sessiya.rol, '/reyestr')) redirect(boshSahifa(sessiya.rol));
 
-  const [hisob, royxat] = await Promise.all([tasdiqHisobi(), tasdiqsizlar(undefined, 50)]);
+  const [hisob, royxat, navbat] = await Promise.all([
+    tasdiqHisobi(),
+    tasdiqsizlar(undefined, 50),
+    tekshirishKutayotganlar(50),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -87,6 +98,69 @@ export default async function ReyestrSahifasi() {
         рақамни ахтариб пастга тушарди.
       */}
       <ReyestrYuklash />
+
+      {/*
+        ── ТЕКШИРИШ КУТАЁТГАН ҲУЖЖАТЛАР ──
+
+        Маҳалла ходими шартнома нусхасини киритади ва у
+        «текширилмаган» бўлиб туради. Мутахассис уни ФАҚАТ
+        ўша фуқаронинг саҳифасини очганда кўрарди — яъни
+        тасодифан.
+
+        Ҳужжат келган-у, ҳеч ким қарамаган ҳолат энг
+        ачинарлиси: иш бажарилган, рақам эса ҳамон
+        «тасдиқланмаган» бўлиб турибди.
+      */}
+      {navbat.length > 0 && (
+        <section className="karta p-4 sm:p-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
+            <FileClock className="h-4 w-4 text-warn" />
+            {tr('Текшириш кутаётган ҳужжатлар')} · {navbat.length}
+          </h2>
+          <p className="mt-1 text-xs text-ink-faint">
+            {tr('Ходим киритди — бандлик маркази тасдиқлаши керак. Исмга босинг.')}
+          </p>
+
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+                  <th className="pb-2 pr-3 font-semibold">{tr('Ф.И.Ш.')}</th>
+                  <th className="pb-2 pr-3 font-semibold">{tr('МФЙ')}</th>
+                  <th className="pb-2 pr-3 font-semibold">{tr('Ҳужжат')}</th>
+                  <th className="pb-2 pr-3 font-semibold">{tr('Киритди')}</th>
+                  <th className="pb-2 font-semibold">{tr('Сана')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {navbat.map((n) => (
+                  <tr key={n.dalilId} className="border-b border-line/60 last:border-0">
+                    <td className="py-2 pr-3">
+                      <Link
+                        href={`/ishsizlar/${n.ishsizId}`}
+                        className="font-medium text-ink transition-colors hover:text-accent"
+                      >
+                        {tr(n.fish)}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-3 text-ink-muted">{tr(n.mahallaNomi)}</td>
+                    <td className="py-2 pr-3 text-ink-muted">
+                      {tr(DALIL_NOMI[n.turi])}
+                      {n.izoh ? <span className="text-ink-faint"> · {tr(n.izoh)}</span> : null}
+                    </td>
+                    <td className="py-2 pr-3 text-ink-muted">
+                      {n.kiritganNomi ? tr(n.kiritganNomi) : '—'}
+                    </td>
+                    <td className="py-2 text-ink-faint">
+                      {formatDate(n.createdAt).split(',')[0]}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* ── ИШ РЎЙХАТИ ── */}
       <section className="karta p-4 sm:p-5">

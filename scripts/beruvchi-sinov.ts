@@ -37,6 +37,7 @@ import {
 import { beruvchiOmbori, omborBoshla, omborMatn, omborTugma, omborYarat } from '../src/lib/bot-elon';
 import { FAOL_ELON, MODERATSIYA_KUTMOQDA } from '../src/lib/elon-muddati';
 import { xabarTugmalari } from '../src/lib/xabarnoma';
+import { boshMenyu } from '../src/lib/bot-menyu';
 import { tumanHolati } from '../src/lib/tuman-holati';
 
 const prisma = new PrismaClient();
@@ -44,6 +45,9 @@ const prisma = new PrismaClient();
 type Sinov = { nomi: string; tekshir: () => Promise<boolean> };
 
 const WEBHOOK = readFileSync('src/app/api/telegram/webhook/route.ts', 'utf8');
+const SAYT_YOLI = readFileSync('src/app/api/ish-beruvchilar/route.ts', 'utf8');
+const SAHIFA = readFileSync('src/app/(ilova)/ish-beruvchilar/page.tsx', 'utf8');
+const NAVIGATSIYA = readFileSync('src/components/shell/navigatsiya.ts', 'utf8');
 const ELON_KODI = readFileSync('src/lib/bot-elon.ts', 'utf8');
 
 const CHAT = () => `sinov-beruvchi-${Date.now()}-${Math.floor(Math.random() * 9999)}`;
@@ -524,6 +528,177 @@ const SINOVLAR: Sinov[] = [
 
       return oldin.length === 2 && keyin.length === 0;
     },
+  },
+  /* ────────────────────────────────────────────────────────
+   *  8. САЙТДАН ҲАМ МОДЕРАЦИЯ
+   * ──────────────────────────────────────────────────────── */
+  {
+    /*
+     * ── НЕГА БОТ ЕТАРЛИ ЭМАС ──
+     *
+     * Модерация аввал ФАҚАТ ботда эди. Бугун 78 та ходимдан
+     * 70 таси ботга уланмаган, ва бандлик раҳбари ҳам
+     * уланмаган бўлиши мумкин.
+     *
+     * Ўшанда занжир ЎЗ БОШИДА тўхтарди: иш берувчи ариза
+     * юборади, ариза навбатда туради, ва уни тасдиқлайдиган
+     * йўл умуман йўқ эди.
+     */
+    nomi: 'Модерация САЙТДА ҳам бор',
+    tekshir: async () =>
+      SAYT_YOLI.includes("talabQil(['BANDLIK_RAHBAR', 'ADMIN'])") &&
+      SAYT_YOLI.includes('beruvchiniHalQil') &&
+      SAYT_YOLI.includes('elonniHalQil') &&
+      SAHIFA.includes('moderatsiyaRoyxati') &&
+      NAVIGATSIYA.includes("yol: '/ish-beruvchilar'"),
+  },
+  {
+    /*
+     * Қарор ИККИ жойдан чиқади: ботдан ва сайтдан. Иккови
+     * ҳар хил матн юборса, иш берувчи қайси бири расмий
+     * эканини билмасди.
+     */
+    nomi: 'Бот ва сайт БИТТА матнни юборади',
+    tekshir: async () =>
+      WEBHOOK.includes('beruvchiQaroriMatni(') &&
+      SAYT_YOLI.includes('beruvchiQaroriMatni(') &&
+      WEBHOOK.includes('elonQaroriMatni(') &&
+      SAYT_YOLI.includes('elonQaroriMatni('),
+  },
+  {
+    nomi: 'Сайтдан тасдиқлаш ҳам эълонни КУЧГА киритади',
+    tekshir: async () => {
+      const { id } = await royxatdanOtgan(true);
+      const n = await elonQoy(id);
+      if (!n.ok) return false;
+
+      /* Сайт йўли `elonniHalQil` ни чақиради — ўша функция */
+      const rahbar = await prisma.user.findFirst({
+        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
+        select: { id: true },
+      });
+      await elonniHalQil({ vacancyId: n.id, userId: rahbar!.id, qabul: true });
+
+      return (await prisma.vacancy.count({ where: { ...FAOL_ELON(), id: n.id } })) === 1;
+    },
+  },
+  {
+    nomi: 'Рад этиш сабаби сақланади ва иш берувчига кўринади',
+    tekshir: async () => {
+      const { id } = await royxatdanOtgan(false);
+      const rahbar = await prisma.user.findFirst({
+        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
+        select: { id: true },
+      });
+
+      await beruvchiniHalQil({
+        beruvchiId: id,
+        userId: rahbar!.id,
+        qabul: false,
+        sabab: 'Телефон рақами нотўғри',
+      });
+
+      const m = await beruvchiMenyusi(id);
+      return (
+        m.matn.includes('Телефон рақами нотўғри') &&
+        /* Қайта юбориш йўли ОЧИҚ қолади — тупик бўлмасин */
+        m.tugmalar.some((t) => t.belgi === 'b.royxat')
+      );
+    },
+  },
+  {
+    nomi: 'Рад этилгандан кейин қайта ариза бериш мумкин',
+    tekshir: async () => {
+      const { id, chat } = await royxatdanOtgan(false);
+      const rahbar = await prisma.user.findFirst({
+        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] } },
+        select: { id: true },
+      });
+      await beruvchiniHalQil({ beruvchiId: id, userId: rahbar!.id, qabul: false });
+
+      await royxatniBoshla(chat);
+      const b = await prisma.ishBeruvchi.findUnique({
+        where: { id },
+        select: { holati: true, bosqich: true, radSababi: true },
+      });
+      return b?.holati === 'KUTILMOQDA' && b.bosqich === 'r.korxona' && b.radSababi === null;
+    },
+  },
+
+  /* ────────────────────────────────────────────────────────
+   *  9. ҲОКИМ БОТДА
+   * ──────────────────────────────────────────────────────── */
+  {
+    /*
+     * Ҳоким ботга УЛАНАДИ: эрталабки брифинг унга келади.
+     *
+     * Аввал у маҳалла ходими шохобчасига тушарди: маҳалласи
+     * йўқ бўлгани учун ҳамма рақам нол чиқарди ва экранда
+     * «Менинг фуқароларим» деган маъносиз тугма турарди.
+     */
+    nomi: 'Ҳокимга ТУМАН менюси чиқади, маҳалла эмас',
+    tekshir: async () => {
+      const hokim = await prisma.user.findFirst({
+        where: { rol: 'HOKIM', faol: true },
+        select: { id: true },
+      });
+      if (!hokim) return false;
+
+      const m = await boshMenyu(hokim.id);
+      return (
+        m.matn.includes('Туман ҳокими') &&
+        m.matn.includes('Хатлов') &&
+        !m.tugmalar.some((t) => t.belgi === 'm.fuqarolar') &&
+        m.tugmalar.some((t) => t.belgi === 's.tuman')
+      );
+    },
+  },
+  /* ────────────────────────────────────────────────────────
+   *  10. ТЕЛЕФОН — ЯГОНА АЛОҚА ЙЎЛИ
+   * ──────────────────────────────────────────────────────── */
+  {
+    /*
+     * Маҳалла ходими эълондаги рақамга қўнғироқ қилиб,
+     * фуқарони юборади. Рақам ишламаса — эълоннинг ўзи
+     * бекор.
+     *
+     * Аввал бу ерда «камида 7 та рақам» деган шарт бор эди
+     * ва сохта рақам ўтиб кетарди.
+     */
+    nomi: 'Эълондаги сохта телефон қабул қилинмайди',
+    tekshir: async () => {
+      const { id } = await royxatdanOtgan(true);
+      const ombor = beruvchiOmbori(id);
+      await omborBoshla(ombor);
+
+      const mahalla = await prisma.mahalla.findFirst({ select: { nomiKirill: true } });
+      await omborMatn(ombor, mahalla!.nomiKirill);
+      await omborMatn(ombor, '«Синов» МЧЖ');
+      await omborMatn(ombor, 'Ҳайдовчи');
+      await omborTugma(ombor, 'e.orin:2');
+      await omborMatn(ombor, '5');
+
+      /* Сохта рақам — қадам ЎЗГАРМАЙДИ */
+      await omborMatn(ombor, '1234567');
+      const s1 = await ombor.oqi();
+      if (s1?.bosqich !== 'telefon') return false;
+
+      /* Ҳақиқий рақам — ўтади ва `+998` кўринишида сақланади */
+      await omborMatn(ombor, '+998 93 507 21 46');
+      const s2 = await ombor.oqi();
+      return (
+        s2?.bosqich === 'muddat' &&
+        (s2.malumot as { telefon?: string }).telefon === '+998935072146'
+      );
+    },
+  },
+  {
+    nomi: 'Эълон ва рўйхат АЙНАН бир хил текширувни ишлатади',
+    tekshir: async () =>
+      ELON_KODI.includes("telefonTekshir(matn, 'Телефон рақами')") &&
+      ELON_KODI.includes('telefonSaqlashUchun(matn)') &&
+      /* Эски суст шарт қайтиб келмасин */
+      !ELON_KODI.includes('raqamlar.length < 7'),
   },
 ];
 

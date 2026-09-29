@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { telefonSaqlashUchun, telefonTekshir } from './inson-tekshiruvi';
 import type { Tugma } from './xabarnoma';
 
 /**
@@ -304,7 +305,13 @@ function soragich(bosqich: Qadam, m: Malumot): Javob {
           '',
           'Боғланиш учун телефон?',
           '',
-          'Масалан: <i>+998 90 123 45 67</i>',
+          /*
+           * Намуна рақам текширувдан ЎТАДИГАН бўлиши керак:
+           * «123 45 67» кетма-кет ўсувчи рақам ва у сохта
+           * деб саналади. Бот намуна кўрсатиб, ўша намунани
+           * ўзи рад этарди.
+           */
+          'Масалан: <i>+998 93 507 21 46</i>',
         ].join('\n'),
         tugmalar: [{ yozuv: '⏭ Ўтказиш', belgi: ELON.OTKAZ }, bekor],
       };
@@ -453,14 +460,38 @@ export async function omborMatn(ombor: SuhbatOmbori, matn: string): Promise<Javo
     }
 
     case 'telefon': {
-      const raqamlar = matn.replace(/\D/g, '');
-      if (raqamlar.length < 7) {
+      /*
+       * ── НЕГА ТЎЛИҚ ТЕКШИРУВ ──
+       *
+       * Аввал бу ерда «камида 7 та рақам» деган шарт бор
+       * эди, ва рақам ХОМ ҳолда сақланарди.
+       *
+       * Иккита оқибати бўлди:
+       *
+       *   1. Сохта рақам ўтиб кетарди. Телефон эса ЯГОНА
+       *      алоқа йўли: маҳалла ходими ўша рақамга
+       *      қўнғироқ қилиб, фуқарони юборади. Рақам
+       *      ишламаса — эълоннинг ўзи бекор.
+       *
+       *   2. «90 123 45 67» деб терилган рақам ўша ҳолда
+       *      сақланиб, экранда бошқа рақамлардан бошқача
+       *      кўринарди: тизимнинг қолган жойи `+998...`
+       *      кўринишини ишлатади.
+       *
+       * Энди текширув рўйхатдан ўтиш билан АЙНАН бир хил.
+       */
+      const tekshiruv = telefonTekshir(matn, 'Телефон рақами');
+      if (!tekshiruv.ok) {
         return {
-          matn: 'Телефон рақами жуда қисқа. Қайтадан ёзинг.',
+          matn: [
+            tekshiruv.xabar ?? 'Телефон рақами нотўғри',
+            '',
+            'Масалан: +998 93 507 21 46',
+          ].join('\n'),
           tugmalar: [{ yozuv: '⏭ Ўтказиш', belgi: ELON.OTKAZ }],
         };
       }
-      m.telefon = matn.trim().slice(0, 40);
+      m.telefon = telefonSaqlashUchun(matn) ?? matn.trim().slice(0, 40);
       await ombor.saqla('muddat', m);
       return soragich('muddat', m);
     }

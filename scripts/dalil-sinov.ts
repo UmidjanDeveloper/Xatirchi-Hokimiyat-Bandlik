@@ -34,6 +34,7 @@ import {
   dalilniHalQil,
   odamTasdigi,
   tasdiqHisobi,
+  tekshirishKutayotganlar,
 } from '../src/lib/joylashuv-dalili';
 import { KUN_MS } from '../src/lib/bandlik-holatlari';
 import { tumanHolati } from '../src/lib/tuman-holati';
@@ -44,6 +45,7 @@ type Sinov = { nomi: string; tekshir: () => Promise<boolean> };
 
 const YOL = readFileSync('src/app/api/ishsizlar/[id]/dalil/route.ts', 'utf8');
 const REYESTR_YOLI = readFileSync('src/app/api/reyestr/route.ts', 'utf8');
+const REYESTR_SAHIFASI = readFileSync('src/app/(ilova)/reyestr/page.tsx', 'utf8');
 
 /* ── Синов маълумоти ── */
 
@@ -489,6 +491,71 @@ const SINOVLAR: Sinov[] = [
     tekshir: async () =>
       REYESTR_YOLI.includes("forma.get('yoz') === '1'") &&
       REYESTR_YOLI.includes('reyestrniSolishtir(oqildi.satrlar)'),
+  },
+  /* ────────────────────────────────────────────────────────
+   *  8. ТЕКШИРИШ НАВБАТИ
+   * ──────────────────────────────────────────────────────── */
+  {
+    /*
+     * ── НЕГА АЛОҲИДА РЎЙХАТ КЕРАК ──
+     *
+     * Маҳалла ходими шартнома нусхасини киритади ва у
+     * «текширилмаган» бўлиб туради. Мутахассис уни ФАҚАТ
+     * ўша фуқаронинг саҳифасини очганда кўрарди — яъни
+     * тасодифан.
+     *
+     * Ҳужжат келган-у, ҳеч ким қарамаган ҳолат энг
+     * ачинарлиси: иш бажарилган, рақам эса ҳамон
+     * «тасдиқланмаган» бўлиб турибди.
+     */
+    nomi: 'Киритилган ҳужжат ТЕКШИРИШ навбатига тушади',
+    tekshir: async () => {
+      const fish = noyob('Navbatga Tushadi');
+      const id = await fuqaroYarat({ fish });
+
+      const d = await dalilQoshish({
+        ishsizId: id,
+        turi: 'SHARTNOMA',
+        kiritganId: xodimId,
+        izoh: '12-сон шартнома',
+      });
+
+      const navbat = await tekshirishKutayotganlar(200);
+      const meniki = navbat.find((n) => n.dalilId === d.id);
+
+      return (
+        Boolean(meniki) &&
+        meniki!.fish === fish &&
+        meniki!.turi === 'SHARTNOMA' &&
+        meniki!.izoh === '12-сон шартнома' &&
+        /* Ким киритгани ҳам кўринади — ўзиники тасдиқламасин */
+        meniki!.kiritganId === xodimId
+      );
+    },
+  },
+  {
+    nomi: 'Тасдиқлангач навбатдан ЧИҚАДИ',
+    tekshir: async () => {
+      const id = await fuqaroYarat({ fish: noyob('Navbatdan Chiqadi') });
+      const d = await dalilQoshish({ ishsizId: id, turi: 'BUYRUQ', kiritganId: xodimId });
+
+      const boshqa = await prisma.user.findFirst({
+        where: { rol: { in: ['BANDLIK_RAHBAR', 'ADMIN'] }, id: { not: xodimId } },
+        select: { id: true },
+      });
+      if (!boshqa) return false;
+
+      await dalilniHalQil({ dalilId: d.id, userId: boshqa.id, tasdiqlandi: true });
+
+      const navbat = await tekshirishKutayotganlar(200);
+      return !navbat.some((n) => n.dalilId === d.id);
+    },
+  },
+  {
+    nomi: 'Навбат саҳифада кўрсатилади',
+    tekshir: async () =>
+      REYESTR_SAHIFASI.includes('tekshirishKutayotganlar') &&
+      REYESTR_SAHIFASI.includes('Текшириш кутаётган ҳужжатлар'),
   },
 ];
 

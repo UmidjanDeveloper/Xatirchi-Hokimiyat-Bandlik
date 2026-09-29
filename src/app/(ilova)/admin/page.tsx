@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils';
 import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { AiHolati } from '@/components/admin/ai-holati';
 import { TezlikOlchagich } from '@/components/admin/tezlik-olchagich';
+import { BrifingKorish } from '@/components/admin/brifing-korish';
 import { ChoraToldirgich } from '@/components/admin/chora-toldirgich';
 import { AiXulosa } from '@/components/panel/ai-xulosa';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
@@ -224,6 +225,16 @@ export default async function AdminSahifasi({
         savolga javob kerak bo'ladi. Shu tugma javob beradi.
       */}
       <AiHolati />
+
+      {/*
+        ── БРИФИНГ ──
+
+        Жадвал кунига бир марта ишлайди, яъни синаш учун
+        эртагача кутиш керак эди. Раҳбарда эса терминал ҳам,
+        лаптоп ҳам ҳар доим ёнида бўлмайди — ва хато ёзувни
+        биринчи бўлиб ҲОКИМ кўрарди.
+      */}
+      <BrifingKorish />
 
       <TezlikOlchagich />
 

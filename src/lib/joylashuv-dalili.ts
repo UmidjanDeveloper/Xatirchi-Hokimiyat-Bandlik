@@ -322,3 +322,59 @@ export async function dalilniHalQil(p: {
   });
   return { ok: true };
 }
+
+/**
+ * Киритилган-у, ҳали текширилмаган ҳужжатлар.
+ *
+ * ── Нега алоҳида рўйхат керак ──
+ *
+ * Маҳалла ходими шартнома нусхасини киритади ва у
+ * «текширилмаган» бўлиб туради. Мутахассис уни ФАҚАТ ўша
+ * фуқаронинг саҳифасини очганда кўради — яъни тасодифан.
+ *
+ * Ҳужжат келган-у, ҳеч ким қарамаган ҳолат энг ачинарлиси:
+ * иш бажарилган, рақам эса ҳамон «тасдиқланмаган» бўлиб
+ * турибди.
+ */
+export async function tekshirishKutayotganlar(soni = 50): Promise<
+  {
+    dalilId: string;
+    ishsizId: string;
+    fish: string;
+    mahallaNomi: string;
+    turi: DalilTuri;
+    izoh: string | null;
+    kiritganNomi: string | null;
+    kiritganId: string | null;
+    createdAt: Date;
+  }[]
+> {
+  const dalillar = await prisma.joylashuvDalili.findMany({
+    where: { holati: 'KIRITILDI' },
+    orderBy: { createdAt: 'asc' },
+    take: soni,
+    select: {
+      id: true,
+      turi: true,
+      izoh: true,
+      createdAt: true,
+      kiritganId: true,
+      kiritgan: { select: { fullName: true } },
+      ishsiz: {
+        select: { id: true, fish: true, mahalla: { select: { nomiKirill: true } } },
+      },
+    },
+  });
+
+  return dalillar.map((d) => ({
+    dalilId: d.id,
+    ishsizId: d.ishsiz.id,
+    fish: d.ishsiz.fish,
+    mahallaNomi: d.ishsiz.mahalla.nomiKirill,
+    turi: d.turi,
+    izoh: d.izoh,
+    kiritganNomi: d.kiritgan?.fullName ?? null,
+    kiritganId: d.kiritganId,
+    createdAt: d.createdAt,
+  }));
+}

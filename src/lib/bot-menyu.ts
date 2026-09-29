@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { FAOL_ELON, MODERATSIYA_KUTMOQDA } from './elon-muddati';
+import { tumanHolati } from './tuman-holati';
 import type { Tugma } from './xabarnoma';
 
 /**
@@ -161,6 +162,43 @@ export async function boshMenyu(userId: string): Promise<MenyuNatijasi> {
       tugmalar: [
         { yozuv: '➕ Янги иш ўрни қўйиш', belgi: 'e.boshla' },
         { yozuv: '👥 Ходимлар ҳолати', belgi: MENYU.XODIMLAR },
+        { yozuv: '📋 Очиқ иш ўринлари', belgi: MENYU.ORINLAR },
+        { yozuv: '🔌 Уланишни узиш', belgi: MENYU.UZISH },
+      ],
+    };
+  }
+
+  /*
+   * ── ҲОКИМ ──
+   *
+   * Ҳоким ботга УЛАНАДИ: эрталабки брифинг унга келади,
+   * демак у ботни очади ва «нима бор» деб қарайди.
+   *
+   * Аввал у маҳалла ходими шохобчасига тушарди: маҳалласи
+   * йўқ бўлгани учун ҳамма рақам нол чиқарди ва экранда
+   * «Менинг фуқароларим» деган маъносиз тугма турарди.
+   *
+   * Яъни туманнинг биринчи раҳбари ботни очиб, бўм-бўш
+   * экран кўрарди — ва иккинчи марта очмасди.
+   */
+  if (xodim.rol === 'HOKIM') {
+    const h = await tumanHolati();
+
+    return {
+      matn: [
+        `<b>${xodim.fullName}</b>`,
+        'Туман ҳокими',
+        '',
+        `🏠 Хатлов: <b>${raqam(h.xatlovXonadon)}</b> / ${raqam(h.bazaXonadon)} хонадон`,
+        `👤 Хатлов топган ишсиз: <b>${raqam(h.topilganIshsiz)}</b> та`,
+        `✅ Ишга жойлаштирилган: <b>${raqam(h.joylashtirilgan)}</b> та`,
+        `      ҳужжат билан тасдиқланган: <b>${raqam(h.tasdiqlanganJoylashuv)}</b> та`,
+        `📋 Очиқ иш ўрни: <b>${raqam(h.ochiqOrin)}</b> та`,
+        '',
+        SAVOL_IZOHI,
+      ].join('\n'),
+      tugmalar: [
+        { yozuv: '📊 Туман бўйича', belgi: 's.tuman' },
         { yozuv: '📋 Очиқ иш ўринлари', belgi: MENYU.ORINLAR },
         { yozuv: '🔌 Уланишни узиш', belgi: MENYU.UZISH },
       ],

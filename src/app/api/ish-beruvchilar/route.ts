@@ -1,0 +1,125 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { jurnal, talabQil } from '@/lib/api-auth';
+import { ishOrniXabarlari } from '@/lib/ish-orni-xabari';
+import { navbatniDarhol } from '@/lib/xabarnoma';
+import {
+  beruvchiQaroriMatni,
+  beruvchigaXabarBer,
+  beruvchiniHalQil,
+  elonQaroriMatni,
+  elonniHalQil,
+} from '@/lib/ish-beruvchi';
+
+/**
+ * ============================================================
+ *  МОДЕРАЦИЯ — САЙТ ОРҚАЛИ
+ *
+ *  ── Нега бот етарли эмас ──
+ *
+ *  Модерация аввал ФАҚАТ ботда эди. Бу ишламайди: бугун 78
+ *  та ходимдан 70 таси ботга уланмаган, ва бандлик раҳбари
+ *  ҳам уланмаган бўлиши мумкин.
+ *
+ *  Ўшанда занжир ЎЗ БОШИДА тўхтайди: иш берувчи ариза
+ *  юборади, ариза навбатда туради, ва уни тасдиқлайдиган
+ *  йўл умуман йўқ. Иш берувчи эса жавоб келмаганини кўриб,
+ *  иккинчи марта уринмайди.
+ *
+ *  Энди иккита йўл бор ва иккови ҲАР ХИЛ эмас: қарор битта
+ *  функциядан ўтади, хабар матни ҳам битта жойда ёзилган.
+ * ============================================================
+ */
+
+export const dynamic = 'force-dynamic';
+
+const Qaror = z.object({
+  turi: z.enum(['beruvchi', 'elon']),
+  id: z.string().min(1),
+  qabul: z.boolean(),
+  sabab: z.string().max(500).nullish(),
+});
+
+export async function PATCH(request: Request) {
+  /*
+   * Фақат бандлик раҳбари ва администратор.
+   *
+   * Тасдиқлаш 70 та маҳалла ходимига хабар юборади ва туман
+   * ҳисоботига янги эълон қўшади — бу ҳоким ҳам қиладиган
+   * иш эмас, бандлик марказининг вазифаси.
+   */
+  const q = await talabQil(['BANDLIK_RAHBAR', 'ADMIN']);
+  if (q instanceof NextResponse) return q;
+
+  const xom = Qaror.safeParse(await request.json().catch(() => null));
+  if (!xom.success) {
+    return NextResponse.json({ ok: false, xabar: 'Maʼlumot notoʻgʻri' }, { status: 400 });
+  }
+  const { turi, id, qabul, sabab } = xom.data;
+
+  /* ── ИШ БЕРУВЧИ ── */
+  if (turi === 'beruvchi') {
+    const n = await beruvchiniHalQil({
+      beruvchiId: id,
+      userId: q.sessiya.userId,
+      qabul,
+      sabab,
+    });
+    if (!n.ok) {
+      return NextResponse.json(
+        { ok: false, xabar: 'Allaqachon hal qilingan' },
+        { status: 409 }
+      );
+    }
+
+    /*
+     * Хабар навбатга қўйилмайди — иш берувчи `User` эмас ва
+     * навбат уни ташиёлмайди. Тўғридан-тўғри юборилади.
+     *
+     * Юборилмаса ҳам қарор кучда қолади: иш берувчи ботни
+     * очганда меню унга жорий ҳолатни барибир айтади.
+     */
+    await beruvchigaXabarBer(
+      n.chatId,
+      beruvchiQaroriMatni({ qabul, korxonaNomi: n.korxonaNomi ?? '—', sabab })
+    );
+
+    await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
+      obyektTuri: 'IshBeruvchi',
+      obyektId: id,
+      izoh: qabul ? 'Иш берувчи тасдиқланди' : `Иш берувчи рад этилди: ${sabab ?? '—'}`,
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  /* ── ЭЪЛОН ── */
+  const n = await elonniHalQil({ vacancyId: id, userId: q.sessiya.userId, qabul });
+  if (!n.ok) {
+    return NextResponse.json({ ok: false, xabar: 'Allaqachon hal qilingan' }, { status: 409 });
+  }
+
+  let kimga = 0;
+  if (qabul) {
+    /*
+     * Тарқатиш АЛОҲИДА: хато бўлса ҳам эълон тасдиқланган
+     * бўлиб қолиши керак — раҳбарнинг қарори бажарилди.
+     */
+    try {
+      kimga = await ishOrniXabarlari(id);
+      await navbatniDarhol();
+    } catch (e) {
+      console.error('Elon xabarlarini tarqatib bolmadi:', e);
+    }
+  }
+
+  await beruvchigaXabarBer(n.chatId, elonQaroriMatni({ qabul, lavozim: n.lavozim ?? '—' }));
+
+  await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
+    obyektTuri: 'Vacancy',
+    obyektId: id,
+    izoh: qabul ? `Эълон тасдиқланди — ${kimga} та ходимга хабар` : 'Эълон рад этилди',
+  });
+
+  return NextResponse.json({ ok: true, kimga });
+}

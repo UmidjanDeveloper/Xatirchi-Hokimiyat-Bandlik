@@ -576,3 +576,131 @@ export async function moderatsiyaNavbati(): Promise<{ beruvchi: number; elon: nu
   ]);
   return { beruvchi, elon };
 }
+
+/* ── Иш берувчига хабар ────────────────────────────────────── */
+
+/**
+ * ============================================================
+ *  ИШ БЕРУВЧИГА ХАБАР — НАВБАТСИЗ
+ *
+ *  ── Нега навбат ишлатилмайди ──
+ *
+ *  `Xabarnoma` навбати `User` га боғланган, иш берувчи эса
+ *  `User` эмас — унинг ёзуви ўша жадвалга умуман сиғмайди.
+ *
+ *  Шунинг учун хабар ТЎҒРИДАН-ТЎҒРИ юборилади. Йўқолиш хавфи
+ *  бор, аммо у қопланган: иш берувчи ботни очганда меню унга
+ *  жорий ҳолатни барибир айтади.
+ *
+ *  ── Нега битта функция ──
+ *
+ *  Қарор ИККИ жойдан чиқади: ботдаги тугмадан ва сайтдаги
+ *  тугмадан. Иккови ҳар хил матн юборса, иш берувчи қайси
+ *  бири расмий эканини билмасди.
+ * ============================================================
+ */
+export async function beruvchigaXabarBer(
+  chatId: string | null | undefined,
+  matn: string,
+  tugmalar: Tugma[] = []
+): Promise<boolean> {
+  if (!chatId) return false;
+
+  const { telegramSozlanganmi, telegramYuboruvchi } = await import('./xabarnoma');
+  if (!telegramSozlanganmi()) return false;
+
+  try {
+    await telegramYuboruvchi(chatId, matn, tugmalar);
+    return true;
+  } catch (e) {
+    console.error('Ish beruvchiga xabar yuborib bolmadi:', e);
+    return false;
+  }
+}
+
+/** Ариза бўйича қарор матни — бот ва сайт учун БИТТА */
+export function beruvchiQaroriMatni(p: {
+  qabul: boolean;
+  korxonaNomi: string;
+  sabab?: string | null;
+}): string {
+  if (p.qabul) {
+    return [
+      '<b>Аризангиз тасдиқланди</b>',
+      '',
+      `${p.korxonaNomi}`,
+      '',
+      'Энди бўш иш ўрни эълонини ўзингиз қўя оласиз — менюдан «Янги иш ўрни» тугмасини босинг.',
+    ].join('\n');
+  }
+  return [
+    '<b>Аризангиз қабул қилинмади</b>',
+    '',
+    `${p.korxonaNomi}`,
+    ...(p.sabab ? ['', `Сабаби: ${p.sabab}`] : []),
+    '',
+    'Маълумотни тузатиб, қайта юборишингиз мумкин.',
+  ].join('\n');
+}
+
+/** Эълон бўйича қарор матни — бот ва сайт учун БИТТА */
+export function elonQaroriMatni(p: { qabul: boolean; lavozim: string }): string {
+  return p.qabul
+    ? `✅ <b>${p.lavozim}</b> эълонингиз тасдиқланди — туманнинг маҳалла ходимларига хабар кетди.`
+    : `❌ <b>${p.lavozim}</b> эълонингиз қабул қилинмади. Бандлик маркази билан боғланинг.`;
+}
+
+/** Модерация рўйхати — сайтдаги саҳифа учун */
+export async function moderatsiyaRoyxati() {
+  const [beruvchilar, elonlar] = await Promise.all([
+    prisma.ishBeruvchi.findMany({
+      where: { holati: 'KUTILMOQDA' },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        korxonaNomi: true,
+        masulShaxs: true,
+        telefon: true,
+        createdAt: true,
+        mahalla: { select: { nomiKirill: true } },
+      },
+    }),
+    prisma.vacancy.findMany({
+      where: MODERATSIYA_KUTMOQDA(),
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        lavozim: true,
+        korxonaNomi: true,
+        ornlarSoni: true,
+        maosh: true,
+        telefon: true,
+        createdAt: true,
+        mahalla: { select: { nomiKirill: true } },
+        ishBeruvchi: { select: { korxonaNomi: true, masulShaxs: true } },
+      },
+    }),
+  ]);
+  return { beruvchilar, elonlar };
+}
+
+/** Тасдиқланган иш берувчилар — сайтдаги рўйхат учун */
+export async function faolBeruvchilar(soni = 50) {
+  return prisma.ishBeruvchi.findMany({
+    where: { holati: { in: ['TASDIQLANDI', 'RAD_ETILDI'] } },
+    orderBy: { halQilinganSana: 'desc' },
+    take: soni,
+    select: {
+      id: true,
+      korxonaNomi: true,
+      masulShaxs: true,
+      telefon: true,
+      holati: true,
+      radSababi: true,
+      halQilinganSana: true,
+      mahalla: { select: { nomiKirill: true } },
+      halQilgan: { select: { fullName: true } },
+      _count: { select: { elonlar: true } },
+    },
+  });
+}

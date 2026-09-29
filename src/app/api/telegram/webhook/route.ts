@@ -18,8 +18,11 @@ import { SAVOL, kodShaklimi, savolgaJavob, tumanKartasi, yordamMatni } from '@/l
 import {
   BERUVCHI,
   beruvchiMenyusi,
+  beruvchiQaroriMatni,
   beruvchiTop,
+  beruvchigaXabarBer,
   beruvchiniHalQil,
+  elonQaroriMatni,
   elonniHalQil,
   elonniModeratsiyagaYubor,
   royxatMatni,
@@ -813,14 +816,18 @@ async function beruvchiTugmasi(
       /*
        * Иш берувчининг ЎЗИГА ҳам хабар. Усиз у жимликда
        * қоларди: ариза юборган-у, жавоб келмаган.
+       *
+       * Матн САЙТдаги билан айнан бир хил — иккови ҳар хил
+       * гапирса, иш берувчи қайси бири расмий эканини
+       * билмасди.
        */
-      if (n.chatId) {
-        try {
-          const m = await beruvchiMenyusi(qiymat);
-          await telegramYuboruvchi(n.chatId, m.matn, m.tugmalar);
-        } catch (e) {
-          console.error('Ish beruvchiga javob yuborib bolmadi:', e);
-        }
+      await beruvchigaXabarBer(
+        n.chatId,
+        beruvchiQaroriMatni({ qabul, korxonaNomi: n.korxonaNomi ?? '—' })
+      );
+      if (qabul && n.chatId) {
+        const m = await beruvchiMenyusi(qiymat);
+        await beruvchigaXabarBer(n.chatId, m.matn, m.tugmalar);
       }
       return;
     }
@@ -861,18 +868,7 @@ async function beruvchiTugmasi(
         : `<b>${n.lavozim}</b> рад этилди.`
     );
 
-    if (n.chatId) {
-      try {
-        await telegramYuboruvchi(
-          n.chatId,
-          qabul
-            ? `✅ <b>${n.lavozim}</b> эълонингиз тасдиқланди — туманнинг маҳалла ходимларига хабар кетди.`
-            : `❌ <b>${n.lavozim}</b> эълонингиз қабул қилинмади. Бандлик маркази билан боғланинг.`
-        );
-      } catch (e) {
-        console.error('Ish beruvchiga elon javobini yuborib bolmadi:', e);
-      }
-    }
+    await beruvchigaXabarBer(n.chatId, elonQaroriMatni({ qabul, lavozim: n.lavozim ?? '—' }));
     return;
   }
 
