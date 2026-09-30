@@ -6,6 +6,7 @@ import { SABAB_ENG_KAM, arxivgaRuxsat, fuqaroniArxivla } from '@/lib/arxiv';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { IshsizSxemasi } from '@/lib/xatlov-sxema';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
+import { joylashishYozib } from '@/lib/joylashish';
 
 /**
  * Suhbat anketasi + hayot sikli.
@@ -140,6 +141,43 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         : {}),
     },
   });
+
+  /*
+   * ── ИШГА ЖОЙЛАШИШ ВОҚЕАСИ ──
+   *
+   * Фуқаро ЭЪЛОНСИЗ, ўзи топган ишга ҳам жойлашади — ва
+   * ўшанда ҳам воқеа ёзилиши керак. Акс ҳолда воқеалар
+   * фақат эълон орқали жойлашганларда бўлар, ҳисобот эса
+   * иккига бўлиниб кетарди.
+   *
+   * `joylashishYozib` такрор чақирувга чидайди: анкета ўн
+   * марта сақланса ҳам, ЎША корхона учун битта воқеа
+   * қолади. Корхона АЛМАШСА — эскиси ёпилиб, янгиси
+   * яратилади.
+   *
+   * ── Нега `try` ичида ──
+   *
+   * Фуқаронинг ҳолати аллақачон сақланди. Бу ёзувдаги хато
+   * ходимнинг ишини ЙЎҚОТМАСЛИГИ керак: хатлов кетмоқда ва
+   * «Сақлашда хатолик» деган экран энг ёмон натижа.
+   *
+   * Ёзилмай қолгани кўринмай кетмайди: `tasdiqHisobi` даги
+   * `voqeasizlar` рақами айнан шуни санайди.
+   */
+  if (p.ishJoyi?.trim() && (p.holati === 'JOYLASHTIRILDI' || p.holati === 'TASDIQLANDI')) {
+    try {
+      await joylashishYozib({
+        ishsizId: p.id,
+        korxonaNomi: p.ishJoyi,
+        lavozim: p.ishLavozimi,
+        vacancyId: p.vacancyId,
+        boshlanganSana: p.ishgaKirganSana ?? new Date(),
+        kiritganId: q.sessiya.userId,
+      });
+    } catch (e) {
+      console.error('ishga joylashish voqeasini yozib bolmadi', e);
+    }
+  }
 
   /*
    * ── ТЕКШИРУВ ТОПШИРИҒИНИ ЁПИШ ──

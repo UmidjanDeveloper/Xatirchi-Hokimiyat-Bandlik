@@ -2,10 +2,33 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { DalilHolati, DalilTuri } from '@prisma/client';
-import { BadgeCheck, Check, FileCheck2, Loader2, TriangleAlert, X } from 'lucide-react';
+import type {
+  DalilHolati,
+  DalilManbasi,
+  DalilMaqsadi,
+  DalilTuri,
+  JoylashuvVoqeaHolati,
+} from '@prisma/client';
+import {
+  BadgeCheck,
+  Briefcase,
+  Check,
+  FileCheck2,
+  Link2Off,
+  Loader2,
+  TriangleAlert,
+  X,
+} from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
-import { DALIL_HOLATI_NOMI, DALIL_NOMI } from '@/lib/dalil-nomlari';
+import {
+  DALIL_HOLATI_NOMI,
+  DALIL_MANBASI_NOMI,
+  DALIL_MAQSADI_NOMI,
+  DALIL_NOMI,
+  JOYLASHISH_HOLATI_NOMI,
+  TASDIQ_DARAJASI_NOMI,
+  type TasdiqDarajasi,
+} from '@/lib/dalil-nomlari';
 import { formatDate } from '@/lib/utils';
 
 /**
@@ -43,6 +66,39 @@ export interface DalilMaydonlari {
   kiritganNomi: string | null;
   kiritganId: string | null;
   tasdiqlaganNomi: string | null;
+  /**
+   * ── ДАЛИЛ ҚАЕРДАН КЕЛГАН ──
+   *
+   * Аввал экранда фақат ТУРИ кўринарди: «Давлат реестри».
+   * Аммо ўша ёзув қўлда юкланган Excel дан ҳам, текширилган
+   * интеграциядан ҳам келиши мумкин — иккови БИР ХИЛ
+   * кўринарди.
+   */
+  manbaTuri: DalilManbasi;
+  /** Далил НИМАНИ исботлайди */
+  maqsadi: DalilMaqsadi;
+  /** Қайси ишга тегишли. `null` — боғланмаган */
+  joylashishId: string | null;
+  manbaTashkilot: string | null;
+  hujjatSanasi: Date | null;
+}
+
+/**
+ * ── ИШГА ЖОЙЛАШИШ ВОҚЕАСИ ──
+ *
+ * Аввал фуқаронинг иши ФАҚАТ битта майдонда турарди ва у
+ * охиргисини сақларди. Одам иш алмаштирса, олдингиси изсиз
+ * ўчиб кетар — ва эски ишнинг тасдиқланган шартномаси ЯНГИ
+ * ишни тасдиқлаб турарди.
+ */
+export interface IshYozuvi {
+  id: string;
+  korxonaNomi: string;
+  lavozim: string | null;
+  boshlanganSana: Date;
+  tugaganSana: Date | null;
+  tugashSababi: string | null;
+  holati: JoylashuvVoqeaHolati;
 }
 
 /** Қўлда киритиш мумкин бўлган турлар — реестр файлдан келади */
@@ -54,10 +110,29 @@ const NISHON: Record<DalilHolati, string> = {
   RAD_ETILDI: 'bg-danger-bg text-danger',
 };
 
+/**
+ * Даража ранглари.
+ *
+ * `RAD_ETILGAN` ҚИЗИЛ: у «далил йўқ» эмас, «далил ёлғон
+ * чиқди» дегани ва бу ЁМОНРОҚ ҳол. Аввал у ҳам сариқ
+ * «кутилмоқда» бўлиб кўринарди.
+ */
+const DARAJA_NISHONI: Record<TasdiqDarajasi, string> = {
+  RASMIY: 'bg-ok-bg text-ok',
+  QOLDA_TASDIQ: 'bg-ok-bg text-ok',
+  KUTILMOQDA: 'bg-warn-bg text-warn',
+  FAQAT_XODIM: 'bg-warn-bg text-warn',
+  RAD_ETILGAN: 'bg-danger-bg text-danger',
+  DALILSIZ: 'bg-surface-muted text-ink-muted',
+};
+
 export function DalilBlogi({
   ishsizId,
   joylashgan,
   dalillar,
+  ishlar,
+  daraja,
+  joriyIshId,
   qoshaOladi,
   tasdiqlayOladi,
   joriyUserId,
@@ -67,6 +142,17 @@ export function DalilBlogi({
   ishsizId: string;
   joylashgan: boolean;
   dalillar: DalilMaydonlari[];
+  /** Ишлар тарихи — энг янгисидан бошлаб */
+  ishlar: IshYozuvi[];
+  /**
+   * ҲОЗИРГИ ишнинг тасдиқ даражаси.
+   *
+   * Аввал бу ерда «далиллардан бирортаси тасдиқланганми»
+   * деб ҳисобланарди — яъни ЭСКИ ишнинг далили ҳам «ҳа»
+   * дерди.
+   */
+  daraja: TasdiqDarajasi;
+  joriyIshId: string | null;
   qoshaOladi: boolean;
   tasdiqlayOladi: boolean;
   joriyUserId: string;
@@ -85,7 +171,21 @@ export function DalilBlogi({
   /* Жойлашмаган одамда далил ҳам бўлмайди — блок кўринмайди */
   if (!joylashgan) return null;
 
-  const tasdiqlangan = dalillar.some((d) => d.holati === 'TASDIQLANDI');
+  /*
+   * ── НИШОН ҲОЗИРГИ ИШ БЎЙИЧА ──
+   *
+   * Аввал шундай эди:
+   *
+   *     dalillar.some((d) => d.holati === 'TASDIQLANDI')
+   *
+   * Яъни одамда ҚАЧОНДИР тасдиқланган далил бўлса, экранда
+   * «Тасдиқланган» деб турарди — ҳозирги иши бутунлай
+   * ҳужжатсиз бўлса ҳам.
+   */
+  const tasdiqlangan = daraja === 'RASMIY' || daraja === 'QOLDA_TASDIQ';
+
+  /* Ҳозирги ишга боғланмаган далиллар — алоҳида гуруҳ */
+  const bogliqsizlar = dalillar.filter((d) => d.joylashishId === null);
 
   async function yubor() {
     if (!turi) return;
@@ -148,26 +248,113 @@ export function DalilBlogi({
           </p>
         </div>
 
-        {tasdiqlangan ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-ok-bg px-3 py-1 text-xs font-semibold text-ok">
+        {/*
+          Нишон ДАРАЖАни айтади, «ҳа/йўқ» эмас.
+
+          Аввал учта ҳар хил ҳол «Ҳужжат кутилмоқда» бўлиб
+          бир хил кўринарди: ходим билдирган, ҳужжат
+          киритилган, ва ҳужжат РАД ЭТИЛГАН. Учинчиси
+          биринчисидан ёмонроқ.
+        */}
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${DARAJA_NISHONI[daraja]}`}
+        >
+          {tasdiqlangan ? (
             <BadgeCheck className="h-3.5 w-3.5" />
-            {tr('Тасдиқланган')}
-          </span>
-        ) : muddatiOtgan ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-danger-bg px-3 py-1 text-xs font-semibold text-danger">
+          ) : daraja === 'RAD_ETILGAN' ? (
             <TriangleAlert className="h-3.5 w-3.5" />
-            {tr('Муддати ўтган')}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-warn-bg px-3 py-1 text-xs font-semibold text-warn">
-            {tr('Ҳужжат кутилмоқда')}
-          </span>
-        )}
+          ) : null}
+          {tr(TASDIQ_DARAJASI_NOMI[daraja])}
+        </span>
       </div>
 
       {!tasdiqlangan && muddat && (
         <p className="text-xs text-ink-muted">
-          {tr('Ҳужжат муддати')}: {formatDate(muddat).split(',')[0]}
+          {muddatiOtgan ? (
+            <span className="text-danger">
+              {tr('Ҳужжат муддати ЎТГАН')}: {formatDate(muddat).split(',')[0]}
+            </span>
+          ) : (
+            <>
+              {tr('Ҳужжат муддати')}: {formatDate(muddat).split(',')[0]}
+            </>
+          )}
+        </p>
+      )}
+
+      {/*
+        ── ИШЛАР ТАРИХИ ──
+
+        Аввал экранда фақат ОХИРГИ иш кўринарди. Одам иш
+        алмаштирса, олдингиси изсиз кетар ва «қанча ишлади»
+        деган саволга жавоб қолмасди.
+
+        Ҳозирги иш АЖРАТИБ кўрсатилади: далил айнан ўшанга
+        боғланиши керак.
+      */}
+      {ishlar.length > 0 && (
+        <div className="rounded-md border border-line bg-surface-muted p-3">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            <Briefcase className="h-3.5 w-3.5" />
+            {tr('Ишлар тарихи')}
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {ishlar.map((i) => {
+              const joriy = i.id === joriyIshId;
+              const dalilSoni = dalillar.filter((d) => d.joylashishId === i.id).length;
+              const tasdiqSoni = dalillar.filter(
+                (d) => d.joylashishId === i.id && d.holati === 'TASDIQLANDI'
+              ).length;
+              return (
+                <li
+                  key={i.id}
+                  className={`rounded px-2 py-1.5 text-xs ${
+                    joriy ? 'bg-accent-bg text-ink' : 'text-ink-muted'
+                  }`}
+                >
+                  <span className="font-semibold">{tr(i.korxonaNomi)}</span>
+                  {i.lavozim ? <span> · {tr(i.lavozim)}</span> : null}
+                  <span className="text-ink-faint">
+                    {' '}
+                    · {formatDate(i.boshlanganSana).split(',')[0]}
+                    {i.tugaganSana
+                      ? ` — ${formatDate(i.tugaganSana).split(',')[0]}`
+                      : ` — ${tr('ҳозиргача')}`}
+                  </span>
+                  <span className="text-ink-faint"> · {tr(JOYLASHISH_HOLATI_NOMI[i.holati])}</span>
+                  {/*
+                    Ҳар ишнинг ЎЗ далили саналади: эски
+                    ишнинг шартномаси янгисини тасдиқламайди.
+                  */}
+                  <span className={tasdiqSoni > 0 ? 'text-ok' : 'text-warn'}>
+                    {' '}
+                    · {tasdiqSoni > 0
+                      ? `${tr('тасдиқланган')} (${tasdiqSoni})`
+                      : dalilSoni > 0
+                        ? `${tr('далил текширилмаган')} (${dalilSoni})`
+                        : tr('далили йўқ')}
+                  </span>
+                  {i.tugashSababi ? (
+                    <span className="text-ink-faint"> · {tr(i.tugashSababi)}</span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/*
+        Боғланмаган далил — нуқсон эмас, ИШ: қайси ишга
+        тегишли экани ёзилмаган. Тизим ЎЗИ тахмин қилмайди,
+        чунки нотўғри боғланган далил йўқ далилдан ёмонроқ.
+      */}
+      {bogliqsizlar.length > 0 && ishlar.length > 0 && (
+        <p className="flex items-start gap-1.5 rounded-md bg-warn-bg px-3 py-2 text-xs text-warn">
+          <Link2Off className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            {bogliqsizlar.length} {tr('далил ҳеч қайси ишга боғланмаган — қайси ишга тегишли экани ёзилмаган. Тизим ўзи тахмин қилмайди.')}
+          </span>
         </p>
       )}
 
@@ -178,10 +365,40 @@ export function DalilBlogi({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-ink">{tr(DALIL_NOMI[d.turi])}</p>
+                  {/*
+                    ── МАНБА ЭКРАНДА ──
+
+                    Ҳоким «тасдиқланган» сўзини ўқиганда
+                    нимага ишонаётганини билиши керак: қўлда
+                    юкланган Excel га ёки текширилган
+                    интеграцияга.
+                  */}
+                  <p className="mt-0.5 text-xs">
+                    <span
+                      className={
+                        d.manbaTuri === 'RASMIY_INTEGRATSIYA' ? 'text-ok' : 'text-ink-muted'
+                      }
+                    >
+                      {tr(DALIL_MANBASI_NOMI[d.manbaTuri])}
+                    </span>
+                    <span className="text-ink-faint">
+                      {' '}
+                      · {tr(DALIL_MAQSADI_NOMI[d.maqsadi])}
+                    </span>
+                  </p>
                   <p className="mt-0.5 text-xs text-ink-faint">
                     {formatDate(d.createdAt)}
                     {d.kiritganNomi ? ` · ${tr(d.kiritganNomi)}` : ''}
+                    {d.manbaTashkilot ? ` · ${tr(d.manbaTashkilot)}` : ''}
+                    {d.hujjatSanasi
+                      ? ` · ${tr('ҳужжат санаси')}: ${formatDate(d.hujjatSanasi).split(',')[0]}`
+                      : ''}
                   </p>
+                  {d.joylashishId === null && (
+                    <p className="mt-1 text-xs text-warn">
+                      {tr('Ҳеч қайси ишга боғланмаган')}
+                    </p>
+                  )}
                   {d.reyestrIshJoyi && (
                     <p className="mt-1 text-xs text-ink-muted">
                       {tr('Реестрда')}: {tr(d.reyestrIshJoyi)}

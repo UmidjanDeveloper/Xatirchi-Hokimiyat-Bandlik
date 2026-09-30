@@ -344,6 +344,7 @@ export async function tumanKartasi(): Promise<SavolJavobi> {
       `📝 Шахсий анкетаси бор: <b>${raqam(h.anketa)}</b> та`,
       `✅ Ишга жойлаштирилган: <b>${raqam(h.joylashtirilgan)}</b> та`,
       `      шундан ҳужжат билан тасдиқланган: <b>${raqam(h.tasdiqlanganJoylashuv)}</b> та`,
+      `      расмий манба билан: <b>${raqam(h.rasmiyTasdiqlangan)}</b> та`,
       `📋 Очиқ иш ўрни: <b>${raqam(h.ochiqOrin)}</b> та`,
       '',
       `🏘 Хатлов бошланган маҳалла: ${raqam(h.boshlaganMahalla)} / ${raqam(h.jamiMahalla)}`,

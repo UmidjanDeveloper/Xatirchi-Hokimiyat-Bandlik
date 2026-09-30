@@ -16,6 +16,7 @@ type Tranzaksiya = Omit<
 >;
 import { elonKuchdami } from './elon-muddati';
 import { mustahkamlashChorasi } from './chora-yaratish';
+import { joylashishYozib } from './joylashish';
 
 /**
  * ============================================================
@@ -103,6 +104,7 @@ export async function joylashtirishAmali(
         ornlarSoni: true,
         korxonaNomi: true,
         lavozim: true,
+        ishBeruvchiId: true,
       },
     });
     if (!orin) return { xato: 'Эълон топилмади', kod: 404 } as const;
@@ -174,6 +176,35 @@ export async function joylashtirishAmali(
           : {}),
       },
     });
+
+    /*
+     * ── ИШГА ЖОЙЛАШИШ ВОҚЕАСИ ──
+     *
+     * Аввал жойлаштириш фақат `ishJoyi` майдонига ёзиларди —
+     * у эса ФАҚАТ ОХИРГИ ишни сақлайди. Одам иш алмаштирса,
+     * олдингиси изсиз ўчиб кетар ва эски ишнинг тасдиқланган
+     * шартномаси ЯНГИ ишни тасдиқлаб турарди.
+     *
+     * Воқеа ТРАНЗАКЦИЯ ичида ёзилади: фуқаро жойлаштирилиб,
+     * воқеа ёзилмай қолиши — иккита манба дегани, ва улар
+     * бир-бирига мос келмайдиган пайт келади.
+     *
+     * `joylashishYozib` такрор чақирувга чидайди: ўша
+     * корхонага иккинчи марта жойлаштирилса, янги воқеа
+     * ЯРАТИЛМАЙДИ.
+     */
+    await joylashishYozib(
+      {
+        ishsizId: odam.id,
+        korxonaNomi: orin.korxonaNomi,
+        lavozim: orin.lavozim,
+        vacancyId: orin.id,
+        ishBeruvchiId: orin.ishBeruvchiId ?? null,
+        boshlanganSana: p.ishgaKirganSana ?? new Date(),
+        kiritganId: p.kim.userId,
+      },
+      tx
+    );
 
     // Ўрин тўлдими — шу ернинг ўзида ёпамиз. Кейинги сўровга
     // қолдирилса, эълон бир муддат «бўш» бўлиб турарди.

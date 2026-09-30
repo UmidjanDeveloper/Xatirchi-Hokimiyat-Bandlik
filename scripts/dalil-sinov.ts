@@ -355,7 +355,18 @@ const SINOVLAR: Sinov[] = [
    *  4. ЁЗИШ
    * ──────────────────────────────────────────────────────── */
   {
-    nomi: 'Мос келганга реестр далили ёзилади ва у ТАСДИҚЛАНГАН',
+    /*
+     * ── БУ СИНОВ ЎЗГАРТИРИЛДИ ──
+     *
+     * Аввал у «реестр далили ДАРҲОЛ тасдиқланган» деб
+     * кутарди — яъни ЭСКИ, хавфли хулқни ёзиб қўйган эди.
+     *
+     * Тизимга келган нарса давлат манбаи эмас, балки
+     * администратор компьютеридаги Excel файл. Энди у
+     * `QOLDA_REYESTR` бўлиб ёзилади ва ТЕКШИРУВ навбатига
+     * тушади.
+     */
+    nomi: 'Қўлда юкланган кўчирма АВТОМАТИК тасдиқланмайди',
     tekshir: async () => {
       const fish = noyob('Moskelgan Fuqaro');
       const id = await fuqaroYarat({ fish, ishJoyi: 'Оқ Олтин МЧЖ' });
@@ -364,6 +375,8 @@ const SINOVLAR: Sinov[] = [
       await reyestrniYukla([{ fish, ishJoyi: 'OQ OLTIN', tugilganSana: SINOV_SANASI }], {
         kiritganId: xodimId,
         reyestrSanasi: sana,
+        faylIzi: 'sinov-izi-1',
+        manbaTashkilot: 'Синов ташкилоти',
       });
 
       const d = await prisma.joylashuvDalili.findMany({ where: { ishsizId: id } });
@@ -372,12 +385,50 @@ const SINOVLAR: Sinov[] = [
       return (
         d.length === 1 &&
         d[0].turi === 'REYESTR' &&
-        d[0].holati === 'TASDIQLANDI' &&
+        /* ── АСОСИЙ ШАРТ ── */
+        d[0].manbaTuri === 'QOLDA_REYESTR' &&
+        d[0].holati === 'KIRITILDI' &&
+        /* Манба изи сақланади — қайси юклашдан келгани билинади */
+        d[0].faylIzi === 'sinov-izi-1' &&
+        d[0].manbaTashkilot === 'Синов ташкилоти' &&
+        d[0].importId !== null &&
         /* Ҳуқуқий шакл фарқи огоҳлантириш бермайди */
         d[0].izoh === null &&
-        t.tasdiqlangan &&
-        t.engKuchli === 'REYESTR'
+        /* Ҳисобда ҳали тасдиқланмаган, аммо «кутилмоқда» */
+        !t.tasdiqlangan &&
+        t.daraja === 'KUTILMOQDA' &&
+        !t.sanaladi
       );
+    },
+  },
+  {
+    /*
+     * Битта юклашдан чиққан барча далилда БИТТА `importId`
+     * бўлиши керак: «бу кўчирма нотўғри чиқди» деганда
+     * барчасини бирдан топиш учун.
+     */
+    nomi: 'Битта юклаш — битта белги, барча сатрда бир хил',
+    tekshir: async () => {
+      const a = noyob('Import Bir');
+      const b = noyob('Import Ikki');
+      const ida = await fuqaroYarat({ fish: a });
+      const idb = await fuqaroYarat({ fish: b });
+      const sana = new Date(Date.UTC(2026, 8, 7));
+
+      await reyestrniYukla(
+        [
+          { fish: a, ishJoyi: 'Корхона А', tugilganSana: SINOV_SANASI },
+          { fish: b, ishJoyi: 'Корхона Б', tugilganSana: SINOV_SANASI },
+        ],
+        { kiritganId: xodimId, reyestrSanasi: sana }
+      );
+
+      const d = await prisma.joylashuvDalili.findMany({
+        where: { ishsizId: { in: [ida, idb] } },
+        select: { importId: true },
+      });
+
+      return d.length === 2 && d[0].importId !== null && d[0].importId === d[1].importId;
     },
   },
   {
@@ -479,10 +530,27 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    /*
+     * ── БУ СИНОВ ЎЗГАРТИРИЛДИ ──
+     *
+     * Аввал у йўлда `tasdiqlangan: false` ёзилганини
+     * текширарди. Ўша параметр БУТУНЛАЙ олиб ташланди:
+     * тасдиқлаш қарорини чақирувчи бермайди, у манбадан
+     * келиб чиқади.
+     *
+     * Энди текширилади: йўл манбани ФАҚАТ қўлда киритилган
+     * тур сифатида юборади ва `RASMIY_INTEGRATSIYA` ни
+     * ҳеч қаерда ёзмайди.
+     */
     nomi: 'Ўзи киритган далилни ўзи тасдиқлай олмаслиги ЙЎЛДА текширилади',
     tekshir: async () =>
       YOL.includes('dalil.kiritganId === q.sessiya.userId') &&
-      YOL.includes('tasdiqlangan: false') &&
+      /* Манба қўлда — йўл «расмий» деб юбора олмайди */
+      YOL.includes("'XODIM_BILDIRDI'") &&
+      YOL.includes("'QOLDA_HUJJAT'") &&
+      !YOL.includes('RASMIY_INTEGRATSIYA') &&
+      /* Эски, хавфли параметр умуман йўқ */
+      !YOL.includes('tasdiqlangan:') &&
       /* Маҳалла ходими тасдиқлашга умуман кира олмайди */
       YOL.includes("talabQil(['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'])"),
   },

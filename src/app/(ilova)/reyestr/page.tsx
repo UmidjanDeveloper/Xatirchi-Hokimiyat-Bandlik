@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { BadgeCheck, FileClock, ShieldQuestion } from 'lucide-react';
+import { BadgeCheck, FileClock, Link2Off, ShieldQuestion } from 'lucide-react';
 import { boshSahifa, yolgaRuxsat } from '@/components/shell/navigatsiya';
 import { matnchi } from '@/lib/alifbo-server';
 import { joriyXodim } from '@/lib/sahifa-auth';
@@ -10,7 +10,8 @@ import {
   tasdiqHisobi,
   tasdiqsizlar,
   tekshirishKutayotganlar } from '@/lib/joylashuv-dalili';
-import { DALIL_NOMI } from '@/lib/dalil-nomlari';
+import { bogliqsizDalillar } from '@/lib/joylashish';
+import { DALIL_HOLATI_NOMI, DALIL_NOMI } from '@/lib/dalil-nomlari';
 import { ReyestrYuklash } from '@/components/dalil/reyestr-yuklash';
 import { formatDate } from '@/lib/utils';
 
@@ -39,6 +40,29 @@ export const dynamic = 'force-dynamic';
 
 const raqam = (n: number) => n.toLocaleString('ru-RU');
 
+/**
+ * ── НЕГА РЎЙХАТДА ──
+ *
+ * Аввал ҳаммаси «ҳужжатсиз» деб бир хил кўринарди ва
+ * ходим ҳар бирини очиб кўришга мажбур эди.
+ *
+ * `ish-almashdi` — энг чалғитадигани: одамда ТАСДИҚЛАНГАН
+ * ҳужжат бор, аммо у ЭСКИ ишга тегишли.
+ */
+const SABAB_NOMI: Record<string, string> = {
+  'dalil-yoq': 'Ҳужжат умуман йўқ',
+  tekshirilmagan: 'Киритилган, текширилмаган',
+  'rad-etilgan': 'Ҳужжат рад этилган',
+  'ish-almashdi': 'Иш алмашган — эски ҳужжат ярамайди',
+};
+
+const SABAB_RANGI: Record<string, string> = {
+  'dalil-yoq': 'text-ink-muted',
+  tekshirilmagan: 'text-warn',
+  'rad-etilgan': 'text-danger',
+  'ish-almashdi': 'text-warn',
+};
+
 export default async function ReyestrSahifasi() {
   const tr = matnchi();
 
@@ -46,10 +70,11 @@ export default async function ReyestrSahifasi() {
   if (!sessiya) redirect('/kirish');
   if (!yolgaRuxsat(sessiya.rol, '/reyestr')) redirect(boshSahifa(sessiya.rol));
 
-  const [hisob, royxat, navbat] = await Promise.all([
+  const [hisob, royxat, navbat, bogliqsizlar] = await Promise.all([
     tasdiqHisobi(),
     tasdiqsizlar(undefined, 50),
     tekshirishKutayotganlar(50),
+    bogliqsizDalillar(50),
   ]);
 
   return (
@@ -76,9 +101,9 @@ export default async function ReyestrSahifasi() {
           ikonka={<BadgeCheck className="h-4 w-4" />}
         />
         <Katak
-          nomi={tr('Давлат реестри билан')}
-          qiymat={raqam(hisob.reyestrBilan)}
-          izoh={tr('энг ишончли далил')}
+          nomi={tr('Ҳозирги иши тасдиқланган')}
+          qiymat={raqam(hisob.joriyIshTasdiqlangan)}
+          izoh={tr('далил АЙНАН шу ишга боғланган')}
         />
         <Katak
           nomi={tr('Муддати ўтган')}
@@ -87,6 +112,87 @@ export default async function ReyestrSahifasi() {
           rang={hisob.muddatiOtgan > 0 ? 'text-danger' : undefined}
           ikonka={hisob.muddatiOtgan > 0 ? <ShieldQuestion className="h-4 w-4" /> : undefined}
         />
+      </section>
+
+      {/*
+        ── ТАСДИҚНИНГ ТАРКИБИ ──
+
+        «Тасдиқланган» деган битта рақам камлик қиларди.
+        Унинг ичида ИККИ ХИЛ нарса бор эди: расмий,
+        текширилган канал орқали келгани ва администратор
+        қўлда юклаган файлдан келгани.
+
+        Иккови бир хил кўринса, «тасдиқланган» сўзи маъносини
+        йўқотади.
+
+        Пастдаги учта — тасдиқланмаганлар. Улар ҳам бир хил
+        ЭМАС: рад этилган далил «далил йўқ» дан ЁМОНРОҚ,
+        чунки у «далил ёлғон чиқди» дегани.
+      */}
+      <section className="karta p-4 sm:p-5">
+        <h2 className="text-base font-semibold text-ink">{tr('Тасдиқнинг таркиби')}</h2>
+        <p className="mt-1 text-xs text-ink-faint">
+          {tr('«Тасдиқланган» сўзи нимага таянади — ҳар бир даража алоҳида')}
+        </p>
+
+        <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+          <Qator
+            nomi={tr('Расмий манба билан')}
+            qiymat={hisob.rasmiyTasdiq}
+            izoh={tr('текширилган интеграция — қўлда текширув керак эмас')}
+            rang="text-ok"
+          />
+          <Qator
+            nomi={tr('Қўлда текширилиб тасдиқланган')}
+            qiymat={hisob.qoldaTasdiq}
+            izoh={tr('мутахассис ҳужжатни кўриб тасдиқлаган')}
+            rang="text-ok"
+          />
+          <Qator
+            nomi={tr('Ҳужжат киритилган, текширилмаган')}
+            qiymat={hisob.tekshiruvKutayotgan}
+            izoh={tr('навбатда турибди — ҳисобга ҲАЛИ кирмайди')}
+            rang={hisob.tekshiruvKutayotgan > 0 ? 'text-warn' : undefined}
+          />
+          <Qator
+            nomi={tr('Далил РАД ЭТИЛГАН')}
+            qiymat={hisob.radEtilgan}
+            izoh={tr('«далил йўқ» дан ёмонроқ — ҳужжат ёлғон чиққан')}
+            rang={hisob.radEtilgan > 0 ? 'text-danger' : undefined}
+          />
+          <Qator
+            nomi={tr('Фақат ходим билдирган')}
+            qiymat={hisob.faqatXodim}
+            izoh={tr('ҳужжат умуман йўқ — бу далил эмас, хабар')}
+            rang={hisob.faqatXodim > 0 ? 'text-warn' : undefined}
+          />
+          <Qator
+            nomi={tr('Умуман далили йўқ')}
+            qiymat={hisob.dalilsiz}
+            izoh={tr('ҳеч нарса киритилмаган')}
+            rang={hisob.dalilsiz > 0 ? 'text-danger' : undefined}
+          />
+        </dl>
+
+        {(hisob.bogliqsizTasdiq > 0 || hisob.voqeasizlar > 0) && (
+          <div className="mt-4 border-t border-line pt-3">
+            <p className="text-xs uppercase tracking-wide text-ink-muted">
+              {tr('Боғлаш керак бўлган иш')}
+            </p>
+            <dl className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+              <Qator
+                nomi={tr('Тасдиқ бор-у, ишга боғланмаган')}
+                qiymat={hisob.bogliqsizTasdiq}
+                izoh={tr('қайси ишга тегишли экани ёзилмаган — тахмин қилинмайди')}
+              />
+              <Qator
+                nomi={tr('Иш воқеаси ёзилмаган')}
+                qiymat={hisob.voqeasizlar}
+                izoh={tr('анкета сақланганда ёзилади — эски ёзувларда йўқ')}
+              />
+            </dl>
+          </div>
+        )}
       </section>
 
       {/*
@@ -161,6 +267,89 @@ export default async function ReyestrSahifasi() {
         </section>
       )}
 
+      {/*
+        ── ВОҚЕАГА БОҒЛАНМАГАН ДАЛИЛЛАР ──
+
+        `joylashishId` устуни қўшилгунга қадар киритилган
+        барча далилда у БЎШ. Улар ёлғон эмас — шунчаки қайси
+        ишга тегишли экани ёзилмаган.
+
+        Тахмин қилиб ЎЗИМИЗ боғламаймиз: одамда иккита иш
+        бўлса, тахмин 50 фоиз ҳолда нотўғри боғланишни
+        ясарди — ва у ҳисоботда ҲАҚИҚИЙ боғланиш бўлиб
+        кўринарди. Нотўғри боғланган далил йўқ далилдан
+        ёмонроқ.
+
+        Шунинг учун улар РЎЙХАТ бўлиб чиқади ва одам
+        боғлайди.
+      */}
+      {bogliqsizlar.length > 0 && (
+        <section className="karta p-4 sm:p-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
+            <Link2Off className="h-4 w-4 text-warn" />
+            {tr('Ишга боғланмаган далиллар')} · {bogliqsizlar.length}
+          </h2>
+          <p className="mt-1 text-xs text-ink-faint">
+            {tr('Қайси ишга тегишли экани ёзилмаган. Тизим ЎЗИ тахмин қилмайди — исмга босиб боғлайсиз.')}
+          </p>
+
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+                  <th className="pb-2 pr-3 font-semibold">{tr('Ф.И.Ш.')}</th>
+                  <th className="pb-2 pr-3 font-semibold">{tr('МФЙ')}</th>
+                  <th className="pb-2 pr-3 font-semibold">{tr('Ҳужжат')}</th>
+                  <th className="pb-2 pr-3 font-semibold">{tr('Ҳолати')}</th>
+                  <th className="pb-2 font-semibold">{tr('Эҳтимолий иш')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bogliqsizlar.map((b) => (
+                  <tr key={b.dalilId} className="border-b border-line/60 last:border-0">
+                    <td className="py-2 pr-3">
+                      <Link
+                        href={`/ishsizlar/${b.ishsizId}`}
+                        className="font-medium text-ink transition-colors hover:text-accent"
+                      >
+                        {tr(b.fish)}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-3 text-ink-muted">{tr(b.mahallaNomi)}</td>
+                    <td className="py-2 pr-3 text-ink-muted">
+                      {tr(DALIL_NOMI[b.turi as keyof typeof DALIL_NOMI] ?? b.turi)}
+                    </td>
+                    <td className="py-2 pr-3 text-ink-muted">
+                      {tr(DALIL_HOLATI_NOMI[b.holati as keyof typeof DALIL_HOLATI_NOMI] ?? b.holati)}
+                    </td>
+                    <td className="py-2 text-ink-faint">
+                      {b.taklif ? (
+                        <>
+                          {tr(b.taklif.korxonaNomi)}
+                          {/*
+                            Одамда иккитадан кўп иш бўлса,
+                            таклифга ИШОНИБ бўлмайди — бу
+                            ерда огоҳлантириш турибди.
+                          */}
+                          {b.ishlarSoni > 1 && (
+                            <span className="text-warn">
+                              {' '}
+                              · {tr('диққат')}: {b.ishlarSoni} {tr('иш')}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        tr('очиқ иш йўқ')
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {/* ── ИШ РЎЙХАТИ ── */}
       <section className="karta p-4 sm:p-5">
         <h2 className="text-base font-semibold text-ink">
@@ -182,6 +371,7 @@ export default async function ReyestrSahifasi() {
                   <th className="pb-2 pr-3 font-semibold">{tr('Ф.И.Ш.')}</th>
                   <th className="pb-2 pr-3 font-semibold">{tr('МФЙ')}</th>
                   <th className="pb-2 pr-3 font-semibold">{tr('Иш жойи')}</th>
+                  <th className="pb-2 pr-3 font-semibold">{tr('Сабаби')}</th>
                   <th className="pb-2 text-right font-semibold">{tr('Кун')}</th>
                 </tr>
               </thead>
@@ -198,6 +388,14 @@ export default async function ReyestrSahifasi() {
                     </td>
                     <td className="py-2 pr-3 text-ink-muted">{tr(r.mahallaNomi)}</td>
                     <td className="py-2 pr-3 text-ink-muted">{r.ishJoyi ? tr(r.ishJoyi) : '—'}</td>
+                    {/*
+                      Сабаб ходимга ҲАР ХИЛ қарор беради:
+                      рад этилган ҳужжатни қайта сўраш керак,
+                      иш алмашганида эса янги шартнома керак.
+                    */}
+                    <td className={`py-2 pr-3 ${SABAB_RANGI[r.sabab]}`}>
+                      {tr(SABAB_NOMI[r.sabab])}
+                    </td>
                     <td className="py-2 text-right tabular-nums text-danger">{raqam(r.kun)}</td>
                   </tr>
                 ))}
@@ -230,6 +428,36 @@ function Katak({
       </p>
       <p className={`mt-1 text-3xl font-bold tabular-nums ${rang ?? 'text-ink'}`}>{qiymat}</p>
       <p className="mt-0.5 text-xs text-ink-faint">{izoh}</p>
+    </div>
+  );
+}
+
+/**
+ * Таркиб қатори.
+ *
+ * Каталардан ФАРҚ қилади: бу рақамлар бир-бирини тўлдиради
+ * ва ёнма-ён ўқилиши керак. Йирик катак бўлса, улар
+ * мустақил кўрсаткич бўлиб кўринарди.
+ */
+function Qator({
+  nomi,
+  qiymat,
+  izoh,
+  rang }: {
+  nomi: string;
+  qiymat: number;
+  izoh: string;
+  rang?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-line/40 pb-2 last:border-0">
+      <div className="min-w-0">
+        <dt className="text-sm font-medium text-ink">{nomi}</dt>
+        <dd className="text-xs text-ink-faint">{izoh}</dd>
+      </div>
+      <span className={`shrink-0 text-lg font-semibold tabular-nums ${rang ?? 'text-ink-muted'}`}>
+        {qiymat.toLocaleString('ru-RU')}
+      </span>
     </div>
   );
 }

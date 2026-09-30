@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { dalilQoshish, dalilniHalQil } from '@/lib/joylashuv-dalili';
+import { joriyJoylashish } from '@/lib/joylashish';
 
 /**
  * ============================================================
@@ -28,6 +29,18 @@ export const dynamic = 'force-dynamic';
 const Yangi = z.object({
   turi: z.enum(['SHARTNOMA', 'BUYRUQ', 'ISH_BERUVCHI', 'MAHALLA']),
   izoh: z.string().max(500).nullish(),
+  /**
+   * Далил НИМАНИ исботлайди.
+   *
+   * Шартнома нусхаси одам ишга КИРГАНИНИ кўрсатади; у бир
+   * ойдан кейин ишдан чиққан бўлиши ҳам мумкин. «Ҳамон
+   * ишлаяпти» — БОШҚА савол ва унга бошқа далил керак.
+   */
+  maqsadi: z.enum(['ISH_BOSHLAGANI', 'HOZIR_ISHLAYOTGANI']).nullish(),
+  /** Ҳужжатнинг ЎЗИДАГИ сана — киритилган сана эмас */
+  hujjatSanasi: z.coerce.date().nullish(),
+  /** Ҳужжатни берган ташкилот */
+  manbaTashkilot: z.string().max(300).nullish(),
 });
 
 const HalQilish = z.object({
@@ -77,13 +90,34 @@ export async function POST(request: Request, { params }: { params: { id: string 
     );
   }
 
+  /*
+   * ── ҚАЙСИ ИШГА ТЕГИШЛИ ──
+   *
+   * Далил одамнинг ОЧИҚ ишига боғланади. Аввал ҳеч қаерга
+   * боғланмасди — ва одам иш алмаштирса, эски ишнинг
+   * шартномаси ЯНГИ ишни ҳам тасдиқлаб турарди.
+   *
+   * Очиқ иш топилмаса, `null` қолади ва далил «боғланиши
+   * керак» рўйхатига тушади. Тахмин қилиб боғламаймиз.
+   */
+  const joriyIsh = await joriyJoylashish(odam.id);
+
   const dalil = await dalilQoshish({
     ishsizId: odam.id,
     turi: xom.data.turi,
+    joylashishId: joriyIsh?.id ?? null,
+    /*
+     * Манба ТУРДАН келиб чиқади ва бу йўл уни ЎЗГАРТИРА
+     * ОЛМАЙДИ: тасдиқлаш қарори `dalil-ishonchi.ts` да,
+     * битта жойда. Қўлда киритилган ҳужжатни БОШҚА одам
+     * текширади.
+     */
+    manbaTuri: xom.data.turi === 'MAHALLA' ? 'XODIM_BILDIRDI' : 'QOLDA_HUJJAT',
+    maqsadi: xom.data.maqsadi ?? 'ISH_BOSHLAGANI',
+    hujjatSanasi: xom.data.hujjatSanasi ?? null,
+    manbaTashkilot: xom.data.manbaTashkilot ?? null,
     izoh: xom.data.izoh ?? null,
     kiritganId: q.sessiya.userId,
-    /* Қўлда киритилган далилни БОШҚА одам тасдиқлайди */
-    tasdiqlangan: false,
   });
 
   await jurnal(q.sessiya.userId, 'OZGARTIRISH', {

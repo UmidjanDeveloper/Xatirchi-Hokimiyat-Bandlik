@@ -99,6 +99,13 @@ const holat = (o: Partial<TumanHolati> = {}): TumanHolati => ({
   anketasiz: 90,
   joylashtirilgan: 19,
   tasdiqlanganJoylashuv: 7,
+  /*
+   * Еттитадан УЧТАСИ расмий манба билан. Қолган тўрттаси
+   * қўлда юкланган кўчирмадан — шунинг учун улар алоҳида
+   * саналади.
+   */
+  rasmiyTasdiqlangan: 3,
+  tekshiruvKutayotgan: 0,
   dalilsizJoylashuv: 0,
   moderatsiyaKutmoqda: 0,
   ochiqOrin: 9,

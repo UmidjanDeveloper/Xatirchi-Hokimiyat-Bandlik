@@ -102,6 +102,24 @@ export interface TumanHolati {
    * Иккови ёнма-ён турганда савол ўзи туғилади.
    */
   tasdiqlanganJoylashuv: number;
+  /**
+   * ── ШУНДАН РАСМИЙ МАНБА БИЛАН ──
+   *
+   * `tasdiqlanganJoylashuv` нинг ичида ИККИ ХИЛ нарса бор:
+   * текширилган интеграциядан келгани ва администратор
+   * қўлда юклаган файлдан келгани.
+   *
+   * Иккови бир хил кўринса, «тасдиқланган» сўзи маъносини
+   * йўқотади — ва бу рақам ЮҚОРИГА ҳисобот бўлиб кетади.
+   */
+  rasmiyTasdiqlangan: number;
+  /**
+   * Ҳужжат киритилган-у, мутахассис ҳали қарамаган.
+   *
+   * Бу «тасдиқланмаган» эмас, «навбатда турибди» —
+   * ҳокимга буниси бажариладиган ИШ, нуқсон эмас.
+   */
+  tekshiruvKutayotgan: number;
   /** Ўттиз кундан бери далилсиз турганлар */
   dalilsizJoylashuv: number;
   ochiqOrin: number;
@@ -191,6 +209,8 @@ export async function tumanHolati(hozir: Date = new Date()): Promise<TumanHolati
     anketasiz: Math.max(0, topilganIshsiz - anketa),
     joylashtirilgan: joylashgan,
     tasdiqlanganJoylashuv: dalil.tasdiqlangan,
+    rasmiyTasdiqlangan: dalil.rasmiyTasdiq,
+    tekshiruvKutayotgan: dalil.tekshiruvKutayotgan,
     dalilsizJoylashuv: dalil.muddatiOtgan,
     ochiqOrin: elon,
 

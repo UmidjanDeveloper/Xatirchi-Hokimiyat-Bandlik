@@ -23,6 +23,7 @@ import {
   JoylashtirishTugmasi } from '@/components/ish-orni/joylashtirish-tugmasi';
 import { DalilBlogi } from '@/components/dalil/dalil-blogi';
 import { odamTasdigi } from '@/lib/joylashuv-dalili';
+import { joylashishTarixi } from '@/lib/joylashish';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -120,7 +121,7 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
       : [];
 
   /* Жойлаштиришнинг далил ҳолати — муддат ва тасдиқ */
-  const tasdiq = await odamTasdigi(p.id);
+  const [tasdiq, ishlar] = await Promise.all([odamTasdigi(p.id), joylashishTarixi(p.id)]);
 
   /*
    * AMALDAGI vaucher - bekor qilingan va tashlab ketilgani
@@ -416,6 +417,23 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           sessiya.rol === 'BANDLIK_RAHBAR' ||
           sessiya.rol === 'ADMIN'
         }
+        /*
+          ── ДАРАЖА ҲОЗИРГИ ИШ БЎЙИЧА ──
+
+          Аввал экранда «далиллардан бирортаси
+          тасдиқланганми» деб ҳисобланарди, яъни ЭСКИ ишнинг
+          шартномаси янги ишни ҳам тасдиқлаб турарди.
+        */
+        daraja={tasdiq.daraja}
+        joriyIshId={tasdiq.joriyIshId}
+        ishlar={ishlar.map((i) => ({
+          id: i.id,
+          korxonaNomi: i.korxonaNomi,
+          lavozim: i.lavozim,
+          boshlanganSana: i.boshlanganSana,
+          tugaganSana: i.tugaganSana,
+          tugashSababi: i.tugashSababi,
+          holati: i.holati }))}
         dalillar={p.dalillar.map((d) => ({
           id: d.id,
           turi: d.turi,
@@ -426,7 +444,12 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           createdAt: d.createdAt,
           kiritganId: d.kiritganId,
           kiritganNomi: d.kiritgan?.fullName ?? null,
-          tasdiqlaganNomi: d.tasdiqlagan?.fullName ?? null }))}
+          tasdiqlaganNomi: d.tasdiqlagan?.fullName ?? null,
+          manbaTuri: d.manbaTuri,
+          maqsadi: d.maqsadi,
+          joylashishId: d.joylashishId,
+          manbaTashkilot: d.manbaTashkilot,
+          hujjatSanasi: d.hujjatSanasi }))}
       />
 
       {/* ── Chora-tadbirlar ── */}

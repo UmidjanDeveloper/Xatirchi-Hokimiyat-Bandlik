@@ -194,6 +194,7 @@ export async function boshMenyu(userId: string): Promise<MenyuNatijasi> {
         `👤 Хатлов топган ишсиз: <b>${raqam(h.topilganIshsiz)}</b> та`,
         `✅ Ишга жойлаштирилган: <b>${raqam(h.joylashtirilgan)}</b> та`,
         `      ҳужжат билан тасдиқланган: <b>${raqam(h.tasdiqlanganJoylashuv)}</b> та`,
+        `      шундан расмий манба билан: <b>${raqam(h.rasmiyTasdiqlangan)}</b> та`,
         `📋 Очиқ иш ўрни: <b>${raqam(h.ochiqOrin)}</b> та`,
         '',
         SAVOL_IZOHI,

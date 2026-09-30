@@ -137,16 +137,18 @@ model User {
   joylashuvHalQilgan JoylashuvXabari[]  @relation("JoylashuvHalQilgan")
 
   /// Botdagi tugallanmagan suhbat
-  botSuhbati              BotSuhbati?
+  botSuhbati               BotSuhbati?
   /// Kiritgan va tekshirgan joylashuv dalillari
-  kiritganDalillar        JoylashuvDalili[] @relation("DalilKiritgan")
-  tasdiqlaganDalillar     JoylashuvDalili[] @relation("DalilTasdiqlagan")
-  halQilganIshBeruvchilar IshBeruvchi[]     @relation("IshBeruvchiHalQilgan")
+  kiritganDalillar         JoylashuvDalili[] @relation("DalilKiritgan")
+  tasdiqlaganDalillar      JoylashuvDalili[] @relation("DalilTasdiqlagan")
+  halQilganIshBeruvchilar  IshBeruvchi[]     @relation("IshBeruvchiHalQilgan")
+  /// Модерациядан ўтказган эълонлар
+  moderatsiyaQilganElonlar Vacancy[]         @relation("ElonModeratsiyasi")
+  /// Киритган ишга жойлашиш воқеалари
+  kiritganJoylashishlar    IshgaJoylashish[] @relation("JoylashishKiritgan")
 
   @@index([rol, faol])
   @@index([mahallaId])
-  /// Модерациядан ўтказган эълонлар
-  moderatsiyaQilganElonlar Vacancy[] @relation("ElonModeratsiyasi")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -818,7 +820,9 @@ model UnemployedPerson {
   arxivchiId  String?
   arxivSababi String?
 
-  topshiriqlar ActionPlan[]
+  topshiriqlar  ActionPlan[]
+  /// Ишга жойлашиш ТАРИХИ — ҳар бир иш алоҳида воқеа
+  joylashishlar IshgaJoylashish[]
 
   @@index([mahallaId, holati])
   @@index([holati])
@@ -1274,6 +1278,8 @@ model Vacancy {
   /// Shu e'lon orqali ishga joylashtirilgan fuqarolar
   joylashganlar      UnemployedPerson[]
   joylashuvXabarlari JoylashuvXabari[]
+  /// Шу эълон орқали жойлашганлар
+  joylashishlar      IshgaJoylashish[]
 
   @@index([moderatsiya])
   @@index([mahallaId, faol])
@@ -1422,6 +1428,141 @@ model BotSuhbati {
 /// Hisobotda ikkovi ham ko'rinadi, ammo AJRATIB: "19 tasidan
 /// 7 tasi reyestr bilan tasdiqlangan" degan gap "19 tasi
 /// tasdiqlangan" dan butunlay boshqacha.
+
+/// ============================================================
+///  ДАЛИЛ ҚАЕРДАН КЕЛГАН — ИШОНЧ ДАРАЖАСИ
+///
+///  ── Нега керак ──
+///
+///  Аввал қўлда юкланган Excel кўчирмасидан келган ёзув
+///  ДАРҲОЛ «тасдиқланган» деб сақланарди — худди расмий
+///  интеграциядан келгандек.
+///
+///  Аммо қўлда юкланган файлни ким, қачон ва қаердан
+///  олганини тизим БИЛМАЙДИ. Уни таҳрирлаш ҳам, бошқа
+///  файл билан алмаштириш ҳам мумкин.
+///
+///  Ҳокимликнинг энг муҳим рақами — «тасдиқланган
+///  жойлаштириш» — шу ёзувлардан ҳисобланади. Демак
+///  манбанинг ишончлилиги рақамнинг ишончлилиги.
+/// ============================================================
+
+/// ============================================================
+///  ИШГА ЖОЙЛАШИШ ВОҚЕАСИ
+///
+///  ── Қандай нуқсонни ёпади ──
+///
+///  Далил ОДАМГА боғланган эди, ишга эмас. Оқибати:
+///
+///    2024: фуқаро «Оқ Олтин МЧЖ» га ишга кирди, шартнома
+///          нусхаси киритилди ва ТАСДИҚЛАНДИ;
+///    2025: у ишдан чиқди ва «Янги Йўл МЧЖ» га кирди.
+///
+///  Иккинчи иш учун ҳеч қандай далил йўқ эди-ю, одамда
+///  «тасдиқланган далил бор» бўлиб турарди — яъни ЭСКИ
+///  далил ЯНГИ ишни тасдиқлаб қўярди.
+///
+///  Ҳокимликнинг «тасдиқланган жойлаштириш» рақами шундан
+///  ҳисобланади. Ёлғон чиқиши учун ҳеч ким ёмон ният
+///  қилиши ҳам шарт эмас эди.
+///
+///  ── Нега алоҳида жадвал ──
+///
+///  `UnemployedPerson` да `ishJoyi` ва `ishgaKirganSana`
+///  бор, аммо улар ФАҚАТ ОХИРГИ ишни сақлайди. Одам иш
+///  алмаштирса, олдингиси изсиз ўчиб кетарди — ва
+///  «нечта одам ишда қолди», «ўртача қанча ишлади» деган
+///  саволларга жавоб бўлмасди.
+///
+///  Эски майдонлар ЎЗГАРТИРИЛМАДИ: хатлов ҳозир кетмоқда
+///  ва уларга таянган ўнлаб сўров бор. Улар ОХИРГИ
+///  воқеанинг қисқа нусхаси бўлиб қолаверади.
+/// ============================================================
+model IshgaJoylashish {
+  id String @id @default(cuid())
+
+  ishsizId String
+  ishsiz   UnemployedPerson @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
+
+  /// Корхона номи — эркин матн. Фуқаро эълонсиз, ўзи топган
+  /// ишга ҳам жойлашиши мумкин.
+  korxonaNomi String
+  lavozim     String?
+
+  /// Рўйхатдаги иш берувчи — бор бўлса
+  ishBeruvchiId String?
+  ishBeruvchi   IshBeruvchi? @relation(fields: [ishBeruvchiId], references: [id], onDelete: SetNull)
+
+  /// Қайси эълондан — бор бўлса
+  vacancyId String?
+  vacancy   Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
+
+  boshlanganSana DateTime
+  tugaganSana    DateTime?
+  tugashSababi   String?
+
+  holati JoylashuvVoqeaHolati @default(NOMALUM)
+
+  /// Ҳозирги ҳолат ҚАЧОН текширилган
+  oxirgiTekshiruv DateTime?
+
+  kiritganId String?
+  kiritgan   User?   @relation("JoylashishKiritgan", fields: [kiritganId], references: [id], onDelete: SetNull)
+
+  izoh String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dalillar JoylashuvDalili[]
+
+  @@index([ishsizId, boshlanganSana])
+  @@index([holati])
+  @@index([vacancyId])
+  @@index([ishBeruvchiId])
+}
+
+enum DalilManbasi {
+  /// Ходим ўзи «иш топди» деб белгилади. Далил ЭМАС — хабар.
+  XODIM_BILDIRDI
+  /// Қўлда киритилган ҳужжат нусхаси (шартнома, буйруқ)
+  QOLDA_HUJJAT
+  /// Қўлда юкланган расмий кўчирма (Excel)
+  QOLDA_REYESTR
+  /// Текширилган интеграция орқали — ФАҚАТ шу автоматик тасдиқланади
+  RASMIY_INTEGRATSIYA
+}
+
+/// ============================================================
+///  ДАЛИЛ НИМАНИ ИСБОТЛАЙДИ
+///
+///  «Иш бошлагани» билан «ҳозир ҳам ишлаётгани» — ИККИ ХИЛ
+///  савол ва уларга икки хил далил керак.
+///
+///  Шартнома нусхаси одам ишга КИРГАНИНИ кўрсатади. У бир
+///  ойдан кейин ишдан чиққан бўлиши ҳам мумкин — шартнома
+///  буни билмайди.
+///
+///  Аввал иккови фарқланмасди ва «барқарор бандлик» деган
+///  кўрсаткични ҳисоблаб бўлмасди.
+/// ============================================================
+enum DalilMaqsadi {
+  /// Иш БОШЛАГАНИ тасдиқланган
+  ISH_BOSHLAGANI
+  /// Ўша даврда ҲАМОН ишлаётгани текширилган
+  HOZIR_ISHLAYOTGANI
+}
+
+/// Ишга жойлашиш воқеасининг ҳолати
+enum JoylashuvVoqeaHolati {
+  /// Ҳозир ишлаб турибди (ёки шундай деб ҳисобланади)
+  ISHLAMOQDA
+  /// Иш тугаган
+  TUGADI
+  /// Ҳозирги ҳолати текширилмаган
+  NOMALUM
+}
+
 enum DalilTuri {
   /// Davlat reyestri ko'chirmasidan topildi - eng kuchli dalil
   REYESTR
@@ -1468,6 +1609,47 @@ model JoylashuvDalili {
   ishsizId String
   ishsiz   UnemployedPerson @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
 
+  /// ── ҚАЙСИ ИШГА ТЕГИШЛИ ──
+  ///
+  /// Аввал далил фақат ОДАМГА боғланган эди. Одам иш
+  /// алмаштирса, эски ишнинг тасдиқланган далили ЯНГИ
+  /// ишни ҳам тасдиқлаб турарди.
+  ///
+  /// `null` бўлиши мумкин: шу устун қўшилгунга қадар
+  /// киритилган далилларда воқеа йўқ. Улар «боғланиши
+  /// керак» деган рўйхатга тушади — тахмин қилиб,
+  /// ўзимиз боғлаб қўймаймиз.
+  joylashishId String?
+  joylashish   IshgaJoylashish? @relation(fields: [joylashishId], references: [id], onDelete: SetNull)
+
+  /// ── ДАЛИЛ ҚАЕРДАН КЕЛГАН ──
+  ///
+  /// Ишонч даражаси шу ердан бошланади. Фақат
+  /// `RASMIY_INTEGRATSIYA` автоматик тасдиқланади.
+  manbaTuri DalilManbasi @default(QOLDA_HUJJAT)
+
+  /// Ҳужжатни берган ташкилот (бор бўлса)
+  manbaTashkilot String?
+  /// Ҳужжатнинг ЎЗИДАГИ сана — киритилган сана эмас
+  hujjatSanasi   DateTime?
+
+  /// Далил ҚАЙСИ ДАВРНИ қамрайди
+  davrBoshi DateTime?
+  davrOxiri DateTime?
+
+  /// Қайси юклашдан келган — бир файлни бир бутун кўриш учун
+  importId String?
+
+  /// Файлнинг криптографик изи (SHA-256).
+  ///
+  /// ДИҚҚАТ: из файлнинг ЎЗГАРМАГАНИНИ кўрсатади, ҲАҚИҚИЙ
+  /// эканини ЭМАС. Сохта файл ҳам барқарор изга эга бўлади.
+  /// У «шу ёзув ўша файлдан» деган боғни сақлайди, холос.
+  faylIzi String?
+
+  /// Далил НИМАНИ исботлайди
+  maqsadi DalilMaqsadi @default(ISH_BOSHLAGANI)
+
   /// Reyestr ko'chirmasidagi ish beruvchi nomi.
   ///
   /// Solishtirish uchun saqlanadi: tizimda "Oq Oltin MChJ"
@@ -1493,9 +1675,6 @@ model JoylashuvDalili {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([ishsizId, holati])
-  @@index([turi, holati])
-  @@index([createdAt])
   /// ── БИР ОДАМГА, БИР САНАГА, БИТТА РЕЕСТР ДАЛИЛИ ──
   ///
   /// Такрорни аввал КОД текширарди: юклашдан олдин «шу
@@ -1517,6 +1696,12 @@ model JoylashuvDalili {
   /// реестр далили ҳар хил нарса ва улар ёнма-ён турса
   /// бўлади.
   @@unique([ishsizId, turi, reyestrSanasi], name: "dalil_takrori")
+  @@index([ishsizId, holati])
+  @@index([turi, holati])
+  @@index([createdAt])
+  @@index([joylashishId])
+  @@index([importId])
+  @@index([manbaTuri, holati])
 }
 
 /// Ish beruvchining ro'yxatdan o'tish holati.
@@ -1590,8 +1775,10 @@ model IshBeruvchi {
 
   elonlar Vacancy[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  /// Шу корхонага жойлашганлар
+  joylashishlar IshgaJoylashish[]
 
   @@index([holati])
 }
