@@ -37,6 +37,11 @@ import {
   navbatniYubor,
   qoralamaOqi,
   qoralamaSaqla,
+  qoralamaKaliti,
+  qoralamaIdYasa,
+  qoralamalarim,
+  qoralamalarniChekla,
+  MAX_QORALAMA,
   urinishBelgila,
   chiqishdaTozala,
   type YuborishNatijasi,
@@ -420,6 +425,121 @@ const SINOVLAR: Sinov[] = [
       await navbatniYubor(async (_m, y) => { korilgan.push(y.kalit); return 'aloqa-yoq'; }, 'xodim_a');
       await navbatniYubor(async (_m, y) => { korilgan.push(y.kalit); return 'saqlandi'; }, 'xodim_a');
       return korilgan.length === 2 && korilgan[0] === k && korilgan[1] === k;
+    },
+  },
+  // ═══════════════════════════════════════════════════════════
+  //  ҚОРАЛАМАЛАР: ҲАР ХОДИМГА, ҲАР АНКЕТАГА АЛОҲИДА
+  //
+  //  Аввал бутун илова БИТТА `joriy-xatlov` калитидан
+  //  фойдаланарди. Эгаси ЎҚИШДА текширилар эди-ю, ЁЗИШДА
+  //  эмас: иккинчи ходимнинг автосақлаши биринчисининг
+  //  қораламасини босиб ўтарди.
+  // ═══════════════════════════════════════════════════════════
+  {
+    nomi: 'Икки ходимнинг қораламаси бир-бирини БОСМАЙДИ',
+    tekshir: () => {
+      tozala();
+      const aKalit = qoralamaKaliti('xodim_a', 'q1');
+      const bKalit = qoralamaKaliti('xodim_b', 'q1');
+
+      qoralamaSaqla(aKalit, { manzil: 'A ning uyi' }, 'xodim_a');
+      qoralamaSaqla(bKalit, { manzil: 'B ning uyi' }, 'xodim_b');
+
+      const a = qoralamaOqi<{ manzil: string }>(aKalit, 'xodim_a');
+      const b = qoralamaOqi<{ manzil: string }>(bKalit, 'xodim_b');
+      return a?.manzil === 'A ning uyi' && b?.manzil === 'B ning uyi';
+    },
+  },
+  {
+    nomi: 'Битта ходим ИККИТА анкетани параллел сақлай олади',
+    tekshir: () => {
+      tozala();
+      const bir = qoralamaKaliti('xodim_a', qoralamaIdYasa());
+      const ikki = qoralamaKaliti('xodim_a', qoralamaIdYasa());
+      qoralamaSaqla(bir, { manzil: 'Birinchi uy' }, 'xodim_a');
+      qoralamaSaqla(ikki, { manzil: 'Ikkinchi uy' }, 'xodim_a');
+
+      const meniki = qoralamalarim('xodim_a');
+      return (
+        meniki.length === 2 &&
+        bir !== ikki &&
+        (qoralamaOqi<{ manzil: string }>(bir, 'xodim_a')?.manzil === 'Birinchi uy')
+      );
+    },
+  },
+  {
+    nomi: 'Рўйхатда ФАҚАТ ўзининг қораламалари кўринади',
+    tekshir: () => {
+      tozala();
+      qoralamaSaqla(qoralamaKaliti('xodim_a', 'q1'), { x: 1 }, 'xodim_a');
+      qoralamaSaqla(qoralamaKaliti('xodim_a', 'q2'), { x: 2 }, 'xodim_a');
+      qoralamaSaqla(qoralamaKaliti('xodim_b', 'q3'), { x: 3 }, 'xodim_b');
+      return qoralamalarim('xodim_a').length === 2 && qoralamalarim('xodim_b').length === 1;
+    },
+  },
+  {
+    /*
+     * Хатлов ҲОЗИР кетмоқда: дала телефонларида эски
+     * `joriy-xatlov` калити остида тўлдирилаётган анкета
+     * бор. Уни йўқотиб бўлмайди.
+     */
+    nomi: 'Эски УМУМИЙ калитдаги қоралама рўйхатда ҚОЛАДИ',
+    tekshir: () => {
+      tozala();
+      /* Эгасиз — ўзгаришдан олдин ёзилган */
+      qoralamaSaqla('joriy-xatlov', { manzil: 'Eski uy' });
+      const meniki = qoralamalarim('xodim_a');
+      return meniki.length === 1 && meniki[0].eskimi === true;
+    },
+  },
+  {
+    nomi: 'Рўйхат ЯНГИСИДАН эскисига тартибланади',
+    tekshir: () => {
+      tozala();
+      qoralamaSaqla(qoralamaKaliti('xodim_a', 'eski'), { x: 'eski' }, 'xodim_a');
+      /* Вақтни орқага сурамиз */
+      const xom = JSON.parse(xotira.getItem('bandlik_qoralama') as string);
+      /* Бир соат орқага — етти кунлик муддатдан ичкарида қолсин */
+      xom[qoralamaKaliti('xodim_a', 'eski')].vaqt = new Date(Date.now() - 3600_000).toISOString();
+      xotira.setItem('bandlik_qoralama', JSON.stringify(xom));
+
+      qoralamaSaqla(qoralamaKaliti('xodim_a', 'yangi'), { x: 'yangi' }, 'xodim_a');
+      const meniki = qoralamalarim('xodim_a');
+      return meniki.length === 2 && (meniki[0].malumot as { x: string }).x === 'yangi';
+    },
+  },
+  {
+    nomi: 'Чегарадан ошган ЭНГ ЭСКИ қоралама тушиб қолади',
+    tekshir: () => {
+      tozala();
+      for (let i = 0; i < MAX_QORALAMA + 3; i++) {
+        qoralamaSaqla(qoralamaKaliti('xodim_a', `q${i}`), { i }, 'xodim_a');
+      }
+      const ochirildi = qoralamalarniChekla('xodim_a');
+      return ochirildi === 3 && qoralamalarim('xodim_a').length === MAX_QORALAMA;
+    },
+  },
+  {
+    nomi: 'Чеклов БОШҚА ходимнинг қораламасига тегмайди',
+    tekshir: () => {
+      tozala();
+      for (let i = 0; i < MAX_QORALAMA + 2; i++) {
+        qoralamaSaqla(qoralamaKaliti('xodim_a', `q${i}`), { i }, 'xodim_a');
+      }
+      qoralamaSaqla(qoralamaKaliti('xodim_b', 'meniki'), { b: 1 }, 'xodim_b');
+      qoralamalarniChekla('xodim_a');
+      return qoralamalarim('xodim_b').length === 1;
+    },
+  },
+  {
+    nomi: 'Форма умумий калитни ТАШЛАГАН',
+    tekshir: () => {
+      const k = kodiOl(readFileSync('src/components/xatlov/xatlov-formasi.tsx', 'utf8'));
+      return (
+        !k.includes("'joriy-xatlov'") &&
+        k.includes('qoralamaKaliti(egasi ?? ') &&
+        k.includes('qoralamalarim(egasi ?? ')
+      );
     },
   },
 ];

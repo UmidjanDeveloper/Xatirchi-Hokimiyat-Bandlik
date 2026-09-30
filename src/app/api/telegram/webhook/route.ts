@@ -904,7 +904,14 @@ async function beruvchiTugmasi(
       const qabul = belgisi === BERUVCHI.QABUL;
       const n = await beruvchiniHalQil({ beruvchiId: qiymat, userId: kim.id, qabul });
       if (!n.ok) {
-        await javob('Аллақачон ҳал қилинган');
+        /*
+         * Хабар БАРЧА раҳбарга боради, яъни иккови бир
+         * вақтда тугма босиши оддий ҳол. Иккинчисига
+         * «хато» эмас, КИМ ҳал қилганини айтамиз.
+         */
+        await javob(
+          n.halQilgan ? `Буни ${n.halQilgan} аллақачон ҳал қилган` : 'Аллақачон ҳал қилинган'
+        );
         return;
       }
       await javob(qabul ? 'Тасдиқланди' : 'Рад этилди');
@@ -939,7 +946,9 @@ async function beruvchiTugmasi(
     const qabul = belgisi === BERUVCHI.ELON_QABUL;
     const n = await elonniHalQil({ vacancyId: qiymat, userId: kim.id, qabul });
     if (!n.ok) {
-      await javob('Аллақачон ҳал қилинган');
+      await javob(
+        n.halQilgan ? `Буни ${n.halQilgan} аллақачон ҳал қилган` : 'Аллақачон ҳал қилинган'
+      );
       return;
     }
     await javob(qabul ? 'Тасдиқланди' : 'Рад этилди');

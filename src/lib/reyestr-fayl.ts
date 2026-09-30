@@ -60,8 +60,65 @@ function ustunniTop(sarlavha: unknown[], sozlar: string[], tashqari: number[] = 
   return -1;
 }
 
-/** Excel сана рақамини ёки матнни `Date` га келтиради */
-function sanaOqi(x: unknown): Date | null {
+/**
+ * ============================================================
+ *  САНА — «ЯҚИН ҚИЙМАТ» ЭМАС, ЁКИ ТЎҒРИ, ЁКИ ХАТО
+ * ============================================================
+ *
+ *  ── Қандай нуқсон бор эди ──
+ *
+ *  `new Date(Date.UTC(2000, 1, 31))` — яъни «31 феврал» —
+ *  хато бермайди. JavaScript уни ЖИМГИНА 2 мартга суриб
+ *  қўяди.
+ *
+ *  Реестрда `31.02.2000` деб ёзилган сана базага
+ *  `2000-03-02` бўлиб тушарди. Кейин ўша сана бўйича
+ *  фуқаро ИЗЛАНАР ва топилмасди — ёки, бундан ҳам ёмони,
+ *  БОШҚА фуқаро топиларди.
+ *
+ *  Терилишдаги хато аниқ ХАТО бўлиши керак: ходим уни
+ *  кўриб, ҳужжатдан текширсин.
+ *
+ *  ── Кабиса йили ──
+ *
+ *  `29.02.2000` — тўғри (2000 кабиса йили).
+ *  `29.02.2001` — хато ва рад этилади.
+ *  Текширув сунъий эмас: ўгирилган санани ОРҚАГА ўқиб,
+ *  берилган кун, ой ва йил билан солиштирамиз.
+ *
+ *  ── Вақт минтақаси ──
+ *
+ *  Ҳаммаси UTC да ясалади. Маҳаллий вақтда ясалса,
+ *  Тошкент (UTC+5) да «01.01.1990» серверда «31.12.1989»
+ *  бўлиб кўринарди — туғилган йил бир йилга силжирди.
+ */
+
+/** Кун, ой, йил ҲАҚИҚАТДА мавжудми */
+export function sanaHaqiqiymi(kun: number, oy: number, yil: number): boolean {
+  if (!Number.isInteger(kun) || !Number.isInteger(oy) || !Number.isInteger(yil)) return false;
+  if (yil < 1900 || yil > 2200) return false;
+  if (oy < 1 || oy > 12) return false;
+  if (kun < 1 || kun > 31) return false;
+
+  const d = new Date(Date.UTC(yil, oy - 1, kun));
+  /*
+   * ОРҚАГА ўқиймиз. «31.02» сурилиб кетган бўлса, ой ёки
+   * кун мос келмайди ва биз буни кўрамиз.
+   */
+  return d.getUTCFullYear() === yil && d.getUTCMonth() === oy - 1 && d.getUTCDate() === kun;
+}
+
+/** Сана келажакдами (бугундан кейинми) */
+export function kelajakdami(d: Date, hozir: Date = new Date()): boolean {
+  return d.getTime() > hozir.getTime();
+}
+
+/**
+ * Excel сана рақамини ёки матнни `Date` га келтиради.
+ *
+ * Нотўғри сана `null` қайтаради — ЖИМГИНА тузатилмайди.
+ */
+export function sanaOqi(x: unknown): Date | null {
   if (x === null || x === undefined || x === '') return null;
 
   if (x instanceof Date) return Number.isNaN(x.getTime()) ? null : x;
@@ -71,20 +128,43 @@ function sanaOqi(x: unknown): Date | null {
    * Матн сифатида ўқилса «45 234» бўлиб чиқади.
    */
   if (typeof x === 'number') {
+    if (!Number.isFinite(x) || x < 1 || x > 300_000) return null;
     const ms = Math.round((x - 25569) * 86400 * 1000);
     const d = new Date(ms);
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
   const matn = String(x).trim();
-  /* «12.05.1990» ва «1990-05-12» */
+
+  /* «12.05.1990», «12/05/1990», «12-05-1990» */
   const nuqtali = matn.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
   if (nuqtali) {
-    const [, kun, oy, yil] = nuqtali;
-    return new Date(Date.UTC(Number(yil), Number(oy) - 1, Number(kun)));
+    const kun = Number(nuqtali[1]);
+    const oy = Number(nuqtali[2]);
+    const yil = Number(nuqtali[3]);
+    if (!sanaHaqiqiymi(kun, oy, yil)) return null;
+    return new Date(Date.UTC(yil, oy - 1, kun));
   }
+
+  /* «1990-05-12» — ISO тартиби */
+  const iso = matn.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) {
+    const yil = Number(iso[1]);
+    const oy = Number(iso[2]);
+    const kun = Number(iso[3]);
+    if (!sanaHaqiqiymi(kun, oy, yil)) return null;
+    return new Date(Date.UTC(yil, oy - 1, kun));
+  }
+
+  /*
+   * Бошқа шакллар `Date` нинг ўзига қолдирилади, аммо
+   * натижа ТЕКШИРИЛАДИ: у ҳам сурилган санани жимгина
+   * қабул қилиши мумкин.
+   */
   const d = new Date(matn);
-  return Number.isNaN(d.getTime()) ? null : d;
+  if (Number.isNaN(d.getTime())) return null;
+  if (!sanaHaqiqiymi(d.getUTCDate(), d.getUTCMonth() + 1, d.getUTCFullYear())) return null;
+  return d;
 }
 
 export interface FaylNatijasi {

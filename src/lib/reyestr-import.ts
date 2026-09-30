@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import { lotinga } from './alifbo';
 import { dalilQoshish, JOYLASHGAN_FILTRI } from './joylashuv-dalili';
@@ -68,6 +68,30 @@ export interface ReyestrNatijasi {
   yangiTopilgan: { ishsizId: string; fish: string; holati: string }[];
   /** Иккита ва ундан кўп номзод — ҳеч бири танланмади */
   shubhali: { fish: string; nomzodlar: number }[];
+  /**
+   * ТЕКШИРУВ ТАЛАБ ҚИЛАДИГАНЛАР.
+   *
+   * Исм мос келди, аммо автоматик тасдиқлаш учун етарли
+   * эмас. Икки хил сабаб бор ва улар АРАЛАШТИРИЛМАЙДИ:
+   *
+   *   · `sana-qarama-qarshi` — иккала томонда ҳам сана бор
+   *     ва улар ҲАР ХИЛ. Бу катта эҳтимол билан БОШҚА одам;
+   *
+   *   · `sana-yetishmaydi` — бир томонда сана умуман йўқ.
+   *     Бу «нотўғри» эмас, «билмаймиз» — ва билмаган нарсани
+   *     тасдиқлаб бўлмайди.
+   *
+   * Аввал бундай гуруҳ УМУМАН йўқ эди: битта номзод
+   * топилса, туғилган сана солиштирилмасдан «мос» деб
+   * ёзиларди.
+   */
+  tekshirilsin: {
+    fish: string;
+    ishsizId: string;
+    sabab: 'sana-qarama-qarshi' | 'sana-yetishmaydi';
+    tizimSanasi: string | null;
+    reyestrSanasi: string | null;
+  }[];
   /** Тизимда умуман топилмаганлар */
   topilmadi: string[];
   /** Аллақачон ўша сана билан ёзилган — такрор ёзилмади */
@@ -118,6 +142,12 @@ export function ishJoyiKaliti(nom: string | null | undefined): string {
     .trim();
 }
 
+/** Санани `2020-01-02` кўринишида — экранда кўрсатиш учун */
+function sanaMatni(d: Date | null | undefined): string | null {
+  if (!d) return null;
+  return d.toISOString().slice(0, 10);
+}
+
 /** Икки санани КУН аниқлигида таққослайди */
 function sanaTeng(a: Date | null | undefined, b: Date | null | undefined): boolean {
   if (!a || !b) return false;
@@ -155,6 +185,7 @@ export async function reyestrniSolishtir(
     mos: [],
     yangiTopilgan: [],
     shubhali: [],
+    tekshirilsin: [],
     topilmadi: [],
     takror: 0,
   };
@@ -204,6 +235,54 @@ export async function reyestrniSolishtir(
     }
 
     const n = nomzodlar[0];
+
+    /*
+     * ── ТУҒИЛГАН САНА ҲАР ДОИМ СОЛИШТИРИЛАДИ ──
+     *
+     * Аввал сана ФАҚАТ бир нечта номзод топилганда
+     * ишлатиларди. Битта номзод бўлса, сана фарқи УМУМАН
+     * кўрилмасди.
+     *
+     * Яъни:
+     *
+     *   тизимда:  Али Валиев, 01.01.1990
+     *   реестрда: Али Валиев, 02.02.2000
+     *
+     * — булар «мос» деб топилар ва БОШҚА одамнинг ишга
+     * жойлашгани биринчисига ёзиб қўйиларди. Ҳокимликнинг
+     * «тасдиқланган жойлаштириш» рақами ёлғон чиқарди.
+     *
+     * Энди уч ҳолат аниқ ажратилади:
+     *
+     *   · иккала сана бор ва ТЕНГ      → мос, давом этамиз;
+     *   · иккала сана бор, ҲАР ХИЛ     → ЗИДДИЯТ, одам кўрсин;
+     *   · бир томонда сана ЙЎҚ         → билмаймиз, одам кўрсин.
+     *
+     * Иккинчи ва учинчиси АРАЛАШТИРИЛМАЙДИ: «қарама-қарши»
+     * билан «етишмайди» ҳар хил нарса ва ходимга ҳар хил
+     * қарор керак.
+     */
+    const ikkalasidaSanaBor = Boolean(n.tugilganSana && satr.tugilganSana);
+    if (ikkalasidaSanaBor && !sanaTeng(n.tugilganSana, satr.tugilganSana)) {
+      natija.tekshirilsin.push({
+        fish: satr.fish,
+        ishsizId: n.id,
+        sabab: 'sana-qarama-qarshi',
+        tizimSanasi: sanaMatni(n.tugilganSana),
+        reyestrSanasi: sanaMatni(satr.tugilganSana),
+      });
+      continue;
+    }
+    if (!ikkalasidaSanaBor) {
+      natija.tekshirilsin.push({
+        fish: satr.fish,
+        ishsizId: n.id,
+        sabab: 'sana-yetishmaydi',
+        tizimSanasi: sanaMatni(n.tugilganSana),
+        reyestrSanasi: sanaMatni(satr.tugilganSana),
+      });
+      continue;
+    }
 
     if (!joylashganHolatlar.has(n.holati)) {
       /*
@@ -269,23 +348,56 @@ export async function reyestrniYukla(
   });
   const borlarToplami = new Set(borlar.map((b) => b.ishsizId));
 
+  /*
+   * ── ФАЙЛ ИЧИДАГИ ТАКРОР ──
+   *
+   * Аввал бу тўплам сиклдан ОЛДИН бир марта ўқиларди ва
+   * ичида ҳеч қачон янгиланмасди. Яъни битта файлда бир
+   * одам икки сатрда турса (расмий кўчирмаларда оддий
+   * ҳол: битта одам икки корхонада), ИККАЛА сатр ҳам
+   * далил яратарди.
+   *
+   * Натижа: бир одамда иккита бир хил далил, саҳифа эса
+   * ўқиб бўлмас ҳолга келарди.
+   *
+   * Энди тўплам ҳар ёзишдан кейин ЯНГИЛАНАДИ.
+   */
   for (const m of natija.mos) {
     if (borlarToplami.has(m.ishsizId)) {
       natija.takror += 1;
       continue;
     }
+    borlarToplami.add(m.ishsizId);
 
-    await dalilQoshish({
-      ishsizId: m.ishsizId,
-      turi: 'REYESTR',
-      tasdiqlangan: true,
-      kiritganId: p.kiritganId,
-      reyestrIshJoyi: m.reyestrIshJoyi,
-      reyestrSanasi: p.reyestrSanasi,
-      izoh: m.boshqaIshJoyi
-        ? `Диққат: тизимда «${m.tizimIshJoyi ?? '—'}», реестрда «${m.reyestrIshJoyi ?? '—'}»`
-        : null,
-    });
+    try {
+      await dalilQoshish({
+        ishsizId: m.ishsizId,
+        turi: 'REYESTR',
+        tasdiqlangan: true,
+        kiritganId: p.kiritganId,
+        reyestrIshJoyi: m.reyestrIshJoyi,
+        reyestrSanasi: p.reyestrSanasi,
+        izoh: m.boshqaIshJoyi
+          ? `Диққат: тизимда «${m.tizimIshJoyi ?? '—'}», реестрда «${m.reyestrIshJoyi ?? '—'}»`
+          : null,
+      });
+    } catch (e) {
+      /*
+       * ── ИККИТА АДМИНИСТРАТОР БИР ВАҚТДА ──
+       *
+       * Базадаги ягоналик чегараси (`dalil_takrori`) иккинчи
+       * ёзишни рад этади. Бу ХАТО эмас — биринчиси
+       * ўтиб кетган ва ёзув жойида.
+       *
+       * Аввал бу ҳол умуман кўрилмасди: юклаш 500 билан
+       * тўхтар ва ҚОЛГАН сатрлар ҳам ёзилмай қоларди.
+       */
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        natija.takror += 1;
+        continue;
+      }
+      throw e;
+    }
   }
 
   return natija;

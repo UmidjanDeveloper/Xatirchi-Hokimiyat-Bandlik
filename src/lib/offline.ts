@@ -222,6 +222,106 @@ export function qoralamaOchir(id: string): void {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  ҚОРАЛАМА КАЛИТЛАРИ — ҲАР ХОДИМГА, ҲАР АНКЕТАГА АЛОҲИДА
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Эски, УМУМИЙ калит.
+ *
+ * Бутун илова битта `joriy-xatlov` калитидан фойдаланарди.
+ * Яъни:
+ *
+ *   · иккинчи ходим кирса, унинг автосақлаши БИРИНЧИСИНИНГ
+ *     қораламасини босиб ўтарди (эгаси текширилса ҳам —
+ *     текширув ЎҚИШДА эди, ЁЗИШДА эмас);
+ *   · битта ходим иккита анкетани параллел тўлдиролмасди:
+ *     иккинчиси биринчисини ўчирарди.
+ *
+ * Калит ҚОЛДИРИЛДИ: хатлов ҲОЗИР кетмоқда ва дала
+ * телефонларида шу калит остида тўлдирилаётган анкета бор.
+ * Уларни йўқотиб бўлмайди — улар ҳам рўйхатда кўринади.
+ */
+export const ESKI_QORALAMA_KALITI = 'joriy-xatlov';
+
+/** Янги калитларнинг боши */
+const QORALAMA_BOSHI = 'xatlov:';
+
+/**
+ * Битта қораламанинг калити.
+ *
+ * Шакли: `xatlov:<ходим>:<қоралама>`. Эгаси калитнинг
+ * ЎЗИДА турибди — бошқа ходимнинг автосақлаши бу калитга
+ * умуман тегмайди.
+ */
+export function qoralamaKaliti(egasi: string, qoralamaId: string): string {
+  return `${QORALAMA_BOSHI}${egasi}:${qoralamaId}`;
+}
+
+/** Янги қоралама учун ID */
+export function qoralamaIdYasa(): string {
+  return kalitYasa();
+}
+
+/**
+ * Битта телефонда битта ходимга нечта қоралама сақланади.
+ *
+ * Телефонда ОЧИҚ МАТНДА исм, манзил, телефон ва даромад
+ * ётади. Чегарасиз бўлса, улар ойлаб тўпланиб борарди.
+ *
+ * Йигирма — амалий чегара: ходим бир вақтда шунчасини
+ * тўлдириб юрмайди. Ошса, ЭНГ ЭСКИСИ тушиб қолади.
+ */
+export const MAX_QORALAMA = 20;
+
+export interface QoralamaYozuvi {
+  /** Тўлиқ калит — ўчириш ва давом эттириш учун */
+  kalit: string;
+  malumot: unknown;
+  vaqt: string;
+  /** Эгаси белгиланмаган эски ёзувми */
+  eskimi: boolean;
+}
+
+/**
+ * ЖОРИЙ ХОДИМНИНГ қораламалари, янгисидан эскисига.
+ *
+ * Эгаси белгиланмаган эски ёзув ҳам киради ва `eskimi`
+ * билан белгиланади: у шу ўзгаришдан ОЛДИН ёзилган ва
+ * кимники эканини билиб бўлмайди. Ходим уни кўрсин —
+ * ташлаб юбориш унинг ишини йўқотиш бўларди.
+ */
+export function qoralamalarim(egasi: string): QoralamaYozuvi[] {
+  const barchasi = qoralamalarniOqi();
+  const meniki: QoralamaYozuvi[] = [];
+
+  for (const [kalit, y] of Object.entries(barchasi)) {
+    const eskimi = y.egasi === undefined;
+    if (!eskimi && y.egasi !== egasi) continue;
+    /* Бошқа ходимнинг янги калити — номи бўйича ҳам чиқариб ташлаймиз */
+    if (kalit.startsWith(QORALAMA_BOSHI) && !kalit.startsWith(`${QORALAMA_BOSHI}${egasi}:`)) {
+      continue;
+    }
+    meniki.push({ kalit, malumot: y.malumot, vaqt: y.vaqt, eskimi });
+  }
+
+  return meniki.sort((a, b) => (a.vaqt < b.vaqt ? 1 : -1));
+}
+
+/**
+ * Чегарадан ошган ЭНГ ЭСКИ қораламаларни ўчиради.
+ *
+ * Сақлашдан кейин чақирилади. Ўчирилганлар сони
+ * қайтарилади — чақирувчи ходимга айтиши учун.
+ */
+export function qoralamalarniChekla(egasi: string): number {
+  const meniki = qoralamalarim(egasi).filter((y) => !y.eskimi);
+  if (meniki.length <= MAX_QORALAMA) return 0;
+  const ortiqcha = meniki.slice(MAX_QORALAMA);
+  for (const y of ortiqcha) qoralamaOchir(y.kalit);
+  return ortiqcha.length;
+}
+
+// ─────────────────────────────────────────────────────────────
 //  NAVBAT
 // ─────────────────────────────────────────────────────────────
 

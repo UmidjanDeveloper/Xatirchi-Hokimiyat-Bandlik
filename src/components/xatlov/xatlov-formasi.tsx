@@ -21,7 +21,18 @@ import {
   yuborishgaTayyormi,
   type XatlovRaqamlari,
 } from '@/lib/xatlov-tekshiruvi';
-import { kalitYasa, navbatgaQosh, qoralamaOchir, qoralamaOqi, qoralamaSaqla } from '@/lib/offline';
+import {
+  MAX_QORALAMA,
+  kalitYasa,
+  navbatgaQosh,
+  qoralamaIdYasa,
+  qoralamaKaliti,
+  qoralamaOchir,
+  qoralamaSaqla,
+  qoralamalarim,
+  qoralamalarniChekla,
+  type QoralamaYozuvi,
+} from '@/lib/offline';
 import { bosHolat, yuborishUchun, type XatlovHolati } from './holat';
 import { QADAMLAR } from './qadamlar';
 
@@ -45,8 +56,22 @@ interface Props {
   egasi?: string;
 }
 
-/** Brauzer xotirasidagi qoralama kaliti */
-const QORALAMA_ID = 'joriy-xatlov';
+/*
+ * ── ҚОРАЛАМА КАЛИТИ ──
+ *
+ * Аввал бутун илова БИТТА `joriy-xatlov` калитидан
+ * фойдаланарди. Иккита оқибати бор эди:
+ *
+ *   · иккинчи ходим кирса, унинг автосақлаши БИРИНЧИСИНИНГ
+ *     қораламасини босиб ўтарди. Эгаси текширилар эди-ю,
+ *     текширув ЎҚИШДА турар, ЁЗИШДА эмас;
+ *
+ *   · битта ходим иккита анкетани параллел тўлдиролмасди —
+ *     иккинчиси биринчисини ўчирарди.
+ *
+ * Энди ҳар қоралама ўз калити билан: `xatlov:<ходим>:<id>`.
+ * Калитлар `offline.ts` да ясалади.
+ */
 
 /**
  * Браузер хотирасидаги қоралама.
@@ -84,10 +109,9 @@ interface Qoralama {
  * улар эски шаклда — тўғридан-тўғри `XatlovHolati`. Янги код
  * уларни ташлаб юбормаслиги керак.
  */
-function qoralamaniOqi(egasi?: string): Qoralama | null {
-  const xom = qoralamaOqi<Qoralama | XatlovHolati>(QORALAMA_ID, egasi);
+function qoralamaShakli(xom: unknown): Qoralama | null {
   if (!xom) return null;
-  if (typeof xom === 'object' && 'holat' in xom && xom.holat) {
+  if (typeof xom === 'object' && 'holat' in (xom as object) && (xom as Qoralama).holat) {
     return xom as Qoralama;
   }
   return { id: null, holat: xom as XatlovHolati };
@@ -189,21 +213,42 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
     манзили ва вақти кўрсатилган ҳолда «Давом эттириш» ёки
     «Янгидан бошлаш». Танловни ХОДИМ қилади.
   */
-  const [kutayotganQoralama, setKutayotganQoralama] = useState<Qoralama | null>(null);
+  /*
+   * БУ анкетанинг ўз қоралама калити.
+   *
+   * Форма очилганда бир марта ясалади. Бошқа ходимнинг ҳам,
+   * ўзининг бошқа анкетасининг ҳам калити билан
+   * тўқнашмайди.
+   */
+  const [qoralamaId] = useState<string>(() => qoralamaIdYasa());
+  const [joriyKalit, setJoriyKalit] = useState<string>(() =>
+    qoralamaKaliti(egasi ?? 'nomalum', qoralamaId)
+  );
+
+  /* Жорий ходимнинг ТУГАЛЛАНМАГАН қораламалари */
+  const [kutayotganlar, setKutayotganlar] = useState<QoralamaYozuvi[]>([]);
   const tiklandi = useRef(false);
   useEffect(() => {
     if (boshlangich || tiklandi.current) return;
     tiklandi.current = true;
 
-    const saqlangan = qoralamaniOqi(egasi);
-    if (qoralamaTolami(saqlangan)) setKutayotganQoralama(saqlangan);
+    /*
+     * Ўз қораламаларимни ўқиймиз. Эгаси белгиланмаган эски
+     * ёзувлар ҳам киради — улар шу ўзгаришдан ОЛДИН
+     * ёзилган ва ташлаб юбориш ходимнинг ишини йўқотиш
+     * бўларди.
+     */
+    const royxat = qoralamalarim(egasi ?? 'nomalum').filter((y) =>
+      qoralamaTolami(qoralamaShakli(y.malumot))
+    );
+    if (royxat.length > 0) setKutayotganlar(royxat);
   }, [boshlangich, egasi]);
 
   /*
     Ходим танламагунича хотирага ЁЗМАЙМИЗ — акс ҳолда бўш
     янги форма эски қораламани ўчириб юборарди.
   */
-  const qoralamaKutmoqda = kutayotganQoralama !== null;
+  const qoralamaKutmoqda = kutayotganlar.length > 0;
 
   // ── Har o'zgarishda brauzer xotirasiga yozish ──
   //
@@ -211,9 +256,31 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
   useEffect(() => {
     if (qoralamaKutmoqda) return;
     if (!h.manzil && !h.oilaBoshligi) return;
-    const ok = qoralamaSaqla(QORALAMA_ID, { id, holat: h, kalit } satisfies Qoralama, egasi);
+    const ok = qoralamaSaqla(joriyKalit, { id, holat: h, kalit } satisfies Qoralama, egasi);
     setXotiraXatosi(!ok);
-  }, [h, id, kalit, egasi, qoralamaKutmoqda]);
+    /*
+     * Чегарадан ошган энг эскилари тушиб қолади: телефонда
+     * очиқ матнда исм, манзил ва даромад ётади.
+     */
+    if (ok && egasi) qoralamalarniChekla(egasi);
+  }, [h, id, kalit, egasi, joriyKalit, qoralamaKutmoqda]);
+
+  /** Танланган қораламани формага тиклайди */
+  const qoralamaniDavomEttir = useCallback((y: QoralamaYozuvi) => {
+    const q = qoralamaShakli(y.malumot);
+    if (!q) return;
+    setH(q.holat);
+    setId(q.id);
+    /*
+     * Калит ҳам қораламадан тикланади. Акс ҳолда давом
+     * эттирилган анкета ЯНГИ калит билан кетар ва сервер
+     * уни бошқа хатлов деб қабул қиларди.
+     */
+    if (q.kalit) setKalit(q.kalit);
+    /* Энди ёзиш ЎША калит остида давом этади */
+    setJoriyKalit(y.kalit);
+    setKutayotganlar([]);
+  }, []);
 
   const yangila = useCallback(
     <K extends keyof XatlovHolati>(kalit: K, qiymat: XatlovHolati[K]) => {
@@ -349,7 +416,7 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
       }
 
       // Yuborilgandan keyin brauzer xotirasidagi qoralama keraksiz
-      qoralamaOchir(QORALAMA_ID);
+      qoralamaOchir(joriyKalit);
       router.push(`/xatlov/${natija.id}?yangi=1`);
       router.refresh();
     } catch {
@@ -501,59 +568,94 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
         қарор қабул қилиши керак. Манзил ва вақт кўрсатилган:
         «бу қайси хонадон эди» деган савол шу ерда ҳал бўлади.
       */}
-      {kutayotganQoralama && (
+      {kutayotganlar.length > 0 && (
         <div className="quti-ogoh space-y-3">
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div className="min-w-0">
-              <p className="font-semibold">{tr('Тугалланмаган хатлов бор')}</p>
+              <p className="font-semibold">
+                {kutayotganlar.length === 1
+                  ? tr('Тугалланмаган хатлов бор')
+                  : `${kutayotganlar.length} ${tr('та тугалланмаган хатлов бор')}`}
+              </p>
               <p className="mt-1 leading-relaxed">
-                {tr('Бу телефонда охиригача юборилмаган анкета қолган:')}{' '}
-                <span className="font-medium">
-                  {tr(kutayotganQoralama.holat.oilaBoshligi || tr('исми ёзилмаган'))}
-                </span>
-                {kutayotganQoralama.holat.manzil ? ` · ${tr(kutayotganQoralama.holat.manzil)}` : ''}
-                {'. '}
-                {tr('Давом эттирасизми, ёки янги хонадондан бошлайсизми?')}
+                {tr(
+                  'Бу телефонда охиригача юборилмаган анкета қолган. Давом эттирасизми, ёки янги хонадондан бошлайсизми?'
+                )}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setH(kutayotganQoralama.holat);
-                setId(kutayotganQoralama.id);
-                /*
-                 * Калит ҳам қораламадан тикланади. Акс ҳолда
-                 * давом эттирилган анкета ЯНГИ калит билан
-                 * кетар ва сервер уни бошқа хатлов деб
-                 * қабул қиларди.
-                 */
-                if (kutayotganQoralama.kalit) setKalit(kutayotganQoralama.kalit);
-                setKutayotganQoralama(null);
-              }}
-              className="tugma-asosiy rounded-md px-3.5 py-2 text-xs font-semibold"
-            >
-              {tr('Тугалланмаганини давом эттириш')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                /*
-                  Эскисини ўчирамиз. Агар у серверга ҳам
-                  сақланган бўлса, «Хатловларим» рўйхатида
-                  турибди — йўқолмайди.
-                */
-                qoralamaOchir(QORALAMA_ID);
-                setKutayotganQoralama(null);
-              }}
-              className="rounded-md border border-line bg-surface px-3.5 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
-            >
-              {tr('Янги хонадондан бошлаш')}
-            </button>
-          </div>
+          <ul className="space-y-2">
+            {kutayotganlar.map((y) => {
+              const q = qoralamaShakli(y.malumot);
+              const sana = new Date(y.vaqt);
+              return (
+                <li
+                  key={y.kalit}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">
+                      {tr(q?.holat.oilaBoshligi || tr('исми ёзилмаган'))}
+                    </p>
+                    <p className="text-[11px] text-ink-muted">
+                      {q?.holat.manzil ? `${tr(q.holat.manzil)} · ` : ''}
+                      {Number.isNaN(sana.getTime())
+                        ? ''
+                        : sana.toLocaleString('uz-UZ', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                      {y.eskimi ? ` · ${tr('эгаси номаълум')}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => qoralamaniDavomEttir(y)}
+                      className="tugma-asosiy rounded-md px-3 py-1.5 text-xs font-semibold"
+                    >
+                      {tr('Давом эттириш')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        /*
+                          Эскисини ўчирамиз. Агар у серверга ҳам
+                          сақланган бўлса, «Хатловларим» рўйхатида
+                          турибди — йўқолмайди.
+                        */
+                        qoralamaOchir(y.kalit);
+                        setKutayotganlar((oldingi) => oldingi.filter((x) => x.kalit !== y.kalit));
+                      }}
+                      className="rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:border-danger hover:text-danger"
+                    >
+                      {tr('Ўчириш')}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <button
+            type="button"
+            onClick={() => setKutayotganlar([])}
+            className="rounded-md border border-line bg-surface px-3.5 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
+          >
+            {tr('Янги хонадондан бошлаш')}
+          </button>
+
+          {kutayotganlar.length >= MAX_QORALAMA && (
+            <p className="text-[11px] leading-relaxed text-ink-muted">
+              {tr(
+                'Тугалланмаган анкеталар чегарага етди. Янгиси сақланганда энг эскиси ўчади — уларни юбориб ёки ўчириб бўшатинг.'
+              )}
+            </p>
+          )}
         </div>
       )}
 
@@ -718,7 +820,7 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
                   очилади. Акс ҳолда кейинги «Янги хатлов» да
                   у яна сўралиб турарди.
                 */
-                qoralamaOchir(QORALAMA_ID);
+                qoralamaOchir(joriyKalit);
                 router.push('/xatlov');
                 router.refresh();
               }}

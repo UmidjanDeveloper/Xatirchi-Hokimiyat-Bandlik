@@ -1,5 +1,6 @@
 import type { DalilTuri, Prisma } from '@prisma/client';
 import { prisma } from './prisma';
+import { SABAB_ENG_KAM } from './arxiv';
 import { JOYLASHGAN, KUN_MS } from './bandlik-holatlari';
 import { DALIL_HOLATI_NOMI, DALIL_KUCHI, DALIL_NOMI } from './dalil-nomlari';
 
@@ -304,15 +305,36 @@ export async function dalilniHalQil(p: {
   userId: string;
   tasdiqlandi: boolean;
   izoh?: string | null;
-}): Promise<{ ok: boolean }> {
+}): Promise<{
+  ok: boolean;
+  sabab?: 'topilmadi' | 'allaqachon';
+  hozirgiHolati?: string;
+  halQilgan?: string | null;
+}> {
   const bor = await prisma.joylashuvDalili.findUnique({
     where: { id: p.dalilId },
     select: { id: true },
   });
-  if (!bor) return { ok: false };
+  if (!bor) return { ok: false, sabab: 'topilmadi' };
 
-  await prisma.joylashuvDalili.update({
-    where: { id: p.dalilId },
+  /*
+   * ── АТОМАР ЎТИШ ──
+   *
+   * Аввал бу ерда ҳолат УМУМАН текширилмасди: далил
+   * аллақачон тасдиқланган бўлса ҳам, кейинги босиш уни
+   * жимгина рад этилганга айлантирарди — ва журналда
+   * биринчи қарорнинг изи қолмасди.
+   *
+   * Иккита мутахассис бир вақтда очиб турган бўлса, бу
+   * тасодифан ҳам содир бўларди: навбат рўйхати иккаласида
+   * ҳам очиқ.
+   *
+   * Энди фақат ТЕКШИРИЛМАГАН (`KIRITILDI`) далил ҳал
+   * қилинади. Қарорни ЎЗГАРТИРИШ — алоҳида амал
+   * (`dalilQaroriniOzgartir`), у сабаб талаб қилади.
+   */
+  const natija = await prisma.joylashuvDalili.updateMany({
+    where: { id: p.dalilId, holati: 'KIRITILDI' },
     data: {
       holati: p.tasdiqlandi ? 'TASDIQLANDI' : 'RAD_ETILDI',
       tasdiqlaganId: p.userId,
@@ -320,7 +342,89 @@ export async function dalilniHalQil(p: {
       ...(p.izoh !== undefined ? { izoh: p.izoh } : {}),
     },
   });
+
+  if (natija.count === 0) {
+    const hozir = await prisma.joylashuvDalili.findUnique({
+      where: { id: p.dalilId },
+      select: { holati: true, tasdiqlagan: { select: { fullName: true } } },
+    });
+    return {
+      ok: false,
+      sabab: 'allaqachon',
+      hozirgiHolati: hozir?.holati,
+      halQilgan: hozir?.tasdiqlagan?.fullName ?? null,
+    };
+  }
+
   return { ok: true };
+}
+
+/**
+ * ҚАРОРНИ ЎЗГАРТИРИШ — алоҳида амал, алоҳида ҳуқуқ.
+ *
+ * ── Нега оддий «яна ҳал қилиш» эмас ──
+ *
+ * Тасдиқланган далилни жимгина рад этилганга айлантириш
+ * ҳокимликнинг энг муҳим рақамини — «тасдиқланган
+ * жойлаштириш» сонини — изсиз ўзгартириш деган сўз.
+ *
+ * Шунинг учун бу йўл:
+ *   · САБАБ талаб қилади;
+ *   · олдинги қарорни ва уни ким берганини изоҳга ёзиб
+ *     қўяди, яъни тарих йўқолмайди;
+ *   · фақат ваколатли ходимга очиқ (йўлда текширилади).
+ */
+export async function dalilQaroriniOzgartir(p: {
+  dalilId: string;
+  userId: string;
+  tasdiqlandi: boolean;
+  sabab: string;
+}): Promise<{ ok: boolean; sabab?: 'topilmadi' | 'sababsiz' | 'ozgarmadi' }> {
+  if (!p.sabab || p.sabab.trim().length < SABAB_ENG_KAM) {
+    return { ok: false, sabab: 'sababsiz' };
+  }
+
+  const bor = await prisma.joylashuvDalili.findUnique({
+    where: { id: p.dalilId },
+    select: {
+      id: true,
+      holati: true,
+      izoh: true,
+      tasdiqlagan: { select: { fullName: true } },
+      tasdiqlanganSana: true,
+    },
+  });
+  if (!bor) return { ok: false, sabab: 'topilmadi' };
+
+  const yangiHolat = p.tasdiqlandi ? 'TASDIQLANDI' : 'RAD_ETILDI';
+  if (bor.holati === yangiHolat) return { ok: false, sabab: 'ozgarmadi' };
+
+  /*
+   * Олдинги қарор изоҳга ёзилади. Алоҳида «қарорлар
+   * тарихи» жадвали тўғрироқ бўларди, аммо ҳозир хатлов
+   * кетмоқда ва янги жадвал қўшиш ўрнига мавжуд майдондан
+   * фойдаланамиз — маълумот ЙЎҚОЛМАСЛИГИ асосийси.
+   */
+  const tarix = [
+    bor.izoh?.trim(),
+    `[${new Date().toISOString().slice(0, 10)}] Олдинги қарор: ${bor.holati}` +
+      (bor.tasdiqlagan?.fullName ? ` (${bor.tasdiqlagan.fullName})` : '') +
+      `. Ўзгартириш сабаби: ${p.sabab.trim()}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const natija = await prisma.joylashuvDalili.updateMany({
+    where: { id: p.dalilId, holati: bor.holati },
+    data: {
+      holati: yangiHolat,
+      tasdiqlaganId: p.userId,
+      tasdiqlanganSana: new Date(),
+      izoh: tarix.slice(0, 2000),
+    },
+  });
+
+  return natija.count === 1 ? { ok: true } : { ok: false, sabab: 'ozgarmadi' };
 }
 
 /**

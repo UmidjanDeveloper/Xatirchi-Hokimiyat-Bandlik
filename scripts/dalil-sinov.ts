@@ -20,6 +20,7 @@ import { envYukla } from './env-yukla';
 envYukla();
 
 import { readFileSync } from 'node:fs';
+import { sanaHaqiqiymi, sanaOqi } from '../src/lib/reyestr-fayl';
 import { PrismaClient } from '@prisma/client';
 import { reyestrniOqi } from '../src/lib/reyestr-fayl';
 import {
@@ -69,6 +70,10 @@ let xodimId = '';
 let tekshiruvchiId = '';
 const tozalanadi: string[] = [];
 
+/** Изоҳларсиз код — изоҳдаги сўз текширувни алдамасин */
+const kodiOl = (m: string) =>
+  m.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 async function tayyorla() {
   const m = await prisma.mahalla.findFirst({ select: { id: true } });
   mahallaId = m!.id;
@@ -97,6 +102,22 @@ async function tayyorla() {
   tekshiruvchiId = t.id;
 }
 
+/**
+ * Синовлар учун СТАНДАРТ туғилган сана.
+ *
+ * ── Нега керак бўлиб қолди ──
+ *
+ * Реестр солиштируви энди туғилган санани ҲАР ДОИМ
+ * текширади. Икки томонда ҳам сана бўлмаса, натижа «мос»
+ * эмас, «текширилсин» бўлади — чунки фақат исм бўйича
+ * тасдиқлаш БОШҚА одамнинг ишга жойлашганини бегонага
+ * ёзиб қўйиши мумкин.
+ *
+ * Шунинг учун ёзиш йўлини синайдиган синовлар иккала
+ * томонга ҳам ШУ санани беради.
+ */
+const SINOV_SANASI = new Date(Date.UTC(1990, 4, 12));
+
 async function fuqaroYarat(p: {
   fish: string;
   holati?: 'ANIQLANDI' | 'JOYLASHTIRILDI';
@@ -111,7 +132,7 @@ async function fuqaroYarat(p: {
       mahallaId,
       holati: p.holati ?? 'JOYLASHTIRILDI',
       ishJoyi: p.ishJoyi ?? null,
-      tugilganSana: p.tugilganSana ?? null,
+      tugilganSana: p.tugilganSana === undefined ? SINOV_SANASI : p.tugilganSana,
       ishgaKirganSana: p.ishgaKirganSana ?? null,
     },
     select: { id: true },
@@ -308,7 +329,7 @@ const SINOVLAR: Sinov[] = [
       const fish = noyob('Kutayotgan Fuqaro');
       const id = await fuqaroYarat({ fish, holati: 'ANIQLANDI' });
 
-      const n = await reyestrniYukla([{ fish, ishJoyi: 'Бирор корхона' }], {
+      const n = await reyestrniYukla([{ fish, ishJoyi: 'Бирор корхона', tugilganSana: SINOV_SANASI }], {
         kiritganId: xodimId,
         reyestrSanasi: new Date(),
       });
@@ -340,7 +361,7 @@ const SINOVLAR: Sinov[] = [
       const id = await fuqaroYarat({ fish, ishJoyi: 'Оқ Олтин МЧЖ' });
       const sana = new Date(Date.UTC(2026, 8, 1));
 
-      await reyestrniYukla([{ fish, ishJoyi: 'OQ OLTIN' }], {
+      await reyestrniYukla([{ fish, ishJoyi: 'OQ OLTIN', tugilganSana: SINOV_SANASI }], {
         kiritganId: xodimId,
         reyestrSanasi: sana,
       });
@@ -370,7 +391,7 @@ const SINOVLAR: Sinov[] = [
       const fish = noyob('Farqli Fuqaro');
       const id = await fuqaroYarat({ fish, ishJoyi: 'Оқ Олтин МЧЖ' });
 
-      const n = await reyestrniYukla([{ fish, ishJoyi: 'Янги Йўл МЧЖ' }], {
+      const n = await reyestrniYukla([{ fish, ishJoyi: 'Янги Йўл МЧЖ', tugilganSana: SINOV_SANASI }], {
         kiritganId: xodimId,
         reyestrSanasi: new Date(),
       });
@@ -395,8 +416,8 @@ const SINOVLAR: Sinov[] = [
       const id = await fuqaroYarat({ fish });
       const sana = new Date(Date.UTC(2026, 8, 15));
 
-      await reyestrniYukla([{ fish }], { kiritganId: xodimId, reyestrSanasi: sana });
-      const ikkinchi = await reyestrniYukla([{ fish }], {
+      await reyestrniYukla([{ fish, tugilganSana: SINOV_SANASI }], { kiritganId: xodimId, reyestrSanasi: sana });
+      const ikkinchi = await reyestrniYukla([{ fish, tugilganSana: SINOV_SANASI }], {
         kiritganId: xodimId,
         reyestrSanasi: sana,
       });
@@ -411,11 +432,11 @@ const SINOVLAR: Sinov[] = [
       const fish = noyob('Ikkinchi Oy');
       const id = await fuqaroYarat({ fish });
 
-      await reyestrniYukla([{ fish }], {
+      await reyestrniYukla([{ fish, tugilganSana: SINOV_SANASI }], {
         kiritganId: xodimId,
         reyestrSanasi: new Date(Date.UTC(2026, 7, 1)),
       });
-      await reyestrniYukla([{ fish }], {
+      await reyestrniYukla([{ fish, tugilganSana: SINOV_SANASI }], {
         kiritganId: xodimId,
         reyestrSanasi: new Date(Date.UTC(2026, 8, 1)),
       });
@@ -604,6 +625,177 @@ const SINOVLAR: Sinov[] = [
     tekshir: async () =>
       REYESTR_SAHIFASI.includes('tekshirishKutayotganlar') &&
       REYESTR_SAHIFASI.includes('Текшириш кутаётган ҳужжатлар'),
+  },
+  // ═══════════════════════════════════════════════════════════
+  //  САНА: ЁКИ ТЎҒРИ, ЁКИ ХАТО — «ЯҚИН ҚИЙМАТ» ЙЎҚ
+  //
+  //  `new Date(Date.UTC(2000, 1, 31))` хато бермайди:
+  //  JavaScript «31 феврал» ни ЖИМГИНА 2 мартга суриб
+  //  қўяди. Реестрдаги терилиш хатоси базага БОШҚА сана
+  //  бўлиб тушарди, кейин эса ўша сана бўйича одам
+  //  топилмасди.
+  // ═══════════════════════════════════════════════════════════
+  {
+    nomi: '31.02.2000 РАД ЭТИЛАДИ — мартга сурилмайди',
+    tekshir: async () => sanaOqi('31.02.2000') === null,
+  },
+  {
+    nomi: '29.02.2000 қабул қилинади — кабиса йили',
+    tekshir: async () => sanaOqi('29.02.2000')?.toISOString().slice(0, 10) === '2000-02-29',
+  },
+  {
+    nomi: '29.02.2001 рад этилади — кабиса йили ЭМАС',
+    tekshir: async () => sanaOqi('29.02.2001') === null,
+  },
+  {
+    nomi: '13-ой ва 32-кун рад этилади',
+    tekshir: async () => sanaOqi('01.13.1990') === null && sanaOqi('32.01.1990') === null,
+  },
+  {
+    nomi: 'Оддий сана иккала шаклда ҳам тўғри ўқилади',
+    tekshir: async () =>
+      sanaOqi('12.05.1990')?.toISOString().slice(0, 10) === '1990-05-12' &&
+      sanaOqi('1990-05-12')?.toISOString().slice(0, 10) === '1990-05-12',
+  },
+  {
+    nomi: 'Сана UTC да ясалади — вақт минтақаси силжитмайди',
+    tekshir: async () => {
+      const d = sanaOqi('01.01.1990');
+      return d?.getUTCFullYear() === 1990 && d.getUTCMonth() === 0 && d.getUTCDate() === 1;
+    },
+  },
+  {
+    nomi: 'Маъносиз Excel рақами рад этилади',
+    tekshir: async () => sanaOqi(-5) === null && sanaOqi(9_999_999) === null,
+  },
+  {
+    nomi: '`sanaHaqiqiymi` кун, ой ва йилни алоҳида текширади',
+    tekshir: async () =>
+      sanaHaqiqiymi(29, 2, 2000) &&
+      !sanaHaqiqiymi(29, 2, 2001) &&
+      !sanaHaqiqiymi(31, 4, 2000) &&
+      sanaHaqiqiymi(30, 4, 2000),
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  //  ТУҒИЛГАН САНА ҲАР ДОИМ СОЛИШТИРИЛАДИ
+  //
+  //  Аввал сана ФАҚАТ бир нечта номзод топилганда
+  //  ишлатиларди. Битта номзод бўлса, сана фарқи умуман
+  //  кўрилмасди:
+  //
+  //    тизимда:  Али Валиев, 01.01.1990
+  //    реестрда: Али Валиев, 02.02.2000
+  //
+  //  — булар «мос» деб топилар ва БОШҚА одамнинг ишга
+  //  жойлашгани биринчисига ёзиб қўйиларди.
+  // ═══════════════════════════════════════════════════════════
+  {
+    nomi: 'Бошқа туғилган санали одам «мос» деб ОЛИНМАЙДИ',
+    tekshir: async () => {
+      const ism = noyob('Reyestr Bir');
+      const odam = await prisma.unemployedPerson.create({
+        data: {
+          mahallaId,
+          fish: ism,
+          jinsi: 'Erkak',
+          tugilganSana: new Date(Date.UTC(1990, 0, 1)),
+          holati: 'JOYLASHTIRILDI',
+          ishJoyi: 'Ok Oltin MCHJ',
+        },
+        select: { id: true },
+      });
+      tozalanadi.push(odam.id);
+
+      const n = await reyestrniSolishtir(
+        [{ fish: ism, ishJoyi: 'Ok Oltin MCHJ', tugilganSana: new Date(Date.UTC(2000, 1, 2)) }],
+        mahallaId
+      );
+
+      return (
+        n.mos.length === 0 &&
+        n.tekshirilsin.length === 1 &&
+        n.tekshirilsin[0].sabab === 'sana-qarama-qarshi' &&
+        n.tekshirilsin[0].tizimSanasi === '1990-01-01' &&
+        n.tekshirilsin[0].reyestrSanasi === '2000-02-02'
+      );
+    },
+  },
+  {
+    nomi: 'Бир хил туғилган сана — мос деб топилади',
+    tekshir: async () => {
+      const ism = noyob('Reyestr Ikki');
+      const odam = await prisma.unemployedPerson.create({
+        data: {
+          mahallaId,
+          fish: ism,
+          jinsi: 'Erkak',
+          tugilganSana: new Date(Date.UTC(1990, 0, 1)),
+          holati: 'JOYLASHTIRILDI',
+          ishJoyi: 'Ok Oltin MCHJ',
+        },
+        select: { id: true },
+      });
+      tozalanadi.push(odam.id);
+
+      const n = await reyestrniSolishtir(
+        [{ fish: ism, ishJoyi: 'Ok Oltin MCHJ', tugilganSana: new Date(Date.UTC(1990, 0, 1)) }],
+        mahallaId
+      );
+      return n.mos.length === 1 && n.tekshirilsin.length === 0;
+    },
+  },
+  {
+    nomi: 'Сана ЕТИШМАСА — алоҳида гуруҳ, автоматик тасдиқланмайди',
+    tekshir: async () => {
+      const ism = noyob('Reyestr Uch');
+      const odam = await prisma.unemployedPerson.create({
+        data: {
+          mahallaId,
+          fish: ism,
+          jinsi: 'Erkak',
+          tugilganSana: null,
+          holati: 'JOYLASHTIRILDI',
+          ishJoyi: 'Ok Oltin MCHJ',
+        },
+        select: { id: true },
+      });
+      tozalanadi.push(odam.id);
+
+      const n = await reyestrniSolishtir(
+        [{ fish: ism, ishJoyi: 'Ok Oltin MCHJ', tugilganSana: new Date(Date.UTC(1990, 0, 1)) }],
+        mahallaId
+      );
+      return (
+        n.mos.length === 0 &&
+        n.tekshirilsin.length === 1 &&
+        n.tekshirilsin[0].sabab === 'sana-yetishmaydi'
+      );
+    },
+  },
+  {
+    nomi: 'Файл ичидаги ТАКРОР сатр иккита далил ясамайди',
+    tekshir: async () => {
+      const k = kodiOl(readFileSync('src/lib/reyestr-import.ts', 'utf8'));
+      return k.includes('borlarToplami.add(m.ishsizId);') && k.includes("e.code === 'P2002'");
+    },
+  },
+  {
+    nomi: 'Базада ҳам ягоналик чегараси бор',
+    tekshir: async () => {
+      const sxema = readFileSync('prisma/schema.prisma', 'utf8');
+      return sxema.includes('@@unique([ishsizId, turi, reyestrSanasi], name: "dalil_takrori")');
+    },
+  },
+  {
+    nomi: 'Миграция ҲЕЧ НАРСА ЎЧИРМАЙДИ — хатлов кетмоқда',
+    tekshir: async () => {
+      const m = readFileSync(
+        'prisma/migrations/20260930140000_dalil_takrori/migration.sql',
+        'utf8'
+      );
+      return !/\bDELETE\b/i.test(m) && m.includes('RAISE NOTICE');
+    },
   },
 ];
 

@@ -40,6 +40,25 @@ const Qaror = z.object({
   sabab: z.string().max(500).nullish(),
 });
 
+/**
+ * «Аллақачон ҳал қилинган» хабарини ОДАМЧА ёзади.
+ *
+ * Иккинчи раҳбарга «хато» эмас, ТУШУНТИРИШ керак: ким,
+ * қандай қарор берган. Акс ҳолда у тугмани яна босаверади
+ * ва нима бўлаётганини тушунмайди.
+ */
+function ziddiyatXabari(holati?: string, kim?: string | null): string {
+  const qaror =
+    holati === 'TASDIQLANDI'
+      ? 'tasdiqlagan'
+      : holati === 'RAD_ETILDI'
+        ? 'rad etgan'
+        : 'hal qilgan';
+  return kim
+    ? `Buni ${kim} allaqachon ${qaror}. Ro‘yxatni yangilang.`
+    : `Bu allaqachon ${qaror.replace('gan', 'gan')}. Ro‘yxatni yangilang.`;
+}
+
 export async function PATCH(request: Request) {
   /*
    * Фақат бандлик раҳбари ва администратор.
@@ -66,9 +85,24 @@ export async function PATCH(request: Request) {
       sabab,
     });
     if (!n.ok) {
+      /*
+       * Бошқа раҳбар улгурган. Умумий «аллақачон ҳал
+       * қилинган» ўрнига КИМ ва ҚАНДАЙ ҳал қилганини
+       * айтамиз — акс ҳолда иккинчи раҳбар нима
+       * бўлганини тушунмай, яна босиб кўраверарди.
+       */
       return NextResponse.json(
-        { ok: false, xabar: 'Allaqachon hal qilingan' },
-        { status: 409 }
+        {
+          ok: false,
+          xabar:
+            n.sabab === 'topilmadi'
+              ? 'Ariza topilmadi'
+              : ziddiyatXabari(n.hozirgiHolati, n.halQilgan),
+          ziddiyat: n.sabab === 'allaqachon',
+          hozirgiHolati: n.hozirgiHolati ?? null,
+          halQilgan: n.halQilgan ?? null,
+        },
+        { status: n.sabab === 'topilmadi' ? 404 : 409 }
       );
     }
 
@@ -94,9 +128,21 @@ export async function PATCH(request: Request) {
   }
 
   /* ── ЭЪЛОН ── */
-  const n = await elonniHalQil({ vacancyId: id, userId: q.sessiya.userId, qabul });
+  const n = await elonniHalQil({ vacancyId: id, userId: q.sessiya.userId, qabul, sabab });
   if (!n.ok) {
-    return NextResponse.json({ ok: false, xabar: 'Allaqachon hal qilingan' }, { status: 409 });
+    return NextResponse.json(
+      {
+        ok: false,
+        xabar:
+          n.sabab === 'topilmadi'
+            ? 'E’lon topilmadi'
+            : ziddiyatXabari(n.hozirgiHolati, n.halQilgan),
+        ziddiyat: n.sabab === 'allaqachon',
+        hozirgiHolati: n.hozirgiHolati ?? null,
+        halQilgan: n.halQilgan ?? null,
+      },
+      { status: n.sabab === 'topilmadi' ? 404 : 409 }
+    );
   }
 
   let kimga = 0;

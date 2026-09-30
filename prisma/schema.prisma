@@ -145,6 +145,8 @@ model User {
 
   @@index([rol, faol])
   @@index([mahallaId])
+  /// Модерациядан ўтказган эълонлар
+  moderatsiyaQilganElonlar Vacancy[] @relation("ElonModeratsiyasi")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1242,6 +1244,20 @@ model Vacancy {
   /// Ish beruvchi qo'ygan e'londa KUTILMOQDA ANIQ yoziladi.
   moderatsiya ModeratsiyaHolati @default(TASDIQLANDI)
 
+  /// ── КИМ, ҚАЧОН ва НЕГА ҲАЛ ҚИЛДИ ──
+  ///
+  /// Аввал эълон модерациясида фақат натижа сақланарди.
+  /// «Бу эълонни ким рад этган?» деган саволга жавоб йўқ эди
+  /// — ҳолбуки иш берувчи айнан шуни сўрайди.
+  ///
+  /// Иш берувчида (`IshBeruvchi`) бу маълумот аллақачон бор;
+  /// эълонда ҳам бўлиши керак.
+  moderatsiyaQilganId String?
+  moderatsiyaQilgan   User?     @relation("ElonModeratsiyasi", fields: [moderatsiyaQilganId], references: [id], onDelete: SetNull)
+  moderatsiyaSanasi   DateTime?
+  /// Рад этилган бўлса — сабаби. Иш берувчига шу матн боради.
+  moderatsiyaSababi   String?
+
   faol           Boolean           @default(true)
   /// Nega yopilgani. `faol = false` bo'lganda to'ldiriladi.
   ///
@@ -1480,6 +1496,27 @@ model JoylashuvDalili {
   @@index([ishsizId, holati])
   @@index([turi, holati])
   @@index([createdAt])
+  /// ── БИР ОДАМГА, БИР САНАГА, БИТТА РЕЕСТР ДАЛИЛИ ──
+  ///
+  /// Такрорни аввал КОД текширарди: юклашдан олдин «шу
+  /// санадаги далил борми» деб сўраларди. Иккита оқибати
+  /// бор эди:
+  ///
+  ///   · битта файлда бир одам икки сатрда турса (расмий
+  ///     кўчирмаларда оддий ҳол), иккови ҳам ўтиб кетарди —
+  ///     текширув сикл БОШИДА бир марта бўларди;
+  ///
+  ///   · иккита администратор файлни бир вақтда юкласа,
+  ///     иккови ҳам «йўқ экан» деб кўрар ва иккови ҳам
+  ///     ёзарди.
+  ///
+  /// Энди чегара БАЗАНИНГ ўзида. Код ҳам текшириб туради —
+  /// бу иккинчи қават ва ходимга тушунарли хабар беради.
+  ///
+  /// `turi` ҳам калитда: қўлда киритилган шартнома билан
+  /// реестр далили ҳар хил нарса ва улар ёнма-ён турса
+  /// бўлади.
+  @@unique([ishsizId, turi, reyestrSanasi], name: "dalil_takrori")
 }
 
 /// Ish beruvchining ro'yxatdan o'tish holati.

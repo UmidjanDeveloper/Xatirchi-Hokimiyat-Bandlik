@@ -472,16 +472,42 @@ export async function beruvchiniHalQil(p: {
   userId: string;
   qabul: boolean;
   sabab?: string | null;
-}): Promise<{ ok: boolean; korxonaNomi?: string; chatId?: string }> {
+}): Promise<{
+  ok: boolean;
+  korxonaNomi?: string;
+  chatId?: string;
+  /** `ok: false` бўлса — нега */
+  sabab?: 'topilmadi' | 'allaqachon';
+  hozirgiHolati?: string;
+  halQilgan?: string | null;
+}> {
   const b = await prisma.ishBeruvchi.findUnique({
     where: { id: p.beruvchiId },
     select: { id: true, korxonaNomi: true, telegramChatId: true, holati: true },
   });
-  if (!b) return { ok: false };
-  if (b.holati !== 'KUTILMOQDA') return { ok: false };
+  if (!b) return { ok: false, sabab: 'topilmadi' };
 
-  await prisma.ishBeruvchi.update({
-    where: { id: b.id },
+  /*
+   * ── АТОМАР ЎТИШ ──
+   *
+   * Аввал бу ерда «ўқи → текшир → ёз» турарди. Иккита
+   * раҳбар бир вақтда тугма босса (бири ботда, иккинчиси
+   * сайтда — бу оддий ҳол, чунки хабар ИККОВИГА ҳам
+   * боради), иккаласи ҳам KUTILMOQDA ни кўрарди, иккаласи
+   * ҳам текширувдан ўтарди ва иккаласи ҳам ёзарди.
+   *
+   * Натижа: охирги ёзган ютарди, лекин ИККОВИГА ҳам
+   * «бажарилди» деб жавоб борарди. Иш берувчига эса
+   * иккита қарама-қарши хабар кетарди — «тасдиқланди» ва
+   * «рад этилди».
+   *
+   * `updateMany` шартни ЁЗИШ пайтида текширади: базанинг
+   * ўзи фақат биттасини ўтказади. Иккинчисига `count` нол
+   * келади ва у «аллақачон ҳал қилинган» деган жавоб
+   * олади.
+   */
+  const natija = await prisma.ishBeruvchi.updateMany({
+    where: { id: b.id, holati: 'KUTILMOQDA' },
     data: {
       holati: p.qabul ? 'TASDIQLANDI' : 'RAD_ETILDI',
       radSababi: p.qabul ? null : (p.sabab ?? 'Маълумот етарли эмас'),
@@ -489,6 +515,20 @@ export async function beruvchiniHalQil(p: {
       halQilinganSana: new Date(),
     },
   });
+
+  if (natija.count === 0) {
+    /* Бошқа биров улгурган — ҳозирги ҳолатни айтамиз */
+    const hozir = await prisma.ishBeruvchi.findUnique({
+      where: { id: b.id },
+      select: { holati: true, halQilgan: { select: { fullName: true } } },
+    });
+    return {
+      ok: false,
+      sabab: 'allaqachon',
+      hozirgiHolati: hozir?.holati,
+      halQilgan: hozir?.halQilgan?.fullName ?? null,
+    };
+  }
 
   return { ok: true, korxonaNomi: b.korxonaNomi, chatId: b.telegramChatId };
 }
@@ -539,7 +579,15 @@ export async function elonniHalQil(p: {
   vacancyId: string;
   userId: string;
   qabul: boolean;
-}): Promise<{ ok: boolean; lavozim?: string; chatId?: string | null }> {
+  sabab?: string | null;
+}): Promise<{
+  ok: boolean;
+  lavozim?: string;
+  chatId?: string | null;
+  sabab?: 'topilmadi' | 'allaqachon';
+  hozirgiHolati?: string;
+  halQilgan?: string | null;
+}> {
   const e = await prisma.vacancy.findUnique({
     where: { id: p.vacancyId },
     select: {
@@ -549,12 +597,23 @@ export async function elonniHalQil(p: {
       ishBeruvchi: { select: { telegramChatId: true } },
     },
   });
-  if (!e || e.moderatsiya !== 'KUTILMOQDA') return { ok: false };
+  if (!e) return { ok: false, sabab: 'topilmadi' };
 
-  await prisma.vacancy.update({
-    where: { id: e.id },
+  /*
+   * ── АТОМАР ЎТИШ ──
+   *
+   * Иш берувчиникидаги билан бир хил сабаб: хабар барча
+   * раҳбарга боради ва иккови бир вақтда тугма босиши
+   * мумкин. Шартни база ёзиш пайтида текширади.
+   */
+  const natija = await prisma.vacancy.updateMany({
+    where: { id: e.id, moderatsiya: 'KUTILMOQDA' },
     data: {
       moderatsiya: p.qabul ? 'TASDIQLANDI' : 'RAD_ETILDI',
+      /* Ким, қачон ва нега — иш берувчи айнан шуни сўрайди */
+      moderatsiyaQilganId: p.userId,
+      moderatsiyaSanasi: new Date(),
+      moderatsiyaSababi: p.qabul ? null : (p.sabab ?? null),
       /*
        * Рад этилган эълон ЁПИЛАДИ ҳам. Акс ҳолда у базада
        * `faol = true` бўлиб қоларди ва «муддати ўтганларни
@@ -564,6 +623,19 @@ export async function elonniHalQil(p: {
       ...(p.qabul ? {} : { faol: false, yopilganSana: new Date() }),
     },
   });
+
+  if (natija.count === 0) {
+    const hozir = await prisma.vacancy.findUnique({
+      where: { id: e.id },
+      select: { moderatsiya: true, moderatsiyaQilgan: { select: { fullName: true } } },
+    });
+    return {
+      ok: false,
+      sabab: 'allaqachon',
+      hozirgiHolati: hozir?.moderatsiya,
+      halQilgan: hozir?.moderatsiyaQilgan?.fullName ?? null,
+    };
+  }
 
   return { ok: true, lavozim: e.lavozim, chatId: e.ishBeruvchi?.telegramChatId ?? null };
 }

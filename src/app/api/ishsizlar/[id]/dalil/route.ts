@@ -139,7 +139,30 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     izoh: xom.data.izoh ?? undefined,
   });
   if (!natija.ok) {
-    return NextResponse.json({ ok: false, xabar: 'Dalil topilmadi' }, { status: 404 });
+    if (natija.sabab === 'topilmadi') {
+      return NextResponse.json({ ok: false, xabar: 'Dalil topilmadi' }, { status: 404 });
+    }
+    /*
+     * Далил аллақачон текширилган. Аввал бу ҳол УМУМАН
+     * текширилмасди: кейинги босиш тасдиқланган далилни
+     * жимгина рад этилганга айлантирарди ва биринчи
+     * қарорнинг изи қолмасди.
+     *
+     * Икки мутахассис навбат рўйхатини бир вақтда очиб
+     * турса, бу тасодифан ҳам содир бўларди.
+     */
+    return NextResponse.json(
+      {
+        ok: false,
+        xabar: natija.halQilgan
+          ? `Bu dalilni ${natija.halQilgan} allaqachon ko‘rib chiqqan. Ro‘yxatni yangilang.`
+          : 'Bu dalil allaqachon ko‘rib chiqilgan. Ro‘yxatni yangilang.',
+        ziddiyat: true,
+        hozirgiHolati: natija.hozirgiHolati ?? null,
+        halQilgan: natija.halQilgan ?? null,
+      },
+      { status: 409 }
+    );
   }
 
   await jurnal(q.sessiya.userId, 'OZGARTIRISH', {

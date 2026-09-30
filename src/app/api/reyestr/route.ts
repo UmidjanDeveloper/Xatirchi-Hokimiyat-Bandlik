@@ -104,6 +104,7 @@ export async function POST(request: Request) {
         boshqaIshJoyi: natija.mos.filter((m) => m.boshqaIshJoyi).length,
         yangiTopilgan: natija.yangiTopilgan,
         shubhali: natija.shubhali,
+        tekshirilsin: natija.tekshirilsin,
         topilmadi: natija.topilmadi.length,
         takror: natija.takror,
       },

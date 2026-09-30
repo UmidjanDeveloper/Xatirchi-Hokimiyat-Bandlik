@@ -29,6 +29,20 @@ interface Natija {
   boshqaIshJoyi: number;
   yangiTopilgan: { ishsizId: string; fish: string; holati: string }[];
   shubhali: { fish: string; nomzodlar: number }[];
+  /**
+   * Исм мос келди, аммо автоматик тасдиқлаш учун етарли эмас.
+   *
+   * Иккита сабаб АРАЛАШТИРИЛМАЙДИ: «сана қарама-қарши» —
+   * катта эҳтимол билан БОШҚА одам; «сана етишмайди» —
+   * билмаймиз, ва билмаган нарсани тасдиқлаб бўлмайди.
+   */
+  tekshirilsin: {
+    fish: string;
+    ishsizId: string;
+    sabab: 'sana-qarama-qarshi' | 'sana-yetishmaydi';
+    tizimSanasi: string | null;
+    reyestrSanasi: string | null;
+  }[];
   topilmadi: number;
   takror: number;
 }
@@ -163,7 +177,11 @@ export function ReyestrYuklash() {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Raqam nomi={tr('Файлда сатр')} qiymat={n.jami} />
             <Raqam nomi={tr('Мос келди')} qiymat={n.mos} rang="text-ok" />
-            <Raqam nomi={tr('Шубҳали')} qiymat={n.shubhali.length} rang="text-warn" />
+            <Raqam
+              nomi={tr('Текширилсин')}
+              qiymat={n.shubhali.length + n.tekshirilsin.length}
+              rang="text-warn"
+            />
             <Raqam nomi={tr('Топилмади')} qiymat={n.topilmadi} />
           </div>
 
@@ -200,6 +218,53 @@ export function ReyestrYuklash() {
                   … {tr('яна')} {n.yangiTopilgan.length - 20}
                 </p>
               )}
+            </div>
+          )}
+
+          {n.tekshirilsin.filter((t) => t.sabab === 'sana-qarama-qarshi').length > 0 && (
+            <div className="rounded-md border border-danger bg-danger-bg p-2.5">
+              <p className="text-xs font-semibold text-danger">
+                {tr('Туғилган санаси МОС КЕЛМАДИ — тасдиқланмади')}:
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
+                {tr(
+                  'Исм бир хил, сана бошқа. Катта эҳтимол билан бу БОШҚА одам. Ҳужжатдан текшириб, қўлда ҳал қилинг.'
+                )}
+              </p>
+              <ul className="mt-1.5 space-y-0.5">
+                {n.tekshirilsin
+                  .filter((t) => t.sabab === 'sana-qarama-qarshi')
+                  .slice(0, 15)
+                  .map((t) => (
+                    <li key={t.ishsizId} className="text-xs text-ink-muted">
+                      · {tr(t.fish)} — {tr('тизимда')} {t.tizimSanasi ?? '—'}, {tr('реестрда')}{' '}
+                      {t.reyestrSanasi ?? '—'}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+
+          {n.tekshirilsin.filter((t) => t.sabab === 'sana-yetishmaydi').length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-warn">
+                {tr('Туғилган сана йўқ — солиштириб бўлмади')}:
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-ink-faint">
+                {tr(
+                  'Бир томонда сана умуман кўрсатилмаган. Бу «нотўғри» эмас, «билмаймиз» — шунинг учун автоматик тасдиқланмади.'
+                )}
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {n.tekshirilsin
+                  .filter((t) => t.sabab === 'sana-yetishmaydi')
+                  .slice(0, 15)
+                  .map((t) => (
+                    <li key={t.ishsizId} className="text-xs text-ink-muted">
+                      · {tr(t.fish)}
+                    </li>
+                  ))}
+              </ul>
             </div>
           )}
 
