@@ -2,7 +2,7 @@ import type { IshBeruvchi } from '@prisma/client';
 import { prisma } from './prisma';
 import { FAOL_ELON, MODERATSIYA_KUTMOQDA } from './elon-muddati';
 import { telefonSaqlashUchun, telefonTekshir } from './inson-tekshiruvi';
-import { xabarQoshish, type Tugma, type YangiXabar } from './xabarnoma';
+import { xavfsiz, xabarQoshish, type Tugma, type YangiXabar } from './xabarnoma';
 import { BERUVCHI } from './beruvchi-belgilari';
 
 export { BERUVCHI };
@@ -397,7 +397,7 @@ export async function beruvchiMenyusi(beruvchiId: string): Promise<Javob> {
   if (b.holati === 'KUTILMOQDA') {
     return {
       matn: [
-        `<b>${b.korxonaNomi}</b>`,
+        `<b>${xavfsiz(b.korxonaNomi)}</b>`,
         '',
         '⏳ Аризангиз кўриб чиқилмоқда.',
         '',
@@ -410,10 +410,10 @@ export async function beruvchiMenyusi(beruvchiId: string): Promise<Javob> {
   if (b.holati === 'RAD_ETILDI') {
     return {
       matn: [
-        `<b>${b.korxonaNomi}</b>`,
+        `<b>${xavfsiz(b.korxonaNomi)}</b>`,
         '',
         '❌ Аризангиз қабул қилинмади.',
-        ...(b.radSababi ? ['', `Сабаби: ${b.radSababi}`] : []),
+        ...(b.radSababi ? ['', `Сабаби: ${xavfsiz(b.radSababi)}`] : []),
         '',
         'Маълумотни тузатиб, қайта юборишингиз мумкин.',
       ].join('\n'),
@@ -428,8 +428,8 @@ export async function beruvchiMenyusi(beruvchiId: string): Promise<Javob> {
 
   return {
     matn: [
-      `<b>${b.korxonaNomi}</b>`,
-      b.mahalla ? `${b.mahalla.nomiKirill} МФЙ` : '',
+      `<b>${xavfsiz(b.korxonaNomi)}</b>`,
+      b.mahalla ? `${xavfsiz(b.mahalla.nomiKirill)} МФЙ` : '',
       '',
       `📋 Очиқ эълонингиз: <b>${raqam(ochiq)}</b> та`,
       ...(kutmoqda > 0 ? [`⏳ Кўриб чиқилмоқда: <b>${raqam(kutmoqda)}</b> та`] : []),
@@ -514,13 +514,13 @@ export async function elonniModeratsiyagaYubor(vacancyId: string): Promise<numbe
     matn: [
       '<b>Иш берувчидан янги эълон</b>',
       '',
-      `<b>${e.lavozim}</b>`,
-      `${e.korxonaNomi}`,
-      `${e.mahalla.nomiKirill} МФЙ · ${e.ornlarSoni} та ўрин`,
+      `<b>${xavfsiz(e.lavozim)}</b>`,
+      `${xavfsiz(e.korxonaNomi)}`,
+      `${xavfsiz(e.mahalla.nomiKirill)} МФЙ · ${e.ornlarSoni} та ўрин`,
       ...(e.maosh ? [`${raqam(Number(e.maosh) / 1_000_000)} млн сўм`] : []),
-      ...(e.telefon ? [`📞 ${e.telefon}`] : []),
+      ...(e.telefon ? [`📞 ${xavfsiz(e.telefon)}`] : []),
       '',
-      `Юборди: ${e.ishBeruvchi?.masulShaxs ?? '—'} (${e.ishBeruvchi?.korxonaNomi ?? '—'})`,
+      `Юборди: ${xavfsiz(e.ishBeruvchi?.masulShaxs ?? '—')} (${xavfsiz(e.ishBeruvchi?.korxonaNomi ?? '—')})`,
       '',
       'Тасдиқласангиз, барча маҳалла ходимига хабар кетади.',
     ].join('\n'),
@@ -628,7 +628,7 @@ export function beruvchiQaroriMatni(p: {
     return [
       '<b>Аризангиз тасдиқланди</b>',
       '',
-      `${p.korxonaNomi}`,
+      `${xavfsiz(p.korxonaNomi)}`,
       '',
       'Энди бўш иш ўрни эълонини ўзингиз қўя оласиз — менюдан «Янги иш ўрни» тугмасини босинг.',
     ].join('\n');
@@ -636,8 +636,8 @@ export function beruvchiQaroriMatni(p: {
   return [
     '<b>Аризангиз қабул қилинмади</b>',
     '',
-    `${p.korxonaNomi}`,
-    ...(p.sabab ? ['', `Сабаби: ${p.sabab}`] : []),
+    `${xavfsiz(p.korxonaNomi)}`,
+    ...(p.sabab ? ['', `Сабаби: ${xavfsiz(p.sabab)}`] : []),
     '',
     'Маълумотни тузатиб, қайта юборишингиз мумкин.',
   ].join('\n');
@@ -646,8 +646,8 @@ export function beruvchiQaroriMatni(p: {
 /** Эълон бўйича қарор матни — бот ва сайт учун БИТТА */
 export function elonQaroriMatni(p: { qabul: boolean; lavozim: string }): string {
   return p.qabul
-    ? `✅ <b>${p.lavozim}</b> эълонингиз тасдиқланди — туманнинг маҳалла ходимларига хабар кетди.`
-    : `❌ <b>${p.lavozim}</b> эълонингиз қабул қилинмади. Бандлик маркази билан боғланинг.`;
+    ? `✅ <b>${xavfsiz(p.lavozim)}</b> эълонингиз тасдиқланди — туманнинг маҳалла ходимларига хабар кетди.`
+    : `❌ <b>${xavfsiz(p.lavozim)}</b> эълонингиз қабул қилинмади. Бандлик маркази билан боғланинг.`;
 }
 
 /** Модерация рўйхати — сайтдаги саҳифа учун */

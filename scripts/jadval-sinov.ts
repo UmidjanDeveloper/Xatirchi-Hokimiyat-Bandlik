@@ -679,6 +679,18 @@ const SINOVLAR: Sinov[] = [
          * ҳокимлик жадвалида унинг ўрни йўқ.
          */
         'idempotentlikKaliti',
+        /*
+         * Калитнинг қўшимчалари: қайси амал, ким юборган ва
+         * мазмуннинг изи. Улар «шу сўровни аллақачон
+         * бажарганманми» деган саволга жавоб беради, анкета
+         * маълумоти эмас.
+         */
+        'idempotentAmal', 'idempotentUserId', 'idempotentIzi',
+        /*
+         * Параллел таҳрир ҳисоблагичи — ҳокимлик жадвалида
+         * унинг ўрни йўқ.
+         */
+        'versiya',
         'createdAt', 'updatedAt', 'arxivSanasi', 'arxivSababi', // хизмат майдонлари
         'aiXulosa', 'aiXulosaVaqti', 'aiManbasi', // хатлов эмас, ҳисоблаб чиқарилган
         'rasmUrl', 'imzoYoli', // файл йўллари

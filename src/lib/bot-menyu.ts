@@ -1,3 +1,4 @@
+import { xavfsiz } from './xabarnoma';
 import { prisma } from './prisma';
 import { FAOL_ELON, MODERATSIYA_KUTMOQDA } from './elon-muddati';
 import { tumanHolati } from './tuman-holati';
@@ -234,7 +235,7 @@ export async function boshMenyu(userId: string): Promise<MenyuNatijasi> {
   return {
     matn: [
       `<b>${xodim.fullName}</b>`,
-      xodim.mahalla ? `${xodim.mahalla.nomiKirill} МФЙ` : 'Маҳалла бириктирилмаган',
+      xodim.mahalla ? `${xavfsiz(xodim.mahalla.nomiKirill)} МФЙ` : 'Маҳалла бириктирилмаган',
       '',
       `📋 Маҳаллангизда очиқ иш ўрни: <b>${raqam(orinlar)}</b> та`,
       `👤 Иш кутаётган фуқаро: <b>${raqam(ishsiz)}</b> та`,
@@ -295,9 +296,9 @@ export async function orinlarRoyxati(userId: string): Promise<MenyuNatijasi> {
       '',
       ...orinlar.map((o, i) =>
         [
-          `<b>${i + 1}. ${o.lavozim}</b>`,
-          `   ${o.korxonaNomi}`,
-          `   ${o.mahalla.nomiKirill} МФЙ · ${o.ornlarSoni} та ўрин`,
+          `<b>${i + 1}. ${xavfsiz(o.lavozim)}</b>`,
+          `   ${xavfsiz(o.korxonaNomi)}`,
+          `   ${xavfsiz(o.mahalla.nomiKirill)} МФЙ · ${o.ornlarSoni} та ўрин`,
           ...(o.maosh ? [`   ${raqam(Number(o.maosh) / 1_000_000)} млн сўм`] : []),
         ].join('\n')
       ),
@@ -358,7 +359,7 @@ export async function fuqarolarRoyxati(userId: string): Promise<MenyuNatijasi> {
       '',
       ...fuqarolar.map(
         (f, i) =>
-          `${i + 1}. ${f.fish}\n   ${HOLAT[f.holati] ?? f.holati}${f.mutaxassisligi ? ` · ${f.mutaxassisligi}` : ''}`
+          `${i + 1}. ${xavfsiz(f.fish)}\n   ${HOLAT[f.holati] ?? f.holati}${f.mutaxassisligi ? ` · ${xavfsiz(f.mutaxassisligi)}` : ''}`
       ),
       '',
       `Телефон ва тўлиқ анкета: ${SAYT}`,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { prisma, xomPrisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { kesmaSaqla } from '@/lib/xonadon-tarixi';
 import { choralarniYoz } from '@/lib/chora-yaratish';
@@ -11,6 +11,7 @@ import { takrorKaliti, yuborishgaTayyormi } from '@/lib/xatlov-tekshiruvi';
 import { yiliniAniqla } from '@/lib/xatlov-sxema';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
 import { somga } from '@/lib/constants';
+import { kalitQarori, mazmunIzi } from '@/lib/idempotentlik';
 
 /** Ro'yxat so'rovi */
 const Sorov = z.object({
@@ -97,19 +98,46 @@ export async function GET(request: Request) {
  * `randomUUID` 36 белги, эски браузерлар учун захира вариант
  * ҳам шу атрофда.
  */
+/**
+ * Параллел таҳрир зиддияти.
+ *
+ * Транзакция ичидан ташқарига чиқиш учун истисно ишлатилади:
+ * `$transaction` ичида `return` қилиб бўлмайди — ёзилганлар
+ * қайтарилмай қоларди.
+ */
+class VersiyaZiddiyati extends Error {
+  constructor(public readonly yozuvId: string) {
+    super('versiya-ziddiyati');
+    this.name = 'VersiyaZiddiyati';
+  }
+}
+
 const Kalit = z.string().min(8).max(64).optional();
+
+/**
+ * Мижоз ЎЗИ очган ёзувнинг версияси.
+ *
+ * Икки ходим бир хонадонни очиб, кетма-кет сақласа,
+ * иккинчиси биринчисининг ўзгаришини жимгина ўчириб
+ * юборарди. Энди сақлашда версия солиштирилади.
+ *
+ * Ихтиёрий: янги ёзувда версия бўлмайди.
+ */
+const Versiya = z.number().int().min(1).optional();
 
 const Tana = z.discriminatedUnion('turi', [
   z.object({
     turi: z.literal('qoralama'),
     id: z.string().cuid().nullish(),
     kalit: Kalit,
+    versiya: Versiya,
     malumot: QoralamaSxemasi,
   }),
   z.object({
     turi: z.literal('yakuniy'),
     id: z.string().cuid().nullish(),
     kalit: Kalit,
+    versiya: Versiya,
     malumot: YuborishSxemasi,
   }),
 ]);
@@ -225,6 +253,7 @@ export async function POST(request: Request) {
    * сақлайди.
    */
   const kalit_i = id ? undefined : natija.data.kalit;
+  const mijozVersiyasi = natija.data.versiya;
   const xonadon = turi === 'qoralama' ? natija.data.malumot : natija.data.malumot.xonadon;
   const ishsizlar = turi === 'yakuniy' ? natija.data.malumot.ishsizlar : [];
 
@@ -296,26 +325,93 @@ export async function POST(request: Request) {
    * жавоб келишидан олдин узилса, браузер ёзув етиб
    * борганини БИЛМАЙДИ.
    *
-   * Базага қараб оламиз. Топилса — иккинчи ёзув яратмаймиз
-   * ва ўша ёзувнинг `id` сини қайтарамиз. Браузер уни
-   * навбатдан бемалол ўчиради: иш жойида.
+   * ── НЕГА ЁЛҒИЗ КАЛИТ ЕТАРЛИ ЭМАС ──
+   *
+   * Аввал бу ерда калит топилиши БИЛАНОҚ «ok, takror» деб
+   * 200 қайтарилар эди. Оқибати қуйидаги оддий ҳолатда
+   * ходимнинг бир соатлик ишини йўқотарди:
+   *
+   *   1. Қоралама серверда сақланди (калит K);
+   *   2. Жавоб йўқолди — браузер `id` ни олмади;
+   *   3. Ходим анкетани якунлаб юборди (ўша K, `id` йўқ);
+   *   4. Сервер K ни топди ва «такрор» деди.
+   *
+   * Экранда «сақланди», базада эса ҳамон ярим қоралама ва
+   * биронта ишсиз ёзуви йўқ эди. Қайта ҳосил қилиб
+   * кўрилди.
+   *
+   * Энди қарорни `idempotentlik.ts` чиқаради: калит АМАЛ,
+   * ЭГАСИ ва МАЗМУН изи билан солиштирилади.
    */
+  const izi = mazmunIzi(natija.data.malumot);
+  let kalitYozuviId: string | null = null;
+
   if (kalit_i) {
     const avvalgi = await prisma.household
       .findUnique({
         where: { idempotentlikKaliti: kalit_i },
-        select: { id: true, holati: true },
+        select: {
+          id: true,
+          holati: true,
+          mahallaId: true,
+          idempotentAmal: true,
+          idempotentUserId: true,
+          idempotentIzi: true,
+        },
       })
       .catch(() => null);
-    if (avvalgi) {
+
+    const qaror = kalitQarori(avvalgi, {
+      amal: turi,
+      userId: q.sessiya.userId,
+      izi,
+    });
+
+    if (qaror.turi === 'begona') {
+      return NextResponse.json(
+        {
+          xabar:
+            'Bu yuborish kaliti boshqa xodimga tegishli. Anketani qaytadan oching va yuboring.',
+          ziddiyat: true,
+        },
+        { status: 409 }
+      );
+    }
+
+    if (qaror.turi === 'ziddiyat') {
+      return NextResponse.json(
+        { xabar: qaror.xabar, ziddiyat: true, mavjudId: qaror.id },
+        { status: 409 }
+      );
+    }
+
+    if (qaror.turi === 'takror') {
       return NextResponse.json({
         ok: true,
-        id: avvalgi.id,
-        holati: avvalgi.holati,
+        id: qaror.id,
+        holati: qaror.holati,
         takror: true,
       });
     }
+
+    if (qaror.turi === 'davom') {
+      /*
+       * Топилган ёзув МЕНИКИ ва янгиланиши керак. Маҳалла
+       * ҳуқуқи бу ерда ҳам текширилади: калит тўғри бўлса
+       * ҳам, бегона маҳалланинг ёзувига тегиб бўлмайди.
+       */
+      if (avvalgi && !mahallagaRuxsat(q.sessiya, avvalgi.mahallaId)) {
+        return NextResponse.json({ xabar: 'Bu xatlovga huquqingiz yo‘q' }, { status: 403 });
+      }
+      kalitYozuviId = qaror.id;
+    }
   }
+
+  /*
+   * Шу нуқтадан кейин ёзувнинг `id` си БИТТА жойдан олинади:
+   * мижоз юборган `id`, ёки калит орқали топилгани.
+   */
+  const yozuvId = id ?? kalitYozuviId;
 
   /*
    * Tug'ilgan yil SANADAN olinadi.
@@ -385,7 +481,16 @@ export async function POST(request: Request) {
     jamiAzo: xonadon.jamiAzo ?? 0,
     telefon: telefonSaqlashUchun(xonadon.telefon ?? '') ?? xonadon.telefon ?? null,
     takrorKaliti: kalit,
+    /*
+     * Калит УЧТА қўшимча билан сақланади: қайси амал,
+     * ким ва қандай мазмун. Кейинги сўров шуларга
+     * қараб «такрор»ми, «давом»ми ёки «зиддият»ми деб
+     * ажратилади (`idempotentlik.ts`).
+     */
     ...(kalit_i ? { idempotentlikKaliti: kalit_i } : {}),
+    ...(kalit_i || yozuvId
+      ? { idempotentAmal: turi, idempotentUserId: q.sessiya.userId, idempotentIzi: izi }
+      : {}),
     holati: turi === 'yakuniy' ? ('YUBORILGAN' as const) : ('QORALAMA' as const),
     xodimId: q.sessiya.userId,
 
@@ -422,9 +527,39 @@ export async function POST(request: Request) {
 
   try {
     const saqlangan = await prisma.$transaction(async (tx) => {
-      const h = id
-        ? await tx.household.update({ where: { id }, data: malumot })
-        : await tx.household.create({ data: malumot as Prisma.HouseholdUncheckedCreateInput });
+      let h;
+      if (yozuvId) {
+        /*
+         * ── ПАРАЛЛЕЛ ТАҲРИР ──
+         *
+         * Мижоз ўзи очган версияни қайтариб юборади.
+         * `updateMany` ўша версия ҲАМОН турган бўлсагина
+         * ёзади — акс ҳолда `count` нол чиқади ва биз
+         * 409 берамиз.
+         *
+         * Аввал оддий `update` эди: иккинчи ходимнинг
+         * сақлаши биринчисининг ўзгаришини жимгина
+         * ўчириб юборарди, экранда эса иккаласига ҳам
+         * «сақланди» деб ёзиларди.
+         *
+         * Версия юборилмаган бўлса (эски мижоз, оффлайн
+         * навбатдаги эски ёзув) текширув ўтказиб
+         * юборилади — бу ЧЕКЛОВ ва у қуйида ёзилган.
+         */
+        const natijasi = await tx.household.updateMany({
+          where: {
+            id: yozuvId,
+            ...(mijozVersiyasi !== undefined ? { versiya: mijozVersiyasi } : {}),
+          },
+          data: { ...malumot, versiya: { increment: 1 } },
+        });
+        if (natijasi.count === 0) throw new VersiyaZiddiyati(yozuvId);
+        h = await tx.household.findUniqueOrThrow({ where: { id: yozuvId } });
+      } else {
+        h = await tx.household.create({
+          data: malumot as Prisma.HouseholdUncheckedCreateInput,
+        });
+      }
 
       if (turi === 'yakuniy') {
         /*
@@ -469,11 +604,41 @@ export async function POST(request: Request) {
          * шу ерда ҳам кўрмасак, анкетада исми турган архивдаги
          * одам «янги» деб ҳисобланиб, ДУБЛИКАТ яратиларди.
          *
-         * Шунинг учун бу ерда `xomPrisma` ишлатилади — фақат
-         * ўқиш учун ва фақат шу хонадон доирасида.
+         * ── НЕГА ЭНДИ `xomPrisma` ЭМАС ──
+         *
+         * Аввал бу ерда `xomPrisma` турарди — ТРАНЗАКЦИЯДАН
+         * ТАШҚАРИДАГИ мижоз. Иккита оқибати бор эди:
+         *
+         *  1. У ИККИНЧИ уланишни сўрарди. Тўғридан-тўғри
+         *     уланишда чегара БИТТА (`ulanish-satri.ts`) —
+         *     транзакция ўша ягона уланишни ушлаб турар,
+         *     бу сўров эса бўшашини кутиб 10 сонияда
+         *     йиқиларди. Ходимга «Сақлашда хатолик» чиқар,
+         *     тўлдирилган анкета эса йўқоларди.
+         *
+         *     Синовда қайта ҳосил қилинди: `connection_limit=1`
+         *     да ЯКУНИЙ ЮБОРИШ умуман ўтмасди; 5 да ўтарди.
+         *     Продукцияда пулер орқали 5 та — яъни бир вақтда
+         *     уч-тўрт ходим юборса, ўша ҳол қайтарилар эди.
+         *
+         *  2. У транзакциядан ТАШҚАРИДА ўқирди: транзакция
+         *     қайтарилса ҳам бу сўров кўрган ҳолат ўзгармасди.
+         *
+         * Архив фильтрини четлаб ўтиш учун `xomPrisma` шарт
+         * эмас: қоровул «чақирувчи ЎЗИ `arxivSanasi` ёзган
+         * бўлса тегмайман» дейди (`prisma.ts`). Шунинг учун
+         * шартни очиқ ёзамиз ва транзакция ичида қоламиз.
          */
-        const mavjudlar = await xomPrisma.unemployedPerson.findMany({
-          where: { householdId: h.id },
+        const mavjudlar = await tx.unemployedPerson.findMany({
+          /*
+           * `arxivSanasi: undefined` — калит БОР, қиймати йўқ.
+           *
+           * Қоровул «`arxivSanasi` ёзилган бўлса тегмайман»
+           * дейди, Prisma эса `undefined` қийматли шартни
+           * умуман қўшмайди. Натижада архивдагилар ҲАМ
+           * кўринади — айнан шу керак.
+           */
+          where: { householdId: h.id, arxivSanasi: undefined },
           select: { id: true, fish: true, holati: true, arxivSanasi: true },
         });
 
@@ -599,16 +764,78 @@ export async function POST(request: Request) {
       }
 
       return h;
+    }, {
+      /*
+       * ── НЕГА 5 СОНИЯ ЕТМАЙДИ ──
+       *
+       * Prisma'нинг стандарт чегараси 5 сония. Якуний
+       * юборишда эса транзакция ичида анча иш бор:
+       * хонадон, вақт кесмаси, ҳар бир ишсиз фуқаро ва
+       * улардан туғиладиган чора-тадбирлар.
+       *
+       * Катта оилада (олти-етти ишсиз) бу чегарага уриларди
+       * ва ХОДИМГА «Сақлашда хатолик» деб чиқарди —
+       * транзакция эса тўлиқ қайтарилар, иш йўқоларди.
+       *
+       * Чегарани ошириш ишни тезлаштирмайди, лекин уни
+       * ЎРТАСИДА УЗМАЙДИ. Тезлик алоҳида масала.
+       */
+      timeout: 25_000,
+      maxWait: 10_000,
     });
 
-    await jurnal(q.sessiya.userId, id ? 'OZGARTIRISH' : 'YARATISH', {
+    await jurnal(q.sessiya.userId, yozuvId ? 'OZGARTIRISH' : 'YARATISH', {
       obyektTuri: 'Household',
       obyektId: saqlangan.id,
       izoh: turi === 'yakuniy' ? 'Yakuniy yuborildi' : 'Qoralama saqlandi',
     });
 
-    return NextResponse.json({ ok: true, id: saqlangan.id, holati: saqlangan.holati });
+    return NextResponse.json({
+      ok: true,
+      id: saqlangan.id,
+      holati: saqlangan.holati,
+      /* Мижоз кейинги сақлашда шуни қайтариб юборади */
+      versiya: saqlangan.versiya,
+    });
   } catch (e) {
+    /*
+     * ── ПАРАЛЛЕЛ ТАҲРИР ──
+     *
+     * Мижоз очган версия энди базада йўқ: ораликда бошқа
+     * ходим сақлаб улгурган. Унинг ўзгаришини жимгина
+     * босиб ўтиш мумкин эмас.
+     *
+     * Жавобда МАВЖУД ҳолат ҳам берилади — форма иккисини
+     * ёнма-ён кўрсатиб, ходимга танлов беради.
+     */
+    if (e instanceof VersiyaZiddiyati) {
+      const hozirgi = await prisma.household
+        .findUnique({
+          where: { id: e.yozuvId },
+          select: {
+            id: true,
+            versiya: true,
+            updatedAt: true,
+            holati: true,
+            xodim: { select: { fullName: true } },
+          },
+        })
+        .catch(() => null);
+
+      return NextResponse.json(
+        {
+          xabar:
+            'Bu xatlovni siz ochganingizdan keyin boshqa xodim o‘zgartirgan. Sizning o‘zgarishingiz saqlanmadi — avval uning kiritganini ko‘ring.',
+          ziddiyat: true,
+          mavjudId: e.yozuvId,
+          hozirgiVersiya: hozirgi?.versiya ?? null,
+          oxirgiOzgarish: hozirgi?.updatedAt ?? null,
+          oxirgiXodim: hozirgi?.xodim?.fullName ?? null,
+        },
+        { status: 409 }
+      );
+    }
+
     // Takror xatlov - `@@unique([mahallaId, takrorKaliti])`
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       /*

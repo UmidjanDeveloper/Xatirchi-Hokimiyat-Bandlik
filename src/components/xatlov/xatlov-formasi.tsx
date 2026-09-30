@@ -34,7 +34,7 @@ interface Mahalla {
 interface Props {
   mahallalar: Mahalla[];
   /** Tahrirlanayotgan xatlov - yangi bo'lsa `null` */
-  boshlangich?: { id: string; holat: XatlovHolati } | null;
+  boshlangich?: { id: string; holat: XatlovHolati; versiya?: number } | null;
   /**
    * Анкетани тўлдираётган ходимнинг логини.
    *
@@ -118,6 +118,17 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
   const [kalit, setKalit] = useState<string | undefined>(() =>
     boshlangich ? undefined : kalitYasa()
   );
+
+  /*
+   * ── ПАРАЛЛЕЛ ТАҲРИР ──
+   *
+   * Ёзув ОЧИЛГАНДАГИ версияси. Ҳар сақлашда серверга
+   * қайтарилади: у ҳамон ўша бўлсагина ёзилади.
+   *
+   * Акс ҳолда икки ходим бир хонадонни очиб, иккинчиси
+   * биринчисининг ўзгаришини жимгина ўчириб юборарди.
+   */
+  const [versiya, setVersiya] = useState<number | undefined>(boshlangich?.versiya);
   const [qadam, setQadam] = useState(0);
   /*
    * Ходим ҚАЙСИ қадамларни очган.
@@ -256,7 +267,7 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
       const javob = await fetch('/api/xatlov', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turi: 'qoralama', id, kalit, malumot: yuborishUchun(h).xonadon }),
+        body: JSON.stringify({ turi: 'qoralama', id, kalit, versiya, malumot: yuborishUchun(h).xonadon }),
       });
       const natija = await javob.json().catch(() => ({}));
 
@@ -283,6 +294,7 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
       }
 
       setId(natija.id);
+      if (typeof natija.versiya === 'number') setVersiya(natija.versiya);
       setOxirgiSaqlash(new Date());
     } catch {
       setServerXatosi(
@@ -318,7 +330,7 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
       const javob = await fetch('/api/xatlov', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turi: 'yakuniy', id, kalit, malumot: yuborishUchun(h) }),
+        body: JSON.stringify({ turi: 'yakuniy', id, kalit, versiya, malumot: yuborishUchun(h) }),
       });
       const natija = await javob.json().catch(() => ({}));
 
@@ -353,7 +365,7 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
        * busiz navbat yangi yozuv yaratishga urinardi.
        */
       const navbat = navbatgaQosh(
-        { turi: 'yakuniy', id, kalit, malumot: yuborishUchun(h) },
+        { turi: 'yakuniy', id, kalit, versiya, malumot: yuborishUchun(h) },
         egasi,
         kalit
       );

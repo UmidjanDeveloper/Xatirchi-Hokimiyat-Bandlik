@@ -205,7 +205,29 @@ const SINOVLAR: Sinov[] = [
        */
       const yol = readFileSync('src/app/api/xatlov/route.ts', 'utf8');
       const bolak = yol.slice(yol.indexOf('const mavjudlar'), yol.indexOf('const kelganNomlar'));
-      return bolak.includes('xomPrisma');
+      /*
+       * ── МЕХАНИЗМ АЛМАШДИ, ТАЛАБ ЎША ──
+       *
+       * Аввал бу ерда `xomPrisma` ишлатиларди. У архив
+       * фильтрини четлаб ўтарди-ю, ТРАНЗАКЦИЯДАН ҲАМ
+       * ташқарига чиқиб кетарди ва иккинчи уланишни
+       * сўрарди. Тўғридан-тўғри уланишда чегара битта —
+       * якуний юбориш умуман ўтмасди.
+       *
+       * Энди транзакциянинг ўз мижози ишлатилади, архив
+       * фильтри эса `arxivSanasi` калитини ОЧИҚ ёзиш
+       * орқали четлаб ўтилади: қоровул «чақирувчи ўзи
+       * ёзган бўлса тегмайман» дейди (`prisma.ts`).
+       *
+       * Ҳулосанинг ўзи ўзгармади: архивдагилар ҳам
+       * кўринади ва дубликат яратилмайди. Хатти-ҳаракат
+       * синови `idempotent-sinov.ts` да.
+       */
+      return (
+        bolak.includes('tx.unemployedPerson.findMany') &&
+        bolak.includes('arxivSanasi: undefined') &&
+        !bolak.includes('xomPrisma')
+      );
     },
   },
   {

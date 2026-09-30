@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { alifboServer, matnchi } from '@/lib/alifbo-server';
-import { joriySessiya } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { haqiqiyXodim } from '@/lib/sahifa-auth';
 import { ParolFormasi } from '@/components/auth/parol-formasi';
 import { AlifboProvider, AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
 import { Gerb } from '@/components/shared/gerb';
@@ -22,13 +21,19 @@ export default async function ParolSahifasi() {
   const tr = matnchi();
   const alifbo = alifboServer();
 
-  const sessiya = joriySessiya();
-  if (!sessiya) redirect('/kirish');
-
-  const user = await prisma.user.findUnique({
-    where: { id: sessiya.userId },
-    select: { parolAlmashtirilsin: true, fullName: true },
-  });
+  /*
+   * `haqiqiyXodim()` — «кўз» режимига эътибор бермайди.
+   *
+   * Парол ҲАР ДОИМ кирган одамнинг ўзиники бўлиши керак:
+   * кўриш режимида бошқа ходимнинг парол экранига тушиб
+   * қолиш мумкин эмас.
+   *
+   * У ҳисоб фаоллигини ва сессия авлодини ҳам текширади —
+   * аввал бу ерда фақат cookie ўқиларди.
+   */
+  const xodim = await haqiqiyXodim();
+  if (!xodim) redirect('/kirish');
+  const user = { parolAlmashtirilsin: xodim.parolAlmashtirilsin, fullName: xodim.fullName };
 
   /*
    * Bu sahifa `(ilova)` guruhidan TASHQARIDA turadi - qobiq va

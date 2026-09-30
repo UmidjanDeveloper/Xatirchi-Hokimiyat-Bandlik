@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ISH_BELGISI } from '@/lib/xabarnoma';
@@ -72,11 +73,52 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Суҳбат ШАХСИЙ ми.
+ *
+ * ── Нега муҳим ──
+ *
+ * Бот ходимнинг ҳисобини улайди, фуқаролар рўйхатини
+ * кўрсатади ва модерация тугмаларини беради. Буларнинг
+ * ҳаммаси БИР одамга аталган.
+ *
+ * Бот гуруҳга қўшилса (уни ҳар ким қила олади), ўша
+ * гуруҳдаги ҳамма фуқароларнинг исми ва телефонини кўриб
+ * қоларди — ва улашни ҳеч ким атайлаб қилмаган бўларди.
+ *
+ * `type` келмаган ҳолда ID нинг ишорасига қараймиз:
+ * Telegram'да шахсий чат ID си мусбат, гуруҳники манфий.
+ */
+function shaxsiyMi(chat: { id: number | string; type?: string }): boolean {
+  if (chat.type) return chat.type === 'private';
+  const raqam = typeof chat.id === 'number' ? chat.id : Number(chat.id);
+  return Number.isFinite(raqam) ? raqam > 0 : false;
+}
+
 const Yangilanish = z.object({
+  /*
+   * ── ТАКРОР ЮБОРИЛГАН ЯНГИЛАНИШ ──
+   *
+   * Telegram жавоб ололмаса ЎША update ни қайта юборади.
+   * Бу оддий ҳол: тармоқ узилди, сервер секин жавоб берди,
+   * деплой пайтига тўғри келди.
+   *
+   * Бунисиз бир «тасдиқлаш» тугмаси икки марта ишлар,
+   * бир эълон икки марта тарқатилар эди.
+   */
+  update_id: z.number().int().optional(),
   message: z
     .object({
       text: z.string().max(500).optional(),
-      chat: z.object({ id: z.union([z.number(), z.string()]) }),
+      chat: z.object({
+        id: z.union([z.number(), z.string()]),
+        /*
+         * `private` — шахсий суҳбат. Гуруҳда ходим ҳисобини
+         * улаш ёки фуқаролар рўйхатини кўрсатиш мумкин эмас:
+         * гуруҳдаги ҳар ким уни ўқиб қоларди.
+         */
+        type: z.string().max(32).optional(),
+      }),
     })
     .optional(),
   /*
@@ -91,7 +133,10 @@ const Yangilanish = z.object({
       message: z
         .object({
           message_id: z.number(),
-          chat: z.object({ id: z.union([z.number(), z.string()]) }),
+          chat: z.object({
+            id: z.union([z.number(), z.string()]),
+            type: z.string().max(32).optional(),
+          }),
         })
         .optional(),
       from: z.object({ id: z.union([z.number(), z.string()]) }),
@@ -104,20 +149,57 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, xabar: 'Telegram sozlanmagan' }, { status: 503 });
   }
 
+  /*
+   * ── СИР МАЖБУРИЙ ──
+   *
+   * Аввал бу ерда `if (sir)` турарди: сир созланмаган бўлса
+   * текширув БУТУНЛАЙ ўтказиб юборилар ва манзил очиқ
+   * қоларди. Ҳар ким сохта сўров юбориб ўз чат ID сини
+   * бошқа ходимнинг ҳисобига улаб олиши мумкин эди.
+   *
+   * Энди сир йўқ бўлса — хизмат ишламайди. Бу «эҳтиёт
+   * чораси» эмас, ягона тўғри йўл: созланмаган ҳимояни
+   * созланган деб кўрсатиш ундан ҳам ёмон.
+   */
   const sir = process.env.TELEGRAM_WEBHOOK_SIRI;
-  if (sir) {
-    const kelgan = request.headers.get('x-telegram-bot-api-secret-token');
-    if (kelgan !== sir) {
-      /*
-       * 401 эмас, 200 қайтарамиз: Telegram 401 кўрса вебхукни
-       * ўчириб қўяди. Сохта сўровга эса шунчаки жавоб бермаймиз.
-       */
-      return NextResponse.json({ ok: true });
-    }
+  if (!sir || sir.length < 16) {
+    console.error('TELEGRAM_WEBHOOK_SIRI sozlanmagan — vebxuk so‘rovi rad etildi');
+    return NextResponse.json({ ok: false, xabar: 'Vebxuk sozlanmagan' }, { status: 503 });
+  }
+
+  const kelgan = request.headers.get('x-telegram-bot-api-secret-token');
+  if (!kelgan || kelgan.length !== sir.length || !timingSafeEqual(Buffer.from(kelgan), Buffer.from(sir))) {
+    /*
+     * 401 эмас, 200 қайтарамиз: Telegram 401 кўрса вебхукни
+     * ўчириб қўяди. Сохта сўровга эса шунчаки жавоб бермаймиз.
+     */
+    return NextResponse.json({ ok: true });
   }
 
   const natija = Yangilanish.safeParse(await request.json().catch(() => null));
   if (!natija.success) return NextResponse.json({ ok: true });
+
+  /*
+   * ── БИР ЯНГИЛАНИШ — БИР МАРТА ──
+   *
+   * `update_id` Telegram берадиган ўсувчи рақам. Уни базага
+   * ёзамиз: иккинчи марта ёзиб бўлмаса, демак бу янгиланиш
+   * аллақачон бажарилган.
+   *
+   * Текширув эмас, ЁЗИШ орқали: иккита нусха бир вақтда
+   * ишлаётган бўлса, «борми?» деб сўраш иккаласига ҳам «йўқ»
+   * дейиши мумкин. Ягоналик чегараси эса фақат биттасини
+   * ўтказади.
+   */
+  const yangilanishId = natija.data.update_id;
+  if (yangilanishId !== undefined) {
+    try {
+      await prisma.telegramYangilanish.create({ data: { updateId: BigInt(yangilanishId) } });
+    } catch {
+      /* Аллақачон бажарилган — жим қайтамиз */
+      return NextResponse.json({ ok: true });
+    }
+  }
 
   /*
    * ── ТУГМА БОСИЛДИ ──
@@ -127,6 +209,13 @@ export async function POST(request: Request) {
    */
   const bosildi = natija.data.callback_query;
   if (bosildi) {
+    /*
+     * Гуруҳдаги тугма ЖИМ қолдирилади: у ерда ким босганини
+     * ва кимга аталганини ажратиб бўлмайди.
+     */
+    if (bosildi.message && !shaxsiyMi(bosildi.message.chat)) {
+      return NextResponse.json({ ok: true });
+    }
     await tugmaBosildi(bosildi);
     return NextResponse.json({ ok: true });
   }
@@ -134,7 +223,21 @@ export async function POST(request: Request) {
   const xabar = natija.data.message;
   const matn = xabar?.text?.trim();
   const chatId = xabar?.chat.id;
-  if (!matn || chatId === undefined) return NextResponse.json({ ok: true });
+  if (!matn || chatId === undefined || !xabar) return NextResponse.json({ ok: true });
+
+  /*
+   * ── ФАҚАТ ШАХСИЙ СУҲБАТ ──
+   *
+   * Гуруҳда бирон амал бажарилмайди. Бир марта тушунтириб
+   * қўямиз — жим қолса, бот бузуқдек кўринарди.
+   */
+  if (!shaxsiyMi(xabar.chat)) {
+    await telegramYuboruvchi(
+      String(chatId),
+      'Бу бот фақат ШАХСИЙ суҳбатда ишлайди. Ботни очиб, «Бошлаш» тугмасини босинг.'
+    );
+    return NextResponse.json({ ok: true });
+  }
 
   /*
    * Кутилган матн: «/start ABC123» ёки шунчаки «ABC123».

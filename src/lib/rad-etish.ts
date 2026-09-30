@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { xabarQoshish, type Tugma, type YangiXabar } from './xabarnoma';
+import { xabarQoshish, type Tugma, type YangiXabar, xavfsiz } from './xabarnoma';
 
 /**
  * ============================================================
@@ -194,10 +194,10 @@ export async function radniYoz(p: {
     const matn = [
       '<b>Фуқаро таклифдан бош тортди</b>',
       '',
-      `${odam.fish}`,
+      `${xavfsiz(odam.fish)}`,
       `${xabarchi?.mahalla?.nomiKirill ?? '—'} МФЙ`,
       '',
-      ...(orin ? [`Иш ўрни: ${orin.lavozim} — ${orin.korxonaNomi}`] : []),
+      ...(orin ? [`Иш ўрни: ${xavfsiz(orin.lavozim)} — ${xavfsiz(orin.korxonaNomi)}`] : []),
       `Сабаби: <b>${sabab}</b>`,
       '',
       `Хабар берди: ${xabarchi?.fullName ?? '—'}`,

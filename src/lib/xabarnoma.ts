@@ -539,8 +539,21 @@ export async function xabarHisobi(): Promise<{
 //  XABAR MATNLARI
 // ─────────────────────────────────────────────────────────────
 
-/** Telegram HTML uchun xavfsiz matn */
-function xavfsiz(matn: string): string {
+/**
+ * Telegram HTML uchun xavfsiz matn.
+ *
+ * ── Нега ЭКСПОРТ ──
+ *
+ * Хабарларга иш берувчи ЎЗИ ёзган матн тушади: корхона
+ * номи, масъул шахс, лавозим, рад сабаби. Улар
+ * `parse_mode: HTML` билан кетади.
+ *
+ * Ходим «&lt;b&gt;» ёзса — хабар бузилади; «&lt;a href=…&gt;» ёзса —
+ * раҳбарга келган хабарда бегона ҳавола пайдо бўлади.
+ * Шунинг учун ҳар бир динамик қиймат шу ердан ўтади.
+ */
+export function xavfsiz(matn: string | null | undefined): string {
+  if (matn === null || matn === undefined) return "";
   return matn.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 

@@ -65,7 +65,7 @@ export default async function TahrirSahifasi({ params }: { params: { id: string 
 
       <XatlovFormasi
         mahallalar={mahallalar}
-        boshlangich={{ id: xatlov.id, holat: xatlov.holat }}
+        boshlangich={{ id: xatlov.id, holat: xatlov.holat, versiya: xatlov.versiya }}
         egasi={sessiya.username}
       />
     </div>

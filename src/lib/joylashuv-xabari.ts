@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 import { joylashtirishAmali } from './joylashtirish';
-import { xabarQoshish, type YangiXabar } from './xabarnoma';
+import { xabarQoshish, type YangiXabar, xavfsiz } from './xabarnoma';
 
 /**
  * ============================================================
@@ -245,7 +245,7 @@ export async function xabarniTasdiqla(p: {
       matn: [
         '<b>Хабарингиз тасдиқланди</b>',
         '',
-        `${xabar.ishsiz.fish} расман ишга жойлашди.`,
+        `${xavfsiz(xabar.ishsiz.fish)} расман ишга жойлашди.`,
         '',
         'Раҳмат — маълумотингиз туман ҳисоботига кирди.',
       ].join('\n'),

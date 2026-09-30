@@ -68,6 +68,50 @@ export interface JoriyXodim {
  * `null` қайтарса: сессия йўқ, муддати ўтган, ҳисоб ўчирилган
  * ёки сессия авлоди эскирган.
  */
+/**
+ * ҲАҚИҚИЙ ходим — «кўз» режимига ЭЪТИБОР БЕРМАЙДИ.
+ *
+ * Кўриш режимида `joriyXodim()` нишон ходимни қайтаради.
+ * Аммо айрим саҳифалар ҲАР ДОИМ ҳақиқий ҳисоб билан
+ * ишлаши керак: парол алмаштириш, чиқиш, ўз профили.
+ *
+ * Акс ҳолда администратор кўриш режимида туриб бошқа
+ * одамнинг паролини алмаштириш экранига тушиб қоларди.
+ */
+export const haqiqiyXodim = cache(async (): Promise<JoriyXodim | null> => {
+  const sessiya = joriySessiya();
+  if (!sessiya) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: sessiya.userId },
+    select: {
+      username: true,
+      fullName: true,
+      rol: true,
+      mahallaId: true,
+      faol: true,
+      parolAlmashtirilsin: true,
+      sessiyaVersiyasi: true,
+      mahalla: { select: { nomiKirill: true } },
+    },
+  });
+
+  if (!user || !user.faol) return null;
+
+  const cookieAvlodi = (sessiya as { v?: number }).v;
+  if (cookieAvlodi !== undefined && cookieAvlodi !== user.sessiyaVersiyasi) return null;
+
+  return {
+    userId: sessiya.userId,
+    username: user.username,
+    fullName: user.fullName,
+    rol: user.rol,
+    mahallaId: user.mahallaId,
+    mahallaNomi: user.mahalla?.nomiKirill ?? null,
+    parolAlmashtirilsin: user.parolAlmashtirilsin,
+  };
+});
+
 export const joriyXodim = cache(async (): Promise<JoriyXodim | null> => {
   const sessiya = joriySessiya();
   if (!sessiya) return null;

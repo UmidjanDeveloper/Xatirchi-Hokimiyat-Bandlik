@@ -58,6 +58,13 @@ const kodiOl = (matn: string): string =>
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
+/*
+ * Изоҳларсиз саҳифа коди.
+ *
+ * Изоҳда эски усулнинг номи ёзилган бўлиши мумкин («аввал
+ * `joriySessiya()` турарди») — у текширувни алдамаслиги керак.
+ */
+const SAHIFA_KODI = kodiOl(SAHIFA);
 const EKRAN_KODI = kodiOl(EKRAN);
 const XARITA_KODI = kodiOl(XARITA);
 
@@ -413,12 +420,25 @@ const SINOVLAR: Sinov[] = [
    *  8. ҲУҚУҚ
    * ──────────────────────────────────────────────────────── */
   {
-    nomi: 'Табло сессия ва ролни текширади',
+    /*
+     * ── ТАБЛО ҲАМ БАЗАДАН ТЕКШИРАДИ ──
+     *
+     * Аввал бу ерда `joriySessiya()` турарди ва рол COOKIE'дан
+     * ўқиларди. Яъни табло `(ilova)` қобиғидаги текширувдан
+     * ташқарида қолган эди:
+     *
+     *   · роли пасайтирилган ходим таблони очаверарди;
+     *   · парол алмашганда эски cookie бу ерда ҳамон ишларди.
+     *
+     * `joriyXodim()` учовини бирда қилади: ҳисоб фаоллиги,
+     * БАЗАДАГИ рол ва сессия авлоди. Шунинг учун алоҳида
+     * `user?.faol` текшируви ҳам керак эмас — у ичкарида.
+     */
+    nomi: 'Табло сессия ва ролни БАЗАДАН текширади',
     tekshir: async () =>
-      SAHIFA.includes('joriySessiya()') &&
-      SAHIFA.includes('tahlilKoradi(sessiya.rol)') &&
-      /* Ишдан бўшатилган ходим cookie билан кира олмайди */
-      SAHIFA.includes('user?.faol'),
+      SAHIFA_KODI.includes('await joriyXodim()') &&
+      SAHIFA_KODI.includes('tahlilKoradi(xodim.rol)') &&
+      !SAHIFA_KODI.includes('joriySessiya()'),
   },
   {
     nomi: 'Табло статик кешланмайди — жонли маълумот кўрсатади',

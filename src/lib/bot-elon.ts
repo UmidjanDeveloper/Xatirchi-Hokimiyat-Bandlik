@@ -1,3 +1,4 @@
+import { xavfsiz } from './xabarnoma';
 import { prisma } from './prisma';
 import { telefonSaqlashUchun, telefonTekshir } from './inson-tekshiruvi';
 import type { Tugma } from './xabarnoma';
@@ -262,7 +263,7 @@ function soragich(bosqich: Qadam, m: Malumot): Javob {
       return {
         matn: [
           '<b>Янги иш ўрни — 3/7</b>',
-          `${m.korxonaNomi}`,
+          `${xavfsiz(m.korxonaNomi)}`,
           '',
           'Лавозим?',
           '',
@@ -340,8 +341,8 @@ function soragich(bosqich: Qadam, m: Malumot): Javob {
           '<b>Текшириб кўринг</b>',
           '',
           `Маҳалла: <b>${m.mahallaNomi}</b>`,
-          `Корхона: <b>${m.korxonaNomi}</b>`,
-          `Лавозим: <b>${m.lavozim}</b>`,
+          `Корхона: <b>${xavfsiz(m.korxonaNomi)}</b>`,
+          `Лавозим: <b>${xavfsiz(m.lavozim)}</b>`,
           `Ўрин сони: <b>${m.ornlarSoni}</b>`,
           `Маош: <b>${m.maosh ? `${m.maosh} млн сўм` : 'кўрсатилмаган'}</b>`,
           `Телефон: <b>${m.telefon ?? 'кўрсатилмаган'}</b>`,

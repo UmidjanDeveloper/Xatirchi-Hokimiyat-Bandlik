@@ -17,7 +17,7 @@ import { bosHolat } from '@/components/xatlov/holat';
  */
 export async function xatlovniYukla(
   id: string
-): Promise<{ id: string; mahallaId: string; holati: string; holat: XatlovHolati } | null> {
+): Promise<{ id: string; mahallaId: string; holati: string; versiya: number; holat: XatlovHolati } | null> {
   const x = await prisma.household.findUnique({
     where: { id },
     include: { ishsizlar: { orderBy: { createdAt: 'asc' } } },
@@ -216,5 +216,5 @@ export async function xatlovniYukla(
     })),
   };
 
-  return { id: x.id, mahallaId: x.mahallaId, holati: x.holati, holat };
+  return { id: x.id, mahallaId: x.mahallaId, holati: x.holati, versiya: x.versiya, holat };
 }

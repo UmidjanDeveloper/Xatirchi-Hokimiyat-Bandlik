@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation';
 import { AlifboProvider } from '@/components/alifbo/alifbo-provider';
 import { TabloEkrani } from '@/components/tablo/tablo-ekrani';
 import { alifboServer } from '@/lib/alifbo-server';
-import { joriySessiya, tahlilKoradi } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { tahlilKoradi } from '@/lib/auth';
+import { joriyXodim } from '@/lib/sahifa-auth';
 import { tabloMalumoti } from '@/lib/tablo-malumoti';
 
 /**
@@ -44,21 +44,27 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function TabloSahifasi() {
-  const sessiya = joriySessiya();
-  if (!sessiya) redirect('/kirish?keyin=/tablo');
-  if (!tahlilKoradi(sessiya.rol)) redirect('/');
-
   /*
-   * Ходим ишдан бўшатилган бўлса, cookie ҳали яроқли бўлса
-   * ҳам кирмайди. `(ilova)` қобиғидаги текширувнинг айни
-   * ўзи — табло ундан ташқарида турганидан кейин бу ерда
-   * такрорланиши шарт.
+   * ── НЕГА `joriyXodim()` ──
+   *
+   * Аввал бу ерда `joriySessiya()` турарди ва рол COOKIE'дан
+   * ўқиларди. Яъни табло `(ilova)` қобиғидаги текширувдан
+   * ТАШҚАРИДА қолган эди:
+   *
+   *   · роли пасайтирилган ходим таблони очаверарди;
+   *   · парол алмашганда эски cookie бу ерда ҳамон ишларди
+   *     (`sessiyaVersiyasi` текширилмасди).
+   *
+   * Табло — бутун туманнинг жонли рақамлари. Уни қолдириб
+   * кетиш «ҳамма саҳифа базадан текширилади» деган гапни
+   * ёлғонга чиқарарди.
+   *
+   * `joriyXodim()` учовини бирда қилади: ҳисоб фаоллиги,
+   * БАЗАДАГИ рол ва сессия авлоди.
    */
-  const user = await prisma.user.findUnique({
-    where: { id: sessiya.userId },
-    select: { faol: true },
-  });
-  if (!user?.faol) redirect('/kirish');
+  const xodim = await joriyXodim();
+  if (!xodim) redirect('/kirish?keyin=/tablo');
+  if (!tahlilKoradi(xodim.rol)) redirect('/');
 
   const tablo = await tabloMalumoti();
 
