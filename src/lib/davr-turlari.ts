@@ -74,4 +74,12 @@ export interface MahallaQamrovi {
   natijaFoizi: number;
   xatlovXonadon: number;
   bazaXonadon: number;
+  /**
+   * Минг хонадонга нисбатан жойлаштириш.
+   *
+   * Хом сон катта маҳаллани ҳар доим тепага чиқаради ва
+   * кичик МФЙ нинг самарали иши кўринмай кетади. Ҳоким эса
+   * шу рўйхатга қараб ресурс тақсимлайди.
+   */
+  mingXonadonga: number;
 }

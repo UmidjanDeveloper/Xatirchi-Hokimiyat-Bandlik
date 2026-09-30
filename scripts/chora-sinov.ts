@@ -16,6 +16,22 @@
  * ============================================================
  */
 
+/*
+ * ── МУҲИТНИ ЎЗИ ЮКЛАЙДИ ──
+ *
+ * Бу синов базага уланади, демак `DATABASE_URL` керак.
+ * Аввал у чақирилмасди ва синов МУҲИТГА таянарди: CI да ва
+ * `ci-taqlid` да ўзгарувчи ташқаридан келарди, `npm run
+ * sinov` да эса келмасди — ва синов «Environment variable
+ * not found» деб йиқиларди.
+ *
+ * Лойиҳада бу хато УЧИНЧИ марта: биринчиси `/tmp` даги файл,
+ * иккинчиси базадаги раҳбар ҳисоблари эди. Атроф-муҳитга
+ * таянган синов — синов эмас.
+ */
+import { envYukla } from './env-yukla';
+envYukla();
+
 import type { Tranzaksiya } from '../src/lib/prisma';
 import { choralarniHisobla, yangiChoralar, type ChoraManbai } from '../src/lib/chora-yaratish';
 

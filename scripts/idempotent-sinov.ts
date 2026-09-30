@@ -21,6 +21,22 @@
  *  учун улар тез ва ҳар доим бир хил натижа беради.
  * ============================================================
  */
+/*
+ * ── МУҲИТНИ ЎЗИ ЮКЛАЙДИ ──
+ *
+ * Бу синов базага уланади, демак `DATABASE_URL` керак.
+ * Аввал у чақирилмасди ва синов МУҲИТГА таянарди: CI да ва
+ * `ci-taqlid` да ўзгарувчи ташқаридан келарди, `npm run
+ * sinov` да эса келмасди — ва синов «Environment variable
+ * not found» деб йиқиларди.
+ *
+ * Лойиҳада бу хато УЧИНЧИ марта: биринчиси `/tmp` даги файл,
+ * иккинчиси базадаги раҳбар ҳисоблари эди. Атроф-муҳитга
+ * таянган синов — синов эмас.
+ */
+import { envYukla } from './env-yukla';
+envYukla();
+
 import { readFileSync } from 'node:fs';
 import { kalitQarori, mazmunIzi, type KalitYozuvi } from '../src/lib/idempotentlik';
 import { prisma } from '../src/lib/prisma';

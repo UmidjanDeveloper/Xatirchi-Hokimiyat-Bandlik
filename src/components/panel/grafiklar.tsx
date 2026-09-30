@@ -721,13 +721,38 @@ export function OsishUstunlari({
 
 /* ── 2. USTUNLI DIAGRAMMA: mahallalar taqqoslash ────────────── */
 
-type Olcham = 'qamrovFoizi' | 'aniqlangan' | 'joylashtirilgan' | 'natijaFoizi';
+type Olcham =
+  | 'qamrovFoizi'
+  | 'aniqlangan'
+  | 'joylashtirilgan'
+  | 'natijaFoizi'
+  | 'mingXonadonga';
 
+/**
+ * ── ХОМ СОН БЎЙИЧА РЕЙТИНГ АДОЛАТСИЗ ──
+ *
+ * 3000 хонадонли МФЙ да 30 та жойлаштириш «кўп», 300
+ * хонадонлида 10 та эса «кам» бўлиб кўринади — аслида
+ * иккинчиси икки баробар самарали ишлаган.
+ *
+ * Ҳоким шу рўйхатга қараб ресурс тақсимлайди. Шунинг учун
+ * хом сон ЁНИДА нисбий кўрсаткичлар ҳам турибди: қамров
+ * фоизи, натижа фоизи ва минг хонадонга нисбатан натижа.
+ *
+ * Стандарт танлов ҳам фоиз — рўйхат очилганда биринчи
+ * кўринадигани нисбий бўлсин.
+ */
 const OLCHAMLAR: { kalit: Olcham; nomi: string; birlik: string; foiz: boolean }[] = [
   { kalit: 'qamrovFoizi', nomi: 'Хатлов қамрови', birlik: '%', foiz: true },
-  { kalit: 'aniqlangan', nomi: 'Аниқланган ишсиз', birlik: 'киши', foiz: false },
-  { kalit: 'joylashtirilgan', nomi: 'Ишга жойлашган', birlik: 'киши', foiz: false },
   { kalit: 'natijaFoizi', nomi: 'Жойлаштириш фоизи', birlik: '%', foiz: true },
+  {
+    kalit: 'mingXonadonga',
+    nomi: 'Минг хонадонга жойлаштириш',
+    birlik: 'та',
+    foiz: false,
+  },
+  { kalit: 'aniqlangan', nomi: 'Аниқланган ишсиз (хом сон)', birlik: 'киши', foiz: false },
+  { kalit: 'joylashtirilgan', nomi: 'Ишга жойлашган (хом сон)', birlik: 'киши', foiz: false },
 ];
 
 /**
