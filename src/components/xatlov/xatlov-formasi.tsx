@@ -118,8 +118,51 @@ function qoralamaShakli(xom: unknown): Qoralama | null {
 }
 
 /** Қораламада ҳақиқий маълумот борми — бўш форма тикланмасин */
+/**
+ * ============================================================
+ *  ФОРМАДА МАЗМУН БОРМИ
+ *
+ *  ── Қандай нуқсонни ёпади ──
+ *
+ *  Аввал шарт шунчаки шу эди:
+ *
+ *      q.holat?.manzil || q.holat?.oilaBoshligi
+ *
+ *  Яъни «манзил ёки оила бошлиғи ёзилганми». Автосақлаш
+ *  ҳам ШУ шартга таянарди.
+ *
+ *  Оқибати: ходим анкетани ЎРТАСИДАН бошлаб тўлдирса —
+ *  аввал оила таркиби, кейин даромад, ер майдони, мол-ҳол —
+ *  ва манзилни ҳали ёзмаган бўлса, ҲЕЧ НАРСА сақланмасди.
+ *  Браузер ёпилса, ярим соатлик иш йўқоларди.
+ *
+ *  Дала шароитида бу оддий ҳол: одам бор маълумотини
+ *  айтиб бўлади, манзилни эса кейин, дарвозага қараб
+ *  ёзади.
+ *
+ *  ── Нега БЎШ ҲОЛАТ билан солиштириш ──
+ *
+ *  Майдонларни бирма-бир санаш мўрт: янги майдон қўшилса,
+ *  уни ҳам рўйхатга ёзиш ЭСДАН чиқади ва нуқсон жимгина
+ *  қайтади.
+ *
+ *  Шунинг учун форма БЎШ шакл билан солиштирилади: бирор
+ *  нарса ўзгарган бўлса, мазмун бор. Янги майдон қўшилса,
+ *  у ўз-ўзидан ҳисобга киради.
+ *
+ *  Маҳалла танлови ҲИСОБГА КИРМАЙДИ: битта маҳаллали
+ *  ходимда у бошланишдан тўлган бўлади ва «мазмун бор»
+ *  деб алдарди.
+ * ============================================================
+ */
+export function formadaMazmunBormi(holat: XatlovHolati | undefined | null): boolean {
+  if (!holat) return false;
+  const bosh = bosHolat(holat.mahallaId ?? '');
+  return JSON.stringify({ ...holat, mahallaId: '' }) !== JSON.stringify({ ...bosh, mahallaId: '' });
+}
+
 function qoralamaTolami(q: Qoralama | null): boolean {
-  return Boolean(q && (q.holat?.manzil || q.holat?.oilaBoshligi));
+  return Boolean(q && formadaMazmunBormi(q.holat));
 }
 
 export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
@@ -255,7 +298,12 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
   // Server bilan aloqa yo'q bo'lsa ham xodim to'ldirgani yo'qolmaydi.
   useEffect(() => {
     if (qoralamaKutmoqda) return;
-    if (!h.manzil && !h.oilaBoshligi) return;
+    /*
+     * Аввал бу ерда `!h.manzil && !h.oilaBoshligi` турарди —
+     * яъни анкетани ўртасидан бошлаб тўлдирган ходимнинг
+     * иши ҲЕЧ ҚАЧОН сақланмасди.
+     */
+    if (!formadaMazmunBormi(h)) return;
     const ok = qoralamaSaqla(joriyKalit, { id, holat: h, kalit } satisfies Qoralama, egasi);
     setXotiraXatosi(!ok);
     /*
@@ -310,6 +358,55 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  /*
+   * ── БИРИНЧИ ХАТО КАТАГИГА КУРСОРНИ ҚЎЙИШ ──
+   *
+   * Аввал хато топилганда икки иш бўларди: керакли ҚАДАМ
+   * очиларди ва саҳифа тепасига сурилар эди. Бу камлик
+   * қиларди.
+   *
+   * Анкетанинг битта бўлимида йигирматача катак бор. Ходим
+   * тўғри бўлимга тушади-ю, ҚАЙСИ катак қизил бўлганини
+   * яна ўзи излайди — телефон экранида, қуёш остида,
+   * хонадон олдида турганда.
+   *
+   * Энди курсор АЙНАН ўша катакка қўйилади ва экран ўшани
+   * ўртага олади. Клавиатура билан ишлайдиган одам ҳам
+   * шу ерда туради.
+   *
+   * ── Нега `maydon-xato` синфи бўйича ──
+   *
+   * Катакларнинг `id` си `useId()` дан келади, яъни у
+   * тасодифий сатр. Хато калити билан боғлаб бўлмайди.
+   *
+   * `maydon-xato` синфи эса хато бўлган катакнинг ЎЗИГА
+   * қўйилади (`maydonlar.tsx`) — демак биринчисини топиш
+   * кифоя. Бирор проп узатиш ҳам керак эмас: янги катак
+   * қўшилса, у автоматик ишлайди.
+   */
+  const xatoKatagigaOt = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    /*
+     * `requestAnimationFrame` — React қадамни чизиб
+     * бўлгунча кутамиз. Ундан олдин изланса, янги
+     * бўлимнинг катаклари ҳали DOM да йўқ бўлади.
+     */
+    requestAnimationFrame(() => {
+      const katak = document.querySelector<HTMLElement>('.maydon-xato');
+      if (!katak) {
+        /* Топилмаса — эски хулқ: тепага сурамиз */
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      katak.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      /*
+       * `preventScroll` — фокус ЯНА сурмасин: юқоридаги
+       * силлиқ суриш бузилиб, экран сакраб қоларди.
+       */
+      katak.focus({ preventScroll: true });
+    });
+  }, []);
+
   // ── Jonli arifmetika tekshiruvi ──
   //
   // Xodim raqamni kiritayotganda darhol ko'radi, "Yuborish" tugmasini
@@ -324,6 +421,7 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
     if (Object.keys(asosiy).length > 0) {
       setXatolar(asosiy);
       setQadam(0);
+      xatoKatagigaOt();
       return;
     }
 
@@ -382,11 +480,12 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
       // Xato qaysi qadamda bo'lsa - o'shanga o'tamiz
       setQadam(xatoQadami(toplangan));
       /*
-       * Ва ЮҚОРИГА сурамиз. Қадам алмашгани билан браузер
-       * скролли жойида қолади: ходим пастда туриб «яна ҳеч
-       * нарса бўлмади» деб ўйларди. Қизил қути эса тепада.
+       * Ва АЙНАН ўша катакка олиб борамиз. Аввал фақат
+       * саҳифа тепасига суриларди: ходим тўғри бўлимга
+       * тушар, аммо йигирма катак ичидан қизилини ўзи
+       * излаши керак эди.
        */
-      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+      xatoKatagigaOt();
       return;
     }
 

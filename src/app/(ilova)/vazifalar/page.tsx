@@ -8,6 +8,7 @@ import { joriyXodim } from '@/lib/sahifa-auth';
 import { vazifalarim, type Ogohlik, type VazifaBlogi } from '@/lib/vazifalar';
 import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
 import { Qoralamalarim } from '@/components/vazifa/qoralamalarim';
+import { Hisoblash } from '@/components/shared/hisoblash';
 
 /**
  * ============================================================
@@ -216,9 +217,24 @@ function Blok({ blok, tr }: { blok: VazifaBlogi; tr: (m: string) => string }) {
         <p className="mt-3 text-sm text-ok">{tr('Бажарилиши керак иш йўқ.')}</p>
       )}
 
+      {/*
+        Рақам ҚАНДАЙ чиққани — юқорига ҳисобот бўлиб
+        кетадиган рақамларда мажбурий.
+      */}
+      {blok.hisoblash && (
+        <Hisoblash
+          usuli={blok.hisoblash.usuli}
+          manbasi={blok.hisoblash.manbasi}
+          ogohlik={blok.hisoblash.ogohlik}
+          yol={blok.yol}
+          tr={tr}
+        />
+      )}
+
       {blok.yol && (
         <Link
           href={blok.yol}
+          data-bosiladigan="ha"
           className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-accent transition hover:gap-2"
         >
           {tr('Ҳаммасини кўриш')}

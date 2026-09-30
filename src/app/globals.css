@@ -407,6 +407,79 @@
     box-shadow: none;
   }
 
+  /*
+    Ikkilamchi tugma — «bekor», «orqaga», «bosh sahifaga».
+    Asosiy amal bilan yonma-yon turadi va undan sustroq
+    ko'rinishi kerak: ikkita bir xil kuchli tugma qo'yilsa,
+    xodim qaysi biri asosiy ekanini bilmaydi.
+  */
+  .tugma-ikkilamchi {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: var(--radius-md, 0.5rem);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-muted);
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .tugma-ikkilamchi:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .tugma-ikkilamchi:disabled {
+    opacity: 0.45;
+  }
+
+  /*
+    ────────────────────────────────────────────────────────
+     KATTA BOSISH MAYDONI — FAQAT SENSORLI EKRANDA
+
+     ── Qanday nuqsonni yopadi ──
+
+     Ilova asosan DALA TELEFONIDA ishlatiladi: 70 ta mahalla
+     xodimi ko'chada, bir qo'lida telefon, ikkinchisida
+     papka bilan yuradi.
+
+     Tugmalar esa sichqoncha o'lchamida edi: `py-1.5`
+     taxminan 30 piksel balandlik beradi. Barmoq uchun bu
+     kam — xodim ikki-uch marta bosishga majbur bo'ladi va
+     ba'zan YONIDAGI tugmani bosib qo'yadi.
+
+     ── Nega `pointer: coarse` ──
+
+     Chegara FAQAT sensorli ekranda qo'yiladi. Sichqoncha
+     bilan ishlaydigan kompyuterda hech narsa o'zgarmaydi:
+     hokim va administrator panelidagi zich jadvallar
+     cho'zilib ketmaydi.
+
+     44 piksel — barmoq uchun eng kichik ishonchli o'lcham.
+    ──────────────────────────────────────────────────────── */
+  @media (pointer: coarse) {
+    button:not(:disabled),
+    a.tugma-asosiy,
+    a.tugma-ikkilamchi,
+    [role='button'],
+    select,
+    summary {
+      min-height: 44px;
+    }
+
+    /*
+      Matn ichidagi kichik havola cho'zilmasin — u tugma
+      emas va 44 piksel bo'lsa, qator orasi buzilardi.
+      Chegara faqat MUSTAQIL turgan havolaga qo'yiladi.
+    */
+    a:not(.tugma-asosiy):not(.tugma-ikkilamchi)[data-bosiladigan='ha'] {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+
   /* Bo'lim sarlavhasi - anketaning 11 bo'limi uchun */
   .bolim-sarlavha {
     display: flex;

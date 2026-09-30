@@ -11,6 +11,7 @@ import {
   tasdiqsizlar,
   tekshirishKutayotganlar } from '@/lib/joylashuv-dalili';
 import { bogliqsizDalillar } from '@/lib/joylashish';
+import { Hisoblash } from '@/components/shared/hisoblash';
 import { DALIL_HOLATI_NOMI, DALIL_NOMI } from '@/lib/dalil-nomlari';
 import { ReyestrYuklash } from '@/components/dalil/reyestr-yuklash';
 import { formatDate } from '@/lib/utils';
@@ -92,6 +93,16 @@ export default async function ReyestrSahifasi() {
           nomi={tr('Жойлаштирилди деб турибди')}
           qiymat={raqam(hisob.davoQilingan)}
           izoh={tr('тизимдаги ёзув')}
+          hisoblash={{
+            usuli:
+              'Ҳолати «Жойлаштирилди» ёки «Тасдиқланди» бўлган фуқаролар сони. ' +
+              'Архивга ўтганлар ҲИСОБГА КИРМАЙДИ.',
+            manbasi: 'Фуқаро анкетасидаги ҳолат майдони — ходим белгилайди',
+            yol: '/ishsizlar',
+            ogohlik:
+              'Бу рақам ХОДИМНИНГ АЙТГАНИ. Ҳужжат билан тасдиқланиши ёнидаги ' +
+              'иккинчи рақамда кўринади.',
+          }}
         />
         <Katak
           nomi={tr('Ҳужжат билан тасдиқланган')}
@@ -99,11 +110,32 @@ export default async function ReyestrSahifasi() {
           izoh={`${hisob.tasdiqFoizi.toString().replace('.', ',')}%`}
           rang="text-ok"
           ikonka={<BadgeCheck className="h-4 w-4" />}
+          hisoblash={{
+            usuli:
+              'Жойлаштирилганлар ичидан камида БИТТА далили «Тасдиқланди» ' +
+              'ҳолатида бўлганлар сони. Фоиз — шу соннинг юқоридаги рақамга нисбати.',
+            manbasi: 'Жойлашув далиллари жадвали — ҳар далил ким тасдиқлаганини сақлайди',
+            yol: '/reyestr',
+            ogohlik:
+              'Бу рақам «қачондир тасдиқланган» деганини билдиради. ҲОЗИРГИ иши ' +
+              'тасдиқланганлар ёнидаги учинчи рақамда.',
+          }}
         />
         <Katak
           nomi={tr('Ҳозирги иши тасдиқланган')}
           qiymat={raqam(hisob.joriyIshTasdiqlangan)}
           izoh={tr('далил АЙНАН шу ишга боғланган')}
+          hisoblash={{
+            usuli:
+              'Фуқаронинг ОЧИҚ иш воқеасига боғланган ва тасдиқланган далили ' +
+              'борлар сони. Эски ишнинг далили ҳисобга КИРМАЙДИ.',
+            manbasi: 'Ишга жойлашиш воқеалари ва уларга боғланган далиллар',
+            yol: '/reyestr',
+            ogohlik:
+              'Бу рақам «ҳужжат билан тасдиқланган» дан КАМ бўлиши табиий: далил ' +
+              'ишга боғланиши учун иш воқеаси ёзилган бўлиши керак, эски ёзувларда ' +
+              'эса у йўқ.',
+          }}
         />
         <Katak
           nomi={tr('Муддати ўтган')}
@@ -111,6 +143,14 @@ export default async function ReyestrSahifasi() {
           izoh={`${DALIL_MUDDATI_KUN} ${tr('кундан ортиқ')}`}
           rang={hisob.muddatiOtgan > 0 ? 'text-danger' : undefined}
           ikonka={hisob.muddatiOtgan > 0 ? <ShieldQuestion className="h-4 w-4" /> : undefined}
+          hisoblash={{
+            usuli:
+              `Ишга кирган санадан ${DALIL_MUDDATI_KUN} кун ўтган-у, ҳозирги иши ` +
+              'ҳамон тасдиқланмаганлар. Сана ёзилмаган бўлса, ёзувнинг сўнгги ' +
+              'ўзгариш санаси олинади.',
+            manbasi: 'Фуқаронинг «ишга кирган санаси» ва унинг далиллари',
+            yol: '/reyestr',
+          }}
         />
       </section>
 
@@ -413,13 +453,24 @@ function Katak({
   qiymat,
   izoh,
   rang,
-  ikonka }: {
+  ikonka,
+  hisoblash }: {
   nomi: string;
   qiymat: string;
   izoh: string;
   rang?: string;
   ikonka?: React.ReactNode;
+  /**
+   * Рақам ҚАНДАЙ чиққани.
+   *
+   * Аввал рақам ялангоч турарди ва «бу қандай ҳисобланган»
+   * деган саволга жавоб йўқ эди. Ҳоким йиғилишда рақамни
+   * айтади, кимдир «нотўғри» дейди — ва баҳсни ҳал
+   * қиладиган ҳеч нарса қолмайди.
+   */
+  hisoblash?: { usuli: string; manbasi: string; yol?: string; ogohlik?: string };
 }) {
+  const tr = matnchi();
   return (
     <div className="karta p-4">
       <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-ink-muted">
@@ -428,6 +479,15 @@ function Katak({
       </p>
       <p className={`mt-1 text-3xl font-bold tabular-nums ${rang ?? 'text-ink'}`}>{qiymat}</p>
       <p className="mt-0.5 text-xs text-ink-faint">{izoh}</p>
+      {hisoblash && (
+        <Hisoblash
+          usuli={hisoblash.usuli}
+          manbasi={hisoblash.manbasi}
+          yol={hisoblash.yol}
+          ogohlik={hisoblash.ogohlik}
+          tr={tr}
+        />
+      )}
     </div>
   );
 }
