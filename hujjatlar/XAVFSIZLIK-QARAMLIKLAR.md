@@ -77,10 +77,15 @@ uchun bu qadamni siz qaror qiling.
 
 `.github/dependabot.yml`: har dushanba (Toshkent vaqti 06:00) npm uchun,
 oyiga bir marta GitHub Actions uchun PR ochadi. Kichik/patch yangilashlar
-**bitta** PR'ga yig'iladi (shovqin kam); major yangilashlar (Next, React,
-Prisma, TypeScript, Tailwind) avtomatik **taklif qilinmaydi**. PR'lar
-o'zi birlashtirilmaydi: `Tekshiruv` oqimidan o'tadi va odam ko'zidan
-o'tadi. Xavfsizlik yangilanishlari `ignore` ga qaramay keladi.
+**bitta** PR'ga yig'iladi (shovqin kam); **hamma** major yangilashlar
+avtomatik **taklif qilinmaydi**. PR'lar o'zi birlashtirilmaydi:
+`Tekshiruv` oqimidan o'tadi va odam ko'zidan o'tadi. Xavfsizlik
+yangilanishlari `ignore` ga qaramay keladi.
 
-Nima TEKSHIRILMAGAN: bu faylning o'zi Dependabot GitHub'da yoqilganida
-(Settings → Code security → Dependabot) ishlaydi; yoqilganini men ko'rolmayman.
+**Faktik holat (2026-10-01):** Dependabot GitHub'da yoqilgan ekan va
+sozlama qo'yilgach darhol 7 ta PR ochdi (2 ta GitHub Actions, 1 ta 17 paketli
+guruh, 4 ta major). Major PR'lar siyosatga zid bo'lgani uchun sozlama
+qattiqlashtirildi (`dependency-name: '*'` major ignore). **Hech biri
+birlashtirilmagan.** Branch production'ga deploy bo'ladi, shuning uchun
+guruhlangan PR'ni xatlov paytida emas, ishdan tashqari vaqtda, CI yashil
+bo'lsa va mahalliy `npm run ci-taqlid` o'tsa birlashtiring.

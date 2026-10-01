@@ -12,10 +12,14 @@
 #  Shovqin kam bo'lsin: kichik/patch yangilanishlar BITTA PR'ga
 #  yig'iladi; ochiq PR soni cheklangan.
 #
-#  MAJOR yangilanishlar (Next, React, Prisma, TypeScript,
-#  Tailwind) avtomatik taklif QILINMAYDI: ular alohida,
-#  rejalashtirilgan ish (to'liq regressiya bilan). Xavfsizlik
-#  yangilanishlari esa bu `ignore` dan qat'i nazar keladi.
+#  BARCHA MAJOR yangilanishlar avtomatik taklif QILINMAYDI: ular
+#  alohida, rejalashtirilgan ish (to'liq regressiya bilan).
+#  Xavfsizlik yangilanishlari esa bu `ignore` dan qat'i nazar keladi.
+#
+#  PR'larni o'zingiz BIRLASHTIRMASDAN oldin: bu branch production'ga
+#  deploy bo'ladi. Guruhlangan PR ko'p paketni birdan yangilaydi —
+#  uni xatlov paytida emas, ishdan tashqari vaqtda, CI yashil bo'lsa
+#  va `npm run ci-taqlid` mahalliy o'tsa birlashtiring.
 # ============================================================
 version: 2
 updates:
@@ -33,19 +37,11 @@ updates:
       kichik-yangilanishlar:
         update-types: [minor, patch]
     ignore:
-      - dependency-name: next
-        update-types: ['version-update:semver-major']
-      - dependency-name: react
-        update-types: ['version-update:semver-major']
-      - dependency-name: react-dom
-        update-types: ['version-update:semver-major']
-      - dependency-name: '@prisma/client'
-        update-types: ['version-update:semver-major']
-      - dependency-name: prisma
-        update-types: ['version-update:semver-major']
-      - dependency-name: typescript
-        update-types: ['version-update:semver-major']
-      - dependency-name: tailwindcss
+      # BARCHA major yangilanishlar (lucide-react 0.x -> 1.x, eslint 8 -> 10,
+      # Next, React, Prisma, TypeScript, Tailwind, @types/node, ...):
+      # har biri alohida rejalashtirilgan ish. Birinchi ishga tushishda
+      # Dependabot shu sababli 4 ta kerakmas PR ochdi.
+      - dependency-name: '*'
         update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
