@@ -1,0 +1,24 @@
+{
+  "name": "Хатирчи тумани — Бандлик платформаси",
+  "short_name": "Бандлик",
+  "description": "Хатирчи тумани ҳокимлиги. Аҳоли бандлигини таъминлаш ва камбағалликни қисқартириш бўйича хатлов ва таҳлил тизими.",
+  "lang": "uz",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1424",
+  "theme_color": "#0d1424",
+  "categories": ["government", "productivity"],
+  "icons": [
+    { "src": "/ikonka/ikonka-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/ikonka/ikonka-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/ikonka/ikonka-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Янги хатлов", "short_name": "Хатлов", "url": "/xatlov/yangi", "icons": [{ "src": "/ikonka/ikonka-192.png", "sizes": "192x192" }] },
+    { "name": "Вазифаларим", "short_name": "Вазифалар", "url": "/vazifalar", "icons": [{ "src": "/ikonka/ikonka-192.png", "sizes": "192x192" }] }
+  ]
+}

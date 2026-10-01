@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Internet yo‘q</title>
+<!--
+  ============================================================
+   OFLAYN SAHIFA
+
+   Service worker sahifa ochilmasa (internet yo‘q) shuni
+   ko‘rsatadi. Bu sahifada FUQARO MA’LUMOTI YO‘Q: u hamma
+   uchun bir xil va keshga xavfsiz qo‘yiladi.
+
+   ── Nega ayni shu sahifa, oldingi ochilgan sahifa emas ──
+
+   Ilova sahifalari xodimga xos: ichida ism, mahalla va
+   login turadi. Ularni umumiy keshga qo‘ysak, telefonni
+   boshqa xodim olganda oldingi xodimning sahifasi ochilib
+   qolishi mumkin edi. Shuning uchun HTML umuman keshlanmaydi
+   va bu sahifa — yagona istisno.
+
+   ── Uslub ichkarida ──
+
+   Tashqi fayl keshda bo‘lmasligi mumkin. Bu sahifaning
+   butun vazifasi — internet YO‘Q paytda ishlash.
+  ============================================================
+-->
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 16px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f4f6fa; color: #14213d; line-height: 1.5;
+  }
+  @media (prefers-color-scheme: dark) { body { background: #0d1424; color: #e6edf7; } }
+  main { width: 100%; max-width: 460px; }
+  h1 { font-size: 1.25rem; margin: 0 0 .5rem; }
+  p { margin: .25rem 0 .75rem; font-size: .9rem; }
+  .karta { border: 1px solid rgba(127,140,160,.35); border-radius: 12px; padding: 16px; margin-top: 12px; }
+  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 .5rem; opacity: .75; }
+  ul { margin: 0; padding-left: 1.1rem; font-size: .9rem; }
+  li { margin: .3rem 0; }
+  .ha  li::marker { content: "✓  "; color: #2f7d6b; font-weight: 700; }
+  .yoq li::marker { content: "✗  "; color: #c0392b; font-weight: 700; }
+  button, a.tugma {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+    padding: .6rem 1.1rem; border-radius: 8px; border: 0; background: #2f7d6b; color: #fff;
+    font: 600 .9rem system-ui, sans-serif; cursor: pointer; text-decoration: none;
+  }
+  .qator { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+
+<!-- ───────── KIRILL (standart) ───────── -->
+<section id="kir">
+  <h1>Интернет йўқ</h1>
+  <p>Саҳифа очилмади. Телефон тармоққа уланганини текширинг.</p>
+
+  <div class="karta ha">
+    <h2>Интернетсиз ишлайди</h2>
+    <ul>
+      <li>Аллақачон <b>очиқ турган</b> хатлов анкетасини тўлдириш.</li>
+      <li>Тўлдирилгани телефон хотирасига ўзи сақланади.</li>
+      <li>«Юбориш» босилса, анкета навбатга тушади ва интернет қайтгач ўзи жўнайди.</li>
+    </ul>
+  </div>
+
+  <div class="karta yoq">
+    <h2>Интернетсиз ишламайди</h2>
+    <ul>
+      <li><b>Янги</b> саҳифа очиш (вазифалар, рўйхатлар, таҳлил).</li>
+      <li>Янги хатлов анкетасини очиш — уни интернет борида очиб қўйинг.</li>
+      <li>Ҳужжатни тасдиқлаш, ҳисобот юклаш.</li>
+    </ul>
+  </div>
+
+  <div class="qator">
+    <button type="button" onclick="location.reload()">Қайта уриниш</button>
+  </div>
+</section>
+
+<!-- ───────── LOTIN ───────── -->
+<section id="lot" hidden>
+  <h1>Internet yo‘q</h1>
+  <p>Sahifa ochilmadi. Telefon tarmoqqa ulanganini tekshiring.</p>
+
+  <div class="karta ha">
+    <h2>Internetsiz ishlaydi</h2>
+    <ul>
+      <li>Allaqachon <b>ochiq turgan</b> xatlov anketasini to‘ldirish.</li>
+      <li>To‘ldirilgani telefon xotirasiga o‘zi saqlanadi.</li>
+      <li>«Yuborish» bosilsa, anketa navbatga tushadi va internet qaytgach o‘zi jo‘naydi.</li>
+    </ul>
+  </div>
+
+  <div class="karta yoq">
+    <h2>Internetsiz ishlamaydi</h2>
+    <ul>
+      <li><b>Yangi</b> sahifa ochish (vazifalar, ro‘yxatlar, tahlil).</li>
+      <li>Yangi xatlov anketasini ochish — uni internet borida ochib qo‘ying.</li>
+      <li>Hujjatni tasdiqlash, hisobot yuklash.</li>
+    </ul>
+  </div>
+
+  <div class="qator">
+    <button type="button" onclick="location.reload()">Qayta urinish</button>
+  </div>
+</section>
+
+</main>
+<script>
+  /* Tanlangan alifbo cookie’da turadi; yo‘q bo‘lsa kirill */
+  try {
+    if (/(?:^|;\s*)bandlik_alifbo=lot(?:;|$)/.test(document.cookie)) {
+      document.getElementById('kir').hidden = true;
+      document.getElementById('lot').hidden = false;
+      document.documentElement.lang = 'uz';
+    }
+  } catch (e) {}
+  /* Internet qaytganda o‘zi qayta ochadi */
+  window.addEventListener('online', function () { location.reload(); });
+</script>
+</body>
+</html>

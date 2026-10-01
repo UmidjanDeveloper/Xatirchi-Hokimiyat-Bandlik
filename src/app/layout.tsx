@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { ThemeProvider, themeInitScript } from '@/components/shared/theme-provider';
+import { ServiceWorkerRegister } from '@/components/shared/service-worker-register';
 import './globals.css';
 /*
   Ko'rinish qatlami globals'dan KEYIN keladi - u tokenlarni emas,
@@ -18,7 +19,18 @@ export const metadata: Metadata = {
    * yo'q - butun sayt login ortida.
    */
   robots: { index: false, follow: false },
-  icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/hokimiyat-logo.png' }] },
+  icons: {
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/hokimiyat-logo.png' }],
+    /* iOS shaffoflikni qora fonga aylantiradi — shuning uchun alohida, oq fonli */
+    apple: [{ url: '/ikonka/apple-touch-ikonka.png', sizes: '180x180' }],
+  },
+  /*
+   * Statik fayl: `/manifest.webmanifest` (Next generatsiya qiladi)
+   * middleware dan o'tardi va login sahifasiga yo'naltirilardi —
+   * brauzer manifestni cookie'siz so'raydi.
+   */
+  manifest: '/manifest.json',
+  appleWebApp: { capable: true, title: 'Бандлик', statusBarStyle: 'default' },
 };
 
 export const viewport: Viewport = {
@@ -52,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

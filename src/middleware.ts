@@ -150,10 +150,15 @@ export const config = {
      * `manifest.json`, `sw.js` va `favicon` ham tashqarida - ular
      * login sahifasida ham kerak bo'ladi.
      *
+     * `oflayn.html` - service worker uni INSTALL paytida oladi.
+     * Qo'riqchidan o'tsa, cookie'siz so'rov login sahifasiga
+     * yo'naltirilardi va kesh oflayn sahifa o'rniga LOGIN
+     * sahifasini saqlab qo'yardi.
+     *
      * `shrift/` - PDF hisoboti uchun shriftlar. Ular maxfiy emas
      * va qo'riqchidan o'tkazilsa, ortiqcha yo'naltirish sodir
      * bo'lib, jsPDF shrift o'rniga HTML sahifani oladi.
      */
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|shrift/|.*\\.(?:png|jpg|jpeg|svg|webp|ico|ttf|woff|woff2)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|oflayn.html|ikonka/|icons/|shrift/|.*\\.(?:png|jpg|jpeg|svg|webp|ico|ttf|woff|woff2)$).*)',
   ],
 };

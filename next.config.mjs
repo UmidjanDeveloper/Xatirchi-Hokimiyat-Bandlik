@@ -86,6 +86,15 @@ const nextConfig = {
           { key: 'Service-Worker-Allowed', value: '/' },
         ],
       },
+      {
+        /*
+         * Oflayn sahifa ham tarmoqdan YANGI olinadi: worker uni
+         * o'rnatish paytida oladi va eski nusxa qolib ketsa,
+         * xodim eskirgan ko'rsatmani o'qiydi.
+         */
+        source: '/oflayn.html',
+        headers: [{ key: 'Cache-Control', value: 'no-cache, must-revalidate' }],
+      },
       { source: '/:yol*', headers: xavfsizlik },
     ];
   },
