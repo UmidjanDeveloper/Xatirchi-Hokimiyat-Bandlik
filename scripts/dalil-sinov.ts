@@ -478,6 +478,33 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    /*
+     * ── ПАРАЛЛЕЛ ЮКЛАШ ──
+     *
+     * Иккита администратор бир вақтда бир хил кўчирмани юкласа (ёки
+     * бир киши тугмани икки марта босса), «аввал бор-йўқлигини сўраш»
+     * иккаласига ҲАМ «йўқ» деб жавоб беради. Ягоналик чегараси эса
+     * ёзишда ишлайди: фақат биттаси ўтади, иккинчиси «такрор».
+     */
+    nomi: 'ПАРАЛЛЕЛ юклаш: бир вақтда 5 та бир хил кўчирма — БИТТА далил',
+    tekshir: async () => {
+      const fish = noyob('Parallel Yuklash');
+      const id = await fuqaroYarat({ fish });
+      const sana = new Date(Date.UTC(2026, 8, 20));
+
+      const natijalar = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          reyestrniYukla([{ fish, tugilganSana: SINOV_SANASI }], { kiritganId: xodimId, reyestrSanasi: sana })
+        )
+      );
+
+      const soni = await prisma.joylashuvDalili.count({ where: { ishsizId: id } });
+      const yozilgan = natijalar.reduce((s, n) => s + (n.mos.length - n.takror), 0);
+      if (soni !== 1 || yozilgan !== 1) console.log('     bazada:', soni, 'yozilgan deb hisoblangan:', yozilgan);
+      return soni === 1 && yozilgan === 1;
+    },
+  },
+  {
     nomi: 'Бошқа сана — янги далил ёзилади',
     tekshir: async () => {
       const fish = noyob('Ikkinchi Oy');

@@ -122,3 +122,12 @@ jobs:
       # JavaScript hajmini o'qiydi va byudjetdan oshsa yiqiladi.
       - name: Hajm byudjeti
         run: npx tsx scripts/hajm-byudjeti.ts
+
+      # Haqiqiy server, haqiqiy so'rovlar: boshqa mahalla yozuviga kirib
+      # bo'lmasligi va ESKI SESSIYA (o'chirilgan hisob, tushirilgan rol,
+      # qalbaki cookie) huquqni saqlab qolmasligi. Bularni `npm run sinov`
+      # ichidan tekshirib bo'lmaydi: cookie va yo'naltirish faqat so'rov
+      # doirasida ishlaydi. Skript `next start` ni o'zi ishga tushiradi va
+      # tugagach to'xtatadi (oldingi qadam qurishni bajargan).
+      - name: HTTP regressiya
+        run: npx tsx scripts/http-regressiya.ts

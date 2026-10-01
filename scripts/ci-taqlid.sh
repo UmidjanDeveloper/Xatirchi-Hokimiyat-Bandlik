@@ -69,3 +69,15 @@ echo "▸ Tiplar"
 npx tsc --noEmit -p tsconfig.json
 echo "▸ Sinovlar"
 npm run sinov
+
+# TO'LIQ rejim: CI dagi qolgan qadamlar ham (qurish, hajm byudjeti, HTTP regressiya).
+#   CI_TAQLID_TOLIQ=1 npm run ci-taqlid
+# Odatiy rejim tez (faqat tiplar va sinovlar); to'liq rejim ~3-4 daqiqa.
+if [ "${CI_TAQLID_TOLIQ:-0}" = "1" ]; then
+  echo "▸ Qurish"
+  NODE_OPTIONS="--max-old-space-size=3072" npm run build >/dev/null
+  echo "▸ Hajm byudjeti"
+  npx tsx scripts/hajm-byudjeti.ts | tail -1
+  echo "▸ HTTP regressiya"
+  npx tsx scripts/http-regressiya.ts
+fi
