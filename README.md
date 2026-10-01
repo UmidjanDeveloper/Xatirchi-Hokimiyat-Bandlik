@@ -839,6 +839,12 @@ Javob doim `Cache-Control: no-store` bilan qaytadi.
   keyingilari — son (IDROK shundan diagramma chizadi).
 - Raqamlar devor tablosi va ertalabki brifing (`tumanHolati`) hamda
   tahlil paneli (`tahlil.ts` dagi o'sha shartlar) bilan **bir xil**.
+  `bugun_*` va `hafta_*` — tablodagi ta'rif. `oy_*` (joriy oy, Toshkent
+  vaqti bilan) — joylashtirish ishga kirgan sana, anketa yaratilgan
+  sana bo'yicha (panelning "Oylik oqim" grafigi kabi); xatlov esa
+  tablodagi kabi xatlov sanasi bo'yicha, panel grafigi esa yozuv
+  kiritilgan sanani oladi — shuning uchun bu bitta raqam farq qilishi
+  mumkin.
   Natija 45 soniya keshlanadi. Kodi: `src/lib/idrok-statistika.ts`.
 
 **Xavfsizlik:**

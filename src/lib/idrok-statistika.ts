@@ -10,7 +10,7 @@ import { ISHSIZ_HOLATI, VORONKA } from './ishsiz-holati';
 import { vaucherHisobi } from './it-vaucher';
 import { kuzatuvKorsatkichlari } from './kuzatuv';
 import { tabloMalumoti } from './tablo-malumoti';
-import { KUN_MS, XATLANGAN, harakat, kunBoshi, kunRaqami, type Harakat } from './tuman-holati';
+import { KUN_MS, XATLANGAN, kunBoshi, kunRaqami, type Harakat } from './tuman-holati';
 import {
   IT_VAUCHER_HOLATI,
   IT_YONALISHI,
@@ -194,6 +194,42 @@ function toshkentSanasi(sana: Date): string {
   return new Date(kunBoshi(sana).getTime() + TOSHKENT_MS).toISOString().slice(0, 10);
 }
 
+interface OyOqimi {
+  xatlov: number;
+  anketa: number;
+  joylashtirilgan: number;
+}
+
+/**
+ * Joriy oyning oqimi — `harakat()` EMAS.
+ *
+ * `harakat()` joylashtirishni `updatedAt` bo'yicha sanaydi: tablodagi
+ * bir kun uchun bu deyarli to'g'ri, bir oyda esa eski joylashtirishning
+ * har qanday tahriri yoki 90 kunlik tasdig'i ham "shu oyda
+ * joylashtirildi" bo'lib qoladi. Shuning uchun:
+ *
+ *  - joylashtirish — `ishgaKirganSana` bo'yicha, panelning "Oylik
+ *    oqim" grafigi bilan bir xil (`tahlil.ts`, `kunlikSoni`);
+ *  - anketa — `createdAt` bo'yicha, u ham panel bilan bir xil;
+ *  - xatlov — `xatlovSanasi` bo'yicha, tablo va brifing kabi
+ *    (`tuman-holati.ts` izohi). Panel grafigi esa yozuv kiritilgan
+ *    sanani oladi, shuning uchun nomida "xatlov sanasi bo'yicha"
+ *    deb ochiq yozilgan.
+ *
+ * Rad etganlar oy uchun sanalmaydi: ularning sanasi yo'q, faqat
+ * `updatedAt` bor. Arxivdagilarni `prisma.ts` dagi qorovul chiqaradi
+ * (xom SQL dagi `"arxivSanasi" IS NULL` bilan bir xil).
+ */
+async function oyOqimi(boshi: Date, oxiri: Date): Promise<OyOqimi> {
+  const oraliq = { gte: boshi, lt: oxiri };
+  const [xatlov, anketa, joylashtirilgan] = await Promise.all([
+    prisma.household.count({ where: { ...XATLANGAN, xatlovSanasi: oraliq } }),
+    prisma.unemployedPerson.count({ where: { createdAt: oraliq } }),
+    prisma.unemployedPerson.count({ where: { ishgaKirganSana: oraliq } }),
+  ]);
+  return { xatlov, anketa, joylashtirilgan };
+}
+
 // ─────────────────────────────────────────────────────────────
 //  HISOB
 // ─────────────────────────────────────────────────────────────
@@ -300,9 +336,14 @@ async function hisobla(hozir: Date): Promise<IdrokStatistika> {
       select: { talabQilinganMablag: true, mablagYonalishi: true },
     }),
 
-    prisma.unemployedPerson.findMany({
+    /*
+     * Panel bilan bir xil shart, lekin har fuqaro emas, har KASB
+     * bo'yicha bitta qator — natija katalogga yig'ilgach bir xil.
+     */
+    prisma.unemployedPerson.groupBy({
+      by: ['organmoqchiKasb'],
       where: { kasbHunarEhtiyoji: true, organmoqchiKasb: { not: null } },
-      select: { organmoqchiKasb: true },
+      _count: true,
     }),
 
     prisma.unemployedPerson.count({ where: UZOQ_ISHSIZ(hozir) }),
@@ -338,7 +379,7 @@ async function hisobla(hozir: Date): Promise<IdrokStatistika> {
 
     vaucherHisobi(),
     kuzatuvKorsatkichlari(undefined, hozir),
-    harakat(oyBoshi, ertaga),
+    oyOqimi(oyBoshi, ertaga),
   ]);
 
   // ── Mahalla kesimi va voronka (`tahlil.ts` dagi hisob) ──
@@ -414,7 +455,7 @@ async function hisobla(hozir: Date): Promise<IdrokStatistika> {
   const kasblar = new Map<string, number>();
   for (const k of kurslar) {
     if (!k.organmoqchiKasb?.trim()) continue;
-    qosh(kasblar, katalogdan(ORGANMOQCHI_KASBLAR, k.organmoqchiKasb), 1);
+    qosh(kasblar, katalogdan(ORGANMOQCHI_KASBLAR, k.organmoqchiKasb), k._count);
   }
 
   // ── Faol e'lonlar soha kesimida ──
@@ -527,10 +568,19 @@ async function hisobla(hozir: Date): Promise<IdrokStatistika> {
       'kishi',
     ],
 
-    /* ── Dinamika: bugun va so'nggi 7 kun — tablodan; joriy oy — o'sha `harakat()` ── */
+    /* ── Dinamika: bugun va so'nggi 7 kun — tablodan ── */
     ...dinamika('bugun', 'Bugun', tablo.bugun),
     ...dinamika('hafta', "So'nggi 7 kunda", tablo.hafta),
-    ...dinamika('oy', 'Joriy oyda', oy),
+
+    /* ── Joriy oy (Toshkent vaqti bilan 1-sanadan) — `oyOqimi` izohiga qarang ── */
+    ['oy_xatlov', "Joriy oyda xatlovdan o'tgan xonadonlar (xatlov sanasi bo'yicha)", oy.xatlov, 'ta'],
+    ['oy_yangi_anketa', "Joriy oyda anketasi to'ldirilgan ishsizlar", oy.anketa, 'kishi'],
+    [
+      'oy_joylashtirilgan',
+      "Joriy oyda ishga joylashtirilganlar (ishga kirgan sanasi bo'yicha)",
+      oy.joylashtirilgan,
+      'kishi',
+    ],
   ];
 
   /*
