@@ -163,6 +163,13 @@ model User {
   /// Kiritgan xizmat takliflari va mahalliy buyurtmalar
   yaratganXizmatlar     XizmatTaklifi[]     @relation("XizmatYaratgan")
   yaratganBuyurtmalar   MahalliyBuyurtma[]  @relation("BuyurtmaYaratgan")
+  /// Murojaatlar: mas'ul, qayd etgan; tarixdagi harakatlari
+  masulMurojaatlar      Murojaat[]          @relation("MurojaatMasul")
+  yaratganMurojaatlar   Murojaat[]          @relation("MurojaatYaratgan")
+  murojaatTarixi        MurojaatTarixi[]    @relation("MurojaatTarixKim")
+  /// Yordam dasturlari: kiritgan va tekshirgan
+  yaratganYordamlar     YordamDasturi[]     @relation("YordamYaratgan")
+  tekshirganYordamlar   YordamDasturi[]     @relation("YordamTekshirgan")
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -235,6 +242,8 @@ model Mahalla {
 
   /// Mahalliy buyurtmalar (pilot)
   buyurtmalar MahalliyBuyurtma[]
+  /// Murojaatlar
+  murojaatlar Murojaat[]
 
   @@index([nomi])
 }
@@ -851,6 +860,8 @@ model UnemployedPerson {
   kurslar       KursYollanmasi[]
   /// Taklif qilgan mahalliy xizmatlari (rozilik bilan)
   xizmatlar     XizmatTaklifi[]
+  /// Murojaatlari (xodim qayd etgan)
+  murojaatlar   Murojaat[]
 
   @@index([mahallaId, holati])
   @@index([holati])
@@ -2459,4 +2470,184 @@ model MahalliyBuyurtma {
   @@index([mahallaId, holati])
   @@index([holati, createdAt])
   @@index([taklifId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MUROJAATLAR (XODIM QAYD ETADI)
+// ─────────────────────────────────────────────────────────────
+
+/// Murojaat qaysi yo'l bilan kelgani
+enum MurojaatKanali {
+  QABULXONA
+  TELEFON
+  /// Xatlov paytida uyma-uy yurganda
+  UYMA_UY
+  XAT
+  TELEGRAM
+  BOSHQA
+}
+
+enum MurojaatHolati {
+  /// Qabul qilindi, hali ko'rilmagan
+  YANGI
+  /// Ko'rib chiqilmoqda (qayta ochilganda ham shu holatga qaytadi)
+  JARAYONDA
+  /// Murojaatchiga javob berildi
+  JAVOB_BERILDI
+  /// Ish yopildi
+  YOPILDI
+}
+
+enum MurojaatNatijasi {
+  HAL_QILINDI
+  TUSHUNTIRILDI
+  /// Boshqa tashkilotga yo'naltirildi
+  YONALTIRILDI
+  RAD_ETILDI
+  /// Murojaatchining o'zi voz kechdi
+  VOZ_KECHDI
+}
+
+/// Fuqaroning murojaati - XODIM tomonidan qayd etiladi.
+///
+/// Fuqaroning o'zi tizimga yozmaydi (shaxsiy kabinet yo'q): xodim
+/// qabulxonada, telefonda yoki uyma-uy yurganda eshitgan muammoni yozadi.
+///
+/// ── Javob muddati ──
+///
+/// `javobMuddati` - xodim tasdiqlagan muddat. Dastlabki qiymat (15 kun) -
+/// ichki odat, qonuniy muddat emas: qonuniy muddatni tashkilot belgilaydi
+/// va xodim uni tekshirib o'zgartiradi. Muddatni uzaytirish sabab bilan va
+/// tarixga yozilib bajariladi.
+model Murojaat {
+  id String @id @default(cuid())
+
+  /// Kuzatish uchun raqam: M-2026-0001
+  raqami String @unique
+
+  mahallaId String
+  mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
+
+  /// Murojaatchi ro'yxatdagi fuqaro bo'lishi shart emas
+  ishsizId String?
+  ishsiz   UnemployedPerson? @relation(fields: [ishsizId], references: [id], onDelete: SetNull)
+
+  murojaatchiNomi    String
+  murojaatchiTelefon String?
+
+  kanal  MurojaatKanali
+  /// Muammo: murojaatchi nima so'raydi
+  tavsif String
+
+  /// Murojaat QACHON kelgan (qayd etilgan vaqt emas)
+  qabulVaqti DateTime
+
+  masulId String
+  masul   User   @relation("MurojaatMasul", fields: [masulId], references: [id], onDelete: Restrict)
+
+  javobMuddati DateTime
+
+  holati MurojaatHolati @default(YANGI)
+
+  /// Javob berilgach to'ldiriladi; null = hali javob yo'q (nol emas)
+  natijaTuri   MurojaatNatijasi?
+  natija       String?
+  javobSanasi  DateTime?
+  yopilganSana DateTime?
+
+  /// Necha marta qayta ochilgan va oxirgi sababi
+  qaytaOchilganSoni       Int     @default(0)
+  oxirgiQaytaOchishSababi String?
+
+  yaratganId String
+  yaratgan   User   @relation("MurojaatYaratgan", fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  tarix MurojaatTarixi[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mahallaId, holati])
+  @@index([holati, javobMuddati])
+  @@index([masulId, holati])
+  @@index([ishsizId])
+}
+
+/// Murojaat tarixi: har holat o'zgarishi, mas'ul almashishi, muddat
+/// uzaytirilishi va qayta ochish alohida yoziladi (o'chirilmaydi).
+model MurojaatTarixi {
+  id String @id @default(cuid())
+
+  murojaatId String
+  murojaat   Murojaat @relation(fields: [murojaatId], references: [id], onDelete: Cascade)
+
+  /// YARATILDI, HOLAT, MASUL, MUDDAT, QAYTA_OCHILDI
+  hodisa String
+
+  holatdan MurojaatHolati?
+  holatga  MurojaatHolati?
+
+  kimId String
+  kim   User   @relation("MurojaatTarixKim", fields: [kimId], references: [id], onDelete: Restrict)
+
+  izoh String?
+
+  createdAt DateTime @default(now())
+
+  @@index([murojaatId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  YORDAM DASTURLARI KATALOGI
+// ─────────────────────────────────────────────────────────────
+
+/// Davlat va mahalliy yordam dasturi.
+///
+/// ── Katalog BO'SH boshlanadi ──
+///
+/// Dastur nomi, talablari, miqdori faqat RASMIY MANBADAN xodim tomonidan
+/// kiritiladi; tizim o'zi dastur yoki summa to'qimaydi. Har yozuvda rasmiy
+/// manba va oxirgi tekshirilgan sana majburiy.
+///
+/// ── Amaldagi tavsiya ──
+///
+/// Dastur FAQAT shunda "amaldagi" hisoblanadi: yopilmagan, muddati
+/// tugamagan va oxirgi marta YORDAM_ESKIRISH_KUNI kundan kam oldin
+/// manbadan tekshirilgan. Muddati tugagan yoki uzoq tekshirilmagan dastur
+/// tavsiya sifatida chiqmaydi.
+model YordamDasturi {
+  id String @id @default(cuid())
+
+  nomi           String
+  /// Kimlar uchun
+  nishonGuruh    String
+  talablar       String
+  hujjatlar      String?
+  masulTashkilot String
+  /// Rasmiy manba: hujjat nomi/raqami yoki havola
+  rasmiyManba    String
+  /// Miqdor/imtiyoz - manbadagi matn bilan (hisoblanmaydi)
+  miqdori        String?
+
+  /// Amal qilish muddati. null = manbada ko'rsatilmagan (noma'lum, "cheksiz" emas)
+  amalQilishBoshi DateTime?
+  amalQilishOxiri DateTime?
+
+  /// Manbadan oxirgi marta tekshirilgan sana
+  tekshirilganSana DateTime
+  tekshirganId     String
+  tekshirgan       User     @relation("YordamTekshirgan", fields: [tekshirganId], references: [id], onDelete: Restrict)
+
+  faol           Boolean   @default(true)
+  yopilganSana   DateTime?
+  yopilishSababi String?
+
+  yaratganId String
+  yaratgan   User   @relation("YordamYaratgan", fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([faol, amalQilishOxiri])
+  @@index([tekshirilganSana])
 }

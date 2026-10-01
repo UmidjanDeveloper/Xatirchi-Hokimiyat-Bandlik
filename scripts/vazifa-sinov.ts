@@ -260,6 +260,11 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Ўлчанмайдиган блок «0 муаммо» деб кўрсатилмайди',
     tekshir: async () => {
       const y = await vazifalarim({ userId: xodimId, rol: 'YETTILIK', mahallaId: mahallaA });
+      /*
+       * Мурожаатлар (§14) энди ўлчанади: аввалги «ҳали қурилмаган» блок ҲАҚИҚИЙ
+       * блок билан алмашди. Қолган икки блок (захира, хатолар) ҳалиги каби
+       * ўлчанмайди ва «0» ёзилмайди.
+       */
       const murojaat = y.bloklar.find((b) => b.kalit === 'murojaatlar');
 
       const a = await vazifalarim({ userId: xodimId, rol: 'ADMIN', mahallaId: null });
@@ -267,11 +272,11 @@ const SINOVLAR: Sinov[] = [
       const xatolar = a.bloklar.find((b) => b.kalit === 'xatolar');
 
       return (
-        Boolean(murojaat?.yetishmayotgan) &&
+        Boolean(murojaat) &&
+        !murojaat?.yetishmayotgan &&
         Boolean(zaxira?.yetishmayotgan) &&
         Boolean(xatolar?.yetishmayotgan) &&
         /* Изоҳда НЕГА ўлчанмаслиги ёзилган — «кейинроқ» эмас */
-        (murojaat?.yetishmayotgan ?? '').length > 40 &&
         (zaxira?.yetishmayotgan ?? '').length > 40
       );
     },

@@ -25,6 +25,8 @@ import { DalilBlogi } from '@/components/dalil/dalil-blogi';
 import { KuzatuvBlogi } from '@/components/kuzatuv/kuzatuv-blogi';
 import { KurslarBlogi } from '@/components/kurs/kurslar-blogi';
 import { XizmatlarBlogi } from '@/components/buyurtma/xizmatlar-blogi';
+import { MurojaatlarBlogi } from '@/components/murojaat/murojaatlar-blogi';
+import { YordamBlogi } from '@/components/yordam/yordam-blogi';
 import { odamTasdigi } from '@/lib/joylashuv-dalili';
 import { joylashishTarixi } from '@/lib/joylashish';
 
@@ -470,6 +472,13 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
 
       {/* Маҳаллий хизматлар (пилот): таклиф, розилик, буюртмалар. Блок иккиламчи. */}
       <XizmatlarBlogi ishsizId={p.id} />
+
+      {/* Мурожаатлар ва амалдаги ёрдам дастурлари. Блоклар иккиламчи: улар йиқилса, саҳифа очилаверади. */}
+      <MurojaatlarBlogi
+        ishsiz={{ id: p.id, fish: p.fish, telefon: p.telefon ?? null, mahallaId: p.mahallaId }}
+        meniId={sessiya.userId}
+      />
+      <YordamBlogi />
 
       {/* ── Chora-tadbirlar ── */}
       <section className="karta space-y-2 p-4 sm:p-5">

@@ -5,6 +5,8 @@ import { elonlarSifati } from './elon-sifati';
 import { javobsizYollanmalar, JAVOBSIZ_KUN } from './yollanma';
 import { YANGILANMAGAN_KUNI } from './kurslar-nomlari';
 import { tasdiqKutayotganlar } from './buyurtmalar';
+import { muddatliMurojaatlar } from './murojaatlar';
+import { tekshirishKerakDasturlar } from './yordam-dasturlari';
 import { sanaOrali } from './oila-rejasi';
 import { mahallaFiltri } from './auth';
 import { JOYLASHGAN, KUN_MS } from './bandlik-holatlari';
@@ -294,17 +296,6 @@ async function yettilikTaxtasi(mahallaId: string | undefined): Promise<VazifaBlo
         }`,
         yol: `/ish-orinlari/${v.id}`,
       })),
-    },
-    {
-      kalit: 'murojaatlar',
-      nomi: 'Жавобсиз мурожаатлар',
-      izoh: 'Фуқаронинг ёзма мурожаати ва унга жавоб',
-      soni: 0,
-      ogohlik: 'tinch',
-      qatorlar: [],
-      yetishmayotgan:
-        'Мурожаатлар каталоги ҳали қурилмаган. Бу ерга «0» ёзиш ёлғон бўларди: ' +
-        '«мурожаат йўқ» деб кўринар, аслида «мурожаат қабул қилинмайди» эди.',
     },
   ];
 }
@@ -1283,6 +1274,89 @@ async function qoshimchaBloklar(sessiya: {
       });
     } catch (e) {
       console.error('Vazifalar: kurs blokini hisoblab bo‘lmadi:', e);
+    }
+  }
+
+  /* ── Murojaatlar: javob muddati o'tgan yoki yaqin ── */
+  if (sessiya.rol !== 'HOKIM') {
+    try {
+      const r = await muddatliMurojaatlar(mahallaId, hozir);
+      const kechikkan = r.filter((x) => x.muddat.holat === 'KECHIKKAN').length;
+      chiqdi.push({
+        kalit: 'murojaatlar',
+        nomi: 'Мурожаатлар: жавоб муддати ўтган ёки яқин',
+        izoh: 'Фуқаро мурожаатига жавоб муддати ўтган, бугун ёки 3 кун ичида тугайдиган очиқ мурожаатлар',
+        soni: r.length,
+        ogohlik: kechikkan > 0 ? 'shoshilinch' : r.length > 0 ? 'diqqat' : 'tinch',
+        yol: '/murojaatlar?holat=muddatli',
+        qatorlar: r.slice(0, 8).map((x) => ({
+          id: x.id,
+          matn: `${x.raqami} — ${x.murojaatchiNomi}`,
+          qoshimcha: `${x.mahalla.nomiKirill} · ${
+            x.muddat.holat === 'KECHIKKAN'
+              ? `${x.muddat.kun} кун кечикди`
+              : x.muddat.holat === 'BUGUN'
+                ? 'муддат — бугун'
+                : `${x.muddat.kun} кун қолди`
+          }`,
+          yol: `/murojaatlar/${x.id}`,
+        })),
+        hisoblash: {
+          usuli: 'Очиқ (янги ёки кўриб чиқилаётган) мурожаат, жавоб муддати Тошкент куни бўйича ўтган, бугун ёки 3 кун ичида',
+          manbasi: 'Ходим қайд этган мурожаатлар',
+          ogohlik: 'Фуқаро ўзи ёзмайди: рўйхат фақат ходим ёзган мурожаатлардан. Қайд этилмаган мурожаат бу ерда кўринмайди',
+        },
+      });
+    } catch (e) {
+      console.error('Vazifalar: murojaat blokini hisoblab bo‘lmadi:', e);
+    }
+  }
+
+  /* ── Yordam dasturlari katalogi: tekshirish kerak ── */
+  if (sessiya.rol === 'BANDLIK' || sessiya.rol === 'BANDLIK_RAHBAR' || sessiya.rol === 'ADMIN') {
+    try {
+      const jami = await prisma.yordamDasturi.count();
+      if (jami === 0) {
+        chiqdi.push({
+          kalit: 'yordam-tekshiruv',
+          nomi: 'Ёрдам дастурлари каталоги',
+          izoh: 'Давлат ва маҳаллий ёрдам дастурлари: талаблар, ҳужжатлар, расмий манба',
+          soni: 0,
+          ogohlik: 'tinch',
+          yol: '/yordam',
+          qatorlar: [],
+          yetishmayotgan:
+            'Каталог бўш: ҳали биронта дастур киритилмаган. Тизим дастур ёки миқдорни ўзи тўқимайди — ' +
+            'уларни ходим расмий манбадан киритади. Шунинг учун «0 та дастур текширув талаб қилади» деб ёзиш ёлғон бўларди.',
+        });
+      } else {
+        const k = await tekshirishKerakDasturlar(hozir);
+        chiqdi.push({
+          kalit: 'yordam-tekshiruv',
+          nomi: 'Ёрдам дастурлари: манбадан текшириш керак',
+          izoh: 'Маълумоти 90 кундан ортиқ текширилмаган, муддати тугаган ёки 14 кун ичида тугайдиган дастурлар — улар ТАВСИЯДАН ЧИҚАДИ',
+          soni: k.length,
+          ogohlik: k.some((x) => x.sabab === 'muddati-tugagan') ? 'diqqat' : k.length > 0 ? 'diqqat' : 'tinch',
+          yol: '/yordam',
+          qatorlar: k.slice(0, 8).map((x) => ({
+            id: x.id,
+            matn: x.nomi,
+            qoshimcha:
+              x.sabab === 'muddati-tugagan'
+                ? 'муддати тугаган, лекин ёпилмаган'
+                : x.sabab === 'eskirgan'
+                  ? 'манбадан узоқ текширилмаган'
+                  : 'муддати яқинда тугайди',
+            yol: '/yordam',
+          })),
+          hisoblash: {
+            usuli: 'Фаол дастур: манбадан охирги текширув 90 кундан эски, амал қилиш муддати тугаган ёки 14 кун ичида тугайди',
+            manbasi: 'Ёрдам дастурлари каталоги (ходим расмий манбадан қўлда киритади)',
+          },
+        });
+      }
+    } catch (e) {
+      console.error('Vazifalar: yordam katalogi blokini hisoblab bo‘lmadi:', e);
     }
   }
 

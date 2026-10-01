@@ -118,6 +118,27 @@ export const MENYU: MenyuBandi[] = [
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
   },
   {
+    /*
+     * Murojaatlar: fuqaro o'zi yozmaydi - xodim qayd etadi. Mahalla xodimi
+     * faqat o'z mahallasini ko'radi; hokimga ko'rsatilmaydi (fuqaro ismi,
+     * telefoni va shikoyati bor).
+     */
+    yol: '/murojaatlar',
+    nomi: 'Мурожаатлар',
+    ikonka: 'MessageSquareText',
+    rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+  },
+  {
+    /*
+     * Yordam dasturlari katalogi: shaxsiy ma'lumot yo'q, shuning uchun hokim
+     * ham ko'radi. Katalogni faqat bandlik markazi yuritadi (API da ham).
+     */
+    yol: '/yordam',
+    nomi: 'Ёрдам дастурлари',
+    ikonka: 'LifeBuoy',
+    rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'],
+  },
+  {
     yol: '/bandlik',
     nomi: 'Операцион панел',
     ikonka: 'Target',

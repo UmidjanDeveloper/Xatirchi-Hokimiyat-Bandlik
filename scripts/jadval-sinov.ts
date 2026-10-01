@@ -753,6 +753,12 @@ const SINOVLAR: Sinov[] = [
          * mumkin va hokimlik andozasiga kirmaydi.
          */
         'xizmatlar',
+        /*
+         * MUROJAATLAR - jarayon yozuvi (kim, qachon, nima so'radi, javob).
+         * Fuqaro uchun bir necha qator bo'lishi mumkin; shikoyat matni
+         * hokimlik andozasiga chiqarilmaydi.
+         */
+        'murojaatlar',
       ]);
 
       const ayblilar: string[] = [];
