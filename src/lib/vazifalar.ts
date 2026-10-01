@@ -7,6 +7,7 @@ import { YANGILANMAGAN_KUNI } from './kurslar-nomlari';
 import { tasdiqKutayotganlar } from './buyurtmalar';
 import { muddatliMurojaatlar } from './murojaatlar';
 import { tekshirishKerakDasturlar } from './yordam-dasturlari';
+import { ISH_BAHOSI_NOMI, ishlarHolati, navbatHolati, xatolarHolati, zaxiraHolati } from './tizim-kuzatuvi';
 import { sanaOrali } from './oila-rejasi';
 import { mahallaFiltri } from './auth';
 import { JOYLASHGAN, KUN_MS } from './bandlik-holatlari';
@@ -888,6 +889,21 @@ async function adminTaxtasi(): Promise<VazifaBlogi[]> {
    * саҳифани администратор очади, аммо экран бошқа
    * одамга ҳам кўриниб қолиши мумкин.
    */
+  /*
+   * ── KUZATUV MA'LUMOTI ──
+   *
+   * Har biri alohida: bittasi o'qilmasa (jadval hali yo'q, baza tutilib qoldi)
+   * butun taxta ochilmay qolmasin. O'qilmagan bo'lim "o'lchanmayapti" deydi,
+   * "0" demaydi.
+   */
+  const hozirgi = new Date();
+  const [ishlar, navbatTafsiloti, xatolar, zaxira] = await Promise.all([
+    ishlarHolati(hozirgi).catch(() => null),
+    navbatHolati(hozirgi).catch(() => null),
+    xatolarHolati(hozirgi, 5).catch(() => null),
+    zaxiraHolati(hozirgi).catch(() => null),
+  ]);
+
   const sozlangan = (nom: string) => Boolean(process.env[nom]?.trim());
   const aiKaliti = ['GROQ_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY'].some(
     sozlangan
@@ -918,14 +934,61 @@ async function adminTaxtasi(): Promise<VazifaBlogi[]> {
     {
       kalit: 'navbat',
       nomi: 'Хабарнома навбати',
-      izoh: 'Юборилмаган ва хато билан тугаган хабарлар',
+      izoh: 'Юборилмаган, қайта уриниш кутаётган ва хато билан тугаган хабарлар',
       soni: navbat + xatoXabar,
-      ogohlik: xatoXabar > 0 ? 'diqqat' : 'tinch',
+      ogohlik:
+        xatoXabar > 0 || (navbatTafsiloti?.ushlanib ?? 0) > 0 ? 'diqqat' : 'tinch',
+      yol: '/tizim',
       qatorlar: [
         { id: 'kutilmoqda', matn: 'Навбатда', qoshimcha: `${navbat} та` },
+        ...(navbatTafsiloti
+          ? [
+              { id: 'qayta', matn: 'Қайта уриниш кутаётган', qoshimcha: `${navbatTafsiloti.qaytaUrinish} та` },
+              ...(navbatTafsiloti.ushlanib > 0
+                ? [{ id: 'ushlanib', matn: 'Узоқ юборилмай турган', qoshimcha: `${navbatTafsiloti.ushlanib} та` }]
+                : []),
+            ]
+          : []),
         { id: 'xato', matn: 'Хато билан тугаган', qoshimcha: `${xatoXabar} та` },
       ],
     },
+    /*
+     * ── АВТОМАТИК ИШЛАР ──
+     *
+     * «Cron охирги марта қачон МУВАФФАҚИЯТЛИ ишлаган». Рақам — муаммоли
+     * ишлар сони. Жадвал кечикса ёки хато билан тугаса, админ бир ой
+     * кирмаса ҳам, кирганда биринчи шуни кўради.
+     */
+    ishlar
+      ? {
+          kalit: 'cron-holati',
+          nomi: 'Автоматик ишлар',
+          izoh: 'Эрталабки брифинг ва хабарлар навбати жадвал бўйича ишлаяптими',
+          soni: ishlar.filter((j) => j.baho !== 'TINCH' && j.baho !== 'HECH_QACHON').length,
+          ogohlik: ishlar.some((j) => j.baho === 'XATODA' || j.baho === 'KECHIKKAN' || j.baho === 'TOXTAB_QOLGAN')
+            ? 'shoshilinch'
+            : ishlar.some((j) => j.baho === 'HECH_QACHON')
+              ? 'diqqat'
+              : 'tinch',
+          yol: '/tizim',
+          qatorlar: ishlar.map((j) => ({
+            id: `cron-${j.nomi}`,
+            matn: j.tavsif,
+            qoshimcha: `${ISH_BAHOSI_NOMI[j.baho]}${
+              j.songgiMuvaffaqiyat ? ` · охирги муваффақият: ${j.songgiMuvaffaqiyat.toISOString().slice(0, 16).replace('T', ' ')} UTC` : ''
+            }`,
+          })),
+        }
+      : {
+          kalit: 'cron-holati',
+          nomi: 'Автоматик ишлар',
+          izoh: 'Эрталабки брифинг ва хабарлар навбати жадвал бўйича ишлаяптими',
+          soni: 0,
+          ogohlik: 'diqqat',
+          yol: '/tizim',
+          qatorlar: [],
+          yetishmayotgan: 'Иш излари жадвали ўқилмади (миграция қўлланмаган ёки база жавоб бермади): ҳолат ҳозирча ўлчанмаяпти.',
+        },
     {
       kalit: 'integratsiya',
       nomi: 'Интеграциялар',
@@ -984,29 +1047,76 @@ async function adminTaxtasi(): Promise<VazifaBlogi[]> {
         qoshimcha: a.obyektTuri ?? undefined,
       })),
     },
-    {
-      kalit: 'zaxira',
-      nomi: 'Заҳиралаш ва тиклаш',
-      izoh: 'Базада ўн минглаб хонадон маълумоти турибди',
-      soni: 0,
-      ogohlik: 'shoshilinch',
-      qatorlar: [],
-      yetishmayotgan:
-        'Supabase да автоматик заҳира бор, аммо уни ТИКЛАШ ҳеч қачон синалмаган. ' +
-        'Синалмаган заҳира — заҳира эмас. Sinov лойиҳасига тиклаб, ёзувлар сонини ' +
-        'солиштириш керак ва буни чоракда бир марта такрорлаш керак.',
-    },
-    {
-      kalit: 'xatolar',
-      nomi: 'Тизим хатолари',
-      izoh: 'Серверда юз берган хатолар рўйхати',
-      soni: 0,
-      ogohlik: 'tinch',
-      qatorlar: [],
-      yetishmayotgan:
-        'Хатолар журнали ҳали қурилмаган: хатолар `console.error` га ёзилади ва ' +
-        'Vercel логида қолади. Бу ерга «0 хато» ёзиш ёлғон бўларди.',
-    },
+    zaxira
+      ? {
+          kalit: 'zaxira',
+          nomi: 'Заҳиралаш ва тиклаш',
+          izoh: 'Синалмаган заҳира — заҳира эмас: охирги тиклаш синови қачон ўтказилган',
+          /* Рақам — охирги синовдан ўтган кунлар; синов бўлмаса рақам йўқ */
+          soni: zaxira.baho.kun ?? 0,
+          ogohlik: zaxira.baho.baho === 'YANGI' ? 'tinch' : 'shoshilinch',
+          yol: '/tizim',
+          qatorlar: zaxira.royxat.slice(0, 3).map((x) => ({
+            id: x.id,
+            matn: `${x.otkazilganSana.toISOString().slice(0, 10)} — ${x.natija === 'MUVAFFAQIYATLI' ? 'муваффақиятли' : 'муваффақиятсиз'}`,
+            qoshimcha: x.kim,
+          })),
+          ...(zaxira.baho.baho === 'HECH_QACHON'
+            ? {
+                yetishmayotgan:
+                  'Заҳирадан тиклаш синови ҳали бир марта ҳам қайд этилмаган. Supabase да автоматик заҳира бор бўлиши мумкин, аммо уни ТИКЛАШ синалмаган. Йўриқнома: hujjatlar/ZAXIRA-VA-TIKLASH.md',
+              }
+            : {
+                hisoblash: {
+                  usuli: 'Охирги қайд этилган тиклаш синови санасидан ўтган кунлар (чегара 92 кун)',
+                  manbasi: 'Заҳира синови журнали; синов алоҳида муҳитда қўлда ўтказилади ва натижаси «Тизим ҳолати» саҳифасига ёзилади',
+                  ogohlik:
+                    zaxira.baho.baho === 'XATO'
+                      ? 'Охирги синов муваффақиятсиз тугаган'
+                      : zaxira.baho.baho === 'ESKIRGAN'
+                        ? 'Синов эскирган: қайта ўтказинг'
+                        : undefined,
+                },
+              }),
+        }
+      : {
+          kalit: 'zaxira',
+          nomi: 'Заҳиралаш ва тиклаш',
+          izoh: 'Синалмаган заҳира — заҳира эмас',
+          soni: 0,
+          ogohlik: 'shoshilinch',
+          yol: '/tizim',
+          qatorlar: [],
+          yetishmayotgan: 'Заҳира синови журнали ўқилмади: ҳолат ҳозирча ўлчанмаяпти.',
+        },
+    xatolar
+      ? {
+          kalit: 'xatolar',
+          nomi: 'Тизим хатолари',
+          izoh: 'Серверда юз берган ва журналга ёзилган хатолар (махфий маълумотсиз)',
+          soni: xatolar.korilmagan,
+          ogohlik: xatolar.korilmagan > 0 ? 'diqqat' : 'tinch',
+          yol: '/tizim',
+          qatorlar: xatolar.royxat
+            .filter((x) => !x.korilgan)
+            .map((x) => ({ id: x.id, matn: `${x.manba} — ${qisqa(x.xabar, 70)}`, qoshimcha: `${x.soni} марта` })),
+          hisoblash: {
+            usuli: 'Администратор ҳали «кўрилди» деб белгиламаган, журналга ёзилган хатолар сони',
+            manbasi: 'Хато журнали (TizimXatosi)',
+            ogohlik:
+              'Фақат кузатув уланган жойлар қамраб олинади (автоматик ишлар, ҳисобот, хатлов, реестр). Журналда йўқлик «хато бўлмаган» дегани эмас.',
+          },
+        }
+      : {
+          kalit: 'xatolar',
+          nomi: 'Тизим хатолари',
+          izoh: 'Серверда юз берган хатолар рўйхати',
+          soni: 0,
+          ogohlik: 'diqqat',
+          yol: '/tizim',
+          qatorlar: [],
+          yetishmayotgan: 'Хато журнали ўқилмади (миграция қўлланмаган ёки база жавоб бермади): ҳолат ҳозирча ўлчанмаяпти.',
+        },
   ];
 }
 

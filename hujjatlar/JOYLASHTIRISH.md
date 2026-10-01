@@ -122,14 +122,47 @@ qo'shilgan ustunni o'chirish ma'lumot yo'qotishi mumkin.
 
 ## Zaxira nusxa
 
-**HALI SOZLANMAGAN.** Supabase'da avtomatik zaxira bor, lekin
-uni tiklash hech qachon sinalmagan. Bazada 40 377 xonadon
-ma'lumoti turibdi.
+To'liq tartib, maqsadlar (RPO/RTO) va tiklash sinovi:
+**[ZAXIRA-VA-TIKLASH.md](ZAXIRA-VA-TIKLASH.md)**.
 
-Qilinishi kerak:
-- Supabase panelida Point-in-Time Recovery yoqilganini tekshirish
-- Sinov loyihasiga tiklab ko'rish va yozuvlar sonini solishtirish
-- Buni chorakda bir marta takrorlash
+Qisqacha: kodni qaytarish va migratsiya himoyasi bor; Supabase zaxirasidan
+tiklash **hali sinalmagan** — tizim buni «Tizim holati» sahifasida va
+vazifalar taxtasida shoshilinch deb ko'rsatadi. Mantiqiy nusxadan tiklash
+sinovi `scripts/zaxira-tiklash.sh` bilan alohida bazada o'tkaziladi.
+
+## Monitoring (avtomatik ishlar, xatolar, navbat)
+
+Administrator uchun **«Tizim holati»** sahifasi (`/tizim`):
+
+- har bir avtomatik ish (brifing, xabarlar navbati) **oxirgi MUVAFFAQIYATLI
+  qachon ishlagani**, kechikishi va xatosi; qo'lda bosilgan tugma jadvalni
+  ishlagan deb ko'rsatmaydi;
+- xabar navbati: kutilayotgan, qayta urinish kutayotgan, xato bilan
+  tugagan, 6 soatdan ortiq ushlanib qolgan; xatolilarni navbatga qaytarish;
+- xatolar jurnali (maxfiy ma'lumotsiz; takrorlar yig'iladi; «ko'rildi»);
+- zaxira tiklash sinovi sanasi va eskirsa eslatma (92 kun);
+- «iz» bo'yicha qidirish: xodim «xato (iz_0123456789)» desa shu yerdan topiladi.
+
+Yangi cron `vercel.json` ga qo'shilsa, `src/lib/tizim-nomlari.ts` dagi
+`CRON_ISHLARI` ga ham yoziladi (aks holda sinov yiqiladi).
+
+## Migratsiyalar (so'nggi bosqichlar)
+
+Hammasi **faqat qo'shadi** (`IF NOT EXISTS`, takror ishga tushirish xavfsiz),
+`git push` da Vercel build ichida avtomatik qo'llanadi. Qaytarish: hammasi
+uchun **kodni qaytarish yetarli** (yuqoridagi «Orqaga qaytarish»).
+
+| Migratsiya | Nima qo'shadi | Bo'lim |
+|---|---|---|
+| `20261001100000_oila_rejasi` | Oilaviy rivojlanish rejasi, aloqa yozuvlari | §11 |
+| `20261001120000_kuzatuv_30_60_90` | 30/60/90 kunlik kuzatuv tekshiruvi | §12 |
+| `20261001140000_yollanma_va_elon_sharti` | Nomzod yo'llanmasi, e'lon shartlari | §13a |
+| `20261001160000_kurslar` | Kurslar va kursga yo'llanma | §13b |
+| `20261001180000_mahalliy_buyurtmalar` | Xizmat takliflari, mahalliy buyurtmalar | §13c |
+| `20261001200000_murojaat_va_yordam` | Murojaatlar, murojaat tarixi, yordam dasturlari katalogi (bo'sh) | §14 |
+| `20261001220000_monitoring` | Ish izlari, xato jurnali, kirish urinishlari, zaxira sinovi | §19 |
+
+Tekshirish (faqat o'qiydi): `npx prisma migrate status` — «up to date» bo'lishi kerak.
 
 ## Muhit o'zgaruvchilari
 

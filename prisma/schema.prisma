@@ -170,6 +170,7 @@ model User {
   /// Yordam dasturlari: kiritgan va tekshirgan
   yaratganYordamlar     YordamDasturi[]     @relation("YordamYaratgan")
   tekshirganYordamlar   YordamDasturi[]     @relation("YordamTekshirgan")
+  zaxiraTekshiruvlari   ZaxiraTekshiruvi[]
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -2650,4 +2651,101 @@ model YordamDasturi {
 
   @@index([faol, amalQilishOxiri])
   @@index([tekshirilganSana])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MONITORING: AVTOMATIK ISHLAR, XATOLAR, KIRISH URINISHLARI, ZAXIRA
+// ─────────────────────────────────────────────────────────────
+
+enum IshHolati {
+  DAVOM_ETMOQDA
+  MUVAFFAQIYATLI
+  XATO
+}
+
+/// Avtomatik ishning (cron) har bir bajarilishi: qachon boshlandi, tugadimi, nima bo'ldi.
+/// "Cron oxirgi marta qachon MUVAFFAQIYATLI ishlagan" degan savolga javob shu yerdan.
+model TizimIshi {
+  id String @id @default(cuid())
+
+  /// Ish nomi: 'brifing', 'navbat'
+  nomi String
+  /// 'cron' (jadval) yoki 'qolda' (administrator tugma bosdi). Jadval sog'lig'ini
+  /// faqat 'cron' belgilaydi: qo'lda ishga tushirish o'lik jadvalni yashirmasin.
+  usul String @default("cron")
+  /// Kuzatiladigan identifikator: xato jurnali va xodim murojaati shu bilan bog'lanadi
+  izId String @unique
+
+  holati    IshHolati @default(DAVOM_ETMOQDA)
+  boshlandi DateTime  @default(now())
+  tugadi    DateTime?
+
+  /// Maxfiy ma'lumotsiz qisqa xulosa ("yuborildi: 3")
+  xulosa    String?
+  /// Tozalangan xato matni (kalit, token, telefon yashirilgan)
+  xatoMatni String?
+
+  @@index([nomi, usul, boshlandi])
+  @@index([nomi, holati, tugadi])
+}
+
+/// Server xatolari - MAXFIY MA'LUMOTSIZ. Bir xil xato bitta qatorga yig'iladi
+/// (soni oshadi), shunda jurnal minglab takror bilan to'lib ketmaydi.
+model TizimXatosi {
+  id String @id @default(cuid())
+
+  /// Qayerdan: 'cron:brifing', 'api:reyestr', ...
+  manba String
+  /// manba + tozalangan va normallashtirilgan matn xeshi
+  xesh  String @unique
+  /// Tozalangan xabar (<= 400 belgi)
+  xabar String
+
+  soni         Int      @default(1)
+  birinchiSana DateTime @default(now())
+  oxirgiSana   DateTime @default(now())
+  /// Oxirgi marta qaysi iz bilan (TizimIshi.izId yoki so'rov izi)
+  oxirgiIzId   String?
+
+  /// Administrator ko'rdi. Xato qaytib kelsa yana false bo'ladi.
+  korilgan     Boolean   @default(false)
+  korilganSana DateTime?
+
+  @@index([korilgan, oxirgiSana])
+}
+
+/// Kirish urinishlari - serverless nusxalari orasida umumiy chegara uchun.
+/// Login va IP XOM holda saqlanmaydi: faqat xesh.
+model KirishUrinishi {
+  id    String   @id @default(cuid())
+  kalit String
+  vaqt  DateTime @default(now())
+
+  @@index([kalit, vaqt])
+  @@index([vaqt])
+}
+
+enum ZaxiraNatijasi {
+  MUVAFFAQIYATLI
+  XATO
+}
+
+/// Zaxira nusxadan TIKLASH sinovi o'tkazilgani haqida yozuv.
+/// Sinalmagan zaxira zaxira emas: tizim oxirgi sinov sanasini ko'rsatadi
+/// va eskirsa eslatadi. Sinovning o'zi alohida muhitda o'tkaziladi.
+model ZaxiraTekshiruvi {
+  id String @id @default(cuid())
+
+  /// Sinov o'tkazilgan kun
+  otkazilganSana DateTime
+  natija         ZaxiraNatijasi
+  /// Qaysi nusxa, qayerga tiklandi, yozuvlar soni solishtirildimi
+  izoh           String
+
+  kimId String
+  kim   User   @relation(fields: [kimId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([otkazilganSana])
 }

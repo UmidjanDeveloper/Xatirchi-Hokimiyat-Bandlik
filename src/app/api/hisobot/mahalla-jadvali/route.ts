@@ -5,6 +5,7 @@ import { JadvalXatosi, mahallaJadvali } from '@/lib/hisobot/mahalla-jadvali';
 import { bazaXatosi } from '@/lib/baza-xatosi';
 import { lotinga } from '@/lib/alifbo';
 import { prisma } from '@/lib/prisma';
+import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 
 /**
  * ============================================================
@@ -121,9 +122,10 @@ export async function POST(request: Request) {
       console.warn('Жадвал тайёрланмади:', e.message);
       return NextResponse.json({ xabar: e.message }, { status: 400 });
     }
-    console.error('Маҳалла жадвалини тайёрлашда хато:', e);
+    const { izId } = await serverXatosi('api:hisobot-mahalla-jadvali', e);
     return NextResponse.json(
       {
+        izId,
         xabar:
           bazaXatosi(e) ??
           'Жадвални тайёрлаб бўлмади. Қайта уриниб кўринг; такрорланса — администраторга айтинг.',

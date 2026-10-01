@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { SESSION_COOKIE, parolTogrimi, sessiyaYarat } from '@/lib/auth';
 import { checkRateLimit, getClientIp, resetRateLimit } from '@/lib/rate-limit';
 import { jurnal } from '@/lib/api-auth';
+import { bazaChegarasiYumshoq, bazaChegarasiniTozala } from '@/lib/kirish-chegarasi';
 
 const Kirish = z.object({
   username: z.string().min(1).max(64),
@@ -41,9 +42,14 @@ const Kirish = z.object({
  *      номларини теришга» қарши: ҳужумчи битта IP дан
  *      юзлаб ҳар хил логин синаб кўра олмайди.
  *
- *  Иккови ҳам хотирада (`rate-limit.ts` га қаранг) ва
- *  serverless нусхалари бўйича тарқалади — яъни тахминий.
- *  Аниқ кафолат керак бўлса, Upstash Redis га ўтилади.
+ *  Ҳар иккаласи ИККИ қатламда текширилади:
+ *
+ *    1. Хотирада (`rate-limit.ts`) — тез ва базани умуман
+ *       безовта қилмайди, аммо serverless нусхалари бўйича
+ *       тарқалади (тахминий).
+ *    2. Базада (`kirish-chegarasi.ts`) — барча нусхалар учун
+ *       УМУМИЙ ва қатъий. Логин ва IP базага хом ҳолда эмас,
+ *       фақат хеш кўринишида ёзилади.
  * ============================================================
  */
 
@@ -88,6 +94,10 @@ export async function POST(request: Request) {
 
   if (!ipChegarasi.allowed) return juda_kop(ipChegarasi.retryAfter, false);
 
+  /* Қатъий (умумий) чегара. База жавоб бермаса — хотирадаги натижа кучда қолади. */
+  const ipBaza = await bazaChegarasiYumshoq(ipKaliti(ip), IP_CHEGARASI, OYNA_MS);
+  if (ipBaza && !ipBaza.allowed) return juda_kop(ipBaza.retryAfter, false);
+
   let tana: unknown;
   try {
     tana = await request.json();
@@ -120,6 +130,8 @@ export async function POST(request: Request) {
    */
   const hisobChegarasi = checkRateLimit(hisobKaliti(username), HISOB_CHEGARASI, OYNA_MS);
   if (!hisobChegarasi.allowed) return juda_kop(hisobChegarasi.retryAfter, true);
+  const hisobBaza = await bazaChegarasiYumshoq(hisobKaliti(username), HISOB_CHEGARASI, OYNA_MS);
+  if (hisobBaza && !hisobBaza.allowed) return juda_kop(hisobBaza.retryAfter, true);
 
   const user = await prisma.user.findUnique({
     where: { username: username.trim().toLowerCase() },
@@ -188,6 +200,9 @@ export async function POST(request: Request) {
    */
   resetRateLimit(hisobKaliti(username));
   resetRateLimit(ipKaliti(ip));
+  await bazaChegarasiniTozala(hisobKaliti(username), ipKaliti(ip)).catch((e) =>
+    console.error('Kirish chegarasini tozalab bo‘lmadi:', e instanceof Error ? e.name : 'xato')
+  );
 
   await prisma.user.update({
     where: { id: user.id },

@@ -10,6 +10,7 @@ import {
   type ChoraManbai,
 } from '@/lib/chora-yaratish';
 import { tashkilotNormal } from '@/lib/masul-tashkilot';
+import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 
 /**
  * ============================================================
@@ -196,9 +197,10 @@ export async function GET() {
   try {
     return NextResponse.json({ yozildimi: false, ...(await yurgiz(false, q.sessiya.userId)) });
   } catch (e) {
-    console.error('chora-toldirish GET', e);
+    const { izId } = await serverXatosi('api:chora-toldirish-get', e);
     return NextResponse.json(
-      { xabar: bazaXatosi(e) ?? 'Ҳисоблаб бўлмади. Бир оздан сўнг қайта уриниб кўринг.' },
+      {
+        izId, xabar: bazaXatosi(e) ?? 'Ҳисоблаб бўлмади. Бир оздан сўнг қайта уриниб кўринг.' },
       { status: 500 }
     );
   }
@@ -212,9 +214,10 @@ export async function POST() {
   try {
     return NextResponse.json({ yozildimi: true, ...(await yurgiz(true, q.sessiya.userId)) });
   } catch (e) {
-    console.error('chora-toldirish POST', e);
+    const { izId } = await serverXatosi('api:chora-toldirish-post', e);
     return NextResponse.json(
-      { xabar: bazaXatosi(e) ?? 'Яратиб бўлмади. Бир оздан сўнг қайта уриниб кўринг.' },
+      {
+        izId, xabar: bazaXatosi(e) ?? 'Яратиб бўлмади. Бир оздан сўнг қайта уриниб кўринг.' },
       { status: 500 }
     );
   }

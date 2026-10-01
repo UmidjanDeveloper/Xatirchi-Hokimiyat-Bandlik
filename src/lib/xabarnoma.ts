@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { maxfiyniTozala } from './maxfiy';
 import { BERUVCHI } from './beruvchi-belgilari';
 import type { Prisma, XabarTuri } from '@prisma/client';
 import { prisma, type Tranzaksiya } from './prisma';
@@ -467,7 +468,12 @@ export async function navbatniYubor(
            */
           holati: urinish >= ENG_KOP_URINISH ? 'XATO' : 'KUTILMOQDA',
           urinishlar: urinish,
-          xatoMatni: (e as Error).message.slice(0, 500),
+          /*
+           * Telegram xatosida bot tokeni URL ichida chiqadi
+           * ("request to https://api.telegram.org/bot123:AA…/sendMessage failed"):
+           * xom matn bazaga va administrator ekraniga TUSHMASLIGI kerak.
+           */
+          xatoMatni: maxfiyniTozala(e),
         },
       });
       natija.xato++;

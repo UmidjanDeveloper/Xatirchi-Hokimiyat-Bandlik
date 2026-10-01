@@ -5,6 +5,7 @@ import { jurnal, talabQil } from '@/lib/api-auth';
 import { hisobotOl } from '@/lib/hisobot/malumot';
 import { bazaXatosi } from '@/lib/baza-xatosi';
 import type { Qamrov } from '@/lib/hisobot/turlar';
+import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 
 /**
  * ============================================================
@@ -117,9 +118,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json(hisobot);
   } catch (e) {
-    console.error('Ҳисобот тайёрлашда хато:', e);
+    const { izId } = await serverXatosi('api:hisobot', e);
     return NextResponse.json(
       {
+        izId,
         xabar:
           bazaXatosi(e) ??
           'Ҳисобот тайёрлаб бўлмади. Қайта уриниб кўринг; такрорланса — администраторга айтинг.',

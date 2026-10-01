@@ -12,6 +12,7 @@ import { yiliniAniqla } from '@/lib/xatlov-sxema';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
 import { somga } from '@/lib/constants';
 import { kalitQarori, mazmunIzi } from '@/lib/idempotentlik';
+import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 
 /** Ro'yxat so'rovi */
 const Sorov = z.object({
@@ -909,9 +910,13 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    console.error('Xatlovni saqlashda xato:', e);
+    /*
+     * Xato jurnalga (maxfiy ma'lumotsiz) yoziladi va xodimga IZ raqami beriladi:
+     * "xato (iz_…)" deb xabar qilsa, administrator aynan shu xatoni topadi.
+     */
+    const { izId } = await serverXatosi('api:xatlov', e);
     return NextResponse.json(
-      { xabar: 'Saqlashda xatolik yuz berdi. Qayta urinib ko‘ring.' },
+      { xabar: `Saqlashda xatolik yuz berdi. Qayta urinib ko‘ring. (${izId})`, izId },
       { status: 500 }
     );
   }

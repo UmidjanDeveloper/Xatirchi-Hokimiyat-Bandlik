@@ -6,6 +6,7 @@ import { aiXulosaSoraydi } from '@/lib/auth';
 import { hisobotOl } from '@/lib/hisobot/malumot';
 import { bazaXatosi } from '@/lib/baza-xatosi';
 import type { Qamrov } from '@/lib/hisobot/turlar';
+import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 
 /**
  * ============================================================
@@ -106,9 +107,10 @@ export async function POST(request: Request) {
       asos: hisobot.asos,
     });
   } catch (e) {
-    console.error('Хулоса тайёрлашда хато:', e);
+    const { izId } = await serverXatosi('api:hisobot-xulosa', e);
     return NextResponse.json(
       {
+        izId,
         xabar:
           bazaXatosi(e) ??
           'Хулоса тайёрлаб бўлмади. Қайта уриниб кўринг; такрорланса — администраторга айтинг.',

@@ -235,6 +235,16 @@ export const MENYU: MenyuBandi[] = [
     ikonka: 'Settings',
     rollar: ['ADMIN'],
   },
+  {
+    /*
+     * Тизим ҳолати: автоматик ишлар, хабарлар навбати, хато журнали,
+     * заҳира синови. Фақат администратор — журналда техник маълумот бор.
+     */
+    yol: '/tizim',
+    nomi: 'Тизим ҳолати',
+    ikonka: 'Activity',
+    rollar: ['ADMIN'],
+  },
 ];
 
 /** Rolga tegishli menyu bandlari */

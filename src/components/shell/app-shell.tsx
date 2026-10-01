@@ -6,6 +6,7 @@ import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  Activity,
   Archive,
   BadgeCheck,
   CalendarCheck,
@@ -81,6 +82,7 @@ interface Props {
  * ============================================================
  */
 const IKONKALAR: Record<string, React.ComponentType<{ className?: string }>> = {
+  Activity,
   Archive,
   BadgeCheck,
   CalendarCheck,

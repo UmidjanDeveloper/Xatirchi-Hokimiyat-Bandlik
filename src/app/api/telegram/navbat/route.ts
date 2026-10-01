@@ -4,6 +4,8 @@ import { navbatniYubor, telegramSozlanganmi } from '@/lib/xabarnoma';
 import { prisma } from '@/lib/prisma';
 import { muddatiOtganlarniYop } from '@/lib/elon-muddati';
 import { muddatiTugaganlarniOgohlantir } from '@/lib/beruvchi-elonlari';
+import { eskiYozuvlarniTozala, ishniKuzat, serverXatosi } from '@/lib/tizim-kuzatuvi';
+import { maxfiyniTozala } from '@/lib/maxfiy';
 
 /*
  * НАВБАТНИ ЮБОРИШ
@@ -56,6 +58,34 @@ async function ishga(request: Request, cronYolimi: boolean) {
   }
 
   /*
+   * ── КУЗАТУВ ──
+   *
+   * Бутун иш `ishniKuzat` ичида: «cron охирги марта қачон
+   * МУВАФФАҚИЯТЛИ ишлаган» деган савол шу ердан жавоб олади.
+   * Жадвалдан келган чақирув ва администратор тугмаси алоҳида
+   * белгиланади — тугма босиб қўйиш ўлик жадвални яширмасин.
+   */
+  try {
+    return await ishniKuzat(
+      'navbat',
+      cronmi ? 'cron' : 'qolda',
+      ishniBajar,
+      (r) => r.xulosa
+    ).then((r) => NextResponse.json(r.json, { status: r.status }));
+  } catch (e) {
+    const { izId } = await serverXatosi('api:telegram-navbat', e);
+    return NextResponse.json({ ok: false, xabar: 'Навбатни юбориб бўлмади', izId }, { status: 500 });
+  }
+}
+
+interface IshNatijasi {
+  status: number;
+  json: Record<string, unknown>;
+  xulosa: string;
+}
+
+async function ishniBajar(): Promise<IshNatijasi> {
+  /*
    * ── КУНЛИК ТОЗАЛАШ ──
    *
    * Telegram текширувидан ОЛДИН туради ва ҳар сафар бажарилади.
@@ -81,15 +111,29 @@ async function ishga(request: Request, cronYolimi: boolean) {
     console.error('muddati otgan elonlarni yopib bolmadi', e);
   }
 
+  /* Эски кириш уринишлари ва иш излари: хабарномага боғлиқ эмас, ҳар сафар */
+  let tozalandi = '';
+  try {
+    const t = await eskiYozuvlarniTozala();
+    tozalandi = `, тозаланди: ${t.urinish + t.iz}`;
+  } catch (e) {
+    console.error('eski yozuvlarni tozalab bolmadi', maxfiyniTozala(e));
+  }
+
   if (!telegramSozlanganmi()) {
-    return NextResponse.json(
-      { ok: false, yopilganElon, xabar: 'TELEGRAM_BOT_TOKEN созланмаган' },
-      { status: 503 }
-    );
+    return {
+      status: 503,
+      json: { ok: false, yopilganElon, xabar: 'TELEGRAM_BOT_TOKEN созланмаган' },
+      xulosa: `Telegram созланмаган; ёпилган эълон: ${yopilganElon}${tozalandi}`,
+    };
   }
 
   const natija = await navbatniYubor();
-  return NextResponse.json({ ok: true, yopilganElon, ...natija });
+  return {
+    status: 200,
+    json: { ok: true, yopilganElon, ...natija },
+    xulosa: `юборилди: ${natija.yuborildi}, хато: ${natija.xato}, ёпилган эълон: ${yopilganElon}${tozalandi}`,
+  };
 }
 
 /**

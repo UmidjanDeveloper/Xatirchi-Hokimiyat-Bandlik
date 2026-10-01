@@ -261,9 +261,10 @@ const SINOVLAR: Sinov[] = [
     tekshir: async () => {
       const y = await vazifalarim({ userId: xodimId, rol: 'YETTILIK', mahallaId: mahallaA });
       /*
-       * Мурожаатлар (§14) энди ўлчанади: аввалги «ҳали қурилмаган» блок ҲАҚИҚИЙ
-       * блок билан алмашди. Қолган икки блок (захира, хатолар) ҳалиги каби
-       * ўлчанмайди ва «0» ёзилмайди.
+       * Мурожаатлар (§14) ва хатолар журнали (§19) энди ўлчанади: аввалги
+       * «ҳали қурилмаган» блоклар ҲАҚИҚИЙ блоклар билан алмашди. Заҳира синови
+       * ҲЕЧ ҚАЧОН қайд этилмаган бўлса, у ҳалиги каби «ўлчанмайди» ва «0»
+       * ёзилмайди (қайд этилгандаги ҳолат scripts/monitoring-sinov.ts да).
        */
       const murojaat = y.bloklar.find((b) => b.kalit === 'murojaatlar');
 
@@ -275,7 +276,8 @@ const SINOVLAR: Sinov[] = [
         Boolean(murojaat) &&
         !murojaat?.yetishmayotgan &&
         Boolean(zaxira?.yetishmayotgan) &&
-        Boolean(xatolar?.yetishmayotgan) &&
+        Boolean(xatolar) &&
+        !xatolar?.yetishmayotgan &&
         /* Изоҳда НЕГА ўлчанмаслиги ёзилган — «кейинроқ» эмас */
         (zaxira?.yetishmayotgan ?? '').length > 40
       );

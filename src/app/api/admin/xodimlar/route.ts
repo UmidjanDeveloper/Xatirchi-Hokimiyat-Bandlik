@@ -7,6 +7,7 @@ import { parolXeshla, parolYaroqlimi } from '@/lib/auth';
 import { telefonSaqlashUchun } from '@/lib/inson-tekshiruvi';
 import { shifrla } from '@/lib/sir-shifrlash';
 import { ismTekshir } from '@/lib/inson-tekshiruvi';
+import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 
 const Yangi = z
   .object({
@@ -112,7 +113,7 @@ export async function POST(request: Request) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       return NextResponse.json({ xabar: 'Бу логин банд' }, { status: 409 });
     }
-    console.error(e);
-    return NextResponse.json({ xabar: 'Сақлашда хатолик' }, { status: 500 });
+    const { izId } = await serverXatosi('api:admin-xodimlar', e);
+    return NextResponse.json({ xabar: 'Сақлашда хатолик', izId }, { status: 500 });
   }
 }

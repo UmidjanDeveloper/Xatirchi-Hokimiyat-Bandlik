@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { jurnal, talabQil } from '@/lib/api-auth';
 import { xomPrisma } from '@/lib/prisma';
 import { arxivgaRuxsat, fuqaroniQaytar, xonadonniQaytar } from '@/lib/arxiv';
+import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 
 /**
  * ============================================================
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true, ...natija });
   } catch (e) {
-    console.error('qaytarib bolmadi', e);
-    return NextResponse.json({ xabar: 'Қайтариб бўлмади. Қайта уриниб кўринг.' }, { status: 500 });
+    const { izId } = await serverXatosi('api:arxiv', e);
+    return NextResponse.json({ xabar: 'Қайтариб бўлмади. Қайта уриниб кўринг.', izId }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { talabQil } from '@/lib/api-auth';
 import { brifingniYubor, brifingYasa } from '@/lib/hokim-brifingi';
 import { navbatniDarhol } from '@/lib/xabarnoma';
+import { ishniKuzat, serverXatosi } from '@/lib/tizim-kuzatuvi';
 
 /**
  * ============================================================
@@ -36,20 +37,34 @@ async function ishga(request: Request, cronYolimi: boolean) {
   }
 
   try {
-    const soni = await brifingniYubor();
-
     /*
-     * Навбатга қўйиб, ДАРҲОЛ юборамиз. Жадвал кунига бир
-     * марта ишлайди — иккинчи cron ни кутиб бўлмайди, акс
-     * ҳолда брифинг эртага етиб борарди.
+     * Кузатув остида: «брифинг охирги марта қачон МУВАФФАҚИЯТЛИ
+     * жўнатилган» деган савол админ саҳифасида шу ердан жавоб олади.
+     * Жадвалдан келган чақирув ва қўлда босилган тугма алоҳида
+     * белгиланади.
      */
-    if (soni > 0) await navbatniDarhol();
+    const soni = await ishniKuzat(
+      'brifing',
+      cronmi ? 'cron' : 'qolda',
+      async () => {
+        const n = await brifingniYubor();
+
+        /*
+         * Навбатга қўйиб, ДАРҲОЛ юборамиз. Жадвал кунига бир
+         * марта ишлайди — иккинчи cron ни кутиб бўлмайди, акс
+         * ҳолда брифинг эртага етиб борарди.
+         */
+        if (n > 0) await navbatniDarhol();
+        return n;
+      },
+      (n) => `навбатга қўйилди: ${n}`
+    );
 
     return NextResponse.json({ ok: true, yuborildi: soni });
   } catch (e) {
-    console.error('Brifingni yuborib bolmadi:', e);
+    const { izId } = await serverXatosi('api:cron-brifing', e);
     return NextResponse.json(
-      { ok: false, xabar: 'Brifing tayyorlanmadi' },
+      { ok: false, xabar: 'Brifing tayyorlanmadi', izId },
       { status: 500 }
     );
   }

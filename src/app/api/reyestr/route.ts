@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { jurnal, talabQil } from '@/lib/api-auth';
+import { izIdYarat, serverXatosi } from '@/lib/tizim-kuzatuvi';
 import { reyestrniOqi } from '@/lib/reyestr-fayl';
 import { reyestrniSolishtir, reyestrniYukla } from '@/lib/reyestr-import';
 import { tasdiqHisobi } from '@/lib/joylashuv-dalili';
@@ -81,6 +82,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, xabar: 'Sana notoʻgʻri' }, { status: 400 });
   }
 
+  /*
+   * Ҳар бир юклаш/солиштириш ЎЗ ИЗИ билан: администратор «iz_…» ни айтса,
+   * журнал ёзуви ва хато жадвали шу билан топилади.
+   */
+  const izId = izIdYarat();
+
   try {
     const natija = yoz
       ? await reyestrniYukla(oqildi.satrlar, { kiritganId: q.sessiya.userId, reyestrSanasi: sana })
@@ -90,12 +97,13 @@ export async function POST(request: Request) {
       await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
         obyektTuri: 'JoylashuvDalili',
         obyektId: sana.toISOString().slice(0, 10),
-        izoh: `Реестр кўчирмаси: ${natija.jami} сатр, ${natija.mos.length - natija.takror} та далил ёзилди`,
+        izoh: `[${izId}] Реестр кўчирмаси: ${natija.jami} сатр, ${natija.mos.length - natija.takror} та далил ёзилди`,
       });
     }
 
     return NextResponse.json({
       ok: true,
+      izId,
       yozildi: yoz,
       ustunlar: oqildi.ustunlar,
       natija: {
@@ -111,9 +119,9 @@ export async function POST(request: Request) {
       hisob: await tasdiqHisobi(),
     });
   } catch (e) {
-    console.error('Reyestrni solishtirib bolmadi:', e);
+    await serverXatosi('api:reyestr', e, izId);
     return NextResponse.json(
-      { ok: false, xabar: 'Solishtirib boʻlmadi' },
+      { ok: false, xabar: 'Solishtirib boʻlmadi', izId },
       { status: 500 }
     );
   }
