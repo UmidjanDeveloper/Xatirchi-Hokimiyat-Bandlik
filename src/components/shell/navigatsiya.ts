@@ -72,7 +72,14 @@ export const MENYU: MenyuBandi[] = [
   {
     yol: '/xonadonlar',
     nomi: 'Хонадонлар',
-    ikonka: 'Houses',
+    /*
+     * Avval `Houses` edi — o'rnatilgan lucide-react (0.454) da
+     * bunday ikonka YO'Q. Ikonkani nom bo'yicha izlash uni
+     * jimgina oddiy aylanaga almashtirib qo'ygan va hech kim
+     * sezmagan. `scripts/tezlik-sinov.ts` endi har nomni
+     * kutubxonaning o'zida tekshiradi.
+     */
+    ikonka: 'House',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
   },
   {

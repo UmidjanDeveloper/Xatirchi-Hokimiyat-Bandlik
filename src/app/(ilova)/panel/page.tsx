@@ -27,7 +27,7 @@ import {
 import {
   MahallalarJadvali,
   MahallaUstunlari,
-  ToifaDoirasi } from '@/components/panel/grafiklar';
+  ToifaDoirasi } from '@/components/panel/grafiklar-kechik';
 import { DinamikaBloglari } from '@/components/panel/dinamika-blogi';
 import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { MahallaTanlash } from '@/components/panel/mahalla-tanlash';

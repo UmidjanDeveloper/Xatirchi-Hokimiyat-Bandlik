@@ -1,7 +1,7 @@
 'use client';
 
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
-import { DinamikaChizigi, OqimUstunlari, OsishUstunlari } from '@/components/panel/grafiklar';
+import { DinamikaChizigi, OqimUstunlari, OsishUstunlari } from '@/components/panel/grafiklar-kechik';
 import { DAVR_NOMI, type Davr } from '@/lib/davr-turlari';
 import type { OylikNuqta } from '@/lib/tahlil';
 

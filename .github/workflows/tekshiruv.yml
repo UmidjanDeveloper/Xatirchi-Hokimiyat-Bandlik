@@ -114,3 +114,11 @@ jobs:
         run: npm run build
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
+
+      # Sahifa hajmi jimgina o'sadi: bitta qulay `import` — va
+      # ilovaga 100 KB kutubxona kirib qoladi. Hech qaysi sinov
+      # yiqilmaydi, buni faqat sekin internetdagi xodim sezadi.
+      # Shu qadam qurish manifestidan har sahifaning boshlang'ich
+      # JavaScript hajmini o'qiydi va byudjetdan oshsa yiqiladi.
+      - name: Hajm byudjeti
+        run: npx tsx scripts/hajm-byudjeti.ts

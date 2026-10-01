@@ -5,8 +5,26 @@ import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import * as Ikonkalar from 'lucide-react';
-import { LogOut, Menu, X } from 'lucide-react';
+import {
+  Archive,
+  BadgeCheck,
+  Briefcase,
+  Building2,
+  ChartColumn,
+  Circle,
+  ClipboardList,
+  House,
+  HousePlus,
+  ListChecks,
+  ListTodo,
+  LogOut,
+  Menu,
+  Settings,
+  Target,
+  Users,
+  UsersRound,
+  X,
+} from 'lucide-react';
 import type { Rol } from '@prisma/client';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
@@ -25,12 +43,57 @@ interface Props {
   children: React.ReactNode;
 }
 
-/** Lucide ikonkasini nomi bo'yicha oladi */
+/**
+ * ============================================================
+ *  MENYU IKONKALARI — FAQAT ISHLATILGANLARI
+ *
+ *  ── Qanday nuqsonni yopadi ──
+ *
+ *  Avval bu yerda shunday turardi:
+ *
+ *      import * as Ikonkalar from 'lucide-react';
+ *      const K = Ikonkalar[nomi];
+ *
+ *  Ikonkani NOM bo'yicha topish uchun butun kutubxona —
+ *  1 500 dan ortiq ikonka — paketga kirib qolgan. Tree-shaking
+ *  `import *` bilan ishlamaydi: bundler qaysi nom so'ralishini
+ *  oldindan bila olmaydi.
+ *
+ *  Oqibati: login sahifasi 143 KB, kirgandan keyin HAR sahifa
+ *  313 KB (gzip) — o'rtadagi farqning katta qismi shu.
+ *  Sekin 3G da bu yarim daqiqaga yaqin kutish.
+ *
+ *  Endi nom -> ikonka xaritasi QO'LDA yozilgan va faqat
+ *  menyuda ishlatiladiganlari kiradi.
+ *
+ *  ── Yangi band qo'shilsa-chi ──
+ *
+ *  Menyuga yangi ikonka nomi yozilsa-yu, bu xaritaga
+ *  qo'shilmasa, ikonka JIMGINA oddiy aylana bo'lib qolardi.
+ *  `scripts/tezlik-sinov.ts` aynan shuni tekshiradi: menyudagi
+ *  har bir nom shu xaritada bo'lishi shart.
+ * ============================================================
+ */
+const IKONKALAR: Record<string, React.ComponentType<{ className?: string }>> = {
+  Archive,
+  BadgeCheck,
+  Briefcase,
+  Building2,
+  ChartColumn,
+  ClipboardList,
+  House,
+  HousePlus,
+  ListChecks,
+  ListTodo,
+  Settings,
+  Target,
+  Users,
+  UsersRound,
+};
+
 function Ikonka({ nomi, className }: { nomi: string; className?: string }) {
-  const K = (Ikonkalar as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-    nomi
-  ];
-  return K ? <K className={className} /> : <Ikonkalar.Circle className={className} />;
+  const K = IKONKALAR[nomi] ?? Circle;
+  return <K className={className} />;
 }
 
 export function AppShell({ fullName, username, rol, mahallaNomi, children }: Props) {

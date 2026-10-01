@@ -1,4 +1,5 @@
 import type { IshsizHolati } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import { kechikkanlarShartI } from './chora-tadbir';
 import { VORONKA } from '@/lib/ishsiz-holati';
@@ -237,6 +238,61 @@ export function dinamikaHisobla(
   joylashganSanalari: Date[],
   davr: Davr = 'oy'
 ): OylikNuqta[] {
+  /*
+   * Eski imzo SAQLANDI: `Date[]` — har sana bitta yozuv.
+   * Sinovlar va boshqa chaqiruvchilar shu shaklda ishlaydi.
+   */
+  const bitta = (royxat: Date[]): KunSoni[] => royxat.map((kun) => ({ kun, soni: 1 }));
+  return dinamikaHisoblaKunlik(
+    bitta(xatlovSanalari),
+    bitta(aniqlanganSanalari),
+    bitta(joylashganSanalari),
+    davr
+  );
+}
+
+/**
+ * ============================================================
+ *  KUNLIK JAMLANMA — BUTUN TARIX O'RNIGA
+ *
+ *  ── Qanday nuqsonni yopadi ──
+ *
+ *  Panel har hisoblashda uchta jadvaldan BUTUN TARIXNING
+ *  sanalarini tortardi:
+ *
+ *      household.findMany({ select: { createdAt: true } })
+ *
+ *  Production hajmida (40 000 xonadon, 15 000 ishsiz) bu
+ *  55 000 qator va faqat bitta narsa uchun — oylik oqim
+ *  grafigi. O'lchadim: uchta so'rov JAMI 276 ms, ya'ni tahlil
+ *  vaqtining ~60 foizi, va u ma'lumot ko'paygan sari
+ *  CHIZIQLI o'sadi.
+ *
+ *  Grafik esa har kunni alohida bilishi shart emas — kun
+ *  ichidagi soni yetarli. Baza endi kun bo'yicha guruhlaydi:
+ *  420 kunlik tarix = ~420 qator, 40 000 emas.
+ *
+ *  ── Natija BIR XIL ──
+ *
+ *  Kun ichida soatning farqi hisobga olinmaydi, chunki
+ *  chegaralar (oy, yil, kun) hammasi kun boshidan o'tadi.
+ *  Bu mahalliy va 40 000 xonadonli bazada eski natija bilan
+ *  BIT-BIT solishtirilgan.
+ * ============================================================
+ */
+export interface KunSoni {
+  /** Kun boshi (00:00) */
+  kun: Date;
+  /** Shu kunda nechta yozuv */
+  soni: number;
+}
+
+export function dinamikaHisoblaKunlik(
+  xatlovSanalari: KunSoni[],
+  aniqlanganSanalari: KunSoni[],
+  joylashganSanalari: KunSoni[],
+  davr: Davr = 'oy'
+): OylikNuqta[] {
   const hozir = new Date();
 
   /*
@@ -304,12 +360,12 @@ export function dinamikaHisobla(
   }
 
   /** Shu sanagacha bo'lgan hammasi - to'plangan raqam uchun */
-  const gacha = (list: Date[], chegara: Date) =>
-    list.reduce((s, d) => (d < chegara ? s + 1 : s), 0);
+  const gacha = (list: KunSoni[], chegara: Date) =>
+    list.reduce((s, d) => (d.kun < chegara ? s + d.soni : s), 0);
 
   /** Faqat shu oraliq ichidagilar - oqim uchun */
-  const ichida = (list: Date[], boshi: Date, chegara: Date) =>
-    list.reduce((s, d) => (d >= boshi && d < chegara ? s + 1 : s), 0);
+  const ichida = (list: KunSoni[], boshi: Date, chegara: Date) =>
+    list.reduce((s, d) => (d.kun >= boshi && d.kun < chegara ? s + d.soni : s), 0);
 
   return oraliqlar.map((o) => {
     const aniqlangan = gacha(aniqlanganSanalari, o.chegara);
@@ -413,7 +469,33 @@ export async function tahlilOl(
   return natija;
 }
 
-async function tahlilniHisobla(
+/**
+ * Jadvaldagi yozuvlarni KUN bo'yicha sanaydi (bazada).
+ *
+ * Jadval va ustun nomi — qat'iy ro'yxatdan: SQL ga o'zgaruvchi
+ * nom qo'yib bo'lmaydi va foydalanuvchi kiritgan qiymat bu yerga
+ * HECH QACHON tushmaydi (faqat `mahallaId` — parametr sifatida).
+ */
+async function kunlikSoni(
+  jadval: 'Household' | 'UnemployedPerson',
+  ustun: 'createdAt' | 'ishgaKirganSana',
+  mahallaId: string | undefined,
+  qoshimcha: Prisma.Sql = Prisma.empty
+): Promise<KunSoni[]> {
+  const j = jadval === 'Household' ? Prisma.raw('"Household"') : Prisma.raw('"UnemployedPerson"');
+  const u = ustun === 'createdAt' ? Prisma.raw('"createdAt"') : Prisma.raw('"ishgaKirganSana"');
+  const m = mahallaId ? Prisma.sql`AND "mahallaId" = ${mahallaId}` : Prisma.empty;
+
+  const qatorlar = await prisma.$queryRaw<{ kun: Date; soni: number }[]>`
+    SELECT date_trunc('day', ${u}) AS kun, count(*)::int AS soni
+    FROM ${j}
+    WHERE "arxivSanasi" IS NULL ${m} ${qoshimcha}
+    GROUP BY 1
+  `;
+  return qatorlar.map((q) => ({ kun: q.kun, soni: q.soni }));
+}
+
+export async function tahlilniHisobla(
   mahallaId?: string,
   davr: Davr = 'oy'
 ): Promise<TahlilNatijasi> {
@@ -527,31 +609,35 @@ async function tahlilniHisobla(
       }),
 
       /*
-       * Chiziqli grafik uchun sanalar.
+       * Chiziqli grafik uchun KUNLIK JAMLANMA.
        *
-       * Faqat bitta ustun olinadi - butun yozuv emas. Tuman
-       * hajmida bu bir necha ming sana, ya'ni yuz kilobayt ham
-       * emas, lekin oylik guruhlash uchun yetarli.
+       * Avval bu yerda uchta `findMany({ select: { createdAt } })`
+       * turardi — butun tarixning sanalari, production hajmida
+       * 55 000 qator. Endi baza kun bo'yicha guruhlaydi
+       * (`dinamikaHisoblaKunlik` izohiga qarang).
+       *
+       * ── XOM SQL VA ARXIV ──
+       *
+       * `prisma.ts` dagi qorovul arxivdagi yozuvni `findMany` va
+       * `count` dan yashiradi, lekin XOM SQL ga TA'SIR QILMAYDI.
+       * Shuning uchun `"arxivSanasi" IS NULL` bu yerda qo'lda
+       * yozilgan — unutilsa, arxivga o'tkazilgan (o'chirilgan)
+       * fuqaro grafikda sanalib turardi.
        */
-      prisma.household.findMany({
-        where: { ...mahallaFiltri, holati: { not: 'QORALAMA' } },
-        select: { createdAt: true },
-      }),
-
-      prisma.unemployedPerson.findMany({
-        where: mahallaFiltri,
-        select: { createdAt: true },
-      }),
+      kunlikSoni('Household', 'createdAt', mahallaId, Prisma.sql`AND "holati" <> 'QORALAMA'`),
+      kunlikSoni('UnemployedPerson', 'createdAt', mahallaId),
 
       /*
        * Joylashtirilganlar uchun YOZUV yaratilgan sana emas, ishga
        * kirgan sana olinadi: anketa keyinroq to'ldirilishi mumkin,
        * grafik esa haqiqiy voqea sanasini ko'rsatishi kerak.
        */
-      prisma.unemployedPerson.findMany({
-        where: { ...mahallaFiltri, ishgaKirganSana: { not: null } },
-        select: { ishgaKirganSana: true },
-      }),
+      kunlikSoni(
+        'UnemployedPerson',
+        'ishgaKirganSana',
+        mahallaId,
+        Prisma.sql`AND "ishgaKirganSana" IS NOT NULL`
+      ),
     ]);
 
   // ── Voronka ──
@@ -712,12 +798,7 @@ async function tahlilniHisobla(
     voronka,
     qamrov,
     davr,
-    dinamika: dinamikaHisobla(
-      xatlovSanalari.map((x) => x.createdAt),
-      aniqlanganSanalari.map((x) => x.createdAt),
-      joylashganSanalari.map((x) => x.ishgaKirganSana as Date),
-      davr
-    ),
+    dinamika: dinamikaHisoblaKunlik(xatlovSanalari, aniqlanganSanalari, joylashganSanalari, davr),
     kechikkanlar: kechikkanlar
       .map((k) => ({ tashkilot: k.masulTashkilot, soni: k._count }))
       .sort((a, b) => b.soni - a.soni),
