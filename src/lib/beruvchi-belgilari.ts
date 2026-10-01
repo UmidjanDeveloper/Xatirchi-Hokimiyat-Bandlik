@@ -29,4 +29,16 @@ export const BERUVCHI = {
   /** Раҳбар: эълонни қабул қилиш ва рад этиш */
   ELON_QABUL: 'b.eq',
   ELON_RAD: 'b.er',
+  /** Ish beruvchi: o'z e'lonlari */
+  ELONLARIM: 'b.el',
+  ELON_KOR: 'b.ev',
+  ELON_YOPISH: 'b.ey',
+  ELON_YOPISH_TASDIQ: 'b.ez',
+  ELON_UZAYT: 'b.eu',
+  ELON_QAYTA: 'b.eb',
+  ELON_TAHRIR: 'b.et',
+  /** Ish beruvchi: yo'llangan nomzod natijasi */
+  YOL_SUHBAT: 'b.ys',
+  YOL_QABUL: 'b.yq',
+  YOL_RAD: 'b.yr',
 } as const;

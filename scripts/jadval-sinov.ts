@@ -649,7 +649,7 @@ const SINOVLAR: Sinov[] = [
     tekshir: () => {
       /*
        * Шаҳарлар бир марта тушиб қолган эди ва буни фақат
-       * фойдаланувчи кўрди. Бу текширув сxемадаги ҲАР БИР
+       * фойдаланувчи кўрди. Бу текширув схемадаги ҲАР БИР
        * майдонни экспорт билан солиштиради: янги майдон
        * қўшилса, уни экспортга қўшиш ёки «керак эмас»
        * рўйхатига ёзиш керак бўлади.
@@ -733,6 +733,14 @@ const SINOVLAR: Sinov[] = [
          * қатор бўлиб кетар ва андоза бузилар эди.
          */
         'joylashishlar',
+        /*
+         * ISH BERUVCHIGA YO'LLANMALAR - jarayon yozuvi: nomzod qaysi
+         * ishga, qaysi sana va qanday natija bilan yo'llangani.
+         * Fuqaro uchun bir necha qator bo'lishi mumkin va u xokimlik
+         * andozasiga kirmaydi (fuqaro sahifasida va /ish-orinlari
+         * ichida ko'rinadi).
+         */
+        'yollanmalar',
       ]);
 
       const ayblilar: string[] = [];

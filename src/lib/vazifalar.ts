@@ -1,6 +1,8 @@
 import type { Rol } from '@prisma/client';
 import { prisma } from './prisma';
 import { kuzatuvIshlari } from './kuzatuv';
+import { elonlarSifati } from './elon-sifati';
+import { javobsizYollanmalar, JAVOBSIZ_KUN } from './yollanma';
 import { mahallaFiltri } from './auth';
 import { JOYLASHGAN, KUN_MS } from './bandlik-holatlari';
 import { MODERATSIYA_KUTMOQDA } from './elon-muddati';
@@ -1131,6 +1133,52 @@ async function qoshimchaBloklar(sessiya: {
       });
     } catch (e) {
       console.error('Vazifalar: kuzatuv blokini hisoblab bo‘lmadi:', e);
+    }
+  }
+
+  /* ── Ish beruvchi javobi va e'lon sifati: bandlik markazi ishi ── */
+  if (sessiya.rol === 'BANDLIK' || sessiya.rol === 'BANDLIK_RAHBAR' || sessiya.rol === 'ADMIN') {
+    try {
+      const { soni, royxat } = await javobsizYollanmalar(hozir);
+      chiqdi.push({
+        kalit: 'yollanma-javobsiz',
+        nomi: 'Иш берувчи жавоб бермаган номзодлар',
+        izoh: `Номзод маълумоти иш берувчига юборилган, аммо ${JAVOBSIZ_KUN} кундан ортиқ суҳбат ёки қарор билдирилмаган`,
+        soni,
+        ogohlik: soni > 0 ? 'diqqat' : 'tinch',
+        yol: '/ish-orinlari',
+        qatorlar: royxat.map((r) => ({
+          id: r.id,
+          matn: `${r.ishsiz.fish} — ${r.vacancy.lavozim}`,
+          qoshimcha: `${r.vacancy.korxonaNomi} · ${Math.floor(
+            (hozir.getTime() - (r.ulashilganSana?.getTime() ?? hozir.getTime())) / KUN_MS
+          )} кундан бери жавобсиз`,
+          yol: `/ish-orinlari/${r.vacancy.id}`,
+        })),
+      });
+    } catch (e) {
+      console.error('Vazifalar: yollanma blokini hisoblab bo‘lmadi:', e);
+    }
+
+    try {
+      const e = await elonlarSifati(undefined, hozir);
+      const kerak = e.filter((x) => x.belgilar.some((b) => b.jiddiylik === 'tekshirish'));
+      chiqdi.push({
+        kalit: 'elon-sifati',
+        nomi: 'Эълонлар: текшириш керак',
+        izoh: 'Гумонли маош, такрор телефон ёки пул сўрайдиган ибора бор фаол эълонлар (эвристика — қарор ходимники)',
+        soni: kerak.length,
+        ogohlik: kerak.length > 0 ? 'diqqat' : 'tinch',
+        yol: '/ish-orinlari/sifat?turi=tekshirish',
+        qatorlar: kerak.slice(0, 8).map((x) => ({
+          id: x.id,
+          matn: `${x.lavozim} — ${x.korxonaNomi}`,
+          qoshimcha: x.belgilar.filter((b) => b.jiddiylik === 'tekshirish').map((b) => b.nomi).join(' · '),
+          yol: `/ish-orinlari/${x.id}`,
+        })),
+      });
+    } catch (e) {
+      console.error('Vazifalar: elon sifati blokini hisoblab bo‘lmadi:', e);
     }
   }
 

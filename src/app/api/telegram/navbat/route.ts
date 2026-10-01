@@ -3,6 +3,7 @@ import { talabQil } from '@/lib/api-auth';
 import { navbatniYubor, telegramSozlanganmi } from '@/lib/xabarnoma';
 import { prisma } from '@/lib/prisma';
 import { muddatiOtganlarniYop } from '@/lib/elon-muddati';
+import { muddatiTugaganlarniOgohlantir } from '@/lib/beruvchi-elonlari';
 
 /*
  * НАВБАТНИ ЮБОРИШ
@@ -68,7 +69,14 @@ async function ishga(request: Request, cronYolimi: boolean) {
    */
   let yopilganElon = 0;
   try {
-    yopilganElon = await muddatiOtganlarniYop(prisma);
+    const hozir = new Date();
+    yopilganElon = await muddatiOtganlarniYop(prisma, hozir);
+    /* Ish beruvchiga xabar: faqat HOZIR yopilganlar haqida, bir marta */
+    if (yopilganElon > 0 && telegramSozlanganmi()) {
+      await muddatiTugaganlarniOgohlantir(hozir).catch((e) =>
+        console.error('muddati tugagan elon haqida xabar yuborib bolmadi', e)
+      );
+    }
   } catch (e) {
     console.error('muddati otgan elonlarni yopib bolmadi', e);
   }

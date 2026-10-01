@@ -148,13 +148,15 @@ model User {
   kiritganJoylashishlar    IshgaJoylashish[] @relation("JoylashishKiritgan")
 
   /// Oilaviy rejalar: yaratgan, mas'ul va aloqa yozgan xodim
-  yaratganRejalar OilaRejasi[]        @relation("RejaYaratgan")
-  masulRejalar    OilaRejasi[]        @relation("RejaMasul")
-  aloqaQaydlari   OilaAloqasi[]       @relation("AloqaQaydEtgan")
+  yaratganRejalar     OilaRejasi[]        @relation("RejaYaratgan")
+  masulRejalar        OilaRejasi[]        @relation("RejaMasul")
+  aloqaQaydlari       OilaAloqasi[]       @relation("AloqaQaydEtgan")
   /// Mas'ul xodim sifatida biriktirilgan chora-tadbirlar
-  masulChoralar   ActionPlan[]        @relation("ChoraMasulXodim")
+  masulChoralar       ActionPlan[]        @relation("ChoraMasulXodim")
   /// Kiritgan kuzatuv tekshiruvlari
-  kuzatuvlar      KuzatuvTekshiruvi[]
+  kuzatuvlar          KuzatuvTekshiruvi[]
+  /// Yo'llagan nomzodlar
+  yaratganYollanmalar NomzodYollanmasi[]  @relation("YollanmaYaratgan")
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -834,6 +836,8 @@ model UnemployedPerson {
   topshiriqlar  ActionPlan[]
   /// Ишга жойлашиш ТАРИХИ — ҳар бир иш алоҳида воқеа
   joylashishlar IshgaJoylashish[]
+  /// Ish o'rniga yo'llanmalari (rozilik bilan)
+  yollanmalar   NomzodYollanmasi[]
 
   @@index([mahallaId, holati])
   @@index([holati])
@@ -1391,6 +1395,10 @@ model Vacancy {
   maosh       BigInt?
   talablar    String?
   telefon     String?
+  /// Ish jadvali (masalan: "Du-Sha 8:00-17:00", "smenali") - ixtiyoriy
+  jadvali     String?
+  /// Ish sharoiti (transport, ovqat, yotoqxona...) - ixtiyoriy
+  sharoitlari String?
 
   /// E'lon qachongacha kuchda. Muddat o'tgach e'lon o'z-o'zidan
   /// yopiladi.
@@ -1460,6 +1468,8 @@ model Vacancy {
   joylashuvXabarlari JoylashuvXabari[]
   /// Шу эълон орқали жойлашганлар
   joylashishlar      IshgaJoylashish[]
+  /// Shu ishga yo'llangan nomzodlar
+  yollanmalar        NomzodYollanmasi[]
 
   @@index([moderatsiya])
   @@index([mahallaId, faol])
@@ -2104,4 +2114,92 @@ model KuzatuvTekshiruvi {
   @@index([rejaSana])
   @@index([kiritganId])
   @@index([dalilId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  NOMZODNI ISH BERUVCHIGA YO'LLASH
+// ─────────────────────────────────────────────────────────────
+
+enum YollanmaHolati {
+  /// Yo'llanma yozildi
+  YOLLANDI
+  /// Ish beruvchi suhbat belgiladi
+  SUHBAT_BELGILANDI
+  /// Suhbat o'tkazildi
+  SUHBAT_OTKAZILDI
+  /// Ish beruvchi ishga qabul qilganini bildirdi (TASDIQ EMAS - joylashish
+  /// voqeasi va dalil alohida yoziladi)
+  ISHGA_QABUL
+  /// Ish beruvchi nomzod mos kelmaganini bildirdi
+  ISH_BERUVCHI_RAD
+  /// Fuqaro o'zi voz kechdi
+  FUQARO_RAD
+  /// Xodim bekor qildi
+  BEKOR
+}
+
+/// Fuqarodan rozilik qanday olingani
+enum RozilikUsuli {
+  OGZAKI
+  TELEFON
+  YOZMA
+}
+
+/// Natija kimdan ekani. Ish beruvchining gapi xodim tekshirguncha
+/// "bildirilgan"dir, tasdiq emas.
+enum YollanmaManbasi {
+  XODIM_QAYD_ETGAN
+  ISH_BERUVCHI_BILDIRGAN
+}
+
+/// Ishsiz fuqaroni bo'sh ish o'rniga yo'llash.
+///
+/// ── Rozilik ──
+///
+/// Fuqaroning telefoni va ismi ish beruvchiga FAQAT u rozi bo'lgach
+/// beriladi, va faqat zarur minimum (`ulashilgan`). Rozilik xodim
+/// tomonidan yozib olinadi (usuli va sanasi bilan) va fuqaroning
+/// mustaqil elektron tasdig'i emas.
+///
+/// ── Natija tasdiq emas ──
+///
+/// Ish beruvchi "ishga qabul qildik" desa, bu `ISHGA_QABUL` bo'ladi, ammo
+/// "tasdiqlangan joylashish" HISOBLANMAYDI: u joylashish voqeasi va
+/// dalil orqali alohida tasdiqlanadi.
+model NomzodYollanmasi {
+  id String @id @default(cuid())
+
+  ishsizId String
+  ishsiz   UnemployedPerson @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
+
+  vacancyId String
+  vacancy   Vacancy @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+
+  holati YollanmaHolati @default(YOLLANDI)
+
+  /// Ish beruvchiga ma'lumot berishga fuqaro roziligi
+  rozilik       Boolean       @default(false)
+  roziligiSana  DateTime?
+  roziligiUsuli RozilikUsuli?
+
+  /// Ish beruvchiga qaysi maydonlar yuborilgani (fish, telefon, kasb)
+  ulashilgan     String[]
+  ulashilganSana DateTime?
+
+  suhbatSanasi  DateTime?
+  natijaIzohi   String?
+  natijaManbasi YollanmaManbasi?
+  natijaSanasi  DateTime?
+
+  yaratganId String
+  yaratgan   User   @relation("YollanmaYaratgan", fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Bitta nomzod bitta ishga bir marta yo'llanadi
+  @@unique([ishsizId, vacancyId], name: "yollanma_takrori")
+  @@index([vacancyId, holati])
+  @@index([holati, ulashilganSana])
+  @@index([yaratganId])
 }

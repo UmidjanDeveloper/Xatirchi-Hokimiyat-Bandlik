@@ -438,7 +438,10 @@ export async function beruvchiMenyusi(beruvchiId: string): Promise<Javob> {
     ]
       .filter((x) => x !== '')
       .join('\n'),
-    tugmalar: [{ yozuv: '➕ Янги иш ўрни', belgi: BERUVCHI.ELON }],
+    tugmalar: [
+      { yozuv: '➕ Янги иш ўрни', belgi: BERUVCHI.ELON },
+      { yozuv: '📋 Эълонларим', belgi: BERUVCHI.ELONLARIM },
+    ],
   };
 }
 
@@ -534,7 +537,11 @@ export async function beruvchiniHalQil(p: {
 }
 
 /** Иш берувчи эълон қўйди — раҳбарга хабар */
-export async function elonniModeratsiyagaYubor(vacancyId: string): Promise<number> {
+export async function elonniModeratsiyagaYubor(
+  vacancyId: string,
+  /** 'tahrir' - tasdiqlangan e'londa muhim o'zgarish; 'qayta' - rad etilgan/yopilgan e'lon qayta yuborildi */
+  sabab: 'yangi' | 'tahrir' | 'qayta' = 'yangi'
+): Promise<number> {
   const e = await prisma.vacancy.findUnique({
     where: { id: vacancyId },
     select: {
@@ -552,7 +559,11 @@ export async function elonniModeratsiyagaYubor(vacancyId: string): Promise<numbe
   return rahbarlarniOgohlantir({
     turi: 'ELON_MODERATSIYADA',
     matn: [
-      '<b>Иш берувчидан янги эълон</b>',
+      sabab === 'tahrir'
+        ? '<b>Иш берувчи эълонни ўзгартирди — қайта тасдиқланг</b>'
+        : sabab === 'qayta'
+          ? '<b>Иш берувчи эълонни қайта юборди</b>'
+          : '<b>Иш берувчидан янги эълон</b>',
       '',
       `<b>${xavfsiz(e.lavozim)}</b>`,
       `${xavfsiz(e.korxonaNomi)}`,
@@ -607,7 +618,12 @@ export async function elonniHalQil(p: {
    * мумкин. Шартни база ёзиш пайтида текширади.
    */
   const natija = await prisma.vacancy.updateMany({
-    where: { id: e.id, moderatsiya: 'KUTILMOQDA' },
+    /*
+     * `faol: true` - ish beruvchi e'lonni moderatsiya kutayotganda
+     * o'zi yopib qo'ygan bo'lsa, rahbar uni "tasdiqlab" qayta tiriltira
+     * olmaydi va ish beruvchiga "e'loningiz tasdiqlandi" xabari bormaydi.
+     */
+    where: { id: e.id, moderatsiya: 'KUTILMOQDA', faol: true },
     data: {
       moderatsiya: p.qabul ? 'TASDIQLANDI' : 'RAD_ETILDI',
       /* Ким, қачон ва нега — иш берувчи айнан шуни сўрайди */
@@ -627,12 +643,13 @@ export async function elonniHalQil(p: {
   if (natija.count === 0) {
     const hozir = await prisma.vacancy.findUnique({
       where: { id: e.id },
-      select: { moderatsiya: true, moderatsiyaQilgan: { select: { fullName: true } } },
+      select: { moderatsiya: true, faol: true, moderatsiyaQilgan: { select: { fullName: true } } },
     });
     return {
       ok: false,
       sabab: 'allaqachon',
-      hozirgiHolati: hozir?.moderatsiya,
+      /* 'YOPILGAN' - ish beruvchi e'lonni ko'rib chiqishdan oldin o'zi yopgan */
+      hozirgiHolati: hozir && !hozir.faol && hozir.moderatsiya === 'KUTILMOQDA' ? 'YOPILGAN' : hozir?.moderatsiya,
       halQilgan: hozir?.moderatsiyaQilgan?.fullName ?? null,
     };
   }

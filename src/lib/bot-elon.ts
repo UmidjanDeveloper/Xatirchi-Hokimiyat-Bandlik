@@ -1,5 +1,6 @@
 import { xavfsiz } from './xabarnoma';
 import { prisma } from './prisma';
+import { maoshniOqi } from './maosh-matni';
 import { telefonSaqlashUchun, telefonTekshir } from './inson-tekshiruvi';
 import type { Tugma } from './xabarnoma';
 
@@ -448,8 +449,8 @@ export async function omborMatn(ombor: SuhbatOmbori, matn: string): Promise<Javo
     }
 
     case 'maosh': {
-      const son = Number.parseFloat(matn.replace(',', '.').replace(/[^\d.]/g, ''));
-      if (!Number.isFinite(son) || son <= 0 || son > 500) {
+      const son = maoshniOqi(matn);
+      if (son === null) {
         return {
           matn: 'Маошни млн сўмда ёзинг. Масалан: 4.5',
           tugmalar: [{ yozuv: '⏭ Ўтказиш', belgi: ELON.OTKAZ }],

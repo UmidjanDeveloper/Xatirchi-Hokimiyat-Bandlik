@@ -16,6 +16,9 @@ const Yangi = z.object({
   ornlarSoni: z.coerce.number().int().min(1).max(500).default(1),
   maosh: z.coerce.number().int().min(0).max(100_000_000).nullish(),
   talablar: z.string().max(1000).nullish(),
+  /* Ish jadvali va sharoiti - ixtiyoriy (nomzod moslik tushuntirishi va ish beruvchi nazorati uchun) */
+  jadvali: z.string().max(200).nullish(),
+  sharoitlari: z.string().max(300).nullish(),
   telefon: z.string().max(20).nullish(),
   /*
    * Эълоннинг охири. Бўш бўлса — муддатсиз (эски эълонлар шу

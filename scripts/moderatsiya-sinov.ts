@@ -354,7 +354,8 @@ const SINOVLAR: Sinov[] = [
       const d = oqi('src/lib/joylashuv-dalili.ts');
       return (
         b.includes("where: { id: b.id, holati: 'KUTILMOQDA' }") &&
-        b.includes("where: { id: e.id, moderatsiya: 'KUTILMOQDA' }") &&
+        /* `faol: true` qo'shilishi mumkin (yopilgan e'lonni tiriltirmaslik uchun) - asosiy shart: holat bazada tekshiriladi */
+        /where:\s*\{\s*id:\s*e\.id,\s*moderatsiya:\s*'KUTILMOQDA'[^}]*\}/.test(b) &&
         d.includes("where: { id: p.dalilId, holati: 'KIRITILDI' }")
       );
     },

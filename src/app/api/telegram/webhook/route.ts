@@ -32,6 +32,18 @@ import {
   royxatniYubor,
   tanishtirish,
 } from '@/lib/ish-beruvchi';
+import {
+  elonKorinishi,
+  elonMuddatiniUzaytir,
+  elonlarimRoyxati,
+  elonniQaytaYubor,
+  elonniYopish,
+  maydonmi,
+  tahrirMatni,
+  tahrirSuhbatiBormi,
+  tahrirniBoshla,
+} from '@/lib/beruvchi-elonlari';
+import { beruvchiNatijasi } from '@/lib/yollanma';
 import { beruvchiOmbori, omborBoshla, omborMatn, omborSuhbatiBormi, omborTugma, omborYarat } from '@/lib/bot-elon';
 import {
   boshMenyu,
@@ -412,6 +424,11 @@ async function beruvchiMatni(
   beruvchiId: string,
   matn: string
 ): Promise<{ matn: string; tugmalar: Tugma[] } | null> {
+  /* Эълонни таҳрирлаш суҳбати (`t.` қадамлари) */
+  if (await tahrirSuhbatiBormi(beruvchiId)) {
+    const j = await tahrirMatni(beruvchiId, matn);
+    if (j) return j;
+  }
   /* Рўйхатдан ўтиш суҳбати */
   if (await royxatSuhbati(beruvchiId)) {
     return royxatMatni(beruvchiId, matn);
@@ -871,7 +888,7 @@ async function beruvchiTugmasi(
   fromId: string,
   javob: (matn: string) => Promise<void>
 ): Promise<void> {
-  const [belgisi, qiymat] = belgi.split(':');
+  const [belgisi, qiymat, qoshimcha] = belgi.split(':');
 
   /* ── РАҲБАР ТОМОНИ: МОДЕРАЦИЯ ── */
   const moderatsiya = [
@@ -947,7 +964,11 @@ async function beruvchiTugmasi(
     const n = await elonniHalQil({ vacancyId: qiymat, userId: kim.id, qabul });
     if (!n.ok) {
       await javob(
-        n.halQilgan ? `Буни ${n.halQilgan} аллақачон ҳал қилган` : 'Аллақачон ҳал қилинган'
+        n.hozirgiHolati === 'YOPILGAN'
+          ? 'Иш берувчи эълонни ўзи ёпиб қўйган'
+          : n.halQilgan
+            ? `Буни ${n.halQilgan} аллақачон ҳал қилган`
+            : 'Аллақачон ҳал қилинган'
       );
       return;
     }
@@ -1045,6 +1066,31 @@ async function beruvchiTugmasi(
     return;
   }
 
+  /*
+   * ── ЭЪЛОНЛАРИМ ВА НОМЗОД НАТИЖАСИ ──
+   *
+   * Ҳар амалда эълон/йўлланма ИШ БЕРУВЧИНИКИ эканини БАЗА
+   * текширади (`beruvchi-elonlari.ts`, `yollanma.ts`): тугма
+   * белгиси Telegram'дан келади ва қўлда ўзгартирилиши мумкин.
+   */
+  const belgilar = [
+    BERUVCHI.ELONLARIM,
+    BERUVCHI.ELON_KOR,
+    BERUVCHI.ELON_YOPISH,
+    BERUVCHI.ELON_YOPISH_TASDIQ,
+    BERUVCHI.ELON_UZAYT,
+    BERUVCHI.ELON_QAYTA,
+    BERUVCHI.ELON_TAHRIR,
+    BERUVCHI.YOL_SUHBAT,
+    BERUVCHI.YOL_QABUL,
+    BERUVCHI.YOL_RAD,
+  ] as string[];
+
+  if (belgilar.includes(belgisi)) {
+    await beruvchiElonAmali(beruvchi.id, belgisi, qiymat, qoshimcha, chatId, javob);
+    return;
+  }
+
   const ombor = beruvchiOmbori(beruvchi.id);
 
   if (belgisi === BERUVCHI.ELON) {
@@ -1055,6 +1101,140 @@ async function beruvchiTugmasi(
   }
 
   await javob('Тугма эскирган');
+}
+
+/**
+ * Иш берувчининг ўз эълонлари ва йўлланган номзодлар тугмалари.
+ *
+ * Хато ютилади ва ўрнига кўрсатма юборилади: бот ЖИМ қолмаслиги керак.
+ */
+async function beruvchiElonAmali(
+  beruvchiId: string,
+  belgisi: string,
+  qiymat: string | undefined,
+  qoshimcha: string | undefined,
+  chatId: string,
+  javob: (matn: string) => Promise<void>
+): Promise<void> {
+  const yubor = async (j: { matn: string; tugmalar: Tugma[] } | null, topilmadi = 'Топилмади') => {
+    await javob('');
+    if (!j) {
+      await telegramYuboruvchi(chatId, topilmadi);
+      return;
+    }
+    await telegramYuboruvchi(chatId, j.matn, j.tugmalar);
+  };
+
+  try {
+    /* Таҳрир ярим қолган бўлса, рўйхатга ўтиш уни бекор қилади */
+    if (belgisi === BERUVCHI.ELONLARIM || belgisi === BERUVCHI.ELON_KOR) {
+      await prisma.ishBeruvchi.updateMany({
+        where: { id: beruvchiId, bosqich: { startsWith: 't.' } },
+        data: { bosqich: null, suhbat: {}, suhbatVaqti: null },
+      });
+    }
+
+    if (belgisi === BERUVCHI.ELONLARIM) {
+      await yubor(await elonlarimRoyxati(beruvchiId));
+      return;
+    }
+
+    /* Йўлланган номзод натижаси: қиймат — йўлланма id си */
+    if (belgisi === BERUVCHI.YOL_SUHBAT || belgisi === BERUVCHI.YOL_QABUL || belgisi === BERUVCHI.YOL_RAD) {
+      if (!qiymat) {
+        await javob('Тугма эскирган');
+        return;
+      }
+      const natija = belgisi === BERUVCHI.YOL_SUHBAT ? 'suhbat' : belgisi === BERUVCHI.YOL_QABUL ? 'qabul' : 'rad';
+      const r = await beruvchiNatijasi(beruvchiId, qiymat, natija);
+      if (!r.ok) {
+        await javob(r.sabab === 'yakunlangan' ? 'Бу номзод бўйича натижа аллақачон қайд этилган' : 'Номзод топилмади');
+        return;
+      }
+      await javob('Қайд этилди');
+      await telegramYuboruvchi(
+        chatId,
+        natija === 'qabul'
+          ? '✅ Ишга қабул қилингани қайд этилди. Бандлик маркази уни алоҳида тасдиқлайди.'
+          : natija === 'suhbat'
+            ? '🗣 Суҳбат ўтказилгани қайд этилди. Қарорингизни бу хабардаги тугмалар орқали билдиринг.'
+            : 'Қайд этилди. Раҳмат — бандлик маркази бошқа номзод таклиф қилади.'
+      );
+      return;
+    }
+
+    if (!qiymat) {
+      await javob('Тугма эскирган');
+      return;
+    }
+
+    if (belgisi === BERUVCHI.ELON_KOR) {
+      await yubor(await elonKorinishi(beruvchiId, qiymat));
+      return;
+    }
+
+    if (belgisi === BERUVCHI.ELON_YOPISH) {
+      /* Қайтариб бўлмайдиган амал: аввал тасдиқ сўралади */
+      await yubor({
+        matn: 'Эълонни ёпасизми? Ёпилган эълон ходимларга кўринмайди.',
+        tugmalar: [
+          { yozuv: '✅ Ҳа, ёпиш', belgi: `${BERUVCHI.ELON_YOPISH_TASDIQ}:${qiymat}` },
+          { yozuv: '⬅️ Йўқ', belgi: `${BERUVCHI.ELON_KOR}:${qiymat}` },
+        ],
+      });
+      return;
+    }
+
+    if (belgisi === BERUVCHI.ELON_YOPISH_TASDIQ) {
+      const r = await elonniYopish(beruvchiId, qiymat);
+      await javob(r.ok ? 'Ёпилди' : r.sabab === 'allaqachon' ? 'Аллақачон ёпилган' : 'Эълон топилмади');
+      await yubor(await elonlarimRoyxati(beruvchiId));
+      return;
+    }
+
+    if (belgisi === BERUVCHI.ELON_UZAYT) {
+      const r = await elonMuddatiniUzaytir(beruvchiId, qiymat);
+      if (!r.ok) {
+        await javob(
+          r.sabab === 'chegara'
+            ? 'Муддатни бундан ортиқ узайтириб бўлмайди (энг кўпи 90 кун)'
+            : r.sabab === 'mumkin-emas'
+              ? 'Бу эълон муддатини узайтириб бўлмайди'
+              : 'Эълон топилмади'
+        );
+        return;
+      }
+      await javob('Узайтирилди');
+      await yubor(await elonKorinishi(beruvchiId, qiymat));
+      return;
+    }
+
+    if (belgisi === BERUVCHI.ELON_QAYTA) {
+      const r = await elonniQaytaYubor(beruvchiId, qiymat);
+      if (!r.ok) {
+        await javob(r.sabab === 'mumkin-emas' ? 'Бу эълонни қайта юбориб бўлмайди' : 'Эълон топилмади ёки аллақачон юборилган');
+        return;
+      }
+      await javob('Юборилди');
+      await navbatniDarhol().catch((e) => console.error('Navbatni yurgizib bolmadi:', e));
+      await telegramYuboruvchi(chatId, `<b>${r.lavozim}</b> қайта кўриб чиқишга юборилди. Натижа шу ерга келади.`);
+      return;
+    }
+
+    if (belgisi === BERUVCHI.ELON_TAHRIR) {
+      if (!qoshimcha || !maydonmi(qoshimcha)) {
+        await javob('Тугма эскирган');
+        return;
+      }
+      await yubor(await tahrirniBoshla(beruvchiId, qiymat, qoshimcha), 'Бу эълонни ҳозир таҳрирлаб бўлмайди');
+      return;
+    }
+
+    await javob('Тугма эскирган');
+  } catch (e) {
+    console.error('Ish beruvchi elon amali yiqildi:', e);
+    await javob('Хатолик юз берди. Кейинроқ қайта уриниб кўринг.').catch(() => undefined);
+  }
 }
 
 /**

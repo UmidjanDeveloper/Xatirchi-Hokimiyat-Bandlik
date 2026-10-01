@@ -75,6 +75,12 @@ export default async function IshOrinlariSahifasi() {
           </p>
         </div>
         <div className="flex flex-wrap items-start gap-3">
+          <Link
+            href="/ish-orinlari/sifat"
+            className="tugma-ikkilamchi flex min-h-11 items-center gap-1.5 rounded-md px-4 py-2 text-sm"
+          >
+            {tr('Эълонлар сифати')}
+          </Link>
           <IshOrniFormasi mahallalar={mahallalar} />
           <SahifaHisoboti malumotBormi={royxat.length > 0} />
         </div>

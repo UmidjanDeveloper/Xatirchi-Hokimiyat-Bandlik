@@ -36,6 +36,8 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
   const [maosh, setMaosh] = useState<number | ''>('');
   const [telefon, setTelefon] = useState('');
   const [talablar, setTalablar] = useState('');
+  const [jadvali, setJadvali] = useState('');
+  const [sharoitlari, setSharoitlari] = useState('');
   /*
    * Эълоннинг охири. Ходим кўрсатмаса ҳам бир ой қўйиб
    * берилади: илгари эълон ҚЎЛДА ёпилмагунча абадий турарди ва
@@ -72,6 +74,8 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
           maosh: maosh === '' ? null : maosh,
           telefon: telefon.trim() || null,
           talablar: talablar.trim() || null,
+          jadvali: jadvali.trim() || null,
+          sharoitlari: sharoitlari.trim() || null,
           amalQilishMuddati: muddat || null,
         }),
       });
@@ -285,6 +289,32 @@ export function IshOrniFormasi({ mahallalar }: { mahallalar: Mahalla[] }) {
             rows={2}
             value={talablar}
             onChange={(e) => setTalablar(e.target.value)}
+            className={maydon}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="v-jadval" className="text-sm font-medium text-ink">
+            {tr('Иш жадвали')}
+          </label>
+          <input
+            id="v-jadval"
+            value={jadvali}
+            onChange={(e) => setJadvali(e.target.value)}
+            placeholder={tr('Масалан: Душанба–Шанба, 8:00–17:00')}
+            className={maydon}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="v-sharoit" className="text-sm font-medium text-ink">
+            {tr('Шароитлар')}
+          </label>
+          <input
+            id="v-sharoit"
+            value={sharoitlari}
+            onChange={(e) => setSharoitlari(e.target.value)}
+            placeholder={tr('Транспорт, овқат, яшаш жойи')}
             className={maydon}
           />
         </div>

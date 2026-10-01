@@ -16,6 +16,11 @@ import {
   BekorQilishTugmasi,
   JoylashtirishTugmasi } from '@/components/ish-orni/joylashtirish-tugmasi';
 import { OrinHolatiTugmasi } from '@/components/ish-orni/orin-holati-tugmasi';
+import { ElonSifatiBlogi } from '@/components/ish-orni/elon-sifati-blogi';
+import { YollanmalarBlogi } from '@/components/yollanma/yollanmalar-blogi';
+import { YollanmaTugmasi } from '@/components/yollanma/yollanma-tugmasi';
+import { elonlarSifati, type SifatBelgisi } from '@/lib/elon-sifati';
+import { YOLLANMA_NOMI } from '@/lib/yollanma-nomlari';
 
 export function generateMetadata() {
   return { title: matnchi()('Бўш иш ўрни') };
@@ -40,6 +45,7 @@ export default async function IshOrniSahifasi({
     where: { id: params.id },
     include: {
       mahalla: { select: { nomiKirill: true } },
+      ishBeruvchi: { select: { telegramChatId: true, holati: true } },
       joylashganlar: {
         orderBy: { ishgaKirganSana: 'desc' },
         select: {
@@ -80,6 +86,28 @@ export default async function IshOrniSahifasi({
       );
 
   const korinadigan = nomzodlar.slice(0, KORINADIGAN);
+
+  /*
+   * Ikkilamchi ma'lumotlar (yo'llanmalar, sifat belgilari): ular bilan
+   * muammo bo'lsa, e'lon sahifasining o'zi ochilaveradi.
+   */
+  const yollanganlar = new Map<string, string>();
+  let sifatBelgilari: SifatBelgisi[] = [];
+  try {
+    const [yl, sifat] = await Promise.all([
+      prisma.nomzodYollanmasi.findMany({
+        where: { vacancyId: orin.id },
+        select: { ishsizId: true, holati: true },
+      }),
+      orin.faol ? elonlarSifati() : Promise.resolve([]),
+    ]);
+    for (const y of yl) yollanganlar.set(y.ishsizId, y.holati);
+    sifatBelgilari = sifat.find((x) => x.id === orin.id)?.belgilar ?? [];
+  } catch (e) {
+    console.error('E‘lon sahifasi: yo‘llanma/sifat ma‘lumotini olib bo‘lmadi:', e);
+  }
+  const beruvchiBor =
+    orin.ishBeruvchi?.holati === 'TASDIQLANDI' && !!orin.ishBeruvchi.telegramChatId;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -158,6 +186,31 @@ export default async function IshOrniSahifasi({
         </div>
 
         {orin.talablar && <p className="mt-3 text-sm text-ink-muted">{orin.talablar}</p>}
+        {(orin.jadvali || orin.sharoitlari) && (
+          <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            {orin.jadvali && (
+              <div>
+                <dt className="text-xs text-ink-faint">{tr('Иш жадвали')}</dt>
+                <dd className="text-ink-muted">{orin.jadvali}</dd>
+              </div>
+            )}
+            {orin.sharoitlari && (
+              <div>
+                <dt className="text-xs text-ink-faint">{tr('Шароитлар')}</dt>
+                <dd className="text-ink-muted">{orin.sharoitlari}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+
+        {orin.faol && (
+          <div className="mt-4 border-t border-line pt-3">
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-faint">
+              {tr('Эълон сифати')}
+            </h2>
+            <ElonSifatiBlogi belgilar={sifatBelgilari} />
+          </div>
+        )}
 
         <div className="mt-4 border-t border-line pt-3">
           <OrinHolatiTugmasi orinId={orin.id} faol={orin.faol} />
@@ -198,6 +251,13 @@ export default async function IshOrniSahifasi({
           </div>
         </section>
       )}
+
+      {/* ── Иш берувчига йўлланган номзодлар (розилик ва натижа манбаси билан) ── */}
+      <YollanmalarBlogi
+        vacancyId={orin.id}
+        vacancyIdBilan={orin.joylashganlar.map((p) => p.id)}
+        beruvchiBor={beruvchiBor}
+      />
 
       {/*
         ── ТАҚСИМОТ ──
@@ -272,8 +332,24 @@ export default async function IshOrniSahifasi({
                   <MoslikNishoni moslik={moslik} />
                 </div>
 
+                {(orin.jadvali || orin.sharoitlari) && (
+                  <p className="mt-2 text-[11px] text-ink-faint">
+                    {tr('Жадвал/шароит билан таққослаш:')}{' '}
+                    {nomzod.ishgaTayyorligi
+                      ? `${tr('номзоднинг тайёрлиги —')} ${nomzod.ishgaTayyorligi}`
+                      : tr('номзоднинг тайёрлиги кўрсатилмаган — суҳбатда аниқланг')}
+                  </p>
+                )}
+
                 {orin.faol && (
-                  <div className="mt-2.5">
+                  <div className="mt-2.5 flex flex-wrap items-start gap-2">
+                    {yollanganlar.has(nomzod.id) ? (
+                      <span className="inline-flex min-h-11 items-center rounded-md bg-surface-muted px-3 text-xs font-medium text-ink-muted">
+                        {tr('Йўлланган:')} {tr(YOLLANMA_NOMI[yollanganlar.get(nomzod.id) as keyof typeof YOLLANMA_NOMI])}
+                      </span>
+                    ) : (
+                      <YollanmaTugmasi ishsizId={nomzod.id} vacancyId={orin.id} />
+                    )}
                     <JoylashtirishTugmasi
                       orinId={orin.id}
                       ishsizId={nomzod.id}

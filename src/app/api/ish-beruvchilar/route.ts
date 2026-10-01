@@ -48,6 +48,10 @@ const Qaror = z.object({
  * ва нима бўлаётганини тушунмайди.
  */
 function ziddiyatXabari(holati?: string, kim?: string | null): string {
+  /* Ish beruvchi e'lonni ko'rib chiqishdan oldin o'zi yopib qo'ygan */
+  if (holati === 'YOPILGAN') {
+    return 'Ish beruvchi bu e‘lonni o‘zi yopib qo‘ygan. Ro‘yxatni yangilang.';
+  }
   const qaror =
     holati === 'TASDIQLANDI'
       ? 'tasdiqlagan'
