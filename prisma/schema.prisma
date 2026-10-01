@@ -148,11 +148,13 @@ model User {
   kiritganJoylashishlar    IshgaJoylashish[] @relation("JoylashishKiritgan")
 
   /// Oilaviy rejalar: yaratgan, mas'ul va aloqa yozgan xodim
-  yaratganRejalar OilaRejasi[]  @relation("RejaYaratgan")
-  masulRejalar    OilaRejasi[]  @relation("RejaMasul")
-  aloqaQaydlari   OilaAloqasi[] @relation("AloqaQaydEtgan")
+  yaratganRejalar OilaRejasi[]        @relation("RejaYaratgan")
+  masulRejalar    OilaRejasi[]        @relation("RejaMasul")
+  aloqaQaydlari   OilaAloqasi[]       @relation("AloqaQaydEtgan")
   /// Mas'ul xodim sifatida biriktirilgan chora-tadbirlar
-  masulChoralar   ActionPlan[]  @relation("ChoraMasulXodim")
+  masulChoralar   ActionPlan[]        @relation("ChoraMasulXodim")
+  /// Kiritgan kuzatuv tekshiruvlari
+  kuzatuvlar      KuzatuvTekshiruvi[]
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -1694,6 +1696,9 @@ model IshgaJoylashish {
 
   dalillar JoylashuvDalili[]
 
+  /// 30/60/90 kunlik kuzatuv tekshiruvlari
+  kuzatuvlar KuzatuvTekshiruvi[]
+
   @@index([ishsizId, boshlanganSana])
   @@index([holati])
   @@index([vacancyId])
@@ -1845,6 +1850,9 @@ model JoylashuvDalili {
   kiritganId String?
   kiritgan   User?   @relation("DalilKiritgan", fields: [kiritganId], references: [id], onDelete: SetNull)
 
+  /// Shu dalilga tayangan kuzatuv tekshiruvlari
+  kuzatuvlar KuzatuvTekshiruvi[]
+
   /// Kim tekshirdi
   tasdiqlaganId    String?
   tasdiqlagan      User?     @relation("DalilTasdiqlagan", fields: [tasdiqlaganId], references: [id], onDelete: SetNull)
@@ -1984,4 +1992,116 @@ model TelegramYangilanish {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  30/60/90 KUNLIK KUZATUV
+// ─────────────────────────────────────────────────────────────
+
+/// Kuzatuv savoliga javob. `NOMALUM` - "so'ralmagan yoki bilib bo'lmadi";
+/// u `YOQ` (aniq "yo'q") dan butunlay boshqa narsa.
+enum KuzatuvJavobi {
+  HA
+  YOQ
+  NOMALUM
+}
+
+/// Ma'lumot QAYDAN ekani. Hisobotda to'rt ustun shu bilan ajraladi.
+///
+///  NOMALUM          - bilib bo'lmadi
+///  XODIM_QAYD_ETGAN - xodim o'zi ko'rdi yoki o'z hisobidan yozdi
+///  FUQARO_BILDIRGAN - fuqaroning o'zi aytdi (xodim yozib oldi)
+///  TEKSHIRILGAN     - hujjat yoki rasmiy manba bilan tasdiqlangan
+///                     (tasdiqlangan DALIL bilan bog'langan bo'lishi shart)
+enum MalumotDarajasi {
+  NOMALUM
+  XODIM_QAYD_ETGAN
+  FUQARO_BILDIRGAN
+  TEKSHIRILGAN
+}
+
+enum KuzatuvNatijasi {
+  /// Fuqaro yoki manba bilan bog'lanildi, javoblar yozildi
+  MALUMOT_OLINDI
+  /// Bog'lanishga urinildi, ma'lumot olinmadi. Muddat bajarilgan
+  /// hisoblanmaydi: "ishda qoldi" ham, "ketdi" ham emas.
+  BOGLANILMADI
+}
+
+/// Ishga joylashishdan keyingi 30, 60 va 90-kun tekshiruvi.
+///
+/// Mavjud "uch oylik nazorat" bitta topshiriq edi: "bog'lanib
+/// ishlayotganini aniqlang". Natija esa matn, hisoblab bo'lmaydi.
+/// Bu jadval savollarni ajratadi va har javobning MANBAINI yozadi.
+///
+/// ── To'rt xil sana ataylab ajratilgan ──
+///
+///  ishga kirgan sana     - `IshgaJoylashish.boshlanganSana`
+///  ma'lumot olingan sana - `tekshiruvSanasi` (fuqaro bilan qachon gaplashildi)
+///  tasdiq sanasi         - `tasdiqSanasi` (TEKSHIRILGAN bo'lganda)
+///  kiritilgan sana       - `createdAt`
+model KuzatuvTekshiruvi {
+  id String @id @default(cuid())
+
+  joylashishId String
+  joylashish   IshgaJoylashish @relation(fields: [joylashishId], references: [id], onDelete: Cascade)
+
+  /// 30, 60 yoki 90
+  kunBelgisi Int
+  /// Muddat: ishga kirgan sanaga `kunBelgisi` kun qo'shilgan
+  rejaSana   DateTime
+
+  natija KuzatuvNatijasi
+
+  /// Ma'lumot QACHON olingan (kiritilgan sana emas)
+  tekshiruvSanasi DateTime
+  /// Tekshirilgan (hujjat bilan) deb belgilangan sana
+  tasdiqSanasi    DateTime?
+
+  /// Javoblarning umumiy manbasi
+  manba MalumotDarajasi @default(NOMALUM)
+
+  ishBoshladi     KuzatuvJavobi @default(NOMALUM)
+  ishdaQolmoqda   KuzatuvJavobi @default(NOMALUM)
+  /// Kelishilgan ish haqini olayaptimi
+  haqOlmoqda      KuzatuvJavobi @default(NOMALUM)
+  /// Ish sharoiti mosmi
+  sharoitMos      KuzatuvJavobi @default(NOMALUM)
+  qoshimchaYordam KuzatuvJavobi @default(NOMALUM)
+
+  /// Oylik ish haqi, so'mda. `null` - NOMA'LUM. 0 - rostdan 0.
+  ishHaqiSom        BigInt?
+  /// Oilaning hozirgi oylik daromadi, so'mda. `null` - noma'lum.
+  oilaDaromadiSom   BigInt?
+  /// Taqqoslash uchun BOSHLANG'ICH daromad (ishga joylashishdan oldingi), so'mda.
+  /// Odatda xatlovdagi qiymat; xodim o'zgartirishi mumkin. `null` - noma'lum.
+  /// O'zgarish faqat IKKALASI ham ma'lum bo'lganda hisoblanadi.
+  oldingiDaromadSom BigInt?
+  /// Daromad raqamlari manbasi (umumiy manbadan farq qilishi mumkin)
+  daromadManbasi    MalumotDarajasi @default(NOMALUM)
+
+  /// Ish tugagan bo'lsa - sababi
+  tugashSababi String?
+  /// Qanday qo'shimcha yordam kerakligi
+  yordamIzohi  String?
+
+  /// TEKSHIRILGAN uchun - tayanilgan tasdiqlangan dalil
+  dalilId String?
+  dalil   JoylashuvDalili? @relation(fields: [dalilId], references: [id], onDelete: SetNull)
+
+  /// BOGLANILMADI bo'lsa - qachon qayta urinish
+  qaytaUrinishSanasi DateTime?
+
+  kiritganId String
+  kiritgan   User   @relation(fields: [kiritganId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Bitta ish uchun har bosqichga BITTA yozuv
+  @@unique([joylashishId, kunBelgisi], name: "kuzatuv_bosqichi")
+  @@index([kunBelgisi, natija])
+  @@index([rejaSana])
+  @@index([kiritganId])
+  @@index([dalilId])
 }

@@ -22,6 +22,7 @@ import {
   BekorQilishTugmasi,
   JoylashtirishTugmasi } from '@/components/ish-orni/joylashtirish-tugmasi';
 import { DalilBlogi } from '@/components/dalil/dalil-blogi';
+import { KuzatuvBlogi } from '@/components/kuzatuv/kuzatuv-blogi';
 import { odamTasdigi } from '@/lib/joylashuv-dalili';
 import { joylashishTarixi } from '@/lib/joylashish';
 
@@ -451,6 +452,16 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
           manbaTashkilot: d.manbaTashkilot,
           hujjatSanasi: d.hujjatSanasi }))}
       />
+
+      {/*
+        ── 30/60/90 КУНЛИК КУЗАТУВ ──
+
+        Далилдан кейин туради: аввал «ишга кирганми» (далил), кейин
+        «ишда қолдими ва даромади қандай» (кузатув).
+
+        Блок иккиламчи: у йиқилса, фуқаро саҳифаси очилаверади.
+      */}
+      <KuzatuvBlogi ishsizId={p.id} rol={sessiya.rol} />
 
       {/* ── Chora-tadbirlar ── */}
       <section className="karta space-y-2 p-4 sm:p-5">

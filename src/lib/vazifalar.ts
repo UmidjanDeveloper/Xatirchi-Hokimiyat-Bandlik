@@ -1,5 +1,6 @@
 import type { Rol } from '@prisma/client';
 import { prisma } from './prisma';
+import { kuzatuvIshlari } from './kuzatuv';
 import { mahallaFiltri } from './auth';
 import { JOYLASHGAN, KUN_MS } from './bandlik-holatlari';
 import { MODERATSIYA_KUTMOQDA } from './elon-muddati';
@@ -1069,5 +1070,114 @@ export async function vazifalarim(sessiya: {
     }
   })();
 
-  return { rol: sessiya.rol, sarlavha, izoh, bloklar };
+  /*
+   * Keyinroq qo'shilgan modullar (oilaviy reja, kuzatuv) alohida
+   * bloklar beradi. Ular ASOSIY taxtadan ajratilgan: modul jadvali
+   * bilan muammo bo'lsa, taxta eski ko'rinishida ochilaveradi.
+   */
+  const qoshimcha = await qoshimchaBloklar(sessiya);
+  const shoshilinch = qoshimcha.filter((b) => b.ogohlik === 'shoshilinch' && b.soni > 0);
+  const qolgan = qoshimcha.filter((b) => !shoshilinch.includes(b));
+
+  return { rol: sessiya.rol, sarlavha, izoh, bloklar: [...shoshilinch, ...bloklar, ...qolgan] };
+}
+
+/* ══════════════════════════════════════════════════════════
+ *  QO'SHIMCHA MODULLAR BLOKLARI
+ * ══════════════════════════════════════════════════════════ */
+
+/**
+ * Har blok o'z `try/catch` ichida: bitta modul yiqilsa, qolganlari
+ * va asosiy taxta ko'rinaveradi (xato jurnalga yoziladi).
+ */
+async function qoshimchaBloklar(sessiya: {
+  userId: string;
+  rol: Rol;
+  mahallaId: string | null;
+}): Promise<VazifaBlogi[]> {
+  const chiqdi: VazifaBlogi[] = [];
+  const hozir = new Date();
+  const mahallaId = mahallaFiltri(sessiya).mahallaId;
+
+  /* ── 30/60/90 kunlik kuzatuv: bandlik markazi ishi ── */
+  if (sessiya.rol === 'BANDLIK' || sessiya.rol === 'BANDLIK_RAHBAR' || sessiya.rol === 'ADMIN') {
+    try {
+      const ishlar = await kuzatuvIshlari(undefined, hozir);
+      const kerak = ishlar.filter((i) => i.holat !== 'kutilmoqda');
+      const kechikkan = kerak.filter((i) => i.holat === 'kechikdi' || i.holat === 'qayta_urinish');
+      chiqdi.push({
+        kalit: 'kuzatuv-306090',
+        nomi: 'Кузатув: 30/60/90 кунлик текширув',
+        izoh: 'Жойлашган фуқаро ишда қолдими, ҳақ оляптими, даромади қандай — муддати келган ёки ўтган текширувлар',
+        soni: kerak.length,
+        ogohlik: kechikkan.length > 0 ? 'shoshilinch' : kerak.length > 0 ? 'diqqat' : 'tinch',
+        yol: '/kuzatuv',
+        qatorlar: kerak.slice(0, 8).map((i) => ({
+          id: `${i.joylashishId}-${i.kun}`,
+          matn: `${i.fish} — ${i.kun} кун`,
+          qoshimcha:
+            i.holat === 'kechikdi'
+              ? `${i.korxona} · ${Math.abs(i.kunFarqi)} кун кечикди`
+              : i.holat === 'qayta_urinish'
+                ? `${i.korxona} · боғланиб бўлмаган, қайта уриниш керак`
+                : `${i.korxona} · муддат бугун`,
+          yol: `/ishsizlar/${i.ishsizId}#kuzatuv`,
+        })),
+        hisoblash: {
+          usuli: 'Муддат = ишга кирган сана + 30/60/90 кун. Қайд этилмаган ва муддати келган текширувлар саналади',
+          manbasi: 'Ишга жойлашиш воқеалари ва 30/60/90 кунлик кузатув ёзувлари',
+          ogohlik: 'Муддатидан 120 кундан ортиқ ўтган эски ишлар рўйхатга киритилмайди',
+        },
+      });
+    } catch (e) {
+      console.error('Vazifalar: kuzatuv blokini hisoblab bo‘lmadi:', e);
+    }
+  }
+
+  /* ── Oilaviy reja: aloqa muddati o'tgan ── */
+  if (sessiya.rol !== 'HOKIM') {
+    try {
+      const bugun = kunBoshi(hozir);
+      const where = {
+        holati: 'FAOL' as const,
+        household: { arxivSanasi: null, ...(mahallaId ? { mahallaId } : {}) },
+        OR: [{ keyingiAloqaSanasi: null }, { keyingiAloqaSanasi: { lt: bugun } }],
+      };
+      const [soni, ro] = await Promise.all([
+        prisma.oilaRejasi.count({ where }),
+        prisma.oilaRejasi.findMany({
+          where,
+          orderBy: { keyingiAloqaSanasi: { sort: 'asc', nulls: 'first' } },
+          take: 8,
+          select: {
+            id: true,
+            keyingiAloqaSanasi: true,
+            household: { select: { oilaBoshligi: true, mahalla: { select: { nomiKirill: true } } } },
+          },
+        }),
+      ]);
+      chiqdi.push({
+        kalit: 'oila-rejasi-aloqa',
+        nomi: 'Оилавий режалар: алоқа керак',
+        izoh: 'Оила билан кейинги алоқа муддати ўтган ёки қўйилмаган амалдаги режалар',
+        soni,
+        ogohlik: soni > 0 ? 'diqqat' : 'tinch',
+        yol: '/rejalar?kerak=aloqa',
+        qatorlar: ro.map((r) => ({
+          id: r.id,
+          matn: r.household.oilaBoshligi,
+          qoshimcha: r.keyingiAloqaSanasi
+            ? `${r.household.mahalla.nomiKirill} · ${Math.floor(
+                (hozir.getTime() - r.keyingiAloqaSanasi.getTime()) / KUN_MS
+              )} кун кечикди`
+            : `${r.household.mahalla.nomiKirill} · алоқа санаси қўйилмаган`,
+          yol: `/rejalar/${r.id}`,
+        })),
+      });
+    } catch (e) {
+      console.error('Vazifalar: oilaviy reja blokini hisoblab bo‘lmadi:', e);
+    }
+  }
+
+  return chiqdi;
 }

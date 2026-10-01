@@ -39,6 +39,7 @@ import { bolimlarTahlili } from '@/lib/bolimlar-tahlili';
 import { HududXaritasi } from '@/components/xarita/hudud-xaritasi';
 import { xaritaMalumoti } from '@/lib/xarita/xarita-malumoti';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
+import { KuzatuvKorsatkichBlogi } from '@/components/kuzatuv/korsatkich-blogi';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 
 /*
@@ -153,6 +154,7 @@ export default async function PanelSahifasi({
     { id: 'qism-dinamika', nomi: 'Ўсиш ва камайиш' },
     { id: 'qism-xarita', nomi: 'Туман харитаси' },
     { id: 'qism-zanjir', nomi: 'Бандлик занжири' },
+    { id: 'qism-kuzatuv', nomi: 'Барқарор бандлик (30/60/90)' },
     ...(!mahallaId ? [{ id: 'qism-mahallalar', nomi: 'Маҳаллалар кесимида' }] : []),
     { id: 'qism-vaucher', nomi: 'IT-шаҳарча ваучери' },
     { id: 'qism-kurs', nomi: 'Курс талаби ва бюджет' },
@@ -517,6 +519,17 @@ export default async function PanelSahifasi({
             tekshiruvKutayotgan={t.jami.tekshiruvKutayotgan}
           />
           <KechikkanlarBlogi kechikkanlar={t.kechikkanlar} />
+        </div>
+
+        {/*
+          ── 30/60/90 КУНЛИК КУЗАТУВ ──
+
+          Ҳоким «жойлаштирилганлар ишда қолдими, даромади қандай»
+          деб сўрайди. Блок ўз хатосини ўзи ютади: у йиқилса,
+          панелнинг қолган қисми очилаверади.
+        */}
+        <div id="qism-kuzatuv" className="scroll-mt-20">
+          <KuzatuvKorsatkichBlogi mahallaId={mahallaId} />
         </div>
 
         {/*

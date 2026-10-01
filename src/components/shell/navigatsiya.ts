@@ -89,6 +89,13 @@ export const MENYU: MenyuBandi[] = [
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
   },
   {
+    /* 30/60/90 kunlik kuzatuv - bandlik markazining ishi */
+    yol: '/kuzatuv',
+    nomi: 'Кузатув 30/60/90',
+    ikonka: 'CalendarCheck',
+    rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+  },
+  {
     yol: '/bandlik',
     nomi: 'Операцион панел',
     ikonka: 'Target',

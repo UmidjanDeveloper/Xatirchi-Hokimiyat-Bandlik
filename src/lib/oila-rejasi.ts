@@ -125,10 +125,22 @@ export const QadamSxemasi = z.object({
 /** Aloqa sanasi kelajakdan uzoq bo'lsa - xato yozilgan ehtimoli yuqori */
 export const ENG_UZOQ_KELAJAK_KUN = 400;
 
+/**
+ * Ikki sana orasidagi KUN farqi (a - b), TOSHKENT kuni bo'yicha.
+ *
+ * UTC bo'yicha hisoblansa, kechqurun soat 19:00 dan keyin (Toshkentda
+ * allaqachon ertangi kun) "bugun" va "kechikdi" bir kunga adashardi.
+ * O'zbekiston UTC+5, yozgi vaqt yo'q.
+ */
 export function sanaOrali(a: Date, b: Date): number {
-  const x = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate());
-  const y = Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate());
-  return Math.round((x - y) / KUN_MS);
+  const SIL = 5 * 60 * 60 * 1000;
+  const x = new Date(a.getTime() + SIL);
+  const y = new Date(b.getTime() + SIL);
+  return Math.round(
+    (Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate()) -
+      Date.UTC(y.getUTCFullYear(), y.getUTCMonth(), y.getUTCDate())) /
+      KUN_MS
+  );
 }
 
 /**

@@ -30,3 +30,8 @@ export function kundanKeyin(n: number): string {
   const p = (x: number) => String(x).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+
+/** Qurilmaning bugungi kuni, YYYY-MM-DD */
+export function hozirgiKun(): string {
+  return kundanKeyin(0);
+}

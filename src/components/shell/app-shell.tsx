@@ -8,6 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Archive,
   BadgeCheck,
+  CalendarCheck,
   Briefcase,
   Building2,
   ChartColumn,
@@ -78,6 +79,7 @@ interface Props {
 const IKONKALAR: Record<string, React.ComponentType<{ className?: string }>> = {
   Archive,
   BadgeCheck,
+  CalendarCheck,
   Briefcase,
   Building2,
   ChartColumn,
