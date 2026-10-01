@@ -148,15 +148,18 @@ model User {
   kiritganJoylashishlar    IshgaJoylashish[] @relation("JoylashishKiritgan")
 
   /// Oilaviy rejalar: yaratgan, mas'ul va aloqa yozgan xodim
-  yaratganRejalar     OilaRejasi[]        @relation("RejaYaratgan")
-  masulRejalar        OilaRejasi[]        @relation("RejaMasul")
-  aloqaQaydlari       OilaAloqasi[]       @relation("AloqaQaydEtgan")
+  yaratganRejalar       OilaRejasi[]        @relation("RejaYaratgan")
+  masulRejalar          OilaRejasi[]        @relation("RejaMasul")
+  aloqaQaydlari         OilaAloqasi[]       @relation("AloqaQaydEtgan")
   /// Mas'ul xodim sifatida biriktirilgan chora-tadbirlar
-  masulChoralar       ActionPlan[]        @relation("ChoraMasulXodim")
+  masulChoralar         ActionPlan[]        @relation("ChoraMasulXodim")
   /// Kiritgan kuzatuv tekshiruvlari
-  kuzatuvlar          KuzatuvTekshiruvi[]
+  kuzatuvlar            KuzatuvTekshiruvi[]
   /// Yo'llagan nomzodlar
-  yaratganYollanmalar NomzodYollanmasi[]  @relation("YollanmaYaratgan")
+  yaratganYollanmalar   NomzodYollanmasi[]  @relation("YollanmaYaratgan")
+  /// Kiritgan kurslar va kursga yozgan fuqarolar
+  yaratganKurslar       Kurs[]              @relation("KursYaratgan")
+  yaratganKursYozuvlari KursYollanmasi[]    @relation("KursYozuvYaratgan")
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -838,6 +841,8 @@ model UnemployedPerson {
   joylashishlar IshgaJoylashish[]
   /// Ish o'rniga yo'llanmalari (rozilik bilan)
   yollanmalar   NomzodYollanmasi[]
+  /// Kurslarga yozilishi va natijalari
+  kurslar       KursYollanmasi[]
 
   @@index([mahallaId, holati])
   @@index([holati])
@@ -1357,6 +1362,9 @@ model ItVaucher {
   bergangaId String
   bergan     User   @relation(fields: [bergangaId], references: [id], onDelete: Restrict)
 
+  /// Shu vaucher bilan bog'langan kurs yozuvlari (ixtiyoriy)
+  kursYozuvlari KursYollanmasi[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1707,7 +1715,9 @@ model IshgaJoylashish {
   dalillar JoylashuvDalili[]
 
   /// 30/60/90 kunlik kuzatuv tekshiruvlari
-  kuzatuvlar KuzatuvTekshiruvi[]
+  kuzatuvlar   KuzatuvTekshiruvi[]
+  /// Shu ishga olib kelgan kurs yozuvi (kursdan KEYIN boshlangan ish)
+  kursNatijasi KursYollanmasi?
 
   @@index([ishsizId, boshlanganSana])
   @@index([holati])
@@ -1812,7 +1822,7 @@ model JoylashuvDalili {
   /// киритилган далилларда воқеа йўқ. Улар «боғланиши
   /// керак» деган рўйхатга тушади — тахмин қилиб,
   /// ўзимиз боғлаб қўймаймиз.
-  joylashishId String?
+  joylashishId String?          @unique
   joylashish   IshgaJoylashish? @relation(fields: [joylashishId], references: [id], onDelete: SetNull)
 
   /// ── ДАЛИЛ ҚАЕРДАН КЕЛГАН ──
@@ -2202,4 +2212,130 @@ model NomzodYollanmasi {
   @@index([vacancyId, holati])
   @@index([holati, ulashilganSana])
   @@index([yaratganId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  KURSLAR: KATALOG VA FUQAROLARNING KURSDAGI YO'LI
+// ─────────────────────────────────────────────────────────────
+
+enum KursYozuvHolati {
+  /// Kursga yozildi
+  YOLLANDI
+  /// Darslar boshlandi
+  BOSHLADI
+  /// Kursni tamomladi
+  TAMOMLADI
+  /// Boshlab, oxiriga yetkazmadi
+  TASHLADI
+  /// Yozilgan, lekin darsga umuman kelmadi
+  KELMADI
+  /// Xodim bekor qildi yoki kurs bekor qilindi
+  BEKOR
+}
+
+/// Kurs (o'quv guruhi) - tashkilotdan olingan ma'lumot.
+///
+/// Holat (qabul / jarayonda / tugagan) saqlanmaydi: sanalardan
+/// HISOBLANADI, shuning uchun u hech qachon eskirib, sanaga zid bo'lib
+/// qolmaydi. `tekshirilganSana` - ma'lumot tashkilotdan oxirgi marta qachon
+/// tasdiqlangani; eskirgan kurs yangi tavsiya sifatida chiqmaydi.
+model Kurs {
+  id String @id @default(cuid())
+
+  nomi       String
+  /// `KASB_YONALISHI` kaliti - ixtiyoriy
+  yonalish   String?
+  /// Kurs aniq nimani o'rgatadi (ish talabi bilan solishtirish uchun)
+  konikmalar String[]
+
+  tashkilot String
+  manzil    String?
+  aloqa     String?
+
+  boshlanishSanasi DateTime
+  tugashSanasi     DateTime
+
+  /// Jami dars kuni - davomat foizi uchun maxraj. null = noma'lum
+  jamiDarsKuni Int?
+  /// O'rinlar soni. null = noma'lum (cheklov qo'yilmaydi)
+  joylar       Int?
+  /// null = noma'lum, true = bepul, false = pullik
+  bepul        Boolean?
+  /// So'mda; faqat pullik kursda
+  narxi        BigInt?
+
+  /// Ma'lumot manbasi: kim aytdi, qaysi hujjat
+  manba            String
+  /// Ma'lumot oxirgi marta tashkilotdan tekshirilgan sana
+  tekshirilganSana DateTime
+
+  bekorQilingan DateTime?
+  bekorSababi   String?
+
+  yaratganId String
+  yaratgan   User   @relation("KursYaratgan", fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  yozuvlar KursYollanmasi[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boshlanishSanasi])
+  @@index([bekorQilingan, tugashSanasi])
+  @@index([yaratganId])
+}
+
+/// Fuqaroning kursdagi yo'li: yozildi -> boshladi -> tamomladi -> suhbat ->
+/// ish. Har bosqich alohida qayd etiladi, "noma'lum" nolga aylantirilmaydi.
+///
+/// ── Ish natijasi ──
+///
+/// `joylashishId` faqat MAVJUD joylashish voqeasiga bog'lanadi (u dalil
+/// bilan alohida tasdiqlanadi); kurs yozuvi o'zi "ishga joylashdi" deb
+/// hisoblanmaydi. Bitta ish faqat BITTA kurs yozuviga bog'lanadi (`@unique`):
+/// ketma-ket ikki kurs o'tgan odamning ishi ikkalasiga hisoblanmaydi. Bog'lanish faqat kursdan KEYIN boshlangan ish uchun
+/// mumkin: avvaldan ishlab turgan odamning ishi kursga yozilmaydi.
+model KursYollanmasi {
+  id String @id @default(cuid())
+
+  kursId String
+  kurs   Kurs   @relation(fields: [kursId], references: [id], onDelete: Cascade)
+
+  ishsizId String
+  ishsiz   UnemployedPerson @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
+
+  holati KursYozuvHolati @default(YOLLANDI)
+
+  boshlaganSana DateTime?
+  tugatganSana  DateTime?
+
+  /// Qatnashgan dars kuni. null = noma'lum; 0 = hech kelmagan
+  qatnashganKun     Int?
+  /// Guvohnoma/sertifikat: null = noma'lum
+  sertifikat        Boolean?
+  /// Haqiqatda egallagan ko'nikmalar (xodim o'qituvchidan bilib qayd etgan)
+  olinganKonikmalar String[]
+  /// Tashlagan/kelmagan/bekor sababi
+  izoh              String?
+
+  /// Kursdan keyingi ish suhbati
+  suhbatSanasi DateTime?
+
+  joylashishId String?          @unique
+  joylashish   IshgaJoylashish? @relation(fields: [joylashishId], references: [id], onDelete: SetNull)
+
+  /// IT-shaharcha vaucheri bilan bog'liq bo'lsa - ixtiyoriy
+  itVaucherId String?
+  itVaucher   ItVaucher? @relation(fields: [itVaucherId], references: [id], onDelete: SetNull)
+
+  yaratganId String
+  yaratgan   User   @relation("KursYozuvYaratgan", fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kursId, ishsizId], name: "kurs_yozuvi_takrori")
+  @@index([ishsizId])
+  @@index([kursId, holati])
+  @@index([holati, tugatganSana])
 }

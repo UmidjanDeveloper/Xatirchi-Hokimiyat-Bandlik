@@ -741,6 +741,12 @@ const SINOVLAR: Sinov[] = [
          * ichida ko'rinadi).
          */
         'yollanmalar',
+        /*
+         * KURSLARGA YOZILISH - jarayon yozuvi (qaysi kurs, qachon boshladi,
+         * tamomladimi). Fuqaro uchun bir necha qator bo'lishi mumkin va
+         * u hokimlik andozasiga kirmaydi.
+         */
+        'kurslar',
       ]);
 
       const ayblilar: string[] = [];

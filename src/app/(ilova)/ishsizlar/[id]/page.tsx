@@ -23,6 +23,7 @@ import {
   JoylashtirishTugmasi } from '@/components/ish-orni/joylashtirish-tugmasi';
 import { DalilBlogi } from '@/components/dalil/dalil-blogi';
 import { KuzatuvBlogi } from '@/components/kuzatuv/kuzatuv-blogi';
+import { KurslarBlogi } from '@/components/kurs/kurslar-blogi';
 import { odamTasdigi } from '@/lib/joylashuv-dalili';
 import { joylashishTarixi } from '@/lib/joylashish';
 
@@ -462,6 +463,9 @@ export default async function IshsizSahifasi({ params }: { params: { id: string 
         Блок иккиламчи: у йиқилса, фуқаро саҳифаси очилаверади.
       */}
       <KuzatuvBlogi ishsizId={p.id} rol={sessiya.rol} />
+
+      {/* Курслар: ёзилиш, ўқиш, натижа. Блок иккиламчи: у йиқилса, саҳифа очилаверади. */}
+      <KurslarBlogi ishsizId={p.id} />
 
       {/* ── Chora-tadbirlar ── */}
       <section className="karta space-y-2 p-4 sm:p-5">

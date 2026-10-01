@@ -3,6 +3,8 @@ import { prisma } from './prisma';
 import { kuzatuvIshlari } from './kuzatuv';
 import { elonlarSifati } from './elon-sifati';
 import { javobsizYollanmalar, JAVOBSIZ_KUN } from './yollanma';
+import { YANGILANMAGAN_KUNI } from './kurslar-nomlari';
+import { sanaOrali } from './oila-rejasi';
 import { mahallaFiltri } from './auth';
 import { JOYLASHGAN, KUN_MS } from './bandlik-holatlari';
 import { MODERATSIYA_KUTMOQDA } from './elon-muddati';
@@ -1224,6 +1226,62 @@ async function qoshimchaBloklar(sessiya: {
       });
     } catch (e) {
       console.error('Vazifalar: oilaviy reja blokini hisoblab bo‘lmadi:', e);
+    }
+  }
+
+  /* ── Kurslar: ёзув ҳолати янгиланмаган ── */
+  if (sessiya.rol !== 'HOKIM') {
+    try {
+      /*
+       * Ikki holat "yangilanmagan" hisoblanadi:
+       *   - kurs boshlangan (kamida 1 kun), lekin yozuv hali "Ёзилган";
+       *   - "Ўқимоқда" yozuvi, kurs tugaganiga YANGILANMAGAN_KUNI kundan ortiq.
+       * Aniq kun hisobi (Toshkent kuni) kodda; bazadan faqat nomzodlar olinadi.
+       */
+      const nomzodlar = await prisma.kursYollanmasi.findMany({
+        where: {
+          holati: { in: ['YOLLANDI', 'BOSHLADI'] },
+          kurs: { bekorQilingan: null, boshlanishSanasi: { lt: hozir } },
+          ishsiz: { arxivSanasi: null, ...(mahallaId ? { mahallaId } : {}) },
+        },
+        orderBy: { kurs: { boshlanishSanasi: 'asc' } },
+        take: 200,
+        select: {
+          id: true,
+          holati: true,
+          ishsiz: { select: { id: true, fish: true } },
+          kurs: { select: { id: true, nomi: true, boshlanishSanasi: true, tugashSanasi: true } },
+        },
+      });
+      const kerak = nomzodlar.filter((y) =>
+        y.holati === 'YOLLANDI'
+          ? sanaOrali(hozir, y.kurs.boshlanishSanasi) >= 1
+          : sanaOrali(hozir, y.kurs.tugashSanasi) > YANGILANMAGAN_KUNI
+      );
+      chiqdi.push({
+        kalit: 'kurs-yangilanmagan',
+        nomi: 'Курслар: ёзув ҳолати янгиланмаган',
+        izoh: 'Курс бошланган ёки тугаган, аммо фуқаро ўқишни бошлаганми, тамомладими, ташладими — белгиланмаган',
+        soni: kerak.length,
+        ogohlik: kerak.length > 0 ? 'diqqat' : 'tinch',
+        yol: '/kurslar',
+        qatorlar: kerak.slice(0, 8).map((y) => ({
+          id: y.id,
+          matn: `${y.ishsiz.fish} — ${y.kurs.nomi}`,
+          qoshimcha:
+            y.holati === 'YOLLANDI'
+              ? `${sanaOrali(hozir, y.kurs.boshlanishSanasi)} кун олдин бошланган, ҳолат белгиланмаган`
+              : `${sanaOrali(hozir, y.kurs.tugashSanasi)} кун олдин тугаган, ҳолат «Ўқимоқда»`,
+          yol: `/ishsizlar/${y.ishsiz.id}`,
+        })),
+        hisoblash: {
+          usuli: 'Ёзув «Ёзилган» ва курс бошланганига камида 1 кун; ёки «Ўқимоқда» ва курс тугаганига ' + `${YANGILANMAGAN_KUNI} кундан ортиқ`,
+          manbasi: 'Курс ва курсга ёзилиш ёзувлари',
+          ogohlik: 'Бу рўйхат фуқаро ўқишни тамомлаганини англатмайди: фақат ҳолат белгиланмаганини кўрсатади',
+        },
+      });
+    } catch (e) {
+      console.error('Vazifalar: kurs blokini hisoblab bo‘lmadi:', e);
     }
   }
 

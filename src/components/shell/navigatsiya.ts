@@ -96,6 +96,17 @@ export const MENYU: MenyuBandi[] = [
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
   },
   {
+    /*
+     * Kasb-hunar kurslari katalogi va fuqarolarning kursdagi yo'li. Kursni
+     * bandlik markazi yuritadi; mahalla xodimi ko'radi va o'z fuqarosini
+     * yozadi. Hokimga ko'rsatilmaydi: u yerda fuqaro ismlari bor.
+     */
+    yol: '/kurslar',
+    nomi: 'Курслар',
+    ikonka: 'GraduationCap',
+    rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+  },
+  {
     yol: '/bandlik',
     nomi: 'Операцион панел',
     ikonka: 'Target',

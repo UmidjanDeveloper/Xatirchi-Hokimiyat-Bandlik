@@ -18,6 +18,7 @@ import {
 import { OrinHolatiTugmasi } from '@/components/ish-orni/orin-holati-tugmasi';
 import { ElonSifatiBlogi } from '@/components/ish-orni/elon-sifati-blogi';
 import { YollanmalarBlogi } from '@/components/yollanma/yollanmalar-blogi';
+import { ElonKurslariBlogi } from '@/components/kurs/elon-kurslari-blogi';
 import { YollanmaTugmasi } from '@/components/yollanma/yollanma-tugmasi';
 import { elonlarSifati, type SifatBelgisi } from '@/lib/elon-sifati';
 import { YOLLANMA_NOMI } from '@/lib/yollanma-nomlari';
@@ -258,6 +259,9 @@ export default async function IshOrniSahifasi({
         vacancyIdBilan={orin.joylashganlar.map((p) => p.id)}
         beruvchiBor={beruvchiBor}
       />
+
+      {/* ── Талабга яқинлаштирадиган курслар (сабаби билан; иккиламчи блок) ── */}
+      <ElonKurslariBlogi elon={{ lavozim: orin.lavozim, talablar: orin.talablar, yonalish: orin.yonalish }} />
 
       {/*
         ── ТАҚСИМОТ ──
