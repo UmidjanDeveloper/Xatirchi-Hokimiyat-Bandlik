@@ -71,6 +71,24 @@ const OCHIQ = [
 ];
 
 /**
+ * Faqat AYNAN shu manzil bilan ochiladigan yo'llar — prefiks emas.
+ *
+ * ── IDROK statistikasi ──
+ *
+ * IDROK (hokimiyatning AI yordamchisi) serverida bizning cookie
+ * yo'q, shuning uchun bu yo'l ham Telegram va Cron kabi sessiyasiz
+ * o'tadi. Yo'lning O'ZI `X-IDROK-Key` sarlavhasini tekshiradi,
+ * `IDROK_API_KEY` qo'yilmagan bo'lsa esa 404 qaytaradi — ya'ni
+ * bu yerga qo'shish tuynuk ochmaydi.
+ *
+ * `OCHIQ` ro'yxatiga ATAYLAB qo'yilmadi: u yerda prefiks ham
+ * o'tadi (`/api/cron/...`). Bu yerda esa `/api/idrok/stats/x`,
+ * `/api/idrok` yoki `/api/idrok/statsx` kabi qo'shni yo'llar
+ * odatdagidek sessiya talab qiladi.
+ */
+const ANIQ_OCHIQ = new Set(['/api/idrok/stats']);
+
+/**
  * Сўров усулини ичкарига олиб кирадиган жавоб.
  *
  * Next'нинг сервер компонентларида ҳам, `talabQil()` да ҳам
@@ -88,6 +106,10 @@ function otkaz(req: NextRequest): NextResponse {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  if (ANIQ_OCHIQ.has(pathname)) {
+    return otkaz(req);
+  }
 
   if (OCHIQ.some((y) => pathname === y || pathname.startsWith(`${y}/`))) {
     return otkaz(req);
