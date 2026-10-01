@@ -89,6 +89,15 @@ const OCHIQ = [
 const ANIQ_OCHIQ = new Set(['/api/idrok/stats']);
 
 /**
+ * Salomatlik tekshiruvi (tashqi monitoring: UptimeRobot va h.k.).
+ *
+ * Sessiyasiz ochiladi, lekin AYNAN shu ikki manzil: `/api/health/x`,
+ * `/api/healthz` kabi qo'shnilar odatdagidek sessiya talab qiladi.
+ * Javob qo'pol (ok/degraded), tafsilot chiqmaydi — `src/lib/salomatlik.ts`.
+ */
+const SALOMATLIK_YOLLARI = new Set(['/api/health', '/api/health/readiness']);
+
+/**
  * Сўров усулини ичкарига олиб кирадиган жавоб.
  *
  * Next'нинг сервер компонентларида ҳам, `talabQil()` да ҳам
@@ -108,6 +117,10 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (ANIQ_OCHIQ.has(pathname)) {
+    return otkaz(req);
+  }
+
+  if (SALOMATLIK_YOLLARI.has(pathname)) {
     return otkaz(req);
   }
 

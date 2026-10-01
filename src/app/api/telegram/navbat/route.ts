@@ -4,7 +4,8 @@ import { navbatniYubor, telegramSozlanganmi } from '@/lib/xabarnoma';
 import { prisma } from '@/lib/prisma';
 import { muddatiOtganlarniYop } from '@/lib/elon-muddati';
 import { muddatiTugaganlarniOgohlantir } from '@/lib/beruvchi-elonlari';
-import { eskiYozuvlarniTozala, ishniKuzat, serverXatosi } from '@/lib/tizim-kuzatuvi';
+import { eskiYozuvlarniTozala, ishniKuzat, serverXatosi, xatoniYoz } from '@/lib/tizim-kuzatuvi';
+import { murojaatMuddatiXabarlari } from '@/lib/murojaat-xabari';
 import { maxfiyniTozala } from '@/lib/maxfiy';
 
 /*
@@ -120,11 +121,30 @@ async function ishniBajar(): Promise<IshNatijasi> {
     console.error('eski yozuvlarni tozalab bolmadi', maxfiyniTozala(e));
   }
 
+  /*
+   * ── МУРОЖААТ МУДДАТИ ХАБАРЛАРИ ──
+   *
+   * Муддати яқин (бугун/эртага) ва ўтган мурожаатлар ҳақида масъул
+   * ходимга, ўтгани ҳақида раҳбарларга хабар НАВБАТГА қўйилади.
+   * Юборишдан ОЛДИН: шу ишга тушишнинг ўзида жўнайди. Хато бўлса
+   * навбат барибир юборилади — хабар қўйиш юборишни тўсмасин.
+   * Telegram созланмаган бўлса ҳам навбатга қўйилади (навбат
+   * тўпланади, токен қўйилгач кетади).
+   */
+  let murojaatXabari = '';
+  try {
+    const r = await murojaatMuddatiXabarlari();
+    murojaatXabari = `, мурожаат хабари: ${r.yaratildi}${r.otkazildi ? ' (ўтказилди: бошқаси ишлаяпти)' : ''}`;
+  } catch (e) {
+    murojaatXabari = ', мурожаат хабари: ХАТО';
+    await xatoniYoz('cron:navbat-murojaat', e);
+  }
+
   if (!telegramSozlanganmi()) {
     return {
       status: 503,
       json: { ok: false, yopilganElon, xabar: 'TELEGRAM_BOT_TOKEN созланмаган' },
-      xulosa: `Telegram созланмаган; ёпилган эълон: ${yopilganElon}${tozalandi}`,
+      xulosa: `Telegram созланмаган; ёпилган эълон: ${yopilganElon}${tozalandi}${murojaatXabari}`,
     };
   }
 
@@ -132,7 +152,7 @@ async function ishniBajar(): Promise<IshNatijasi> {
   return {
     status: 200,
     json: { ok: true, yopilganElon, ...natija },
-    xulosa: `юборилди: ${natija.yuborildi}, хато: ${natija.xato}, ёпилган эълон: ${yopilganElon}${tozalandi}`,
+    xulosa: `юборилди: ${natija.yuborildi}, хато: ${natija.xato}, ёпилган эълон: ${yopilganElon}${tozalandi}${murojaatXabari}`,
   };
 }
 

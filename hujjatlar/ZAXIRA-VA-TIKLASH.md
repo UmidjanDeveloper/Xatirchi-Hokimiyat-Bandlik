@@ -23,7 +23,7 @@ zaxira — zaxira emas.
 | Migratsiya | Faqat qo'shadi (jadval/ustun o'chirmaydi) | Kod rollbacki baza rollbacksiz ishlaydi |
 | Tasodifan o'chirilgan yozuv | Arxiv (`arxivSanasi`) + `/arxiv` sahifasi | Haqiqiy o'chirish yo'q; qaytariladi |
 | Baza zaxirasi | **Supabase** | **Tarifga bog'liq — pastdagi tekshiruvga qarang** |
-| Mustaqil mantiqiy nusxa (`pg_dump`) | Qo'lda: `scripts/zaxira-tiklash.sh` | Avtomatik jadval **yo'q** |
+| Mustaqil mantiqiy nusxa (`pg_dump`) | Qo'lda: `scripts/zaxira-nusxa.sh` (olish), `scripts/zaxira-tiklash.sh` (tiklashni sinash) | Avtomatik jadval **yo'q** |
 
 ### Supabase zaxirasini tekshiring (1 daqiqa)
 
@@ -77,6 +77,22 @@ Tizimda haqiqiy o'chirish yo'q — yozuv arxivga tushadi. «Arxiv» sahifasidan
 5. Yo'qolgan davr (RPO) uchun: shu vaqt ichida kiritilgan xatlovlar xodimlardan
    qayta so'raladi. Telefonlardagi **oflayn navbat** ham bu yerda yordam beradi:
    yuborilmagan anketalar telefonda turadi.
+
+## 3a. Mustaqil nusxa olish
+
+```bash
+NUSXA_MANBA_URL='postgresql://…:5432/postgres' scripts/zaxira-nusxa.sh
+```
+
+DIRECT (5432) manzil ishlating: pooler (6543) `pg_dump` uchun mos emas.
+Skript bazaga **faqat o'qiydi**; nusxani `~/bandlik-zaxira` (yoki
+`NUSXA_PAPKA`) ga yozadi — papka repo ichida bo'lsa **rad etadi**; fayl
+ruxsati 600; `pg_restore --list` bilan butunligini va asosiy jadvallar
+borligini tekshiradi; SHA-256 yozadi; `SAQLASH_KUN` (odatiy 30) dan eski
+nusxalarni aylantiradi, lekin eng yangi 3 tasini **hech qachon** o'chirmaydi.
+Nusxa shifrlanmagan: uni shifrlangan diskda saqlang.
+Skript sinovi: `npx tsx scripts/zaxira-nusxa-sinov.ts` (pg asboblari yo'q
+muhitda «O'TKAZILDI» deydi, o'tdi demaydi).
 
 ## 4. Tiklashni sinash tartibi (alohida muhitda)
 

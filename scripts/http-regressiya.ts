@@ -300,6 +300,29 @@ const SINOVLAR: Sinov[] = [
       return rad(t) && a.status === 401 && adm.status === 401 && asl.status === 403;
     },
   },
+  /* ══ 11. SALOMATLIK (tashqi monitoring) ══ */
+  {
+    nomi: '11a. /api/health va /api/health/readiness cookie\'siz ochiladi; readiness 200 yoki 503 va javobda FAQAT ruxsat etilgan kalitlar (xato matni, versiya, son YO\'Q)',
+    tekshir: async () => {
+      const j = await sorov('/api/health');
+      const t = await sorov('/api/health/readiness');
+      let b: { status?: string; tekshiruvlar?: Record<string, unknown> } = {};
+      try {
+        b = JSON.parse(t.matn);
+      } catch {
+        return false;
+      }
+      const kalitlar = JSON.stringify(Object.keys(b).sort()) === '["status","tekshiruvlar"]' && JSON.stringify(Object.keys(b.tekshiruvlar ?? {}).sort()) === '["avtomatikIshlar","baza"]';
+      return j.status === 200 && JSON.parse(j.matn).ok === true && [200, 503].includes(t.status) && (t.status === 200) === (b.status === 'ok') && kalitlar && !/error|xato|postgres|prisma/i.test(t.matn);
+    },
+  },
+  {
+    nomi: '11b. Qo\'shni yo\'llar sessiya talab qiladi (401): /api/health/x, /api/healthz, /api/health/readiness/x',
+    tekshir: async () => {
+      const r = await Promise.all(['/api/health/x', '/api/healthz', '/api/health/readiness/x'].map((y) => sorov(y)));
+      return r.every((x) => x.status === 401);
+    },
+  },
   {
     nomi: '10f. Cookie butunlay yo\'q yoki axlat: /tablo va API yopiq',
     tekshir: async () => {

@@ -57,6 +57,10 @@ export async function POST(request: Request) {
   }
 
   const oqildi = reyestrniOqi(await fayl.arrayBuffer());
+  if (!oqildi.ok && oqildi.xavfli) {
+    /* Prototip ifloslanishi urinishi: administratorga /tizim da ko'rinadi */
+    await serverXatosi('api:reyestr-xavfli-fayl', new Error(`Reyestr fayli prototiplarni o'zgartirdi: ${oqildi.xavfli.join(', ')}`));
+  }
   if (!oqildi.ok) {
     return NextResponse.json({ ok: false, xabar: oqildi.sabab }, { status: 400 });
   }

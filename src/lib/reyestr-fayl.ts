@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { lotinga } from './alifbo';
 import type { ReyestrSatri } from './reyestr-import';
+import { prototipQoriqchisi } from './prototip-qoriqchi';
 
 /**
  * ============================================================
@@ -177,7 +178,31 @@ export interface FaylNatijasi {
 export interface FaylXatosi {
   ok: false;
   sabab: string;
+  /**
+   * Fayl o'qilayotganda dastur prototiplari o'zgargan (prototype pollution
+   * urinishi): fayl rad etildi, prototiplar tiklandi. Chaqiruvchi buni xato
+   * jurnaliga yozishi kerak.
+   */
+  xavfli?: string[];
 }
+
+/** Birinchi varaqni satrlar massivi sifatida o'qiydi (sinov uchun almashtirilishi mumkin) */
+export type VaraqOqiydigan = (bayt: ArrayBuffer) => unknown[][] | null;
+
+/**
+ * Haqiqiy o'qiydigan: `xlsx` (xlsx, xls va csv ni taniydi).
+ * `null` — varaq yo'q.
+ */
+export const xlsxVaraq: VaraqOqiydigan = (bayt) => {
+  const kitob = XLSX.read(bayt, { type: 'array', cellDates: true });
+  const nom = kitob.SheetNames[0];
+  if (!nom) return null;
+  return XLSX.utils.sheet_to_json(kitob.Sheets[nom], {
+    header: 1,
+    raw: true,
+    defval: '',
+  }) as unknown[][];
+};
 
 /**
  * Жадвални ўқийди.
@@ -192,17 +217,22 @@ export interface FaylXatosi {
  * номи, санаси, «маълумотнома» деган сарлавҳа. Жадвалнинг
  * ўз сарлавҳаси учинчи-тўртинчи сатрда туради.
  */
-export function reyestrniOqi(bayt: ArrayBuffer): FaylNatijasi | FaylXatosi {
+export function reyestrniOqi(bayt: ArrayBuffer, oqiydigan: VaraqOqiydigan = xlsxVaraq): FaylNatijasi | FaylXatosi {
   let varaq: unknown[][];
   try {
-    const kitob = XLSX.read(bayt, { type: 'array', cellDates: true });
-    const nom = kitob.SheetNames[0];
-    if (!nom) return { ok: false, sabab: 'Файлда варақ йўқ' };
-    varaq = XLSX.utils.sheet_to_json(kitob.Sheets[nom], {
-      header: 1,
-      raw: true,
-      defval: '',
-    }) as unknown[][];
+    /*
+     * Tashqi fayl o'qilayotganda dastur prototiplari QO'RIQLANADI
+     * (`src/lib/prototip-qoriqchi.ts`): `xlsx` 0.18.5 maxsus fayl bilan
+     * `Object.prototype` ni ifloslantirishi mumkin. Ifloslansa fayl rad
+     * etiladi (o'qish xato bilan tugasa ham), prototiplar tiklanadi.
+     */
+    const q = prototipQoriqchisi(() => oqiydigan(bayt));
+    if (q.iflos.length > 0) {
+      return { ok: false, sabab: 'Файл хавфли деб топилди ва рад этилди', xavfli: q.iflos };
+    }
+    if ('xato' in q) throw q.xato;
+    if (!q.natija) return { ok: false, sabab: 'Файлда варақ йўқ' };
+    varaq = q.natija;
   } catch {
     return { ok: false, sabab: 'Файлни ўқиб бўлмади — Excel ёки CSV юборинг' };
   }

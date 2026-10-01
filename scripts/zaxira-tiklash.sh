@@ -27,8 +27,13 @@
 # ============================================================
 set -uo pipefail
 
-: "${MANBA_URL:?MANBA_URL kerak (nusxa olinadigan baza)}"
-: "${TIKLASH_URL:?TIKLASH_URL kerak (alohida bosh baza; nomi _tiklash_sinov bilan tugasin)}"
+# `${VAR:?}` bash'da kod 1 beradi; hujjatlashtirilgan kod 2 uchun aniq tekshiruv
+if [ -z "${MANBA_URL:-}" ]; then
+  echo "XATO: MANBA_URL kerak (nusxa olinadigan baza)." >&2; exit 2
+fi
+if [ -z "${TIKLASH_URL:-}" ]; then
+  echo "XATO: TIKLASH_URL kerak (alohida bo'sh baza; nomi _tiklash_sinov bilan tugasin)." >&2; exit 2
+fi
 
 # Ulanish satridan faqat host/baza nomini ko'rsatamiz (parolsiz)
 korinish() { echo "$1" | sed -E 's#^[a-z]+://([^@/]*@)?##; s#\?.*$##'; }

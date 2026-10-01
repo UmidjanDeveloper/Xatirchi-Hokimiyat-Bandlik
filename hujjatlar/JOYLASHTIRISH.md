@@ -125,6 +125,16 @@ qo'shilgan ustunni o'chirish ma'lumot yo'qotishi mumkin.
 To'liq tartib, maqsadlar (RPO/RTO) va tiklash sinovi:
 **[ZAXIRA-VA-TIKLASH.md](ZAXIRA-VA-TIKLASH.md)**.
 
+Nusxa olish: `NUSXA_MANBA_URL='postgresql://…' scripts/zaxira-nusxa.sh`
+(`pg_dump`, faqat o'qiydi; fayl faqat egasiga ochiq; butunligi va SHA-256
+tekshiriladi; eski nusxalar aylantiriladi, eng yangi 3 tasi o'chirilmaydi;
+papka repo ichida bo'lishi mumkin emas — fuqaro ma'lumotlari git'ga
+tushmasin). Avtomatik jadval **yo'q**: nusxani qayerda saqlash fuqaro
+ma'lumotlari siyosatiga bog'liq (ZAXIRA-VA-TIKLASH.md, 6-bo'lim).
+
+Bog'liqliklardagi ochiq xavfsizlik ogohlantirishlari va ularning bizga
+tegishliligi: **[XAVFSIZLIK-QARAMLIKLAR.md](XAVFSIZLIK-QARAMLIKLAR.md)**.
+
 Qisqacha: kodni qaytarish va migratsiya himoyasi bor; Supabase zaxirasidan
 tiklash **hali sinalmagan** — tizim buni «Tizim holati» sahifasida va
 vazifalar taxtasida shoshilinch deb ko'rsatadi. Mantiqiy nusxadan tiklash
@@ -146,6 +156,42 @@ Administrator uchun **«Tizim holati»** sahifasi (`/tizim`):
 Yangi cron `vercel.json` ga qo'shilsa, `src/lib/tizim-nomlari.ts` dagi
 `CRON_ISHLARI` ga ham yoziladi (aks holda sinov yiqiladi).
 
+### Tashqi kuzatuv (UptimeRobot yoki shunga o'xshash)
+
+Administrator 1 oy yo'q bo'lsa ham signal kelishi uchun ikki ochiq manzil bor.
+Ular **kirishsiz** ishlaydi (shuning uchun ichida shaxsiy ma'lumot ham,
+xato matni ham yo'q — faqat «ok / xato» holati):
+
+| Manzil | Nimani aytadi | Javob kodi |
+|---|---|---|
+| `/api/health` | Jarayon tirikmi (bazaga tegmaydi) | 200 |
+| `/api/health/readiness` | Baza javob beryaptimi va avtomatik ishlar (brifing, xabarlar navbati) o'z vaqtida ishlayaptimi | 200 sog' / **503** nosog' |
+
+Sozlash: UptimeRobot → New monitor → HTTP(s) →
+`https://www.xatirchibandlik.uz/api/health/readiness`, har 5 daqiqada,
+**503 yoki javob yo'q = ogohlantirish** (e-pochta/Telegram). 503 ikki xil
+sababdan bo'ladi: baza javob bermagan (3 soniya chegara) yoki avtomatik ish
+muddatidan kechikkan/xato bergan — qaysi biri ekanini `/tizim` sahifasidan
+ko'ring. Yangi deploydan keyin avtomatik ish hali ishlamagan bo'lsa, bu
+nosozlik hisoblanmaydi (36 soatgacha); eskirgan tizimda hisoblanadi.
+Javob 10 soniya keshlanadi (ochiq manzilni tinimsiz so'rash bazani
+yuklamasin). Bu halol chegara: monitoring tashqi xizmat, uni **siz** ulaysiz —
+men ulanganini ko'rolmayman.
+
+### Murojaat muddati xabarlari
+
+Muddati yaqinlashgan yoki o'tgan murojaatlar uchun mas'ul xodimga (o'tib
+ketgan bo'lsa bandlik rahbarlariga ham) Telegram xabari navbatga qo'yiladi
+(`src/lib/murojaat-xabari.ts`, kunlik cron ichida). Bir muddat uchun bir
+turdagi xabar **bir marta** (muddat uzaytirilsa yangi muddat — yangi xabar).
+Xabarda murojaatchining ismi, telefoni yoki matni **yo'q**. 30 kundan ortiq
+kechikkanlar xabarga kirmaydi (toshqin bo'lmasin; «Vazifalarim» da
+ko'rinadi), bir ishga tushishda ko'pi bilan 100 ta. Telegram'ga ulanmagan
+xodimga xabar yuborilmaydi — navbatda «bekor qilindi» deb yoziladi.
+Vercel Hobby'da cron kuniga bir marta ishlaydi, shuning uchun xabar
+kechikishi ~1 kungacha bo'lishi mumkin. «15 kun» — **tizimning odatiy
+muddati, qonuniy muddat emas**.
+
 ## Migratsiyalar (so'nggi bosqichlar)
 
 Hammasi **faqat qo'shadi** (`IF NOT EXISTS`, takror ishga tushirish xavfsiz),
@@ -161,6 +207,7 @@ uchun **kodni qaytarish yetarli** (yuqoridagi «Orqaga qaytarish»).
 | `20261001180000_mahalliy_buyurtmalar` | Xizmat takliflari, mahalliy buyurtmalar | §13c |
 | `20261001200000_murojaat_va_yordam` | Murojaatlar, murojaat tarixi, yordam dasturlari katalogi (bo'sh) | §14 |
 | `20261001220000_monitoring` | Ish izlari, xato jurnali, kirish urinishlari, zaxira sinovi | §19 |
+| `20261001240000_murojaat_xabari` | Xabar turi `MUROJAAT_MUDDATI` (faqat enum qiymati qo'shiladi) | Laziz repo'sidan g'oya |
 
 Tekshirish (faqat o'qiydi): `npx prisma migrate status` — «up to date» bo'lishi kerak.
 

@@ -1131,6 +1131,10 @@ enum XabarTuri {
 
   /// Ish beruvchi e'lon qo'ydi — moderatsiya kutmoqda
   ELON_MODERATSIYADA
+
+  /// Murojaat javob muddati yaqinlashdi yoki o'tdi. Masul xodimga va
+  /// (muddat o'tganda) bandlik rahbarlariga; bir muddat uchun bir marta.
+  MUROJAAT_MUDDATI
 }
 
 /// Xabarning yo'li
