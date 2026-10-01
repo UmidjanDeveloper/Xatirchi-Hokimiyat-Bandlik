@@ -89,3 +89,4 @@ prefetch; haqiqiy 5xx esa alohida hisoblanadi va topilmadi.
 6. CSP'ni Report-Only'dan majburiy rejimga o'tkazish (xabarlar jurnalini ko'rib chiqib).
 7. Shoxdagi `stash` da `MAHALLA_RAIS` roli va `scripts/rais-yukla.ts` bor (push qilinmagan) — kerak bo'lsa ko'rib chiqing.
 8. 2FA — faqat administrator mavjud bo'lganda (qulflanib qolmaslik uchun).
+9. OneID / E-imzo / ERP (murojaatlar tizimi): kalitlar va operator hujjatlari hali yo'q; **arizalarni boshlang** — `INTEGRATSIYALAR-REJA.md` (so'rovlar ro'yxati, xavfsizlik qoidalari). Laziz repo'sidagi bu integratsiyalar soxta (`token.length > 10` = «tasdiqlangan»): olinmadi.
