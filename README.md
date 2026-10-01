@@ -27,6 +27,7 @@ va har bosqichda kim javobgar ekani yozib boriladi.
 - [O'rnatish](#ornatish)
 - [Supabase va Vercel](#supabase-va-vercel)
 - [Xavfsizlik](#xavfsizlik)
+- [IDROK uchun yashirin statistika API](#idrok-uchun-yashirin-statistika-api)
 - [Loyiha tuzilishi](#loyiha-tuzilishi)
 
 ---
@@ -791,6 +792,90 @@ qolsa `✗` bilan ko'rsatadi.
 Hozircha Supabase (Yevropa) ishlatilmoqda — **sinov va ishlab chiqish
 uchun**. Ishga tushirishdan oldin ma'lumotlarni O'zbekistondagi
 serverga ko'chirish rejalashtirilgan.
+
+---
+
+## IDROK uchun yashirin statistika API
+
+IDROK — tuman hokimiyatining AI yordamchisi. Hokimning bandlik
+bo'yicha savollariga javob berish uchun u shu platformaning
+**jamlangan** raqamlarini o'qiydi.
+
+```
+GET /api/idrok/stats
+X-IDROK-Key: <IDROK_API_KEY>
+```
+
+| Holat | Javob |
+|---|---|
+| `IDROK_API_KEY` qo'yilmagan yoki bo'sh | `404` — yo'l o'chiq |
+| Kalit yo'q yoki noto'g'ri | `401 {"xato":"Ruxsat yo'q"}` |
+| Hisoblashda xato | `500 {"xato":"..."}` — tafsilotsiz, xato faqat server jurnalida |
+| Hammasi joyida | `200` va quyidagi JSON |
+
+Javob doim `Cache-Control: no-store` bilan qaytadi.
+
+```json
+{
+  "manba": "xatirchibandlik.uz",
+  "nomi": "Xatirchi bandlik platformasi",
+  "vaqt": "2026-10-01T09:00:00.000Z",
+  "korsatkichlar": [
+    { "kalit": "xatlovdan_otgan_xonadonlar", "nomi": "Xatlovdan o'tgan xonadonlar", "qiymat": 1234, "birlik": "ta" }
+  ],
+  "jadvallar": [
+    {
+      "nomi": "Mahallalar kesimida ishga joylashtirish",
+      "ustunlar": ["Mahalla", "Joylashtirilgan", "Anketasi bor ishsiz", "..."],
+      "qatorlar": [["Uyshun", 12, 40, "..."]]
+    }
+  ]
+}
+```
+
+- `qiymat` doim JSON son (formatlangan matn emas); birlik — `ta`,
+  `kishi`, `foiz` yoki `so'm`.
+- Har jadvalda ko'pi bilan 30 qator; birinchi ustun — yorliq,
+  keyingilari — son (IDROK shundan diagramma chizadi).
+- Raqamlar devor tablosi va ertalabki brifing (`tumanHolati`) hamda
+  tahlil paneli (`tahlil.ts` dagi o'sha shartlar) bilan **bir xil**.
+  `bugun_*` va `hafta_*` — tablodagi ta'rif. `oy_*` (joriy oy, Toshkent
+  vaqti bilan) — joylashtirish ishga kirgan sana, anketa yaratilgan
+  sana bo'yicha (panelning "Oylik oqim" grafigi kabi); xatlov esa
+  tablodagi kabi xatlov sanasi bo'yicha, panel grafigi esa yozuv
+  kiritilgan sanani oladi — shuning uchun bu bitta raqam farq qilishi
+  mumkin.
+  Natija 45 soniya keshlanadi. Kodi: `src/lib/idrok-statistika.ts`.
+
+**Xavfsizlik:**
+
+- Middleware sessiyasiz faqat **aynan** `/api/idrok/stats` ni
+  o'tkazadi. `/api/idrok/stats/...`, `/api/idrok` va boshqa har
+  qanday yo'l avvalgidek login talab qiladi.
+- Kalit SHA-256 xeshlari orqali `timingSafeEqual` bilan
+  solishtiriladi.
+- **Faqat o'qish:** `count`, `aggregate`, `groupBy`,
+  `findMany(select)`. Audit jurnaliga ham, boshqa jadvalga ham hech
+  narsa yozilmaydi; sxema o'zgarmagan.
+- **Shaxsiy ma'lumot yo'q:** F.I.Sh., telefon, manzil, tug'ilgan sana
+  va xodim yozgan erkin matn chiqmaydi — faqat sonlar va katalog
+  qiymatlari (mahalla, soha, tashkilot, yo'nalish). Katalogga
+  kirmagan erkin matn "Boshqa" ga yig'iladi.
+
+**Ulash:**
+
+1. Kalit yarating: `openssl rand -base64 32`
+2. Vercel → **Environment Variables** → `IDROK_API_KEY` ga qo'ying va
+   qayta deploy qiling.
+3. Xuddi shu kalitni IDROK sozlamasiga yozing.
+4. Tekshiring:
+   `curl -H "X-IDROK-Key: KALIT" https://www.xatirchibandlik.uz/api/idrok/stats`
+
+Kalit oshkor bo'lsa — Vercel'da almashtiring: eskisi qayta deploydan
+so'ng ishlamay qoladi. Yo'lni butunlay o'chirish uchun
+`IDROK_API_KEY` ni olib tashlash kifoya.
+
+Sinov: `npx tsx scripts/idrok-sinov.ts` (`npm run sinov` tarkibida).
 
 ---
 
