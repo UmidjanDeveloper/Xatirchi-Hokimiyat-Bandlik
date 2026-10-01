@@ -4,6 +4,7 @@ import { kuzatuvIshlari } from './kuzatuv';
 import { elonlarSifati } from './elon-sifati';
 import { javobsizYollanmalar, JAVOBSIZ_KUN } from './yollanma';
 import { YANGILANMAGAN_KUNI } from './kurslar-nomlari';
+import { tasdiqKutayotganlar } from './buyurtmalar';
 import { sanaOrali } from './oila-rejasi';
 import { mahallaFiltri } from './auth';
 import { JOYLASHGAN, KUN_MS } from './bandlik-holatlari';
@@ -1282,6 +1283,40 @@ async function qoshimchaBloklar(sessiya: {
       });
     } catch (e) {
       console.error('Vazifalar: kurs blokini hisoblab bo‘lmadi:', e);
+    }
+  }
+
+  /* ── Mahalliy buyurtmalar: bajarilgan, ikki tomon tasdiqlamagan ── */
+  if (sessiya.rol !== 'HOKIM') {
+    try {
+      const kerak = await tasdiqKutayotganlar(mahallaId, hozir);
+      chiqdi.push({
+        kalit: 'buyurtma-tasdiq',
+        nomi: 'Маҳаллий буюртмалар: тасдиқ керак',
+        izoh: 'Бажарилди деб белгиланган, аммо ижрочи ва буюртмачи ҳар иккови тасдиқламаган буюртмалар (низо бўлса — ҳам шу ерда)',
+        soni: kerak.length,
+        ogohlik: kerak.length > 0 ? 'diqqat' : 'tinch',
+        yol: '/buyurtmalar?holat=BAJARILDI',
+        qatorlar: kerak.slice(0, 8).map((b) => ({
+          id: b.id,
+          matn: `${b.buyurtmachiNomi} — ${b.tavsif.slice(0, 60)}`,
+          qoshimcha: `${b.mahalla.nomiKirill} · ${
+            b.ijrochiTasdigi === false || b.buyurtmachiTasdigi === false
+              ? 'низо: бир томон эътироз билдирган'
+              : b.ijrochiTasdigi === true || b.buyurtmachiTasdigi === true
+                ? 'бир томон тасдиқлаган, иккинчисидан йўқ'
+                : 'ҳеч бир томон тасдиқламаган'
+          }`,
+          yol: `/buyurtmalar/${b.id}`,
+        })),
+        hisoblash: {
+          usuli: 'Буюртма «Бажарилди» ҳолатида ва бажарилганига камида 3 кун, ижрочи ВА буюртмачи тасдиғи йўқ (ёки эътироз)',
+          manbasi: 'Маҳаллий буюртмалар ёзувлари',
+          ogohlik: 'Бажарилди — ходимнинг қайди. Икки томон тасдиқламагунча буюртма муваффақиятли ҳисобланмайди',
+        },
+      });
+    } catch (e) {
+      console.error('Vazifalar: buyurtma blokini hisoblab bo‘lmadi:', e);
     }
   }
 

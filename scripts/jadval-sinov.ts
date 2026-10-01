@@ -747,6 +747,12 @@ const SINOVLAR: Sinov[] = [
          * u hokimlik andozasiga kirmaydi.
          */
         'kurslar',
+        /*
+         * MAHALLIY XIZMAT TAKLIFLARI (pilot) - jarayon yozuvi: fuqaro qaysi
+         * xizmatni taklif qiladi va rozilik holati. Bir necha qator bo'lishi
+         * mumkin va hokimlik andozasiga kirmaydi.
+         */
+        'xizmatlar',
       ]);
 
       const ayblilar: string[] = [];

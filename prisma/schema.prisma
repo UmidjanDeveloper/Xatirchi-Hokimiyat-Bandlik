@@ -160,6 +160,9 @@ model User {
   /// Kiritgan kurslar va kursga yozgan fuqarolar
   yaratganKurslar       Kurs[]              @relation("KursYaratgan")
   yaratganKursYozuvlari KursYollanmasi[]    @relation("KursYozuvYaratgan")
+  /// Kiritgan xizmat takliflari va mahalliy buyurtmalar
+  yaratganXizmatlar     XizmatTaklifi[]     @relation("XizmatYaratgan")
+  yaratganBuyurtmalar   MahalliyBuyurtma[]  @relation("BuyurtmaYaratgan")
 
   @@index([rol, faol])
   @@index([mahallaId])
@@ -229,6 +232,9 @@ model Mahalla {
   itVaucherlar   ItVaucher[]
   kesmalar       HouseholdKesma[]
   ishBeruvchilar IshBeruvchi[]
+
+  /// Mahalliy buyurtmalar (pilot)
+  buyurtmalar MahalliyBuyurtma[]
 
   @@index([nomi])
 }
@@ -843,6 +849,8 @@ model UnemployedPerson {
   yollanmalar   NomzodYollanmasi[]
   /// Kurslarga yozilishi va natijalari
   kurslar       KursYollanmasi[]
+  /// Taklif qilgan mahalliy xizmatlari (rozilik bilan)
+  xizmatlar     XizmatTaklifi[]
 
   @@index([mahallaId, holati])
   @@index([holati])
@@ -2338,4 +2346,117 @@ model KursYollanmasi {
   @@index([ishsizId])
   @@index([kursId, holati])
   @@index([holati, tugatganSana])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MAHALLIY BUYURTMALAR (PILOT, XODIM BOSHQARADI)
+// ─────────────────────────────────────────────────────────────
+
+enum BuyurtmaHolati {
+  /// Buyurtma qabul qilindi, ijrochi hali yo'q
+  YANGI
+  /// Ijrochi (xizmat taklifi) belgilandi
+  TAYINLANDI
+  /// Narx va shartlar kelishildi
+  KELISHILDI
+  /// Ish bajarildi (tasdiq alohida: ikki tomondan)
+  BAJARILDI
+  /// Bekor qilindi
+  BEKOR
+}
+
+/// Mahalliy xizmat taklifi: fuqaro nima xizmat ko'rsata oladi.
+///
+/// Fuqaro ro'yxatda turishi va aloqa ma'lumoti buyurtmachiga berilishi uchun
+/// ROZILIK xodim tomonidan usuli va sanasi bilan yozib olinadi. Rozilik
+/// qayd etilmaguncha taklif ijrochi sifatida tayinlanmaydi.
+model XizmatTaklifi {
+  id String @id @default(cuid())
+
+  ishsizId String
+  ishsiz   UnemployedPerson @relation(fields: [ishsizId], references: [id], onDelete: Cascade)
+
+  /// Qanday xizmat: "Payvandlash", "Tikuvchilik"
+  nomi         String
+  tavsif       String?
+  /// Taxminiy narx (so'm). null = kelishiladi
+  taxminiyNarx BigInt?
+
+  rozilik       Boolean       @default(false)
+  roziligiUsuli RozilikUsuli?
+  roziligiSana  DateTime?
+
+  faol         Boolean   @default(true)
+  yopilganSana DateTime?
+
+  yaratganId String
+  yaratgan   User   @relation("XizmatYaratgan", fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  buyurtmalar MahalliyBuyurtma[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ishsizId])
+  @@index([faol, rozilik])
+}
+
+/// Mahalliy buyurtma: kimdir xizmat so'raydi, xodim ijrochini topadi.
+///
+/// ── Platforma to'lovni YURITMAYDI ──
+///
+/// `kelishilganNarx` - taraflar kelishgan narx, yozuv uchun. Pul platforma
+/// orqali o'tmaydi va tekshirilmaydi. Ochiq bozor yo'q: buyurtma va taklifni
+/// faqat xodim ko'radi va boshqaradi; fuqaroning shaxsiy kabineti yo'q.
+///
+/// ── Ikki tomonlama tasdiq ──
+///
+/// "Bajarildi" faqat bir tomonning (xodimning) gapi. Ijrochi VA buyurtmachi
+/// har biri alohida tasdiqlagandagina buyurtma "ikki tomonlama tasdiqlangan"
+/// hisoblanadi. Bir tomon e'tiroz bildirsa - "nizo": u muvaffaqiyat emas.
+model MahalliyBuyurtma {
+  id String @id @default(cuid())
+
+  mahallaId String
+  mahalla   Mahalla @relation(fields: [mahallaId], references: [id], onDelete: Restrict)
+
+  /// Buyurtmachi ro'yxatdan o'tgan fuqaro bo'lishi shart emas
+  buyurtmachiNomi    String
+  buyurtmachiTelefon String?
+  tavsif             String
+
+  holati BuyurtmaHolati @default(YANGI)
+
+  taklifId        String?
+  taklif          XizmatTaklifi? @relation(fields: [taklifId], references: [id], onDelete: SetNull)
+  tayinlanganSana DateTime?
+
+  /// So'mda. 0 = bepul; null = hali kelishilmagan
+  kelishilganNarx BigInt?
+  kelishilganSana DateTime?
+  muddat          DateTime?
+
+  bajarilganSana DateTime?
+
+  /// null = so'ralmagan/noma'lum, true = tasdiqladi, false = e'tiroz
+  ijrochiTasdigi          Boolean?
+  ijrochiTasdiqSanasi     DateTime?
+  ijrochiTasdiqUsuli      RozilikUsuli?
+  buyurtmachiTasdigi      Boolean?
+  buyurtmachiTasdiqSanasi DateTime?
+  buyurtmachiTasdiqUsuli  RozilikUsuli?
+  /// E'tiroz sababi yoki izoh
+  tasdiqIzohi             String?
+
+  bekorSababi String?
+
+  yaratganId String
+  yaratgan   User   @relation("BuyurtmaYaratgan", fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mahallaId, holati])
+  @@index([holati, createdAt])
+  @@index([taklifId])
 }

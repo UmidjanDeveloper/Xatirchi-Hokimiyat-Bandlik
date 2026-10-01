@@ -107,6 +107,17 @@ export const MENYU: MenyuBandi[] = [
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
   },
   {
+    /*
+     * Mahalliy buyurtmalar (pilot): fuqaroning xizmat takliflari va
+     * buyurtmalar. Faqat xodim ko'radi; hokimga ko'rsatilmaydi (fuqaro
+     * ismi va telefoni bor). Platforma to'lovni yuritmaydi.
+     */
+    yol: '/buyurtmalar',
+    nomi: 'Маҳаллий буюртмалар',
+    ikonka: 'HandHelping',
+    rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+  },
+  {
     yol: '/bandlik',
     nomi: 'Операцион панел',
     ikonka: 'Target',
