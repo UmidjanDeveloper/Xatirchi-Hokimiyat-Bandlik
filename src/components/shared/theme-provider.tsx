@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 
 export type Theme = 'light' | 'dark' | 'system';
 
-const THEME_KEY = 'bandlik_tema';
+import { THEME_KEY } from '@/lib/tema-skripti';
 
 interface ThemeContextValue {
   theme: Theme;
@@ -121,25 +121,3 @@ export function useTheme(): ThemeContextValue {
   if (!ctx) throw new Error('useTheme faqat <ThemeProvider> ichida ishlatiladi');
   return ctx;
 }
-
-/**
- * Sahifa yuklanishidan OLDIN temani qo'llaydigan skript.
- *
- * Busiz sahifa bir lahza noto'g'ri temada ko'rinib, keyin
- * "sakrab" o'zgaradi (flash of wrong theme).
- */
-export const themeInitScript = `
-(function(){
-  try {
-    var t = localStorage.getItem('${THEME_KEY}');
-    if (t === 'light' || t === 'dark') {
-      document.documentElement.setAttribute('data-theme', t);
-    }
-    var n = navigator;
-    var lite = (n.deviceMemory && n.deviceMemory <= 4)
-      || (n.hardwareConcurrency && n.hardwareConcurrency <= 4)
-      || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (lite) document.documentElement.setAttribute('data-fx','lite');
-  } catch (e) {}
-})();
-`;

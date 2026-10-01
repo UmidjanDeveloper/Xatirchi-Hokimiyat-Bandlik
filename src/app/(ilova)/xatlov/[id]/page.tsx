@@ -35,6 +35,7 @@ import { ImzoKorinishi } from '@/components/xatlov/imzo-maydoni';
 import { XonadonXulosasi } from '@/components/xatlov/xonadon-xulosasi';
 import { qoidaXulosasi, xonadonDalili } from '@/lib/xonadon-xulosa';
 import { ChoraHolati } from '@/components/chora/chora-holati';
+import { RejaBlogi } from '@/components/reja/reja-blogi';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -417,6 +418,24 @@ export default async function XonadonSahifasi({ params }: { params: { id: string
         <Qator nomi={tr("Ҳунармандчилик")} qiymat={x.hunarmandBor ? tr([...(x.hunarTurlari ?? []), x.hunarmandchilik].filter(Boolean).join(", ")) : tr("Йўқ")} />
         <Qator nomi={tr("Ҳунармандчилик")} qiymat={q(x.hunarmandchilik)} />
       </Bolim>
+
+      {/* ── Oilaviy rivojlanish rejasi (ikkilamchi blok: yiqilsa sahifa yiqilmaydi) ── */}
+      <RejaBlogi
+        rol={sessiya.rol}
+        oila={{
+          id: x.id,
+          jamiAzo: x.jamiAzo,
+          bolalar0_3Yosh: x.bolalar0_3Yosh,
+          bolalar3_17Yosh: x.bolalar3_17Yosh,
+          bolalar18Yoshdan: x.bolalar18Yoshdan,
+          mehnatgaLayoqatli: x.mehnatgaLayoqatli,
+          ishlaydiganlar: x.ishlaydiganlar,
+          ishsizlarSoni: x.ishsizlarSoni,
+          oylikDaromad: x.oylikDaromad,
+          createdAt: x.xatlovSanasi,
+          holati: x.holati,
+        }}
+      />
 
       {/* ── Chora-tadbirlar ── */}
       <Bolim raqam="XI" sarlavha={tr("Чора-тадбирлар режаси")}>

@@ -107,6 +107,17 @@ export const MENYU: MenyuBandi[] = [
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'],
   },
   {
+    /*
+     * Oilaviy rivojlanish rejalari. Hokimga ko'rsatilmaydi: reja
+     * oilaning shaxsiy ma'lumotini va xodim yozgan fikrini o'z ichiga
+     * oladi, hokim esa faqat jamlangan tahlilni ko'radi.
+     */
+    yol: '/rejalar',
+    nomi: 'Оила режалари',
+    ikonka: 'Route',
+    rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+  },
+  {
     yol: '/panel',
     nomi: 'Таҳлил панели',
     ikonka: 'ChartColumn',

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { ThemeProvider, themeInitScript } from '@/components/shared/theme-provider';
+import { ThemeProvider } from '@/components/shared/theme-provider';
+import { themeInitScript } from '@/lib/tema-skripti';
 import { ServiceWorkerRegister } from '@/components/shared/service-worker-register';
 import './globals.css';
 /*

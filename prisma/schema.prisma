@@ -147,6 +147,13 @@ model User {
   /// Киритган ишга жойлашиш воқеалари
   kiritganJoylashishlar    IshgaJoylashish[] @relation("JoylashishKiritgan")
 
+  /// Oilaviy rejalar: yaratgan, mas'ul va aloqa yozgan xodim
+  yaratganRejalar OilaRejasi[]  @relation("RejaYaratgan")
+  masulRejalar    OilaRejasi[]  @relation("RejaMasul")
+  aloqaQaydlari   OilaAloqasi[] @relation("AloqaQaydEtgan")
+  /// Mas'ul xodim sifatida biriktirilgan chora-tadbirlar
+  masulChoralar   ActionPlan[]  @relation("ChoraMasulXodim")
+
   @@index([rol, faol])
   @@index([mahallaId])
 }
@@ -675,6 +682,8 @@ model Household {
 
   ishsizlar    UnemployedPerson[]
   topshiriqlar ActionPlan[]
+  /// Oilaviy rivojlanish rejalari (tarixi bilan - faol bittagina)
+  rejalar      OilaRejasi[]
   /// Vaqt kesimidagi holatlar - "yil boshida qanday edi"
   kesmalar     HouseholdKesma[]
 
@@ -873,6 +882,23 @@ model ActionPlan {
   yaratganId String
   yaratgan   User   @relation(fields: [yaratganId], references: [id], onDelete: Restrict)
 
+  // ── OILA REJASINING QADAMI SIFATIDA ──
+  //
+  // Chora-tadbir ilgari yakka topshiriq edi. Oilaviy rejada u
+  // QADAM: reja ichida turadi va unga zarur resurs hamda natija
+  // dalili yoziladi. Hammasi IXTIYORIY — eski topshiriqlar
+  // o'zgarmaydi va rejasiz ishlashda davom etadi.
+  /// Qaysi oilaviy rejaning qadami (bo'lsa)
+  rejaId       String?
+  reja         OilaRejasi? @relation(fields: [rejaId], references: [id], onDelete: SetNull)
+  /// Qadam uchun zarur xizmat yoki resurs
+  zarurResurs  String?
+  /// Natijani tasdiqlovchi dalil (hujjat, ma'lumotnoma, xabar...)
+  natijaDalili String?
+  /// Mas'ul XODIM (mas'ul tashkilotdan alohida)
+  masulXodimId String?
+  masulXodim   User?       @relation("ChoraMasulXodim", fields: [masulXodimId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -880,6 +906,158 @@ model ActionPlan {
   @@index([muddat, holati])
   @@index([householdId])
   @@index([ishsizId])
+  @@index([rejaId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  OILAVIY RIVOJLANISH REJASI
+// ─────────────────────────────────────────────────────────────
+
+enum RejaHolati {
+  /// Amalda - qadamlar bajarilmoqda
+  FAOL
+  /// Maqsadga erishildi yoki reja o'z vazifasini bajardi
+  TUGALLANDI
+  /// To'xtatildi: oila rad etdi, ko'chib ketdi yoki boshqa sabab
+  TOXTATILDI
+}
+
+/// Oilaning ishlashi yoki daromad olishiga to'sqinlik qilayotgan sabab.
+///
+/// "Ishsiz" bitta sabab emas. Bolaga qaraydigan odami yo'q ona
+/// bilan asbob-uskunasi yo'q usta - ikki xil yordam kerak. Sabablar
+/// ro'yxati shu farqni bildiradi va "hammaga bir xil kurs" degan
+/// xatoga yo'l qo'ymaydi.
+enum RejaTosigi {
+  TRANSPORT
+  BOLAGA_QARASH
+  ISH_JADVALI
+  KONIKMA
+  SOGLIQ_MOSLASHUVI
+  MOS_ISH_SHAROITI
+  ASBOB_USKUNA
+  BUYURTMA_YETISHMASLIGI
+  BOSHQA
+}
+
+/// Fuqaro bilan aloqa qanday bo'lgani
+enum AloqaUsuli {
+  TELEFON
+  UCHRASHUV
+  TASHRIF
+}
+
+/// OILANING RIVOJLANISH REJASI.
+///
+/// Xatlov oilaning holatini QAYD ETADI, chora-tadbir esa alohida
+/// topshiriqlarni yozadi. Ularni bog'laydigan narsa yo'q edi: xodim
+/// "bu oila bilan nima qilmoqchimiz va nega" degan savolga bitta
+/// joydan javob ololmasdi.
+///
+/// ── Muhim chegara ──
+///
+/// Reja XODIM tomonidan yuritiladi. Oilaning fikri xodim orqali
+/// qayd etiladi (`OilaAloqasi`) va u fuqaroning MUSTAQIL elektron
+/// tasdig'i EMAS - shu sabab bu yerda "tasdiqlangan" degan maydon
+/// yo'q. Fuqaro kabineti hozircha yo'q.
+model OilaRejasi {
+  id     String     @id @default(cuid())
+  holati RejaHolati @default(FAOL)
+
+  /// Bitta oilada bir vaqtda BITTA faol reja bo'lishi uchun.
+  ///
+  /// `holati = FAOL` bo'lganda `true`, boshqasida `null`. Postgres
+  /// `null` larni bir-biridan farqli deb hisoblagani uchun
+  /// (householdId, faolBelgi) juftligi faqat faol rejaga cheklov
+  /// qo'yadi, tugaganlar esa cheksiz to'planadi. Ikki xodim bir
+  /// vaqtda reja ochsa, ikkinchisini BAZA to'xtatadi.
+  faolBelgi Boolean?
+
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  /// Boshlang'ich holat - reja ochilgan paytdagi ahvol
+  boshlangichHolat String
+  /// Ma'lumot qayerdan olingan (masalan: "Xatlov, 12.09.2026")
+  boshlangichManba String?
+  /// Qaysi sanadagi holat. Qayd qilingan sana (`createdAt`) bilan
+  /// bir narsa emas: xatlov oy oldin bo'lgan bo'lishi mumkin.
+  boshlangichSana  DateTime @default(now())
+
+  /// Oilaning O'ZI tanlagan maqsad (xodim yozib oladi)
+  maqsad            String?
+  /// Maqsad oila bilan kelishilganmi, yoki xodim taklif qilgan
+  /// va hali muhokama qilinmagan
+  maqsadKelishilgan Boolean @default(false)
+
+  /// Mavjud ko'nikma va resurslar
+  resurslar String?
+
+  /// To'siqlar - ishlash yoki daromad olishga nima xalaqit beradi
+  tosiqlar   RejaTosigi[]
+  tosiqIzohi String?
+
+  /// Mas'ul xodim va tashkilot
+  masulXodimId   String?
+  masulXodim     User?   @relation("RejaMasul", fields: [masulXodimId], references: [id], onDelete: SetNull)
+  masulTashkilot String?
+
+  /// Rejaning umumiy muddati
+  muddat             DateTime?
+  /// Zarur xizmat yoki resurs (qadamlarnikidan tashqari, umumiy)
+  zarurResurs        String?
+  /// Natijani tasdiqlovchi dalil (reja yopilganda)
+  natijaDalili       String?
+  /// Keyingi aloqa sanasi
+  keyingiAloqaSanasi DateTime?
+
+  yopilganSana  DateTime?
+  yopilishIzohi String?
+
+  yaratganId String
+  yaratgan   User   @relation("RejaYaratgan", fields: [yaratganId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  qadamlar ActionPlan[]
+  aloqalar OilaAloqasi[]
+
+  @@unique([householdId, faolBelgi], name: "bitta_faol_reja")
+  @@index([householdId])
+  @@index([holati, keyingiAloqaSanasi])
+  @@index([masulXodimId])
+}
+
+/// Oila bilan aloqa yozuvi - telefon, uchrashuv yoki tashrif.
+///
+/// Ikki sana ataylab ajratilgan: `aloqaVaqti` - aloqa QACHON bo'lgan,
+/// `createdAt` - yozuv QACHON kiritilgan. Xodim kechqurun kun davomidagi
+/// uchta qo'ng'iroqni yozib qo'yishi mumkin; bu ikki sana farqli
+/// bo'ladi va farqning o'zi ham ma'lumot.
+model OilaAloqasi {
+  id String @id @default(cuid())
+
+  rejaId String
+  reja   OilaRejasi @relation(fields: [rejaId], references: [id], onDelete: Cascade)
+
+  usul       AloqaUsuli
+  aloqaVaqti DateTime
+
+  /// Oila vakili kim edi (masalan: "oila boshlig'i", "turmush o'rtog'i")
+  kimBilan    String?
+  /// Nima haqida gaplashildi - xodim bayoni
+  mazmun      String
+  /// Fuqaroning fikri - XODIM yozib olgan. Mustaqil tasdiq emas.
+  fuqaroFikri String?
+
+  qaydEtganId String
+  qaydEtgan   User   @relation("AloqaQaydEtgan", fields: [qaydEtganId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([rejaId, aloqaVaqti])
+  @@index([qaydEtganId])
 }
 
 // ─────────────────────────────────────────────────────────────

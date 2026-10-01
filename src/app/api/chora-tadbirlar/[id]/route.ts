@@ -8,6 +8,9 @@ import { tashkilotNormal } from '@/lib/masul-tashkilot';
 const Tahrir = z.object({
   holati: z.enum(['KUTILMOQDA', 'BAJARILMOQDA', 'BAJARILDI', 'BEKOR_QILINDI']).optional(),
   natijaIzohi: z.string().max(1000).nullish(),
+  /* Oilaviy reja qadami: natijani tasdiqlovchi dalil va zarur resurs */
+  natijaDalili: z.string().max(500).nullish(),
+  zarurResurs: z.string().max(500).nullish(),
   muddat: z.coerce.date().optional(),
   /* Ёзишда расмий рўйхатга келтирилади — кесим бўлинмасин */
   masulTashkilot: z.string().min(2).max(100).transform(tashkilotNormal).optional(),
