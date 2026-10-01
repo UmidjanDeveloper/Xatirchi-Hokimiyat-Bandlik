@@ -13,6 +13,7 @@ import { ISHSIZ_HOLATI, VORONKA } from '@/lib/ishsiz-holati';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
 import { UZOQ_ISHSIZ, ishsizlikOylari, muddatMatni, uzoqIshsizmi } from '@/lib/uzoq-ishsizlik';
 import { MUSTAHKAMLASH_KUN } from '@/lib/chora-yaratish';
+import { sahifaChegarasi, sahifaRaqami, sahifaniTuzat } from '@/lib/sahifalash';
 
 /** Мустаҳкамлаш текшируви қачондан кечикади */
 function tekshiruvChegarasi(): Date {
@@ -64,7 +65,6 @@ export default async function IshsizlarSahifasi({
    */
   if (!yolgaRuxsat(sessiya.rol, '/ishsizlar')) redirect(boshSahifa(sessiya.rol));
 
-  const sahifa = Math.max(1, Number(searchParams.sahifa) || 1);
   const holati = VORONKA.includes(searchParams.holati as IshsizHolati)
     ? (searchParams.holati as IshsizHolati)
     : searchParams.holati === 'RAD_ETDI'
@@ -83,6 +83,9 @@ export default async function IshsizlarSahifasi({
   const uzoqmi = searchParams.uzoq === '1';
   const tekshiruvmi = searchParams.tekshiruv === '1';
 
+  /* Qidiruv matni cheklanadi */
+  const qidiruv = (searchParams.q ?? '').trim().slice(0, 100);
+
   const where: Prisma.UnemployedPersonWhereInput = {
     ...majburiy,
     ...(uzoqmi ? UZOQ_ISHSIZ() : {}),
@@ -93,21 +96,29 @@ export default async function IshsizlarSahifasi({
       ? { mahallaId: searchParams.mahalla }
       : {}),
     ...(holati ? { holati } : {}),
-    ...(searchParams.q
+    ...(qidiruv
       ? {
           OR: [
-            { fish: { contains: searchParams.q, mode: 'insensitive' } },
-            { xohlaganIsh: { contains: searchParams.q, mode: 'insensitive' } },
-            { mutaxassisligi: { contains: searchParams.q, mode: 'insensitive' } },
+            { fish: { contains: qidiruv, mode: 'insensitive' } },
+            { xohlaganIsh: { contains: qidiruv, mode: 'insensitive' } },
+            { mutaxassisligi: { contains: qidiruv, mode: 'insensitive' } },
           ] }
       : {}) };
 
-  const [royxat, jami, bosqichlar, mahallalar] = await Promise.all([
+  /*
+   * Avval jami, keyin sahifa: raqam jamidan oshsa oxirgi sahifaga tushadi.
+   * Tartibga `id` qo'shilgan: bir vaqtda kiritilgan (import) qatorlarning
+   * `createdAt` i bir xil bo'ladi — usiz sahifalar orasida qator takrorlanadi
+   * yoki tushib qoladi.
+   */
+  const jami = await prisma.unemployedPerson.count({ where });
+  const sahifa = sahifaniTuzat(sahifaRaqami(searchParams.sahifa), jami, SAHIFA_HAJMI);
+
+  const [royxat, bosqichlar, mahallalar] = await Promise.all([
     prisma.unemployedPerson.findMany({
       where,
-      orderBy: [{ holati: 'asc' }, { createdAt: 'desc' }],
-      skip: (sahifa - 1) * SAHIFA_HAJMI,
-      take: SAHIFA_HAJMI,
+      orderBy: [{ holati: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }],
+      ...sahifaChegarasi(sahifa, SAHIFA_HAJMI),
       select: {
         id: true,
         fish: true,
@@ -122,7 +133,6 @@ export default async function IshsizlarSahifasi({
         ishgaKirganSana: true,
         household: { select: { ishsizlikMuddatiOy: true } },
         mahalla: { select: { nomiKirill: true } } } }),
-    prisma.unemployedPerson.count({ where }),
     // Voronka - filtrga bog'liq emas, umumiy manzarani ko'rsatadi
     prisma.unemployedPerson.groupBy({
       by: ['holati'],

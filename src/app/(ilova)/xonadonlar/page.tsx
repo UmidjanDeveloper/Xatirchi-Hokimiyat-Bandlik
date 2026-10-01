@@ -7,6 +7,8 @@ import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { formatDate } from '@/lib/utils';
 import { SahifaHisoboti } from '@/components/panel/sahifa-hisoboti';
+import { Sahifalash } from '@/components/shared/sahifalash';
+import { sahifaChegarasi, sahifaRaqami, sahifaniTuzat } from '@/lib/sahifalash';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -36,28 +38,35 @@ export default async function XonadonlarSahifasi({
   if (!sessiya) redirect('/kirish');
   if (!bandlikIshi(sessiya.rol)) redirect('/');
 
-  const sahifa = Math.max(1, Number(searchParams.sahifa) || 1);
   const majburiy = mahallaFiltri(sessiya);
+  /* Qidiruv matni cheklanadi: bir necha KB li so'rov bazaga yuborilmasin */
+  const qidiruv = (searchParams.q ?? '').trim().slice(0, 100);
 
   const where: Prisma.HouseholdWhereInput = {
     ...majburiy,
     ...(searchParams.mahalla && !majburiy.mahallaId
       ? { mahallaId: searchParams.mahalla }
       : {}),
-    ...(searchParams.q
+    ...(qidiruv
       ? {
           OR: [
-            { oilaBoshligi: { contains: searchParams.q, mode: 'insensitive' } },
-            { manzil: { contains: searchParams.q, mode: 'insensitive' } },
+            { oilaBoshligi: { contains: qidiruv, mode: 'insensitive' } },
+            { manzil: { contains: qidiruv, mode: 'insensitive' } },
           ] }
       : {}) };
 
-  const [royxat, jami, mahallalar] = await Promise.all([
+  /*
+   * Avval jami, keyin sahifa: raqam jamidan oshsa (eski havola, qisqargan
+   * natija) oxirgi sahifaga tushadi, "mos xonadon topilmadi" deb yolg'on aytilmaydi.
+   */
+  const jami = await prisma.household.count({ where });
+  const sahifa = sahifaniTuzat(sahifaRaqami(searchParams.sahifa), jami, SAHIFA_HAJMI);
+
+  const [royxat, mahallalar] = await Promise.all([
     prisma.household.findMany({
       where,
-      orderBy: { updatedAt: 'desc' },
-      skip: (sahifa - 1) * SAHIFA_HAJMI,
-      take: SAHIFA_HAJMI,
+      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+      ...sahifaChegarasi(sahifa, SAHIFA_HAJMI),
       select: {
         id: true,
         holati: true,
@@ -68,15 +77,12 @@ export default async function XonadonlarSahifasi({
         updatedAt: true,
         mahalla: { select: { nomiKirill: true } },
         xodim: { select: { fullName: true } } } }),
-    prisma.household.count({ where }),
     majburiy.mahallaId
       ? []
       : prisma.mahalla.findMany({
           orderBy: { nomi: 'asc' },
           select: { id: true, nomiKirill: true } }),
   ]);
-
-  const oxirgi = Math.max(1, Math.ceil(jami / SAHIFA_HAJMI));
 
   return (
     <div className="space-y-5">
@@ -92,7 +98,7 @@ export default async function XonadonlarSahifasi({
         <input
           type="search"
           name="q"
-          defaultValue={searchParams.q ?? ''}
+          defaultValue={qidiruv}
           placeholder={tr("Оила бошлиғи ёки манзил бўйича қидириш")}
           className="min-w-[12rem] flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
         />
@@ -159,33 +165,13 @@ export default async function XonadonlarSahifasi({
         </div>
       )}
 
-      {oxirgi > 1 && (
-        <div className="flex items-center justify-between">
-          {sahifa > 1 ? (
-            <Link
-              href={`/xonadonlar?sahifa=${sahifa - 1}`}
-              className="rounded-md border border-line px-3.5 py-2 text-sm text-ink-muted hover:text-ink"
-            >
-              {tr('Олдинги')}
-            </Link>
-          ) : (
-            <span />
-          )}
-          <span className="raqam text-xs text-ink-faint">
-            {sahifa} / {oxirgi}
-          </span>
-          {sahifa < oxirgi ? (
-            <Link
-              href={`/xonadonlar?sahifa=${sahifa + 1}`}
-              className="rounded-md border border-line px-3.5 py-2 text-sm text-ink-muted hover:text-ink"
-            >
-              {tr('Кейинги')}
-            </Link>
-          ) : (
-            <span />
-          )}
-        </div>
-      )}
+      <Sahifalash
+        yol="/xonadonlar"
+        joriy={sahifa}
+        jami={jami}
+        hajm={SAHIFA_HAJMI}
+        filtrlar={{ q: qidiruv || undefined, mahalla: searchParams.mahalla }}
+      />
     </div>
   );
 }

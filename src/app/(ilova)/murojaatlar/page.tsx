@@ -79,7 +79,7 @@ export default async function MurojaatlarSahifasi({ searchParams }: { searchPara
   const [royxatHamma, sonlari, korsatkich, mahallalar, xodimlar] = await Promise.all([
     muddatli
       ? prisma.murojaat.findMany({ where: { id: { in: muddatli.slice(skip, skip + take).map((x) => x.id) } }, select: tanlov })
-      : prisma.murojaat.findMany({ where: shart, orderBy: [{ javobMuddati: 'asc' }, { createdAt: 'desc' }], skip, take, select: tanlov }),
+      : prisma.murojaat.findMany({ where: shart, orderBy: [{ javobMuddati: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }], skip, take, select: tanlov }),
     prisma.murojaat.groupBy({ by: ['holati'], where: asos, _count: { _all: true } }),
     murojaatKorsatkichlari(mahallaId, hozir).catch((e) => {
       console.error('Murojaat korsatkichini hisoblab bolmadi:', e);

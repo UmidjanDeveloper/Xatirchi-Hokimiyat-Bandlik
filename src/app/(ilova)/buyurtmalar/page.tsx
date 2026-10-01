@@ -66,7 +66,7 @@ export default async function BuyurtmalarSahifasi({ searchParams }: { searchPara
   const sahifa = sahifaniTuzat(sahifaRaqami(searchParams.sahifa), jami);
   const royxat = await prisma.mahalliyBuyurtma.findMany({
     where,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     ...sahifaChegarasi(sahifa),
     select: {
       id: true,

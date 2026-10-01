@@ -7,6 +7,7 @@ import { YANGILANMAGAN_KUNI } from './kurslar-nomlari';
 import { tasdiqKutayotganlar } from './buyurtmalar';
 import { muddatliMurojaatlar } from './murojaatlar';
 import { tekshirishKerakDasturlar } from './yordam-dasturlari';
+import { modullarBlogi, modullarMetrikasi } from './modullar-natijasi';
 import { ISH_BAHOSI_NOMI, ishlarHolati, navbatHolati, xatolarHolati, zaxiraHolati } from './tizim-kuzatuvi';
 import { sanaOrali } from './oila-rejasi';
 import { mahallaFiltri } from './auth';
@@ -1204,6 +1205,22 @@ async function qoshimchaBloklar(sessiya: {
   const chiqdi: VazifaBlogi[] = [];
   const hozir = new Date();
   const mahallaId = mahallaFiltri(sessiya).mahallaId;
+
+  /*
+   * ── MODULLAR NATIJASI: RAHBAR VA HOKIM ──
+   *
+   * Murojaat, kurs, buyurtma va yordam dasturlarining JAMLANGAN natijasi
+   * (ismsiz). Hokim modullarning o'ziga kirmaydi (shaxsiy ma'lumot bor),
+   * lekin natijani ko'rishi kerak. Bitta modul yiqilsa blok chiqmaydi:
+   * yolg'on "0" ko'rsatilmaydi.
+   */
+  if (sessiya.rol === 'HOKIM' || sessiya.rol === 'BANDLIK_RAHBAR') {
+    try {
+      chiqdi.push(modullarBlogi(await modullarMetrikasi(hozir)));
+    } catch (e) {
+      console.error('Vazifalar: modullar natijasi blokini hisoblab bo‘lmadi:', e instanceof Error ? e.name : 'xato');
+    }
+  }
 
   /* ── 30/60/90 kunlik kuzatuv: bandlik markazi ishi ── */
   if (sessiya.rol === 'BANDLIK' || sessiya.rol === 'BANDLIK_RAHBAR' || sessiya.rol === 'ADMIN') {

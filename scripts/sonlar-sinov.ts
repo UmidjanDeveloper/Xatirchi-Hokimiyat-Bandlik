@@ -135,17 +135,20 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: 'Рўйхат чегараси экранда АЙТИЛАДИ',
+    nomi: 'Рўйхат САҲИФАЛАНГАН: ҳаммасига ўтиш мумкин, жами сон ва саҳифа экранда',
     tekshir: () =>
-      XATLOV_KODI.includes('royxatToldi') &&
-      XATLOV.includes('таси кўрсатилган.') &&
-      XATLOV_KODI.includes('RO_YXAT_HAJMI'),
+      XATLOV_KODI.includes('<Sahifalash') &&
+      XATLOV_KODI.includes('royxatJami') &&
+      /sahifaniTuzat\(sahifaRaqami\(searchParams\.sahifa\), royxatJami/.test(XATLOV_KODI) &&
+      /count\(\{ where: royxatSharti \}\)/.test(XATLOV_KODI) &&
+      /findMany\(\{\s*where: royxatSharti/.test(XATLOV_KODI),
   },
   {
-    nomi: 'Чегара сони сеҳрли рақам эмас, номланган доимий',
+    nomi: 'Саҳифа ҳажми сеҳрли рақам эмас, номланган доимий; тартиб барқарор (updatedAt, сўнг id)',
     tekshir: () =>
-      /const RO_YXAT_HAJMI = \d+;/.test(XATLOV_KODI) &&
-      XATLOV_KODI.includes('take: RO_YXAT_HAJMI'),
+      /const XATLOV_SAHIFA_HAJMI = \d+;/.test(XATLOV_KODI) &&
+      XATLOV_KODI.includes('sahifaChegarasi(sahifa, XATLOV_SAHIFA_HAJMI)') &&
+      XATLOV_KODI.includes("orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }]"),
   },
   {
     nomi: 'Ҳар бир саҳифада `take` ва ундан саналадиган сон ёнма-ён эмас',

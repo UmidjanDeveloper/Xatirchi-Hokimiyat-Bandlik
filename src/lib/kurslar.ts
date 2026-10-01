@@ -980,7 +980,7 @@ export interface KursQatori {
 /** Kurslar ro'yxati: yangisi avval */
 export async function kurslarRoyxati(hozir = new Date(), take = 100): Promise<KursQatori[]> {
   const kurslar = await prisma.kurs.findMany({
-    orderBy: [{ boshlanishSanasi: 'desc' }],
+    orderBy: [{ boshlanishSanasi: 'desc' }, { id: 'asc' }],
     take,
     select: {
       id: true,

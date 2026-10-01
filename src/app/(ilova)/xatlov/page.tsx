@@ -23,6 +23,8 @@ import { DavrTanlash } from '@/components/panel/davr-tanlash';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { UlanishBlogi } from '@/components/telegram/ulanish-blogi';
 import { XatlovNavbati } from '@/components/xatlov/xatlov-navbati';
+import { Sahifalash } from '@/components/shared/sahifalash';
+import { sahifaChegarasi, sahifaRaqami, sahifaniTuzat } from '@/lib/sahifalash';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -42,7 +44,7 @@ export function generateMetadata() {
  * рўйхатдан ҳисобланмайди — акс ҳолда чегарадан ошган
  * маҳаллада рақам ёлғон бўлиб қоларди.
  */
-const RO_YXAT_HAJMI = 100;
+const XATLOV_SAHIFA_HAJMI = 50;
 
 const HOLAT_NISHONI: Record<string, { matn: string; sinf: string }> = {
   QORALAMA: { matn: 'Қоралама', sinf: 'bg-warn-bg text-warn' },
@@ -51,7 +53,7 @@ const HOLAT_NISHONI: Record<string, { matn: string; sinf: string }> = {
 
 export default async function XatlovlarSahifasi({
   searchParams }: {
-  searchParams: { davr?: string };
+  searchParams: { davr?: string; sahifa?: string };
 }) {
   const tr = matnchi();
   const davr = davrOqi(searchParams.davr);
@@ -73,6 +75,25 @@ export default async function XatlovlarSahifasi({
 
   const filtr = mahallaFiltri(sessiya);
 
+  /*
+   * ── РЎЙХАТ ВА САҲИФАЛАШ ──
+   *
+   * Илгари рўйхатда фақат энг янги юзтаси кўринарди: юз биринчисини
+   * очишнинг йўли йўқ эди. Энди `?sahifa=N` билан ҳаммаси кўринади.
+   * Санаш — рўйхатнинг ЎЗ шарти билан, алоҳида енгил сўров; саҳифа
+   * рақами жамидан ошса, охирги саҳифага тушади (бўш экран эмас).
+   */
+  const royxatSharti = {
+    ...filtr,
+    // Yettilik a'zosi o'z mahallasidagi barcha xatlovni ko'radi,
+    // lekin qoralamalar faqat o'ziniki bo'ladi - boshqa a'zoning
+    // tugallanmagan ishini ko'rsatishning ma'nosi yo'q.
+    ...(sessiya.rol === 'YETTILIK'
+      ? { OR: [{ holati: { not: 'QORALAMA' as const } }, { xodimId: sessiya.userId }] }
+      : {}) };
+  const royxatJami = await prisma.household.count({ where: royxatSharti });
+  const sahifa = sahifaniTuzat(sahifaRaqami(searchParams.sahifa), royxatJami, XATLOV_SAHIFA_HAJMI);
+
   const [
     xatlovlar,
     sanoq,
@@ -87,14 +108,7 @@ export default async function XatlovlarSahifasi({
     anketaSoni,
   ] = await Promise.all([
     prisma.household.findMany({
-      where: {
-        ...filtr,
-        // Yettilik a'zosi o'z mahallasidagi barcha xatlovni ko'radi,
-        // lekin qoralamalar faqat o'ziniki bo'ladi - boshqa a'zoning
-        // tugallanmagan ishini ko'rsatishning ma'nosi yo'q.
-        ...(sessiya.rol === 'YETTILIK'
-          ? { OR: [{ holati: { not: 'QORALAMA' } }, { xodimId: sessiya.userId }] }
-          : {}) },
+      where: royxatSharti,
       /*
        * Рўйхат КЎРСАТИШ учун — энг янги юзтаси.
        *
@@ -102,8 +116,8 @@ export default async function XatlovlarSahifasi({
        * `sanoq` алоҳида сўров билан олинади. Сабаби қуйида
        * ёзилган.
        */
-      orderBy: { updatedAt: 'desc' },
-      take: RO_YXAT_HAJMI,
+      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+      ...sahifaChegarasi(sahifa, XATLOV_SAHIFA_HAJMI),
       select: {
         id: true,
         holati: true,
@@ -242,9 +256,6 @@ export default async function XatlovlarSahifasi({
   const topilganIshsiz = sanoq._sum.ishsizlarSoni ?? 0;
   /** Топилган-у анкетаси ҳали тўлдирилмаганлар — ходимнинг қолган иши */
   const kutayotgan = Math.max(0, topilganIshsiz - anketaSoni);
-
-  /* Рўйхат тўлиб кетганми — экранда айтилади */
-  const royxatToldi = xatlovlar.length >= RO_YXAT_HAJMI;
 
   return (
     <div className="space-y-5">
@@ -513,22 +524,6 @@ export default async function XatlovlarSahifasi({
         </div>
       ) : (
         <div className="karta divide-y divide-line">
-          {/*
-            ── РЎЙХАТ ЧЕГАРАСИ ОЧИҚ АЙТИЛАДИ ──
-
-            Юздан ортиқ хатлов қилган маҳаллада рўйхатда фақат
-            энг янгилари кўринади. Буни айтмасак, ходим
-            «эскилари йўқолибди» деб ўйлайди — ҳолбуки улар
-            жойида, фақат бу экранга сиғмаган.
-          */}
-          {royxatToldi && (
-            <p className="px-4 py-2.5 text-[11px] leading-relaxed text-ink-faint">
-              {tr('Рўйхатда энг сўнгги')} {RO_YXAT_HAJMI} {tr('таси кўрсатилган.')}{' '}
-              {tr('Жами')} <b className="raqam text-ink">{yuborilganSoni}</b>{' '}
-              {tr('та хатлов юборилган — юқоридаги кўрсаткичлар шу тўлиқ сондан ҳисобланган.')}
-            </p>
-          )}
-
           {xatlovlar.map((x) => {
             const nishon = HOLAT_NISHONI[x.holati];
             return (
@@ -584,6 +579,14 @@ export default async function XatlovlarSahifasi({
           })}
         </div>
       )}
+
+      <Sahifalash
+        yol="/xatlov"
+        joriy={sahifa}
+        jami={royxatJami}
+        hajm={XATLOV_SAHIFA_HAJMI}
+        filtrlar={{ davr: searchParams.davr }}
+      />
     </div>
   );
 }

@@ -68,7 +68,7 @@ export default async function RejalarSahifasi({ searchParams }: { searchParams: 
   const [royxat, faolSoni, otganSoni, belgilanmagan] = await Promise.all([
     prisma.oilaRejasi.findMany({
       where,
-      orderBy: [{ keyingiAloqaSanasi: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }],
+      orderBy: [{ keyingiAloqaSanasi: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }, { id: 'asc' }],
       ...sahifaChegarasi(sahifa),
       select: {
         id: true,
