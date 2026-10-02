@@ -14,6 +14,8 @@ o'lchandi» degan gap bu yerda **yo'q**.
 | §15–§17 | Haqiqiy sahifalash (50/30 tadan), **filtr sahifa almashganda yo'qolishi nuqsoni** tuzatildi, tartib barqaror (id tie-breaker), rahbar/hokim uchun modullar natijasi | `00f2dfd` |
 | §19 | Monitoring sahifasi `/tizim`, xato jurnali (maxfiy ma'lumotsiz, `iz_…` raqami), bazaga asoslangan kirish chegarasi, zaxira tiklash sinovi, ko'p tuman uchun hudud chegarasi | `b063142` |
 | §20 | 15 majburiy regressiya holati: haqiqiy server va baza bilan; xarita sinov nomi yo'qolsa yiqiladi | `a38f366` |
+| §16 (qolgan) | `/panel` (9 ta) va `/bandlik` (7 ta) asosiy raqamlarida «Qanday hisoblangan»: usul, manba, ogohlik, ruxsat doirasidagi yozuvlar havolasi (hokimga havola ko'rsatilmaydi: u ro'yxatlarni ocha olmaydi). Ta'riflar koddagi filtrlardan olingan, 5 ta raqam SQL bilan solishtirildi | `0ee14a4` |
+| §20 (lint) | `npm run lint` CI'ga va `ci-taqlid` ga qo'shildi (avval zanjirda yo'q edi; 0 ogohlantirish) | `0ee14a4` |
 | Laziz repo'sidan | `/api/health*`, murojaat muddati Telegram xabari, `zaxira-nusxa.sh`, xlsx prototip qo'riqchisi, Dependabot | `a7cfad5`, `8859af9` |
 | Qasddan qilinmadi | Fuqaro kabineti; xodimlar uchun AI yordamchi (§18) — sizning ko'rsatmangiz | — |
 
@@ -44,6 +46,8 @@ o'lchandi» degan gap bu yerda **yo'q**.
 | Tekshiruv | Natija |
 |---|---|
 | `npm run sinov` | chiqish kodi 0, `XATO` qatori yo'q (1425/1425 sinov bandi) |
+| `npm run lint` | 0 ogohlantirish, 0 xato |
+| HTTP regressiya | 20/20 (yangi 12a/12b/12c: hisoblash bloklari va havola ruxsati; 3 mutant ushlandi) |
 | `CI_TAQLID_TOLIQ=1 npm run ci-taqlid` | build + sahifa hajmi byudjeti 31/31 + HTTP regressiya 17/17 o'tdi |
 | 5 rol bo'yicha brauzer (Playwright) | ~440 sahifa ko'rildi (yettilik 16, bandlik 115, rahbar 118, hokim 75, admin 120): 5xx, sahifa xatosi, konsol xatosi yo'q |
 | Yangi suitlar | mutatsiya bilan sinaldi: kodni ataylab buzib, sinov buni ushlashi tekshirildi (qo'riqchi 16/16; o'tib ketgan 2 mutant sinov qo'shib yopildi) |
