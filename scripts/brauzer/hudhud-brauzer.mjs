@@ -144,7 +144,13 @@ const ochish = async (p) => { await p.locator('button[data-agent-tugmasi]').clic
   await p.goto(B + '/vazifalar', { waitUntil: 'networkidle' });
   await ochish(p);
   const mik = oyna(p).getByRole('button', { name: /овоз билан айтиш|ovoz bilan aytish/i });
-  t('Mikrofon tugmasi YOQILGAN (brauzerda ovoz tanish bor)', await mik.isEnabled());
+  /* Tugma holat (server yo'li bor-yo'qligi) kelguncha yopiq turadi: kutamiz (eng ko'pi 3 s) */
+  let mikYoqildi = false;
+  for (let i = 0; i < 40 && !mikYoqildi; i++) {
+    mikYoqildi = await mik.isEnabled();
+    if (!mikYoqildi) await p.waitForTimeout(100);
+  }
+  t('Mikrofon tugmasi YOQILGAN (brauzerda ovoz tanish bor)', mikYoqildi);
   await p.evaluate(() => { window.__ovozMatni = 'ishsizlar royxatini och'; });
   await mik.click();
   await p.waitForURL(/\/ishsizlar/, { timeout: 15000 });

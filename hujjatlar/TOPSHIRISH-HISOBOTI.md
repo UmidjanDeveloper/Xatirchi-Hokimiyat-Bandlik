@@ -41,7 +41,7 @@ o'lchandi» degan gap bu yerda **yo'q**.
 - Xodim: sahifalar uzun ro'yxatda sahifalanadi, qidiruv va mahalla filtri «Keyingi»ni bosganda saqlanadi; murojaat muddati Telegram'ga xabar bo'lib keladi (ulangan bo'lsa).
 - Rahbar/hokim: «Vazifalarim» da modullar natijasi va tizim holati bloklari.
 - Administrator: `/tizim` — avtomatik ishlar, xabar navbati, xatolar, zaxira sinovi.
-- Hokim/bandlik/rahbar/administrator: pastki o'ngda Koala (maskot) — ovozda yoki yozib so'raysiz; hokimga ismi bilan, sof o'zbekcha murojaat qiladi. Sarlavhada «Сунъий интеллект · бугун яна N та сўров» (kalit ishlasa) yoki «Оддий режим» (kalitsiz/limit tugagan) ko'rinadi. Mahalla xodimida (YETTILIK) va faqat ko'rish rejimida YO'Q.
+- Hokim/bandlik/rahbar/administrator: pastki o'ngda Koala (maskot) — ovozda yoki yozib so'raysiz; hokimga ismi bilan, sof o'zbekcha murojaat qiladi. Sarlavhada «Сунъий интеллект · N та қолди» (kalit ishlasa) yoki «Оддий режим» (kalitsiz/limit tugagan) ko'rinadi. Mikrofon: iPhone'da server orqali (WAV), Android/kompyuterda brauzer tanishi; xato bersa qotib qolmaydi (`hujjatlar/HUDHUD-AGENT.md`). Mahalla xodimida (YETTILIK) va faqat ko'rish rejimida YO'Q.
 - Administrator/rahbar: reyestr ko'chirmasini yuklashda fayl izi (SHA-256) ko'rinadi, «Ёзиш» faqat ko'rilgan fayl va sana bilan ishlaydi; «Охирги юклашлар» jadvali (holat, ёзилган/такрор, узилган бўлса сабаби).
 - Mahalla xodimi: sessiya tugasa yoki server band bo'lsa tayyor anketa **navbatga tushadi** (yo'qolmaydi); 403 da aniq matn.
 - Hamma: login chegarasi — idoradagi ko'p xodimning kirishi bloklanmaydi, lekin muvaffaqiyatli kirish boshqa hisoblardagi xato urinishlarni "yuvmaydi".

@@ -56,6 +56,33 @@ Brauzer ── ovoz (uz-UZ) ──► matn ──► /api/agent/suhbat ──►
   yiqilgan bo'lsa ham sahifani ochish va tuman holati ishlaydi (pul turmaydi).
   GPT §18: «AI ishlamasa asosiy xizmatlar to'xtamasin».
 
+## Mikrofon: qaysi qurilmada qanday ishlaydi
+
+| Qurilma | Yo'l |
+|---|---|
+| **iPhone/iPad** (Safari, Chrome, hammasi) | Server orqali: mikrofon → 16 kHz WAV → `/api/agent/ovoz` → OpenAI/Groq. Apple ovoz tanishi o'zbekchani bilmaydi, Chrome iOS'da esa ruxsat bermaydi |
+| Android, kompyuter (Chrome/Edge) | Brauzerning o'z tanishi (`uz-UZ`, bepul). Xato bersa (ruxsat, xizmat, til, tarmoq) — server yo'liga o'tadi |
+| Firefox (ovoz tanishi yo'q) | Server orqali |
+| Server yo'li o'chiq (kalit yo'q) | Faqat brauzer tanishi; ishlamasa — «Bu qurilmada ovoz ishlamaydi. Yozing.» |
+
+Kafolatlar (har biri `scripts/ovoz-sinov.ts` va brauzer sinovida tekshiriladi):
+
+- **Holat qotib qolmaydi.** Xato, to'xtatish, bekor qilish, kutilmagan uzilish — har holda koala
+  «tayyor»ga, mikrofon tugmasi oddiy holatga qaytadi. (iPhone'da brauzer tanishi xatodan keyin
+  «tugadi» demaydi: shundan oyna «eshitmoqda»da qotib qolgan edi.)
+- **Gapirib bo'lgach o'zi to'xtaydi** (server yo'li): nutqdan keyin 1,4 s jimlik; so'zlar orasidagi
+  qisqa tanaffusda to'xtamaydi; 7 s hech narsa aytilmasa — «Овоз эшитилмади» va serverga
+  **yuborilmaydi**. Eng uzun yozuv 15 s. Qo'lda to'xtatish ham bor.
+- **Nutq atrofi kesiladi** (0,4 s oldin, 0,6 s keyin): jim yozuvga model «o'ylab topilgan» matn
+  qaytarmasin, limit soniyalari ham kamroq sarflansin.
+- **Mikrofon bo'shatiladi:** oyna yopilsa yoki ilova fonga o'tsa yozuv yuborilmay to'xtaydi.
+- Yozish paytida tugma atrofidagi halqa ovozga qarab kengayadi (gapirayotganingiz eshitilayotganini
+  ko'rasiz). Zaif qurilmada va «harakatni kamaytirish»da o'chiq.
+
+Yozuv MediaRecorder bilan emas, WebAudio orqali **o'zimiz** yig'iladi va oddiy WAV (16 kHz, 16 bit,
+bitta kanal) bo'lib ketadi: iPhone'da MediaRecorder bo'laklangan MP4 beradi, uni serverdagi dekoder
+qabul qilishiga kafolat yo'q edi. WAV baytma-bayt tekshiriladi.
+
 ## Maxfiylik (halol)
 
 **Modelga ketadi:** xodimning to'liq ismi (salomlashuv va murojaat uchun), uning roli,
@@ -67,11 +94,12 @@ ro'yxat qatorlari. Testlar buni barcha rol va asboblar uchun tekshiradi
 (`scripts/agent-sinov.ts`, «PII»).
 
 **Teshik (yopib bo'lmaydi):** xodim ovozda yoki yozib fuqaro ismini aytsa, bu matn
-provayderga ketadi. Oynada ogohlantirish turadi: «ro'yxat kerak bo'lsa `ro'yxatini
-och` deng». Ro'yxatning o'zi esa xodimning o'z ekranida, o'z huquqi bilan ochiladi.
+provayderga ketadi. Oynada qisqa ogohlantirish turadi: «Fuqaro ismi va telefonini
+aytmang». Ro'yxatning o'zi esa xodimning o'z ekranida, o'z huquqi bilan ochiladi
+(«ishsizlar ro'yxatini och»).
 
 **Ovoz:** brauzerning ovoz tanishi (Chrome'da — Google serveri) yoki zaxira yo'l:
-mikrofon yozuvi → bizning server → OpenAI/Groq. Yozuv **saqlanmaydi**, bazada faqat
+mikrofon yozuvi (WAV) → bizning server → OpenAI/Groq. Yozuv **saqlanmaydi**, bazada faqat
 soniyalar hisobi bor. Suhbat matni ham bazada saqlanmaydi (brauzer varag'ida,
 `sessionStorage`).
 
@@ -85,7 +113,7 @@ ko'rolmayman.
 | Kunlik limit | Rol bo'yicha: hokim/admin 120, rahbar 80, mutaxassis 40 xabar (`AGENT_KUNLIK_LIMIT`). **Atomar**: parallel so'rovlar limitdan oshirmaydi |
 | Oylik umumiy to'siq | 4000 xabar (`AGENT_OYLIK_LIMIT`); tekshiruv taxminiy: bir necha xabar ortiqcha o'tishi mumkin |
 | Daqiqalik chegara | 12 xabar |
-| Ovoz | 900 soniya/kun/xodim (`AGENT_OVOZ_LIMIT`), bitta yozuv ≤ 60 soniya, ≤ 1,5 MB |
+| Ovoz | 900 soniya/kun/xodim (`AGENT_OVOZ_LIMIT`), bitta yozuv ≤ 60 soniya, ≤ 1,5 MB. Brauzer faqat nutq atrofini yuboradi (odatda 2–4 s), shuning uchun soniyalar kam sarflanadi |
 | Bir suhbat | ≤ 4 aylanish, ≤ 6 asbob chaqiruvi, ≤ 900 token/javob |
 | Limit tugasa | Oddiy rejim: sahifani ochish va tuman holati ishlayveradi |
 | Model yiqilsa | Band qilingan xabar qaytariladi (xodim zarar ko'rmaydi) |
@@ -100,7 +128,10 @@ Hisob: `AgentFoydalanish` jadvali (xodim, kun, so'rovlar, tokenlar). Matn yo'q.
    **Modelning haqiqiy sifati production'da, haqiqiy savollarda tekshirilishi kerak.**
 3. Migratsiya `20261002100000_agent` build paytida o'zi qo'llanadi (faqat qo'shadi).
 4. Tekshirish: administrator sifatida kiring → pastki o'ngdagi koala tugmasi → oyna tepasida
-   «Sunʼiy intellekt · bugun yana N ta so'rov» ko'rinsa kalit ishlayapti; «Oddiy rejim» desa kalit yo'q.
+   «Sunʼiy intellekt · N ta qoldi» ko'rinsa kalit ishlayapti; «Oddiy rejim» desa kalit yo'q.
+5. Ixtiyoriy: `AGENT_STT_MODEL` — ovozni matnga aylantirish modeli (odatiy `whisper-1`). O'zbekcha aniqligi
+   yetarli bo'lmasa, OpenAI'ning yangi transkripsiya modelini sinab ko'rish mumkin; **men uni o'lchay olmadim**,
+   shuning uchun odatiy qiymat o'zgarmagan.
 
 ## Nima SINALGAN va nima SINALMAGAN
 
@@ -109,11 +140,13 @@ Hisob: `AgentFoydalanish` jadvali (xodim, kun, so'rovlar, tokenlar). Matn yo'q.
 | Asboblar, ruxsat, URL xavfsizligi, PII, limit (atomar), tasdiq (bir marta), zaxira rejim, til matnlari | `scripts/agent-sinov.ts` + mutatsiya sinovi |
 | API: kirishsiz 401, mahalla xodimi 403, tekshiruv 400, chegara 429, tasdiq oqimi | `scripts/http-regressiya.ts` (13a–13i) |
 | Brauzer: salom ismi bilan, javob, manba, sahifa ochilishi, tasdiq kartasi, mobil, lotin/kirill | Playwright; ovoz tanish **soxta** (test dublyor) bilan |
+| Mikrofon: iPhone yo'li, xatodan keyin qotib qolmaslik, zaxiraga o'tish, gap tugagach to'xtash, jimlik, oyna yopilishi, fonga o'tish, serverga ketgan WAV fayl | `scripts/ovoz-sinov.ts` (43 ta, brauzersiz) + `scripts/brauzer/mikrofon-brauzer.mjs` (22 stsenariy, Chromium soxta mikrofon oqimi bilan); ataylab buzib sinalgan |
 
 | **SINALMAGAN** | Sabab |
 |---|---|
 | Haqiqiy OpenAI bilan suhbat sifati va o'zbekcha ravonlik | Bu muhitda kalit va tarmoq yo'q; faqat ssenariyli soxta model bilan sinalgan |
 | Haqiqiy ovoz: Chrome'ning `uz-UZ` aniqligi, mikrofon, ismlar (mahalla nomlari) | Mikrofon va real ovoz yo'q |
+| **Haqiqiy iPhone** (WebKit, Chrome iOS): mikrofon ruxsati, WebAudio, yozuv | Bu muhitda iPhone yo'q: faqat Chromium'da iPhone belgisi bilan sinalgan. Telefonda bir marta sinab ko'rish kerak |
 | Server STT (OpenAI/Groq `whisper`) o'zbekcha aniqligi | Idem |
 | Qurilmada o'zbekcha ovoz bilan javobni o'qish | Ko'p qurilmalarda o'zbekcha ovoz YO'Q — shunda javob faqat yoziladi (ataylab: rus ovozi o'zbekcha matnni buzib o'qiydi) |
 | Vercel'da ko'p nusxali muhit | Mahalliy sinov bitta jarayonda |

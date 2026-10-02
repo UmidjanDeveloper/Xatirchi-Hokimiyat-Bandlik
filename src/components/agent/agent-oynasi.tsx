@@ -2,19 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Send, Square, Volume2, VolumeX, X, ExternalLink, Check, FileDown } from 'lucide-react';
+import { Mic, Send, Square, Trash2, Volume2, VolumeX, X, ExternalLink, Check, FileDown } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { salomMatni } from '@/lib/agent/matnlar';
 import type { Amal, Manba } from '@/lib/agent/turlar';
 import { Maskot, type MaskotHolati } from './maskot';
-import { gapir, gapirishniToxtat, ovozKirishMumkinmi, ovozliJavobMumkinmi, ovozniBoshla, type OvozXatosi } from './ovoz';
+import { gapir, gapirishniToxtat, ovozKirishMumkinmi, ovozliJavobMumkinmi, ovozniBoshla, type OvozBoshqaruvi, type OvozXatosi } from './ovoz';
 
 /**
  * ============================================================
  *  HUDHUD: SUHBAT OYNASI
  *
  *  · Matn va ovoz: mikrofon tugmasi bosiladi → gapiriladi → matn
- *    tanilgach avtomatik yuboriladi.
+ *    tanilgach avtomatik yuboriladi. Mikrofon xatosi, to'xtatish, oyna
+ *    yopilishi — har holda holat "tayyor"ga QAYTADI (qotib qolmaydi);
+ *    iPhone'da ovoz server orqali matnga aylanadi (`ovoz.ts`).
  *  · Har javob ostida MANBA (qaysi ma'lumotdan) va izoh ("tasdiqlangan dalil
  *    emas"). Yozish amali — tasdiq kartasi: tugma bosilmaguncha bajarilmaydi.
  *  · Sahifani ochish buyrug'i darhol bajariladi (ovozli buyruq "bajarishi
@@ -59,11 +61,13 @@ const ENG_KOP_SAQLASH = 24;
 const SAQLASH_KALITI = 'hudhud:suhbat:';
 
 const XATO_MATNI: Record<OvozXatosi, string> = {
-  ruxsat: 'Микрофонга рухсат берилмаган. Браузер созламаларидан рухсат беринг ёки ёзиб юборинг.',
-  eshitilmadi: 'Овоз эшитилмади. Яна бир бор айтинг.',
-  qollanmaydi: 'Бу қурилмада овозни матнга айлантириш ишламайди. Ёзиб юборинг.',
-  tarmoq: 'Овоз хизматига уланиб бўлмади. Ёзиб юборинг.',
-  server: 'Овозни матнга айлантириб бўлмади. Ёзиб юборинг.',
+  ruxsat: 'Микрофонга рухсат йўқ. Созламалардан рухсат беринг ёки ёзинг.',
+  mikrofonYoq: 'Микрофон топилмади. Ёзинг.',
+  mikrofonBand: 'Микрофон очилмади. Бошқа иловани ёпиб, қайта уриниб кўринг.',
+  eshitilmadi: 'Овоз эшитилмади. Қайта айтинг.',
+  qollanmaydi: 'Бу қурилмада овоз ишламайди. Ёзинг.',
+  tarmoq: 'Овоз хизматига уланмади. Ёзинг.',
+  server: 'Овоз матнга айланмади. Ёзинг.',
 };
 
 export default function AgentOynasi({
@@ -90,10 +94,15 @@ export default function AgentOynasi({
   const [ovozliJavob, setOvozliJavob] = useState(true);
   const [uzbekOvozBor, setUzbekOvozBor] = useState(false);
   const [bildirish, setBildirish] = useState('');
+  const [malumotTayyor, setMalumotTayyor] = useState(false);
+  const [ishlov, setIshlov] = useState(false);
 
   const royxat = useRef<HTMLDivElement>(null);
   const kiritish = useRef<HTMLTextAreaElement>(null);
-  const tanish = useRef<{ toxtat(): void } | null>(null);
+  const tanish = useRef<OvozBoshqaruvi | null>(null);
+  const mikRef = useRef<HTMLButtonElement>(null);
+  /** `yubor` ishlayaptimi (state emas: bir zumda ham ko'rinishi kerak) */
+  const bandRef = useRef(false);
   const idSanagich = useRef(0);
   const saqlashKaliti = `${SAQLASH_KALITI}${ism}`;
 
@@ -107,6 +116,10 @@ export default function AgentOynasi({
       /* sessionStorage yo'q yoki buzuq: salomdan boshlaymiz */
     }
     if (tiklandi.length > 0) {
+      /* Salom doim hozirgi matn bilan: brauzerda saqlangan eski (uzun) salom qolib ketmasin */
+      if (tiklandi[0].r === 'a' && /^(Хайрли|Xayrli)/.test(tiklandi[0].matn)) {
+        tiklandi[0] = { ...tiklandi[0], matn: salomMatni(ism, new Date(), alifbo) };
+      }
       idSanagich.current = Math.max(...tiklandi.map((x) => x.id)) + 1;
       setXabarlar(tiklandi);
     } else {
@@ -131,12 +144,38 @@ export default function AgentOynasi({
   /* Holat (AI sozlanganmi, limit) — oyna ochilganda */
   useEffect(() => {
     if (!ochiq) return;
+    /* Mikrofon tugmasi holat kelguncha yopiq: iPhone'da server yo'li bor-yo'qligi ma'lum bo'lishi shart */
+    const kutish = setTimeout(() => setMalumotTayyor(true), 3000);
     fetch('/api/agent/holat', { cache: 'no-store' })
       .then((r) => (r.ok ? (r.json() as Promise<HolatMalumoti>) : null))
       .then((d) => d && setMalumot(d))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        clearTimeout(kutish);
+        setMalumotTayyor(true);
+      });
     setTimeout(() => kiritish.current?.focus(), 50);
   }, [ochiq]);
+
+  /* Oyna yopilsa yoki ilova fonga o'tsa: yozuv yuborilmasdan bekor qilinadi, mikrofon bo'shaydi */
+  useEffect(() => {
+    if (!ochiq) {
+      tanish.current?.bekor();
+      gapirishniToxtat();
+    }
+  }, [ochiq]);
+
+  useEffect(() => {
+    const f = () => {
+      if (document.hidden) tanish.current?.bekor();
+    };
+    document.addEventListener('visibilitychange', f);
+    return () => {
+      document.removeEventListener('visibilitychange', f);
+      tanish.current?.bekor();
+      gapirishniToxtat();
+    };
+  }, []);
 
   /* Qurilmada o'zbekcha ovoz bormi (ovozlar kech yuklanishi mumkin) */
   useEffect(() => {
@@ -187,6 +226,7 @@ export default function AgentOynasi({
       const savol = xom.trim();
       if (!savol || band) return;
       gapirishniToxtat();
+      bandRef.current = true;
       setBildirish('');
       setMatn('');
       setOraliq('');
@@ -243,12 +283,13 @@ export default function AgentOynasi({
 
         if (ovozliJavob) {
           setHolat('gapirmoqda');
-          const gapirdi = gapir(d.javob, () => setHolat('tayyor'));
+          const gapirdi = gapir(d.javob, () => setHolat((h) => (h === 'gapirmoqda' ? 'tayyor' : h)));
           if (!gapirdi) setHolat('tayyor');
         }
       } catch {
         qosh({ r: 'a', matn: t('Алоқа узилди. Интернетни текшириб, қайта уриниб кўринг.'), xato: true });
       } finally {
+        bandRef.current = false;
         setBand(false);
         setHolat((h) => (h === 'gapirmoqda' ? h : 'tayyor'));
       }
@@ -256,28 +297,42 @@ export default function AgentOynasi({
     [band, xabarlar, qosh, router, yopish, t, ovozliJavob, hisobotniBoshla]
   );
 
+  /** Mikrofon kuchi → tugma atrofidagi halqa (gapirayotganingiz eshitilayotganini ko'rsatadi) */
+  const darajaniYoz = (d: number) => {
+    if (document.documentElement.dataset.fx === 'lite') return;
+    mikRef.current?.style.setProperty('--daraja', d.toFixed(2));
+  };
+
   const mikrofon = () => {
     if (holat === 'eshitmoqda') {
       tanish.current?.toxtat();
       return;
     }
-    if (band) return;
+    if (band || holat === 'oylamoqda') return;
     gapirishniToxtat();
     setBildirish('');
     setOraliq('');
+    setIshlov(false);
     setHolat('eshitmoqda');
     tanish.current = ovozniBoshla(
       {
         onOraliq: (m) => setOraliq(m),
         onYakuniy: (m) => {
           setOraliq('');
-          setHolat('tayyor');
-          void yubor(m);
+          void yubor(t(m));
         },
         onXato: (k, xabar) => setBildirish(xabar ?? t(XATO_MATNI[k])),
+        onIshlov: () => {
+          setIshlov(true);
+          setHolat('oylamoqda');
+        },
+        onDaraja: darajaniYoz,
+        /* HAR DOIM chaqiriladi: holat qotib qolmaydi. Savol yuborilgan bo'lsa (bandRef) "o'ylamoqda" qoladi */
         onTugadi: () => {
-          setHolat((h) => (h === 'eshitmoqda' ? 'tayyor' : h));
+          setIshlov(false);
           setOraliq('');
+          darajaniYoz(0);
+          setHolat((h) => (h === 'eshitmoqda' || (h === 'oylamoqda' && !bandRef.current) ? 'tayyor' : h));
         },
       },
       Boolean(malumot?.ovozServer)
@@ -330,7 +385,15 @@ export default function AgentOynasi({
 
   const mikrofonMumkin = ovozKirishMumkinmi(Boolean(malumot?.ovozServer));
   const holatMatni =
-    holat === 'eshitmoqda' ? 'Эшитяпман…' : holat === 'oylamoqda' ? 'Ўйлаяпман…' : holat === 'gapirmoqda' ? 'Гапиряпман…' : '';
+    holat === 'eshitmoqda'
+      ? 'Эшитяпман…'
+      : holat === 'oylamoqda'
+        ? ishlov
+          ? 'Матнга айлантиряпман…'
+          : 'Ўйлаяпман…'
+        : holat === 'gapirmoqda'
+          ? 'Гапиряпман…'
+          : '';
   const takliflar = TAKLIFLAR[rol] ?? [];
 
   return (
@@ -346,8 +409,8 @@ export default function AgentOynasi({
           <p className="truncate text-[11px] text-ink-faint">
             {malumot
               ? malumot.ai
-                ? t(`Сунъий интеллект · бугун яна ${malumot.qolgan} та сўров`)
-                : t('Оддий режим (сунъий интеллект уланмаган)')
+                ? t(`Сунъий интеллект · ${malumot.qolgan} та қолди`)
+                : t('Оддий режим')
               : t('Овозли ёрдамчи')}
           </p>
         </div>
@@ -355,7 +418,7 @@ export default function AgentOynasi({
           type="button"
           onClick={ovozTugmasi}
           disabled={!uzbekOvozBor}
-          title={uzbekOvozBor ? t('Жавобни овозда ўқиш') : t('Қурилмада ўзбекча овоз йўқ: жавоблар ёзма')}
+          title={uzbekOvozBor ? t('Жавобни овозда ўқиш') : t('Ўзбекча овоз йўқ — жавоб ёзма')}
           aria-label={t('Жавобни овозда ўқиш')}
           aria-pressed={ovozliJavob && uzbekOvozBor}
           className="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink disabled:opacity-40"
@@ -365,9 +428,11 @@ export default function AgentOynasi({
         <button
           type="button"
           onClick={tozala}
-          className="rounded-md px-2 py-1 text-[11px] text-ink-faint hover:bg-surface-muted hover:text-ink"
+          aria-label={t('Суҳбатни тозалаш')}
+          title={t('Суҳбатни тозалаш')}
+          className="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
         >
-          {t('Тозалаш')}
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -459,12 +524,6 @@ export default function AgentOynasi({
           </div>
         ))}
 
-        {band && (
-          <p className="text-xs text-ink-faint" role="status">
-            {t('Ўйлаяпман…')}
-          </p>
-        )}
-
         {xabarlar.length <= 1 && takliflar.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {takliflar.map((s) => (
@@ -495,14 +554,17 @@ export default function AgentOynasi({
           }}
         >
           <button
+            ref={mikRef}
             type="button"
             onClick={mikrofon}
-            disabled={!mikrofonMumkin || (band && holat !== 'eshitmoqda')}
+            disabled={!mikrofonMumkin || !malumotTayyor || holat === 'oylamoqda'}
             aria-pressed={holat === 'eshitmoqda'}
-            aria-label={holat === 'eshitmoqda' ? t('Тингламасликни тўхтатиш') : t('Овоз билан айтиш')}
-            title={mikrofonMumkin ? t('Овоз билан айтиш') : t('Бу қурилмада овоз киритиш ишламайди')}
+            aria-label={holat === 'eshitmoqda' ? t('Тўхтатиш') : t('Овоз билан айтиш')}
+            title={mikrofonMumkin ? (holat === 'eshitmoqda' ? t('Тўхтатиш') : t('Овоз билан айтиш')) : t('Бу қурилмада овоз ишламайди')}
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors disabled:opacity-40 ${
-              holat === 'eshitmoqda' ? 'border-accent bg-accent text-accent-contrast' : 'border-line bg-surface text-ink-muted hover:border-accent hover:text-accent'
+              holat === 'eshitmoqda'
+                ? 'mikrofon-faol border-accent bg-accent text-accent-contrast'
+                : 'border-line bg-surface text-ink-muted hover:border-accent hover:text-accent'
             }`}
           >
             {holat === 'eshitmoqda' ? <Square className="h-4 w-4" aria-hidden="true" /> : <Mic className="h-5 w-5" aria-hidden="true" />}
@@ -533,7 +595,7 @@ export default function AgentOynasi({
           </button>
         </form>
         <p className="mt-1.5 text-[10px] leading-snug text-ink-faint">
-          {t('Овоз браузер орқали (Chrome — Google серверида) матнга айлантирилади. Фуқаронинг ном-шарифи ва телефонини овозда айтманг: рўйхат керак бўлса, «рўйхатини оч» денг.')}
+          {t('Овоз ташқи хизматда матнга айланади. Фуқаро исми ва телефонини айтманг.')}
         </p>
       </div>
     </section>

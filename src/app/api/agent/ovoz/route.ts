@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const xabar = (m: string) => ({ xabar: A(m, alifbo) });
 
   const prov = agentProvayderi();
-  if (!prov) return NextResponse.json(xabar('Овозни матнга айлантириш ҳозир ишламайди. Ёзиб юборинг.'), { status: 503 });
+  if (!prov) return NextResponse.json(xabar('Овоз хизмати ишламаяпти. Ёзинг.'), { status: 503 });
 
   const chegara = await bazaChegarasi(`agent-ovoz:${q.sessiya.userId}`, 10, 60_000);
   if (!chegara.allowed) {
@@ -49,17 +49,17 @@ export async function POST(request: Request) {
   try {
     forma = await request.formData();
   } catch {
-    return NextResponse.json(xabar('Овоз файлини ўқиб бўлмади.'), { status: 400 });
+    return NextResponse.json(xabar('Овоз файли ўқилмади.'), { status: 400 });
   }
 
   const fayl = forma.get('audio');
   if (!(fayl instanceof File) || fayl.size === 0) return NextResponse.json(xabar('Овоз юборилмади.'), { status: 400 });
-  if (fayl.size > ENG_KATTA_BAYT) return NextResponse.json(xabar('Овоз жуда узун: 60 сониягача бўлсин.'), { status: 413 });
-  if (!RUXSAT_ETILGAN.test(fayl.type)) return NextResponse.json(xabar('Овоз формати қўллаб-қувватланмайди.'), { status: 415 });
+  if (fayl.size > ENG_KATTA_BAYT) return NextResponse.json(xabar('Овоз жуда узун.'), { status: 413 });
+  if (!RUXSAT_ETILGAN.test(fayl.type)) return NextResponse.json(xabar('Овоз формати мос эмас.'), { status: 415 });
 
   const soniya = Number(forma.get('soniya'));
   const band = await ovozniBandQil(q.sessiya.userId, Number.isFinite(soniya) && soniya > 0 ? soniya : 10);
-  if (!band.ruxsat) return NextResponse.json(xabar('Бугунги овоз чегараси тугади. Ёзиб юборинг.'), { status: 429 });
+  if (!band.ruxsat) return NextResponse.json(xabar('Бугунги овоз чегараси тугади. Ёзинг.'), { status: 429 });
 
   try {
     const uzatma = new FormData();
@@ -87,14 +87,14 @@ export async function POST(request: Request) {
     if (!r.ok) {
       const matn = maxfiyniTozala(await r.text().catch(() => ''));
       await serverXatosi('api:agent-ovoz', new Error(`${prov.provayder} ${r.status}: ${matn.slice(0, 200)}`));
-      return NextResponse.json(xabar('Овозни матнга айлантириб бўлмади. Ёзиб юборинг.'), { status: 502 });
+      return NextResponse.json(xabar('Овоз матнга айланмади. Ёзинг.'), { status: 502 });
     }
     const d = (await r.json().catch(() => null)) as { text?: string } | null;
     const matn = (d?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, ENG_UZUN_XABAR);
-    if (!matn) return NextResponse.json(xabar('Овоз эшитилмади. Яна бир бор айтинг.'), { status: 422 });
+    if (!matn) return NextResponse.json(xabar('Овоз эшитилмади. Қайта айтинг.'), { status: 422 });
     return NextResponse.json({ matn }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     const { izId } = await serverXatosi('api:agent-ovoz', e);
-    return NextResponse.json({ ...xabar('Овозни матнга айлантириб бўлмади. Ёзиб юборинг.'), izId }, { status: 502 });
+    return NextResponse.json({ ...xabar('Овоз матнга айланмади. Ёзинг.'), izId }, { status: 502 });
   }
 }

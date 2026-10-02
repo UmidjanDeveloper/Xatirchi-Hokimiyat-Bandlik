@@ -1168,3 +1168,17 @@
   from { transform: scaleY(0.45); }
   to { transform: scaleY(1.1); }
 }
+
+/* ============================================================
+   MIKROFON DARAJASI
+   Yozuv paytida tugma atrofidagi halqa ovozga qarab kengayadi: foydalanuvchi
+   gapirayotgani eshitilayotganini ko'radi (iPhone'da oraliq matn yo'q).
+   `--daraja` (0..1) ni oyna yozadi. Harakat zaif qurilma va "harakatni
+   kamaytirish" YOQILMAGANDA; aks holda tugma oddiy to'q rangda qoladi.
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-fx='lite']) .mikrofon-faol {
+    box-shadow: 0 0 0 calc(var(--daraja, 0) * 10px) color-mix(in srgb, var(--accent) 30%, transparent);
+    transition: box-shadow 90ms linear;
+  }
+}

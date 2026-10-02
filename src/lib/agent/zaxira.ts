@@ -89,12 +89,12 @@ async function tumanJavobi(ctx: AgentKontekst): Promise<ZaxiraJavobi> {
   const h = await tumanHolati(ctx.hozir);
   const qatorlar = [
     `Хатловдан ўтган хонадон: ${raqam(h.xatlovXonadon)} / ${raqam(h.bazaXonadon)} (${h.qamrovFoizi}%).`,
-    `Хатловда топилган ишсиз: ${raqam(h.topilganIshsiz)}; шахсий анкетаси борлар: ${raqam(h.anketa)}.`,
-    `Жойлаштирилган: ${raqam(h.joylashtirilgan)} (шундан ҳужжат билан тасдиқланган: ${raqam(h.tasdiqlanganJoylashuv)}).`,
+    `Топилган ишсиз: ${raqam(h.topilganIshsiz)}, анкетаси борлар: ${raqam(h.anketa)}.`,
+    `Жойлаштирилган: ${raqam(h.joylashtirilgan)} (ҳужжат билан тасдиқланган: ${raqam(h.tasdiqlanganJoylashuv)}).`,
     `Хатловни бошлаган маҳалла: ${raqam(h.boshlaganMahalla)} / ${raqam(h.jamiMahalla)}.`,
   ];
   return {
-    javob: A(`Хатирчи тумани бўйича умумий ҳолат. ${qatorlar.join(' ')}`, ctx.alifbo),
+    javob: A(`Хатирчи тумани. ${qatorlar.join(' ')}`, ctx.alifbo),
     amallar: [],
     manbalar: [{ nom: 'Хатлов анкеталари ва ишсиз фуқаро ёзувлари', vaqt: ctx.hozir.toISOString() }],
     tushunildi: true,
@@ -151,7 +151,7 @@ export async function qoidaBilanJavob(ctx: AgentKontekst, matn: string): Promise
     const t = await taklifYarat(ctx.userId, ctx.rol, amal, ctx.hozir);
     if (!t.ok) return oddiy('amalRuxsatYoq');
     return {
-      javob: A(`Таклиф тайёр: «${t.sarlavha}». Бажариш учун тасдиқлаш тугмасини босинг — у босилмагунча ҳеч нарса ўзгармайди.`, ctx.alifbo),
+      javob: A(`Таклиф тайёр: «${t.sarlavha}». Бажариш учун тасдиқлаш тугмасини босинг.`, ctx.alifbo),
       amallar: [{ tur: 'tasdiq', id: t.id, sarlavha: t.sarlavha, muddat: t.muddat.toISOString() }],
       manbalar: [],
       tushunildi: true,
