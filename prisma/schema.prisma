@@ -2802,3 +2802,53 @@ model AgentAmali {
   @@index([userId, holati])
   @@index([createdAt])
 }
+
+enum ReyestrImportHolati {
+  /// Fayl solishtirildi, hech narsa yozilmadi (ko'rish qadami)
+  KORILDI
+  /// Yozish boshlandi va davom etmoqda
+  YOZILMOQDA
+  YOZILDI
+  /// Yozish xato bilan to'xtadi; xuddi shu fayl bilan qayta bosilsa davom etadi
+  XATO
+}
+
+/// Reyestr ko'chirmasini yuklash jarayoni: "avval ko'rish, keyin yozish" SERVERDA shu yozuv bilan bog'lanadi.
+///
+/// Yozish qadami faqat shu yozuvdagi fayl izi (SHA-256) va sana bilan kelgan so'rovda ishlaydi:
+/// administrator ko'rgan fayl o'rniga boshqa fayl yozilib ketmaydi, bir fayl ikki marta
+/// (qayta yoki parallel) yozilmaydi, yarim yo'lda to'xtagan import xavfsiz davom ettiriladi.
+/// Fayl izi faylning o'zgarmaganini ko'rsatadi, HAQIQIY ekanini emas.
+model ReyestrImport {
+  id              String              @id @default(cuid())
+  /// Faylning SHA-256 izi (hex)
+  faylIzi         String
+  /// Yuklovchi bergan fayl nomi (qisqartirilgan); shaxsiy ma'lumot sifatida ishlatilmaydi
+  faylNomi        String?
+  bayt            Int
+  /// Fayldagi ma'lumot satrlari soni
+  satrSoni        Int
+  /// Ko'chirma qaysi sanaga tegishli (dalilda ham shu sana yoziladi)
+  reyestrSanasi   DateTime
+  /// Ko'chirmani bergan tashkilot (yuklovchi yozadi)
+  manbaTashkilot  String?
+  holati          ReyestrImportHolati @default(KORILDI)
+  /// Yuklovchi xodim (ko'rishni ham, yozishni ham shu xodim bajaradi)
+  userId          String?
+  yozishBoshlandi DateTime?
+  yozildiSana     DateTime?
+  /// Solishtirishda mos kelgan satrlar
+  jami            Int?
+  /// Shu import yaratgan yangi dalillar (jarayon davomida ham yangilanib turadi)
+  yozilgan        Int                 @default(0)
+  /// Allaqachon bor bo'lgani uchun yozilmaganlar
+  takror          Int                 @default(0)
+  /// Tozalangan (sirsiz, qisqa) xato matni
+  xatoMatni       String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([faylIzi, reyestrSanasi])
+  @@index([holati, createdAt])
+  @@index([userId, createdAt])
+}

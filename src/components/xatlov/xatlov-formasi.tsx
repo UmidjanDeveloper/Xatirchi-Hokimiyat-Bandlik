@@ -33,6 +33,7 @@ import {
   qoralamalarniChekla,
   type QoralamaYozuvi,
 } from '@/lib/offline';
+import { XATO_MATNI, navbatgaQoyiladimi, xatoToifasi } from '@/lib/xato-toifasi';
 import { bosHolat, yuborishUchun, type XatlovHolati } from './holat';
 import { QADAMLAR } from './qadamlar';
 
@@ -438,6 +439,19 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
 
       if (!javob.ok) {
         /*
+          ── ХАТО ТУРИ ──
+
+          401 (сессия тугаган), 403 (рухсат йўқ) ва 5xx (сервер) да
+          анкетадаги катакларда хато ЙЎҚ — уларни «маълумот нотўғри»
+          деб кўрсатиш ходимни адаштиради. Қоралама телефон
+          хотирасида сақланиб турибди.
+        */
+        const toifa = xatoToifasi(javob.status);
+        if (toifa !== 'tuzatish' && toifa !== 'ziddiyat') {
+          setServerXatosi(tr(XATO_MATNI[toifa]));
+          return;
+        }
+        /*
           ── ХАТО ҚАЙСИ КАТАКДА ЭКАНИ КЎРСАТИЛАДИ ──
 
           Илгари бу ерда фақат қизил ёзув чиқарди: «Маълумот
@@ -501,6 +515,37 @@ export function XatlovFormasi({ mahallalar, boshlangich, egasi }: Props) {
       const natija = await javob.json().catch(() => ({}));
 
       if (!javob.ok) {
+        /*
+         * ── ХАТО ТУРИ (`xato-toifasi.ts`) ──
+         *
+         * Сессия тугаган (401) ва сервер ишламаётган (5xx) пайтда тайёр
+         * анкета ЙЎҚОЛМАСЛИГИ керак: у навбатга тушади ва қайта
+         * киргач / сервер тикланганда ўзи кетади. Идемпотентлик калити
+         * (`kalit`) билан — сервер аслида қабул қилган бўлса, иккинчи
+         * ёзув ЯРАТИЛМАЙДИ.
+         *
+         * 403 да анкетада хато йўқ ва навбат уни ҳар сафар урилмаслиги
+         * керак: аниқ матн кўрсатилади, маълумот формада қолади.
+         */
+        const toifa = xatoToifasi(javob.status);
+        if (toifa === 'qayta-kirish' || toifa === 'keyinroq' || toifa === 'ruxsat') {
+          if (navbatgaQoyiladimi(toifa)) {
+            const navbat = navbatgaQosh(
+              { turi: 'yakuniy', id, kalit, versiya, malumot: yuborishUchun(h) },
+              egasi,
+              kalit
+            );
+            setServerXatosi(
+              navbat.ok
+                ? tr(XATO_MATNI[toifa]) + ' ' + tr('Хатлов навбатга қўйилди.')
+                : tr(XATO_MATNI[toifa])
+            );
+          } else {
+            setServerXatosi(tr(XATO_MATNI[toifa]));
+          }
+          if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
         if (Array.isArray(natija.xatolar)) {
           const xt: Record<string, string> = {};
           for (const n of natija.xatolar) xt[n.maydon] = n.xabar;

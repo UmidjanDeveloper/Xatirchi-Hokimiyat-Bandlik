@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { jurnal, talabQil } from '@/lib/api-auth';
+import { jurnal, sorovIp, talabQil } from '@/lib/api-auth';
 import { dalilQoshish, dalilniHalQil } from '@/lib/joylashuv-dalili';
 import { joriyJoylashish } from '@/lib/joylashish';
 
@@ -171,6 +171,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     userId: q.sessiya.userId,
     tasdiqlandi: xom.data.tasdiqlandi,
     izoh: xom.data.izoh ?? undefined,
+    /* Аудит ёзуви қарор билан БИР транзакцияда ёзилади (`joylashuv-dalili.ts`) */
+    ip: sorovIp(),
   });
   if (!natija.ok) {
     if (natija.sabab === 'topilmadi') {
@@ -198,12 +200,6 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       { status: 409 }
     );
   }
-
-  await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
-    obyektTuri: 'JoylashuvDalili',
-    obyektId: xom.data.dalilId,
-    izoh: xom.data.tasdiqlandi ? 'Далил тасдиқланди' : 'Далил рад этилди',
-  });
 
   return NextResponse.json({ ok: true });
 }

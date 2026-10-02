@@ -37,6 +37,7 @@ import {
 import { beruvchiOmbori, omborBoshla, omborMatn, omborTugma, omborYarat } from '../src/lib/bot-elon';
 import { FAOL_ELON, MODERATSIYA_KUTMOQDA } from '../src/lib/elon-muddati';
 import { xabarTugmalari } from '../src/lib/xabarnoma';
+import { elonQaroriMatni } from '../src/lib/ish-beruvchi';
 import { boshMenyu } from '../src/lib/bot-menyu';
 import { tumanHolati } from '../src/lib/tuman-holati';
 
@@ -574,6 +575,28 @@ const SINOVLAR: Sinov[] = [
       SAYT_YOLI.includes('beruvchiQaroriMatni(') &&
       WEBHOOK.includes('elonQaroriMatni(') &&
       SAYT_YOLI.includes('elonQaroriMatni('),
+  },
+  {
+    /*
+     * GPT §8: «Yuborish muvaffaqiyatsiz bo'lsa, ish beruvchiga "barcha xodimlarga
+     * xabar ketdi" deb yozilmasin.» Qaror vaqtida yetkazilishi NOMA'LUM: uzilgan
+     * (ulanmagan) xodim, mos mahalla yo'qligi yoki yuborish xatosi bo'lishi mumkin.
+     */
+    nomi: 'Ish beruvchiga YETKAZILISH haqida yolg\'on aytilmaydi: tasdiq matnida "xabar ketdi" yo\'q, "kafolatlanmaydi" aniq yozilgan; rad matnida xabar haqida gap yo\'q; moderatorga ham "navbatga qo\'yildi" deyiladi',
+    tekshir: async () => {
+      const qabul = elonQaroriMatni({ qabul: true, lavozim: 'Payvandchi' });
+      const rad = elonQaroriMatni({ qabul: false, lavozim: 'Payvandchi' });
+      return (
+        qabul.includes('Payvandchi') &&
+        !/хабар кетди/.test(qabul) &&
+        !/ҳамма|барча/.test(qabul) &&
+        qabul.includes('кафолатланмайди') &&
+        qabul.includes('навбат') &&
+        !/хабар/.test(rad) &&
+        !/ходимига хабар кетди/.test(WEBHOOK) &&
+        (WEBHOOK.match(/хабар навбатга қўйилди/g) ?? []).length === 2
+      );
+    },
   },
   {
     nomi: 'Сайтдан тасдиқлаш ҳам эълонни КУЧГА киритади',

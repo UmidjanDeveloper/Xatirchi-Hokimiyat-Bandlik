@@ -3,9 +3,9 @@ import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { SESSION_COOKIE, parolTogrimi, sessiyaYarat } from '@/lib/auth';
-import { checkRateLimit, getClientIp, resetRateLimit } from '@/lib/rate-limit';
+import { checkRateLimit, getClientIp, refundRateLimit, resetRateLimit } from '@/lib/rate-limit';
 import { jurnal } from '@/lib/api-auth';
-import { bazaChegarasiYumshoq, bazaChegarasiniTozala } from '@/lib/kirish-chegarasi';
+import { bazaChegarasiYumshoq, bazaChegarasiniQaytar, bazaChegarasiniTozala } from '@/lib/kirish-chegarasi';
 
 const Kirish = z.object({
   username: z.string().min(1).max(64),
@@ -189,19 +189,28 @@ export async function POST(request: Request) {
   });
 
   /*
-   * ── МУВАФФАҚИЯТДАН КЕЙИН ҲИСОБ ТОЗАЛАНАДИ ──
+   * ── МУВАФФАҚИЯТДАН КЕЙИН: ҲИСОБ ТОЗАЛАНАДИ, IP — ФАҚАТ ЎЗ УРИНИШИ ҚАЙТАРИЛАДИ ──
    *
-   * Ходим паролни икки марта хато териб, учинчисида тўғри
-   * кирса, ўша иккита хато уни кейинроқ бекордан-бекорга
-   * блокка тушириб қўймаслиги керак.
+   * Ҳисоб: ходим паролни икки марта хато териб, учинчисида тўғри
+   * кирса, ўша иккита хато уни кейинроқ бекордан-бекорга блокка
+   * тушириб қўймаслиги керак. Тўғри паролни ФАҚАТ ҳисоб эгаси билади,
+   * шунинг учун бу ҳисоб калити учун хавфсиз.
    *
-   * IP калити ҲАМ тозаланади: битта идорадан навбатма-навбат
-   * кирадиган ходимлар бир-бирининг ҳисобини ейишмасин.
+   * IP: калит ТОЗАЛАНМАЙДИ. Аввал тозаланар эди ва бу тешик эди —
+   * ўз ҳисоби бор одам 59 та хато уринишдан кейин ўзи кириб, IP
+   * ҳисобини нолга тушириб, бошқа ҳисобларда парол теришни
+   * чексиз давом эттира оларди. Энди муваффақиятли киришнинг ЎЗ
+   * уриниши қайтарилади (у ҳисобга тушмайди) — идорадаги ўнлаб
+   * ходимнинг эрталабки киришлари чегарани тўлдирмайди, бошқаларнинг
+   * хато уринишлари эса сақланиб қолади.
    */
   resetRateLimit(hisobKaliti(username));
-  resetRateLimit(ipKaliti(ip));
-  await bazaChegarasiniTozala(hisobKaliti(username), ipKaliti(ip)).catch((e) =>
+  refundRateLimit(ipKaliti(ip));
+  await bazaChegarasiniTozala(hisobKaliti(username)).catch((e) =>
     console.error('Kirish chegarasini tozalab bo‘lmadi:', e instanceof Error ? e.name : 'xato')
+  );
+  await bazaChegarasiniQaytar(ipKaliti(ip)).catch((e) =>
+    console.error('Kirish chegarasini qaytarib bo‘lmadi:', e instanceof Error ? e.name : 'xato')
   );
 
   await prisma.user.update({

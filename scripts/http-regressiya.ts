@@ -24,8 +24,10 @@ import { envYukla } from './env-yukla';
 envYukla();
 
 import { spawn, type ChildProcess } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import * as XLSX from 'xlsx';
 import { PrismaClient } from '@prisma/client';
-import { parolXeshla } from '../src/lib/auth';
+import { parolXeshla, sessiyaYarat } from '../src/lib/auth';
 
 const prisma = new PrismaClient();
 const PAROL = 'Sinov2026x';
@@ -38,6 +40,7 @@ type Sinov = { nomi: string; tekshir: () => Promise<boolean> };
 
 const xodimlar: string[] = [];
 const xonadonlar: string[] = [];
+const reyestrFuqarolari: string[] = [];
 let server: ChildProcess | null = null;
 
 async function sorov(yol: string, q: { cookie?: string; method?: string; body?: unknown } = {}): Promise<Javob> {
@@ -88,6 +91,59 @@ async function kirish(username: string): Promise<{ cookie: string; token: string
   const i = nomQiymat.indexOf('=');
   return { cookie: nomQiymat, token: decodeURIComponent(nomQiymat.slice(i + 1)), nom: nomQiymat.slice(0, i) };
 }
+
+
+/* ── Reyestr yuklash (14a-14f) uchun yordamchilar ── */
+function xlsxFayl(qatorlar: unknown[][], diapazon?: string): Uint8Array {
+  const ws = XLSX.utils.aoa_to_sheet(qatorlar);
+  if (diapazon) ws['!ref'] = diapazon;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Varaq1');
+  return new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer);
+}
+
+async function reyestrYubor(cookie: string | undefined, bayt: Uint8Array, maydonlar: Record<string, string> = {}) {
+  const forma = new FormData();
+  forma.append('fayl', new Blob([bayt as BlobPart]), 'sinov-reyestr.xlsx');
+  for (const [k, v] of Object.entries(maydonlar)) forma.append(k, v);
+  const r = await fetch(`${BAZA}/api/reyestr`, { method: 'POST', headers: cookie ? { cookie } : {}, body: forma });
+  const matn = await r.text();
+  let json: Record<string, unknown> = {};
+  try {
+    json = JSON.parse(matn);
+  } catch {
+    /* JSON emas */
+  }
+  return { status: r.status, json };
+}
+
+const REYESTR_SANA = '2026-09-01';
+const reyestrIz = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
+
+async function reyestrFuqarosi(nom: string) {
+  const fish = `${nom} Hhtt${Date.now() % 100000}${Math.floor(Math.random() * 9999)}`;
+  const f = await prisma.unemployedPerson.create({
+    data: { fish, jinsi: 'ERKAK', mahallaId: A, holati: 'JOYLASHTIRILDI', ishJoyi: 'Корхона', tugilganSana: new Date(Date.UTC(1990, 4, 12)) },
+    select: { id: true },
+  });
+  reyestrFuqarolari.push(f.id);
+  return { id: f.id, fish };
+}
+const reyestrFayli = (fish: string) =>
+  xlsxFayl([['Ф.И.Ш.', 'Иш жойи', 'Туғилган сана'], [fish, 'Корхона', '1990-05-12']]);
+
+
+/** Berilgan (soxta) IP dan login urinishi: x-forwarded-for sarlavhasi bilan */
+async function loginIp(ip: string, username: string, parol: string): Promise<number> {
+  const r = await fetch(`${BAZA}/api/auth/kirish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip },
+    body: JSON.stringify({ username, parol }),
+  });
+  await r.text().catch(() => '');
+  return r.status;
+}
+const soxtaIp = () => `10.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
 
 async function xonadonYarat(mahallaId: string, xodimId: string, oila: string) {
   const h = await prisma.household.create({
@@ -494,6 +550,176 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    nomi: '14a. Reyestr yuklash yo\'li: kirishsiz 401; mahalla xodimi, bandlik mutaxassisi va hokim — 403; fayl yo\'q 400',
+    tekshir: async () => {
+      const b = reyestrFayli('Hech Kim Yoq');
+      const kirishsiz = await reyestrYubor(undefined, b);
+      const yx = await xodimYarat('YETTILIK', A, 'ry_yettilik');
+      const bx = await xodimYarat('BANDLIK', null, 'ry_bandlik');
+      const hx = await xodimYarat('HOKIM', null, 'ry_hokim');
+      const rx = await xodimYarat('BANDLIK_RAHBAR', null, 'ry_rahbar');
+      const y = await reyestrYubor((await kirish(yx.username)).cookie, b);
+      const bb = await reyestrYubor((await kirish(bx.username)).cookie, b);
+      const h = await reyestrYubor((await kirish(hx.username)).cookie, b);
+      const crx = (await kirish(rx.username)).cookie;
+      const faylsiz = await fetch(`${BAZA}/api/reyestr`, { method: 'POST', headers: { cookie: crx }, body: new FormData() });
+      return kirishsiz.status === 401 && y.status === 403 && bb.status === 403 && h.status === 403 && faylsiz.status === 400;
+    },
+  },
+  {
+    nomi: '14b. Reyestr "ko\'rish": serverda yozuv + SHA-256 izi qaytadi, HECH QANDAY dalil yozilmaydi; ko\'rishni takror bosish yozuvni ko\'paytirmaydi',
+    tekshir: async () => {
+      const a = await xodimYarat('ADMIN', null, 'ry_admin_korish');
+      const ca = (await kirish(a.username)).cookie;
+      const f = await reyestrFuqarosi('Korish Fuqaro');
+      const bayt = reyestrFayli(f.fish);
+      const k1 = await reyestrYubor(ca, bayt, { sana: REYESTR_SANA, manba: 'Sinov idorasi' });
+      const k2 = await reyestrYubor(ca, bayt, { sana: REYESTR_SANA, manba: 'Sinov idorasi' });
+      const dalil = await prisma.joylashuvDalili.count({ where: { ishsizId: f.id } });
+      const yozuv = await prisma.reyestrImport.findMany({ where: { userId: a.id } });
+      const natija = k1.json.natija as { mos: number } | undefined;
+      return (
+        k1.status === 200 && k1.json.ok === true && k1.json.yozildi === false &&
+        typeof k1.json.yuklashId === 'string' &&
+        k1.json.faylIzi === reyestrIz(bayt) &&
+        natija?.mos === 1 &&
+        k2.json.yuklashId === k1.json.yuklashId &&
+        dalil === 0 &&
+        yozuv.length === 1 && yozuv[0].holati === 'KORILDI' && yozuv[0].manbaTashkilot === 'Sinov idorasi' && yozuv[0].satrSoni === 1
+      );
+    },
+  },
+  {
+    nomi: '14c. BOSHQA FAYL yozilmaydi: ko\'rilgan fayl o\'rniga boshqasi yuborilsa 409 va hech narsa yozilmaydi; yuklashId siz 400; boshqa xodimning yuklashId si 403; boshqa sana 409',
+    tekshir: async () => {
+      const a = await xodimYarat('ADMIN', null, 'ry_admin_boshqa');
+      const b2 = await xodimYarat('BANDLIK_RAHBAR', null, 'ry_rahbar_boshqa');
+      const ca = (await kirish(a.username)).cookie;
+      const cb = (await kirish(b2.username)).cookie;
+      const f = await reyestrFuqarosi('Boshqa Fayl');
+      const g = await reyestrFuqarosi('Ikkinchi Fayl');
+      const bayt = reyestrFayli(f.fish);
+      const korildi = await reyestrYubor(ca, bayt, { sana: REYESTR_SANA });
+      const id = String(korildi.json.yuklashId);
+
+      const boshqaFayl = await reyestrYubor(ca, reyestrFayli(g.fish), { sana: REYESTR_SANA, yoz: '1', yuklashId: id });
+      const idsiz = await reyestrYubor(ca, bayt, { sana: REYESTR_SANA, yoz: '1' });
+      const begona = await reyestrYubor(cb, bayt, { sana: REYESTR_SANA, yoz: '1', yuklashId: id });
+      const boshqaSana = await reyestrYubor(ca, bayt, { sana: '2026-09-02', yoz: '1', yuklashId: id });
+      const dalil = await prisma.joylashuvDalili.count({ where: { ishsizId: { in: [f.id, g.id] } } });
+      const h = await prisma.reyestrImport.findUniqueOrThrow({ where: { id } });
+      return (
+        boshqaFayl.status === 409 && boshqaFayl.json.kod === 'fayl-boshqa' &&
+        idsiz.status === 400 &&
+        begona.status === 403 && begona.json.kod === 'begona' &&
+        boshqaSana.status === 409 && boshqaSana.json.kod === 'sana-boshqa' &&
+        dalil === 0 && h.holati === 'KORILDI'
+      );
+    },
+  },
+  {
+    nomi: '14d. Yozish: to\'g\'ri fayl bilan 200 — dalil import ID va fayl izi bilan yoziladi (qo\'lda manba, tasdiqlanmagan); ikkinchi marta bosish takror yozmaydi (allaqachon)',
+    tekshir: async () => {
+      const a = await xodimYarat('ADMIN', null, 'ry_admin_yoz');
+      const ca = (await kirish(a.username)).cookie;
+      const f = await reyestrFuqarosi('Yoziladigan Fuqaro');
+      const bayt = reyestrFayli(f.fish);
+      const korildi = await reyestrYubor(ca, bayt, { sana: REYESTR_SANA, manba: 'Mehnat idorasi' });
+      const id = String(korildi.json.yuklashId);
+
+      const yoz1 = await reyestrYubor(ca, bayt, { sana: REYESTR_SANA, yoz: '1', yuklashId: id });
+      const yoz2 = await reyestrYubor(ca, bayt, { sana: REYESTR_SANA, yoz: '1', yuklashId: id });
+      /* Bir vaqtda ikkita ham: takror yaratilmaydi */
+      const [p1, p2] = await Promise.all([
+        reyestrYubor(ca, bayt, { sana: REYESTR_SANA, yoz: '1', yuklashId: id }),
+        reyestrYubor(ca, bayt, { sana: REYESTR_SANA, yoz: '1', yuklashId: id }),
+      ]);
+      const dalillar = await prisma.joylashuvDalili.findMany({ where: { ishsizId: f.id } });
+      const h = await prisma.reyestrImport.findUniqueOrThrow({ where: { id } });
+      return (
+        yoz1.status === 200 && yoz1.json.yozildi === true && yoz1.json.allaqachon === undefined &&
+        yoz2.status === 200 && yoz2.json.allaqachon === true &&
+        p1.status === 200 && p2.status === 200 &&
+        dalillar.length === 1 &&
+        dalillar[0].importId === id &&
+        dalillar[0].faylIzi === reyestrIz(bayt) &&
+        dalillar[0].manbaTuri === 'QOLDA_REYESTR' &&
+        dalillar[0].manbaTashkilot === 'Mehnat idorasi' &&
+        dalillar[0].holati === 'KIRITILDI' &&
+        h.holati === 'YOZILDI' && h.yozilgan === 1 && h.yozildiSana !== null
+      );
+    },
+  },
+  {
+    nomi: '14e. Reyestr sanasi qat\'iy: 31.02 mart emas — 400; kelajak sana 400; juda eski 400; format xato 400 (hech narsa yozilmaydi, yozuv yaratilmaydi)',
+    tekshir: async () => {
+      const a = await xodimYarat('ADMIN', null, 'ry_admin_sana');
+      const ca = (await kirish(a.username)).cookie;
+      const f = await reyestrFuqarosi('Sana Fuqaro');
+      const bayt = reyestrFayli(f.fish);
+      const yilKeyin = String(new Date().getUTCFullYear() + 1) + '-01-01';
+      const natijalar = await Promise.all(
+        ['2026-02-31', yilKeyin, '2019-12-31', '01.09.2026', 'abc'].map((sana) => reyestrYubor(ca, bayt, { sana }))
+      );
+      const yozuv = await prisma.reyestrImport.count({ where: { userId: a.id } });
+      const dalil = await prisma.joylashuvDalili.count({ where: { ishsizId: f.id } });
+      return natijalar.every((r) => r.status === 400 && r.json.ok === false) && yozuv === 0 && dalil === 0;
+    },
+  },
+  {
+    nomi: '14f. Reyestr resurs chegarasi: juda ko\'p ustunli fayl 400 ("устун"), hech narsa yozilmaydi; mos kelmaydigan fayl (matn) ham 400',
+    tekshir: async () => {
+      const a = await xodimYarat('ADMIN', null, 'ry_admin_chegara');
+      const ca = (await kirish(a.username)).cookie;
+      const keng = await reyestrYubor(ca, xlsxFayl([['Ф.И.Ш.', 'Иш жойи'], ['Fuqaro Keng Ismli', 'K']], 'A1:ZZ3'), { sana: REYESTR_SANA });
+      const matn = await reyestrYubor(ca, new TextEncoder().encode('bu excel emas, oddiy matn'), { sana: REYESTR_SANA });
+      const yozuv = await prisma.reyestrImport.count({ where: { userId: a.id } });
+      return keng.status === 400 && /устун/.test(String(keng.json.xabar)) && matn.status === 400 && yozuv === 0;
+    },
+  },
+  {
+    nomi: '15a. Login IP chegarasi: 59 ta xato urinishdan keyin O\'Z hisobi bilan muvaffaqiyatli kirish IP hisobini NOLGA TUSHIRMAYDI (parol terish davom ettirib bo\'lmaydi): keyingi xato 401, undan keyingisi 429',
+    tekshir: async () => {
+      const u = await xodimYarat('BANDLIK', null, 'ip_chegara');
+      const ip = soxtaIp();
+      for (let i = 0; i < 59; i++) {
+        const st = await loginIp(ip, `${BELGI}_sprey${i}`, 'noto-gri-parol-1');
+        if (st !== 401) return false;
+      }
+      const muvaffaqiyat = await loginIp(ip, u.username, PAROL);
+      const xato60 = await loginIp(ip, `${BELGI}_sprey_a`, 'noto-gri-parol-2');
+      const xato61 = await loginIp(ip, `${BELGI}_sprey_b`, 'noto-gri-parol-3');
+      /* Eski xulq (muvaffaqiyat IP ni tozalardi): ikkalasi ham 401 bo'lardi */
+      return muvaffaqiyat === 200 && xato60 === 401 && xato61 === 429;
+    },
+  },
+  {
+    nomi: '15b. Idora: bir IP dan 70 ta muvaffaqiyatli kirish (limit 60) HECH QACHON bloklanmaydi; keyin xato parol hamon 401 (muvaffaqiyatlar chegarani to\'ldirmagan)',
+    tekshir: async () => {
+      const u = await xodimYarat('BANDLIK', null, 'ip_idora');
+      const ip = soxtaIp();
+      const statuslar: number[] = [];
+      for (let i = 0; i < 70; i++) statuslar.push(await loginIp(ip, u.username, PAROL));
+      const keyin = await loginIp(ip, `${BELGI}_idora_xato`, 'noto-gri-parol-4');
+      return statuslar.every((st) => st === 200) && keyin === 401;
+    },
+  },
+  {
+    nomi: '15c. Avlodi (v) YO\'Q eski formatdagi cookie TUGAGAN: imzosi to\'g\'ri bo\'lsa ham API 401 va sahifa yopiq; avlodi bazadagiga teng cookie — 200',
+    tekshir: async () => {
+      const u = await xodimYarat('BANDLIK', null, 'avlodsiz');
+      const kirishNatijasi = await kirish(u.username);
+      const baza = await prisma.user.findUniqueOrThrow({ where: { id: u.id }, select: { sessiyaVersiyasi: true, fullName: true } });
+      const asos = { userId: u.id, username: u.username, fullName: baza.fullName, rol: 'BANDLIK' as const, mahallaId: null };
+      const avlodsiz = sessiyaYarat(asos).token;
+      const avlodli = sessiyaYarat({ ...asos, v: baza.sessiyaVersiyasi }).token;
+      const bosh = await sorov('/api/agent/holat', { cookie: `${kirishNatijasi.nom}=${avlodsiz}` });
+      const yaxshi = await sorov('/api/agent/holat', { cookie: `${kirishNatijasi.nom}=${avlodli}` });
+      const sahifa = await sorov('/tablo', { cookie: `${kirishNatijasi.nom}=${avlodsiz}` });
+      return bosh.status === 401 && yaxshi.status === 200 && rad(sahifa);
+    },
+  },
+  {
     nomi: '10f. Cookie butunlay yo\'q yoki axlat: /tablo va API yopiq',
     tekshir: async () => {
       const t = await sorov('/tablo');
@@ -559,6 +785,10 @@ async function main() {
     console.log(`${ok ? 'OK  ' : 'XATO'} ${s.nomi}`);
   }
 
+  await prisma.joylashuvDalili.deleteMany({ where: { ishsizId: { in: reyestrFuqarolari } } });
+  await prisma.unemployedPerson.deleteMany({ where: { id: { in: reyestrFuqarolari } } });
+  await prisma.reyestrImport.deleteMany({ where: { userId: { in: xodimlar } } });
+  await prisma.joylashuvDalili.updateMany({ where: { kiritganId: { in: xodimlar } }, data: { kiritganId: null } });
   await prisma.agentAmali.deleteMany({ where: { userId: { in: xodimlar } } });
   await prisma.agentFoydalanish.deleteMany({ where: { userId: { in: xodimlar } } });
   await prisma.auditLog.deleteMany({ where: { userId: { in: xodimlar } } });

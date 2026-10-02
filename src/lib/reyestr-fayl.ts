@@ -186,6 +186,25 @@ export interface FaylXatosi {
   xavfli?: string[];
 }
 
+/**
+ * ── RESURS CHEGARALARI ──
+ *
+ * Fayl hajmi (bayt) yagona chegara emas: kichik xlsx fayl millionlab
+ * bo'sh katakli diapazonni e'lon qilishi mumkin va o'qish uni xotirada
+ * ochadi. Shuning uchun satr, ustun va ma'lumot satrlari alohida cheklanadi.
+ *
+ *  · `MAKS_XOM_SATR`: varaqdagi jami satr (muqova va bo'sh satrlar bilan);
+ *    o'qish shu joyda to'xtaydi (`sheetRows`);
+ *  · `MAKS_USTUN`: diapazondagi ustunlar - o'qishdan OLDIN tekshiriladi;
+ *  · `MAKS_SATR`: ma'lumot satrlari (bo'sh va "jami" qatorlarsiz).
+ */
+export const MAKS_XOM_SATR = 20_000;
+export const MAKS_USTUN = 100;
+export const MAKS_SATR = 10_000;
+
+/** Fayl resurs chegarasidan oshdi - xabar xodimga ko'rsatiladi */
+export class FaylChegarasiXatosi extends Error {}
+
 /** Birinchi varaqni satrlar massivi sifatida o'qiydi (sinov uchun almashtirilishi mumkin) */
 export type VaraqOqiydigan = (bayt: ArrayBuffer) => unknown[][] | null;
 
@@ -194,10 +213,19 @@ export type VaraqOqiydigan = (bayt: ArrayBuffer) => unknown[][] | null;
  * `null` — varaq yo'q.
  */
 export const xlsxVaraq: VaraqOqiydigan = (bayt) => {
-  const kitob = XLSX.read(bayt, { type: 'array', cellDates: true });
+  const kitob = XLSX.read(bayt, { type: 'array', cellDates: true, sheetRows: MAKS_XOM_SATR + 1 });
   const nom = kitob.SheetNames[0];
   if (!nom) return null;
-  return XLSX.utils.sheet_to_json(kitob.Sheets[nom], {
+  const varaq = kitob.Sheets[nom];
+  /* Ustunlar `sheet_to_json` dan OLDIN tekshiriladi: u har satrni to'liq kenglikda ochadi */
+  const diapazon = varaq?.['!ref'];
+  if (diapazon) {
+    const r = XLSX.utils.decode_range(diapazon);
+    if (r.e.c - r.s.c + 1 > MAKS_USTUN) {
+      throw new FaylChegarasiXatosi(`Файлда устун жуда кўп (${MAKS_USTUN} дан ортиқ) — тайёр жадвални юборинг`);
+    }
+  }
+  return XLSX.utils.sheet_to_json(varaq, {
     header: 1,
     raw: true,
     defval: '',
@@ -233,8 +261,21 @@ export function reyestrniOqi(bayt: ArrayBuffer, oqiydigan: VaraqOqiydigan = xlsx
     if ('xato' in q) throw q.xato;
     if (!q.natija) return { ok: false, sabab: 'Файлда варақ йўқ' };
     varaq = q.natija;
-  } catch {
+  } catch (e) {
+    if (e instanceof FaylChegarasiXatosi) return { ok: false, sabab: e.message };
     return { ok: false, sabab: 'Файлни ўқиб бўлмади — Excel ёки CSV юборинг' };
+  }
+
+  /* Satr va ustun chegarasi (sinov uchun almashtiriladigan o'qiydigan ham shu yerdan o'tadi) */
+  if (varaq.length > MAKS_XOM_SATR) {
+    return {
+      ok: false,
+      sabab: `Файлда сатр жуда кўп (${MAKS_XOM_SATR.toLocaleString('ru-RU')} дан ортиқ) — кўчирмани қисмларга бўлиб юкланг`,
+    };
+  }
+  const kenglik = varaq.slice(0, 50).reduce((m, q) => Math.max(m, Array.isArray(q) ? q.length : 0), 0);
+  if (kenglik > MAKS_USTUN) {
+    return { ok: false, sabab: `Файлда устун жуда кўп (${MAKS_USTUN} дан ортиқ) — тайёр жадвални юборинг` };
   }
 
   const ENG_KOP_MUQOVA = 10;
@@ -288,6 +329,13 @@ export function reyestrniOqi(bayt: ArrayBuffer, oqiydigan: VaraqOqiydigan = xlsx
       ishJoyi: ishUstuni >= 0 ? String(q[ishUstuni] ?? '').trim() || null : null,
       tugilganSana: sanaUstuni >= 0 ? sanaOqi(q[sanaUstuni]) : null,
     });
+  }
+
+  if (satrlar.length > MAKS_SATR) {
+    return {
+      ok: false,
+      sabab: `Файлда маълумот сатрлари жуда кўп (${MAKS_SATR.toLocaleString('ru-RU')} дан ортиқ) — кўчирмани қисмларга бўлиб юкланг`,
+    };
   }
 
   return {

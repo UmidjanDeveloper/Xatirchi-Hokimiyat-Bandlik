@@ -44,8 +44,10 @@ import {
   MAX_QORALAMA,
   urinishBelgila,
   chiqishdaTozala,
+  ruxsatBelgisiniOl,
   type YuborishNatijasi,
 } from '../src/lib/offline';
+import { XATO_MATNI, navbatgaQoyiladimi, xatoToifasi } from '../src/lib/xato-toifasi';
 
 /* ── Браузер хотирасининг ўрнини босувчи ── */
 class SoxtaXotira {
@@ -540,6 +542,170 @@ const SINOVLAR: Sinov[] = [
         k.includes('qoralamaKaliti(egasi ?? ') &&
         k.includes('qoralamalarim(egasi ?? ')
       );
+    },
+  },
+  /* ── §6: XATO TURLARI — 401 / 403 / 400-422 / 409 / 5xx ── */
+  {
+    nomi: 'HTTP kodi beshta turga ajraladi: 401 qayta kirish, 403 ruxsat, 400/422 tuzatish, 409 ziddiyat, 5xx keyinroq',
+    tekshir: () =>
+      xatoToifasi(401) === 'qayta-kirish' &&
+      xatoToifasi(403) === 'ruxsat' &&
+      xatoToifasi(400) === 'tuzatish' &&
+      xatoToifasi(422) === 'tuzatish' &&
+      xatoToifasi(404) === 'tuzatish' &&
+      xatoToifasi(409) === 'ziddiyat' &&
+      xatoToifasi(429) === 'keyinroq' &&
+      xatoToifasi(500) === 'keyinroq' &&
+      xatoToifasi(503) === 'keyinroq' &&
+      // noaniq kod ma'lumotni jimgina "yaroqsiz" qilmaydi
+      xatoToifasi(0) === 'keyinroq' &&
+      xatoToifasi(Number.NaN) === 'keyinroq',
+  },
+  {
+    nomi: 'Har tur uchun alohida matn bor va ular bir-biriga o‘xshamaydi; navbatga faqat qayta-kirish va keyinroq tushadi',
+    tekshir: () => {
+      const matnlar = Object.values(XATO_MATNI);
+      return (
+        matnlar.length === 5 &&
+        new Set(matnlar).size === 5 &&
+        matnlar.every((m) => m.length > 20) &&
+        navbatgaQoyiladimi('qayta-kirish') &&
+        navbatgaQoyiladimi('keyinroq') &&
+        !navbatgaQoyiladimi('ruxsat') &&
+        !navbatgaQoyiladimi('tuzatish') &&
+        !navbatgaQoyiladimi('ziddiyat')
+      );
+    },
+  },
+  {
+    nomi: '401: sessiya tugagan - anketa YAROQSIZ EMAS: urinish hisoblanmaydi, halqa to‘xtaydi, ro‘yxat o‘zi yuborishga yaroqli qoladi',
+    tekshir: async () => {
+      tozala();
+      for (let i = 0; i < 3; i++) navbatgaQosh({ a: i });
+      let urinish = 0;
+      const n = await navbatniYubor(async () => { urinish++; return 'qayta-kirish'; });
+      const y = navbatniOqi();
+      return (
+        urinish === 1 &&
+        n.qaytaKirish &&
+        !n.aloqaYoq &&
+        n.qoldi === 3 &&
+        n.etibor === 0 &&
+        y.every((e) => e.urinishlar === 0 && avtomatikYuboriladimi(e))
+      );
+    },
+  },
+  {
+    nomi: '401 o‘n marta ketma-ket kelsa ham anketa "e‘tibor talab qiladi"ga AYLANMAYDI (avval besh urinishdan keyin yaroqsiz bo‘lib qolardi)',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 1 });
+      for (let i = 0; i < 10; i++) await navbatniYubor(async () => 'qayta-kirish');
+      const e = navbatniOqi()[0];
+      // qayta kirgach birinchi urinishdayoq o'tadi
+      const n = await navbatniYubor(async () => 'saqlandi');
+      return e.urinishlar === 0 && n.yuborildi === 1 && n.qoldi === 0 && !n.qaytaKirish;
+    },
+  },
+  {
+    nomi: '403: anketa navbatda QOLADI, urinish hisoblanmaydi, qolganlari davom etadi va avtomatik qayta yuborilmaydi',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 'taqiq' }, 'xodim_a');
+      navbatgaQosh({ a: 'yaxshi' }, 'xodim_a');
+      const n = await navbatniYubor(
+        async (m) => ((m as { a: string }).a === 'taqiq' ? 'ruxsat' : 'saqlandi') as YuborishNatijasi,
+        'xodim_a'
+      );
+      const qolgan = navbatniOqi();
+      const taqiq = qolgan.find((e) => (e.malumot as { a: string }).a === 'taqiq');
+      // keyingi avtomatik yuborishda 403 yozuvga urilmaydi
+      let qayta = 0;
+      const n2 = await navbatniYubor(async () => { qayta++; return 'saqlandi'; }, 'xodim_a');
+      return (
+        n.yuborildi === 1 &&
+        n.ruxsat === 1 &&
+        n.qoldi === 1 &&
+        n.etibor === 1 &&
+        !n.qaytaKirish &&
+        qolgan.length === 1 &&
+        taqiq?.ruxsat === true &&
+        taqiq.urinishlar === 0 &&
+        etiborTalabQiladi(taqiq) &&
+        qayta === 0 &&
+        n2.yuborildi === 0
+      );
+    },
+  },
+  {
+    nomi: '403 belgisini FAQAT xodim o‘zi bosganda olinadi va faqat O‘Z yozuvlaridan (hamkasbniki tegilmaydi)',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 1 }, 'xodim_a');
+      navbatgaQosh({ a: 2 }, 'xodim_b');
+      await navbatniYubor(async () => 'ruxsat', 'xodim_a');
+      await navbatniYubor(async () => 'ruxsat', 'xodim_b');
+      const olindi = ruxsatBelgisiniOl('xodim_a');
+      const a = meniki(navbatniOqi(), 'xodim_a')[0];
+      const b = meniki(navbatniOqi(), 'xodim_b')[0];
+      // qo'lda qayta urinish endi o'tadi
+      const n = await navbatniYubor(async () => 'saqlandi', 'xodim_a');
+      return olindi === 1 && !a.ruxsat && b.ruxsat === true && n.yuborildi === 1;
+    },
+  },
+  {
+    nomi: '400/422 "yaroqsiz" bo‘lib qoladi (urinish hisoblanadi) - bu tur avvalgidek ishlaydi',
+    tekshir: async () => {
+      tozala();
+      navbatgaQosh({ a: 1 });
+      const n = await navbatniYubor(async () => 'yaroqsiz');
+      const e = navbatniOqi()[0];
+      return e.urinishlar === 1 && !n.qaytaKirish && n.ruxsat === 0 && n.qoldi === 1;
+    },
+  },
+  {
+    nomi: 'Navbat yuboruvchisi va forma `xato-toifasi` orqali ajratadi: 401/403 "yaroqsiz"ga tushmaydi; 5xx da tayyor anketa navbatga tushadi',
+    tekshir: () => {
+      const navbat = kodiOl(readFileSync('src/components/xatlov/xatlov-navbati.tsx', 'utf8'));
+      const forma = kodiOl(readFileSync('src/components/xatlov/xatlov-formasi.tsx', 'utf8'));
+      return (
+        navbat.includes('xatoToifasi(javob.status)') &&
+        navbat.includes("holat: 'qayta-kirish'") &&
+        navbat.includes("holat: 'ruxsat'") &&
+        !/status\s*===\s*40[13]/.test(navbat) &&
+        forma.includes('xatoToifasi(javob.status)') &&
+        forma.includes('navbatgaQoyiladimi(toifa)') &&
+        // bir xil kalit bilan - server aslida qabul qilgan bo'lsa ikkinchi yozuv yaratilmaydi
+        /navbatgaQosh\(\s*\{ turi: 'yakuniy', id, kalit, versiya, malumot: yuborishUchun\(h\) \},\s*egasi,\s*kalit\s*\)/.test(forma)
+      );
+    },
+  },
+
+  {
+    nomi: 'Saqlash MUVAFFAQIYATSIZ bo‘lsa "saqlandi" deb yozilmaydi: xotira to‘lgan/bloklangan bo‘lsa qoralama ham, navbat ham aniq sabab bilan false/ok:false; forma buni xotira xatosi sifatida ko‘rsatadi',
+    tekshir: () => {
+      tozala();
+      const asl = xotira.setItem.bind(xotira);
+      try {
+        (xotira as unknown as { setItem: (k: string, v: string) => void }).setItem = () => {
+          throw new Error('QuotaExceededError');
+        };
+        const q = qoralamaSaqla(qoralamaKaliti('xodim_a', 'q1'), { a: 1 }, 'xodim_a');
+        const n = navbatgaQosh({ a: 1 }, 'xodim_a');
+        const bosh = qoralamalarim('xodim_a').length === 0 && navbatniOqi().length === 0;
+        (xotira as unknown as { setItem: (k: string, v: string) => void }).setItem = asl;
+        const forma = kodiOl(readFileSync('src/components/xatlov/xatlov-formasi.tsx', 'utf8'));
+        return (
+          q === false &&
+          !n.ok && n.sabab === 'yozib-bolmadi' &&
+          bosh &&
+          forma.includes('setXotiraXatosi(!ok)') &&
+          forma.includes('navbat.ok')
+        );
+      } finally {
+        (xotira as unknown as { setItem: (k: string, v: string) => void }).setItem = asl;
+        tozala();
+      }
     },
   },
 ];

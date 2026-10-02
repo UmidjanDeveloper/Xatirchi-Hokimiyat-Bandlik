@@ -37,8 +37,8 @@ import { join } from 'node:path';
 
 process.env.SESSION_SECRET ??= 'sinov-uchun-soxta-kalit-kamida-32-belgi-bolsin';
 
-import { HECH_QAYSI_MAHALLA, mahallaFiltri, sessiyaOqi, sessiyaYarat } from '../src/lib/auth';
-import { checkRateLimit, resetRateLimit } from '../src/lib/rate-limit';
+import { HECH_QAYSI_MAHALLA, avlodYaroqlimi, mahallaFiltri, sessiyaOqi, sessiyaYarat } from '../src/lib/auth';
+import { checkRateLimit, refundRateLimit, resetRateLimit } from '../src/lib/rate-limit';
 import {
   KORISH_ISTISNOLARI,
   OQISH_USULLARI,
@@ -175,8 +175,36 @@ const SINOVLAR: Sinov[] = [
       const api = oqi('src/lib/api-auth.ts');
       const sahifa = oqi('src/lib/sahifa-auth.ts');
       return (
-        api.includes('sessiya.v !== user.sessiyaVersiyasi') &&
-        sahifa.includes('cookieAvlodi !== user.sessiyaVersiyasi')
+        api.includes('avlodYaroqlimi(sessiya.v, user.sessiyaVersiyasi)') &&
+        /* sahifa qo'riqchisida ikkita joy: joriyXodim va rol tekshiruvi */
+        (sahifa.match(/avlodYaroqlimi\(/g) ?? []).length === 2 &&
+        /* eski "yo'q bo'lsa o'tkazib yubor" sharti hech qayerda qolmagan */
+        !api.includes('sessiya.v !== undefined') &&
+        !sahifa.includes('cookieAvlodi !== undefined')
+      );
+    },
+  },
+  {
+    /*
+     * ── GPT §9: "v maydoni yo'q eski formatdagi sessiyalar uchun aniq tugash siyosati" ──
+     *
+     * Siyosat: avlodi YO'Q cookie TUGAGAN hisoblanadi. Sessiya 12 soat
+     * yashaydi, avlod undan ancha oldin joriy qilingan - yaroqli eski
+     * cookie qolmagan; o'tkazib yuborish faqat teshik edi.
+     */
+    nomi: 'Avlodi (v) YO\'Q eski cookie TUGAGAN: faqat avlodi bazadagiga TENG cookie yaroqli; raqam farqi ham, yo\'qligi ham rad',
+    tekshir: () => {
+      return (
+        avlodYaroqlimi(3, 3) &&
+        avlodYaroqlimi(0, 0) &&
+        !avlodYaroqlimi(undefined, 0) &&
+        !avlodYaroqlimi(undefined, 3) &&
+        !avlodYaroqlimi(2, 3) &&
+        !avlodYaroqlimi(4, 3) &&
+        /* barcha uch cookie yaratuvchisi avlodni yozadi (aks holda ularning o'zi chiqib ketardi) */
+        oqi('src/app/api/auth/kirish/route.ts').includes('v: user.sessiyaVersiyasi') &&
+        oqi('src/app/api/auth/parol/route.ts').includes('v: yangilangan.sessiyaVersiyasi') &&
+        /v: versiya,/.test(oqi('src/app/api/admin/korish/route.ts'))
       );
     },
   },
@@ -394,13 +422,60 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: 'Муваффақиятли кириш ИККАЛА чегарани ҳам тозалайди',
+    /*
+     * ── БУ СИНОВ ЎЗГАРТИРИЛДИ (GPT §9) ──
+     *
+     * Аввал у «муваффақиятли кириш ИККАЛА чегарани ҳам тозалайди» деб
+     * кутарди — яъни IP ҳисобини ҳам нолга туширадиган хулқни ёзиб қўйган
+     * эди. Бу тешик: ўз ҳисоби бор одам 59 та хато уринишдан кейин ўзи
+     * кириб, IP ҳисобини тозалаб, бошқа ҳисобларда парол теришни
+     * чексиз давом эттира оларди.
+     */
+    nomi: 'Муваффақиятли кириш ҲИСОБНИ тозалайди, IP ни эса ТОЗАЛАМАЙДИ — фақат ўз уринишини қайтаради (бошқаларнинг хато уринишлари сақланади)',
     tekshir: () => {
       const k = oqi('src/app/api/auth/kirish/route.ts');
+      const kodiz = k.replace(/\/\*[\s\S]*?\*\//g, '');
       return (
-        k.includes('resetRateLimit(hisobKaliti(username))') &&
-        k.includes('resetRateLimit(ipKaliti(ip))')
+        kodiz.includes('resetRateLimit(hisobKaliti(username))') &&
+        kodiz.includes('bazaChegarasiniTozala(hisobKaliti(username))') &&
+        kodiz.includes('refundRateLimit(ipKaliti(ip))') &&
+        kodiz.includes('bazaChegarasiniQaytar(ipKaliti(ip))') &&
+        /* IP калити ҳеч қаерда тозаланмайди */
+        !kodiz.includes('resetRateLimit(ipKaliti(ip))') &&
+        !/bazaChegarasiniTozala\([^)]*ipKaliti/.test(kodiz)
       );
+    },
+  },
+  {
+    nomi: 'IP hisobi: muvaffaqiyat o\'z urinishini QAYTARADI, xato urinishlarni o\'chirmaydi — 4 xato + 1 muvaffaqiyat (limit 5): yana FAQAT bitta urinish mumkin',
+    tekshir: () => {
+      const kalit = `sinov:ip:${Math.random()}`;
+      resetRateLimit(kalit);
+      for (let i = 0; i < 4; i++) if (!checkRateLimit(kalit, 5, 60_000).allowed) return false;
+      /* muvaffaqiyatli kirish: urinish hisobga olinadi, so'ng qaytariladi */
+      if (!checkRateLimit(kalit, 5, 60_000).allowed) return false;
+      refundRateLimit(kalit);
+      const beshinchi = checkRateLimit(kalit, 5, 60_000);
+      const oltinchi = checkRateLimit(kalit, 5, 60_000);
+      resetRateLimit(kalit);
+      /* Eski xulq (hammasini tozalash) bo'lsa, oltinchi ham o'tardi */
+      return beshinchi.allowed && !oltinchi.allowed;
+    },
+  },
+  {
+    nomi: 'Idora: 100 ta muvaffaqiyatli kirish ketma-ket (limit 60) IP chegarasini TO\'LDIRMAYDI; qaytarish bo\'sh/noma\'lum kalitda xato bermaydi',
+    tekshir: () => {
+      const kalit = `sinov:idora:${Math.random()}`;
+      resetRateLimit(kalit);
+      for (let i = 0; i < 100; i++) {
+        if (!checkRateLimit(kalit, 60, 60_000).allowed) return false;
+        refundRateLimit(kalit);
+      }
+      const hamon = checkRateLimit(kalit, 60, 60_000);
+      resetRateLimit(kalit);
+      refundRateLimit(`yoq:${Math.random()}`);
+      refundRateLimit(kalit);
+      return hamon.allowed && hamon.remaining === 59;
     },
   },
   {

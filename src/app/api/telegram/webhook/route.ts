@@ -57,6 +57,8 @@ import {
 } from '@/lib/bot-menyu';
 import { z } from 'zod';
 import {
+  kodUrinishiniSana,
+  kodUrinishiniTozala,
   kodniUlash,
   navbatniDarhol,
   ulanishniUz,
@@ -343,7 +345,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  /*
+   * ── URINISHLAR CHEGARASI ──
+   *
+   * Kodni taxmin qilib ko'rish chat bo'yicha cheklanadi. Chegara oshsa:
+   *  · ulanmagan chatga - "keyinroq urining" (kod TEKSHIRILMAYDI,
+   *    to'g'ri kod ham shu vaqtda ulamaydi);
+   *  · allaqachon ulangan xodimga - matn SAVOL sifatida davom etadi
+   *    (u "qamrov" kabi olti harfli savol yozsa, savolsiz qolmasin).
+   */
+  if (kodShakli) {
+    const urinish = await kodUrinishiniSana(String(chatId));
+    if (!urinish.ruxsat) {
+      if (suhbatchi) {
+        await savolniJavobla(suhbatchi, String(chatId), matn);
+        return NextResponse.json({ ok: true });
+      }
+      try {
+        await telegramYuboruvchi(
+          String(chatId),
+          `❗ Жуда кўп уриниш. ${urinish.kutishDaqiqa} дақиқадан кейин қайта уриниб кўринг.`
+        );
+      } catch (e) {
+        console.error('Telegram javobini yuborib bolmadi:', e);
+      }
+      return NextResponse.json({ ok: true });
+    }
+  }
+
   const ulanish = await kodniUlash(kod, String(chatId));
+  if (ulanish.ok) await kodUrinishiniTozala(String(chatId));
 
   /*
    * Уланган ходим код шаклидаги СЎЗ ёзган бўлса («qamrov»
@@ -724,7 +755,7 @@ async function tugmaBosildi(q: {
           natija.lavozim,
           '',
           kimga > 0
-            ? `${kimga} та маҳалла ходимига хабар кетди.`
+            ? `${kimga} та маҳалла ходимига хабар навбатга қўйилди — Telegram орқали юборилади.`
             : 'Ҳозирча ҳеч бир ходимга хабар кетмади — уланганлар йўқ ёки мос маҳалла топилмади.',
         ].join('\n')
       );
@@ -995,7 +1026,7 @@ async function beruvchiTugmasi(
             `<b>${n.lavozim}</b> тасдиқланди.`,
             '',
             kimga > 0
-              ? `${kimga} та маҳалла ходимига хабар кетди.`
+              ? `${kimga} та маҳалла ходимига хабар навбатга қўйилди — Telegram орқали юборилади.`
               : 'Ҳозирча ҳеч бир ходимга хабар кетмади — уланганлар йўқ ёки мос маҳалла топилмади.',
           ].join('\n')
         : `<b>${n.lavozim}</b> рад этилди.`

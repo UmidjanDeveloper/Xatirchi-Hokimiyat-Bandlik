@@ -21,7 +21,7 @@ import { envYukla } from './env-yukla';
 envYukla();
 
 import { execFileSync } from 'node:child_process';
-import { unlinkSync, writeFileSync } from 'node:fs';
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { PrismaClient } from '@prisma/client';
 
 const BOT_TOKENI = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw1';
@@ -36,6 +36,14 @@ const yangilanishlar: bigint[] = [];
 
 let POST: (r: Request) => Promise<Response>;
 let ulanishKodi: (userId: string) => Promise<string>;
+let kodUrinishiniSana: (chatId: string, hozir?: Date) => Promise<{ ruxsat: boolean; kutishDaqiqa: number }>;
+let KOD_URINISH_LIMITI = 0;
+let kalitXeshi: (kalit: string) => string;
+/** Kod urinishlari chegarasi uchun ishlatilgan chatlar - oxirida tozalanadi */
+const kodChatlari: string[] = [];
+const kodUrinishlari = (chat: number | string) =>
+  prisma.kirishUrinishi.count({ where: { kalit: kalitXeshi(`telegram-kod:${chat}`) } });
+const XATO_KOD = 'ABCDEF';
 
 let hisob = 0;
 const yangiId = () => {
@@ -223,6 +231,182 @@ const SINOVLAR: Sinov[] = [
       return /HOLAT=503/.test(chiqish) && (await satrSoni([BigInt(id)])) === 0;
     },
   },
+  {
+    nomi: 'KOD TERISH CHEGARASI: sakkiz noto\'g\'ri urinishdan keyin TO\'G\'RI kod ham ulamaydi (kod tekshirilmaydi), "juda ko\'p urinish" deyiladi',
+    tekshir: async () => {
+      const u = await xodimYarat('Sinov kod chegarasi');
+      const kod = await ulanishKodi(u);
+      if (kod === XATO_KOD) return false;
+      const chat = yangiChat();
+      kodChatlari.push(String(chat));
+      yuborilgan.length = 0;
+      for (let i = 0; i < KOD_URINISH_LIMITI; i++) {
+        await POST(sorov(xabarTanasi(yangiId(), chat, XATO_KOD), SIR));
+      }
+      const oldin = yuborilgan.length;
+      const r = await POST(sorov(xabarTanasi(yangiId(), chat, kod), SIR));
+      const x = await prisma.user.findUniqueOrThrow({ where: { id: u }, select: { telegramChatId: true, telegramKodi: true } });
+      const oxirgi = yuborilgan[yuborilgan.length - 1]?.tana ?? '';
+      return (
+        r.status === 200 &&
+        x.telegramChatId === null &&
+        x.telegramKodi === kod &&
+        yuborilgan.length === oldin + 1 &&
+        oxirgi.includes('Жуда кўп уриниш')
+      );
+    },
+  },
+  {
+    nomi: 'KOD TERISH CHEGARASI faqat O\'SHA chatga tegadi: bloklangan chatdan keyin boshqa chat o\'z kodi bilan ulanadi',
+    tekshir: async () => {
+      const bloklangan = yangiChat();
+      kodChatlari.push(String(bloklangan));
+      for (let i = 0; i < KOD_URINISH_LIMITI + 1; i++) {
+        await POST(sorov(xabarTanasi(yangiId(), bloklangan, XATO_KOD), SIR));
+      }
+      const u = await xodimYarat('Sinov boshqa chat');
+      const kod = await ulanishKodi(u);
+      const chat = yangiChat();
+      kodChatlari.push(String(chat));
+      await POST(sorov(xabarTanasi(yangiId(), chat, kod), SIR));
+      const x = await prisma.user.findUniqueOrThrow({ where: { id: u }, select: { telegramChatId: true } });
+      return x.telegramChatId === String(chat);
+    },
+  },
+  {
+    nomi: 'Muvaffaqiyatli ulanishdan keyin FAQAT shu chatning urinishlari tozalanadi (boshqa chatniki saqlanadi)',
+    tekshir: async () => {
+      const u = await xodimYarat('Sinov tozalash');
+      const kod = await ulanishKodi(u);
+      const chat = yangiChat();
+      const boshqa = yangiChat();
+      kodChatlari.push(String(chat), String(boshqa));
+      for (let i = 0; i < 3; i++) await POST(sorov(xabarTanasi(yangiId(), chat, XATO_KOD), SIR));
+      for (let i = 0; i < 2; i++) await POST(sorov(xabarTanasi(yangiId(), boshqa, XATO_KOD), SIR));
+      const oldin = await kodUrinishlari(chat);
+      await POST(sorov(xabarTanasi(yangiId(), chat, kod), SIR));
+      const x = await prisma.user.findUniqueOrThrow({ where: { id: u }, select: { telegramChatId: true } });
+      return oldin === 3 && x.telegramChatId === String(chat) && (await kodUrinishlari(chat)) === 0 && (await kodUrinishlari(boshqa)) === 2;
+    },
+  },
+  {
+    nomi: 'Allaqachon ulangan xodim chegaradan keyin ham SAVOL bera oladi (olti harfli so\'z "juda ko\'p urinish"ga tushmaydi)',
+    tekshir: async () => {
+      const u = await xodimYarat('Sinov ulangan savol');
+      const kod = await ulanishKodi(u);
+      const chat = yangiChat();
+      kodChatlari.push(String(chat));
+      await POST(sorov(xabarTanasi(yangiId(), chat, kod), SIR));
+      for (let i = 0; i < KOD_URINISH_LIMITI; i++) {
+        await POST(sorov(xabarTanasi(yangiId(), chat, 'QAMRVZ'), SIR));
+      }
+      yuborilgan.length = 0;
+      const r = await POST(sorov(xabarTanasi(yangiId(), chat, 'QAMRVZ'), SIR));
+      return r.status === 200 && yuborilgan.length >= 1 && !yuborilgan.some((y) => y.tana.includes('Жуда кўп уриниш'));
+    },
+  },
+  {
+    nomi: 'Urinishlar oynasi o\'tgach (15 daqiqa) chegara ochiladi; baza xatosida RAD etiladi (fail-closed), o\'tkazib yuborilmaydi',
+    tekshir: async () => {
+      const chat = String(yangiChat());
+      kodChatlari.push(chat);
+      for (let i = 0; i < KOD_URINISH_LIMITI; i++) {
+        const r = await kodUrinishiniSana(chat);
+        if (!r.ruxsat) return false;
+      }
+      const tosildi = await kodUrinishiniSana(chat);
+      const keyin = await kodUrinishiniSana(chat, new Date(Date.now() + 16 * 60_000));
+      const kod = readFileSync('src/lib/xabarnoma.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+      return (
+        /* chegara qiymatining O'ZI (sinov mutatsiyalangan konstantaga tayanib qolmasin): kod 15 daqiqa, 8 urinish */
+        KOD_URINISH_LIMITI === 8 &&
+        !tosildi.ruxsat &&
+        tosildi.kutishDaqiqa >= 1 &&
+        keyin.ruxsat &&
+        /catch \(e\) \{[^}]*ruxsat: false/.test(kod)
+      );
+    },
+  },
+  {
+    nomi: 'GURUH suhbati: to\'g\'ri kod yozilsa ham ULANMAYDI (group, supergroup, turi kelmagan manfiy id) - kod saqlanadi, "shaxsiy suhbatda ishlaydi" deb tushuntiriladi',
+    tekshir: async () => {
+      const u = await xodimYarat('Sinov guruh');
+      const kod = await ulanishKodi(u);
+      const natijalar: boolean[] = [];
+      for (const chat of [
+        { id: -100_000_000 - Math.floor(Math.random() * 1e6), type: 'group' },
+        { id: -100_000_000 - Math.floor(Math.random() * 1e6), type: 'supergroup' },
+        { id: -100_000_000 - Math.floor(Math.random() * 1e6) },
+      ]) {
+        yuborilgan.length = 0;
+        const r = await POST(sorov({ update_id: yangiId(), message: { text: kod, chat, from: { id: 1 } } }, SIR));
+        natijalar.push(r.status === 200 && yuborilgan.length === 1 && yuborilgan[0].tana.includes('ШАХСИЙ'));
+      }
+      const x = await prisma.user.findUniqueOrThrow({ where: { id: u }, select: { telegramChatId: true, telegramKodi: true } });
+      return natijalar.every(Boolean) && x.telegramChatId === null && x.telegramKodi === kod;
+    },
+  },
+  {
+    nomi: 'GURUHDAGI TUGMA jim qoldiriladi: guruh chatidan kelgan callback hech qanday amal bajarmaydi va hech narsa yubormaydi',
+    tekshir: async () => {
+      yuborilgan.length = 0;
+      const guruh = -200_000_000 - Math.floor(Math.random() * 1e6);
+      const r = await POST(
+        sorov(
+          {
+            update_id: yangiId(),
+            callback_query: { id: 'g1', data: 'm.menyu', from: { id: 5 }, message: { message_id: 1, chat: { id: guruh, type: 'supergroup' } } },
+          },
+          SIR
+        )
+      );
+      return r.status === 200 && yuborilgan.length === 0;
+    },
+  },
+  {
+    nomi: 'KOD MUDDATI: 15 daqiqadan eski kod ulamaydi ("eskirgan"), kod yangilanmaydi/tozalanmaydi; 14 daqiqalik kod ulanadi',
+    tekshir: async () => {
+      const u = await xodimYarat('Sinov muddat');
+      const kod = await ulanishKodi(u);
+      const eski = new Date(Date.now() - 16 * 60_000);
+      await prisma.user.update({ where: { id: u }, data: { telegramKodiVaqti: eski } });
+      const chat = yangiChat();
+      kodChatlari.push(String(chat));
+      yuborilgan.length = 0;
+      await POST(sorov(xabarTanasi(yangiId(), chat, kod), SIR));
+      const eskirdi = await prisma.user.findUniqueOrThrow({ where: { id: u }, select: { telegramChatId: true, telegramKodi: true } });
+      const xabar = yuborilgan[yuborilgan.length - 1]?.tana ?? '';
+
+      await prisma.user.update({ where: { id: u }, data: { telegramKodiVaqti: new Date(Date.now() - 14 * 60_000) } });
+      await POST(sorov(xabarTanasi(yangiId(), chat, kod), SIR));
+      const ulandi = await prisma.user.findUniqueOrThrow({ where: { id: u }, select: { telegramChatId: true } });
+      return eskirdi.telegramChatId === null && eskirdi.telegramKodi === kod && xabar.includes('эскирган') && ulandi.telegramChatId === String(chat);
+    },
+  },
+  {
+    nomi: 'KOD BIR MARTALIK: ulangandan keyin kod tozalanadi - ikkinchi chatdan o\'sha kod ulamaydi, birinchi ulanish buzilmaydi; nofaol hisobga ulanmaydi',
+    tekshir: async () => {
+      const u = await xodimYarat('Sinov bir martalik');
+      const kod = await ulanishKodi(u);
+      const birinchi = yangiChat();
+      const ikkinchi = yangiChat();
+      kodChatlari.push(String(birinchi), String(ikkinchi));
+      await POST(sorov(xabarTanasi(yangiId(), birinchi, kod), SIR));
+      yuborilgan.length = 0;
+      await POST(sorov(xabarTanasi(yangiId(), ikkinchi, kod), SIR));
+      const x = await prisma.user.findUniqueOrThrow({ where: { id: u }, select: { telegramChatId: true, telegramKodi: true } });
+      const javob = yuborilgan[yuborilgan.length - 1]?.tana ?? '';
+
+      const n = await xodimYarat('Sinov nofaol');
+      const nk = await ulanishKodi(n);
+      await prisma.user.update({ where: { id: n }, data: { faol: false } });
+      const uchinchi = yangiChat();
+      kodChatlari.push(String(uchinchi));
+      await POST(sorov(xabarTanasi(yangiId(), uchinchi, nk), SIR));
+      const y = await prisma.user.findUniqueOrThrow({ where: { id: n }, select: { telegramChatId: true } });
+      return x.telegramChatId === String(birinchi) && x.telegramKodi === null && javob.includes('Код топилмади') && y.telegramChatId === null;
+    },
+  },
 ];
 
 async function main() {
@@ -242,7 +426,8 @@ async function main() {
   }) as typeof fetch;
 
   ({ POST } = await import('../src/app/api/telegram/webhook/route'));
-  ({ ulanishKodi } = await import('../src/lib/xabarnoma'));
+  ({ ulanishKodi, kodUrinishiniSana, KOD_URINISH_LIMITI } = await import('../src/lib/xabarnoma'));
+  ({ kalitXeshi } = await import('../src/lib/maxfiy'));
 
   let xato = 0;
   for (const s of SINOVLAR) {
@@ -258,6 +443,7 @@ async function main() {
 
   globalThis.fetch = asl;
   await prisma.telegramYangilanish.deleteMany({ where: { updateId: { in: yangilanishlar } } });
+  await prisma.kirishUrinishi.deleteMany({ where: { kalit: { in: kodChatlari.map((c) => kalitXeshi(`telegram-kod:${c}`)) } } });
   await prisma.xabarnoma.deleteMany({ where: { userId: { in: xodimlar } } });
   await prisma.botSuhbati.deleteMany({ where: { userId: { in: xodimlar } } });
   await prisma.user.deleteMany({ where: { id: { in: xodimlar } } });

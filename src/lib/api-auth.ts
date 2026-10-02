@@ -12,7 +12,7 @@
 import { cookies, headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import type { Rol } from '@prisma/client';
-import { SESSION_COOKIE, sessiyaOqi, type Sessiya } from './auth';
+import { SESSION_COOKIE, avlodYaroqlimi, sessiyaOqi, type Sessiya } from './auth';
 import { USUL_SARLAVHASI, ozgartirishmi } from './korish-rejimi';
 import { prisma } from './prisma';
 
@@ -94,12 +94,12 @@ export async function talabQil(
    * Парол алмашганда базадаги рақам ошади ва эски cookie
    * яроқсиз бўлади.
    *
-   * Эски cookie'да бу майдон УМУМАН бўлмайди. Уни рад
-   * этмаймиз: миграция тушган пайтда ҳамма ходим бирданига
-   * чиқиб кетиши — хавфсизлик эмас, тўхташ. Улар ўз муддати
-   * (12 соат) билан ўзи тугайди.
+   * Авлоди ЙЎҚ эски cookie ҳам рад этилади (`avlodYaroqlimi`):
+   * сессия 12 соат яшайди, авлод эса ундан анча олдин жорий
+   * қилинган — яроқли эски cookie қолмаган. Ўтказиб юбориш
+   * фақат тешик бўларди: парол алмашганда ўлмайдиган сессия.
    */
-  if (sessiya.v !== undefined && sessiya.v !== user.sessiyaVersiyasi) {
+  if (!avlodYaroqlimi(sessiya.v, user.sessiyaVersiyasi)) {
     return ruxsatYoq('Паролингиз алмашган. Қайта киринг.');
   }
 

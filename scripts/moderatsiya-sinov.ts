@@ -373,6 +373,87 @@ const SINOVLAR: Sinov[] = [
       );
     },
   },
+  // ── ҚАРОР + АУДИТ: БИТТА ТРАНЗАКЦИЯ (GPT §10) ──
+  {
+    nomi: 'Қарор ва АУДИТ БИР транзакцияда: иш берувчи, эълон ва далил қарорида аудит ёзуви қарор билан бирга (ким, нима, обьект, IP); параллел иккита қарордан фақат БИТТА аудит; ўтмаган қарорга аудит ЁЗИЛМАЙДИ',
+    tekshir: async () => {
+      const a = await rahbarYarat();
+      const b = await rahbarYarat();
+      const m = await prisma.mahalla.findFirstOrThrow({ select: { id: true } });
+      const IP = '203.0.113.7';
+
+      /* ── иш берувчи ── */
+      const beruvchiId = await beruvchiYarat();
+      const [b1, b2] = await Promise.all([
+        beruvchiniHalQil({ beruvchiId, userId: a, qabul: true, ip: IP }),
+        beruvchiniHalQil({ beruvchiId, userId: b, qabul: false, sabab: 'Кеч', ip: IP }),
+      ]);
+      const bQayta = await beruvchiniHalQil({ beruvchiId, userId: a, qabul: true, ip: IP });
+      const bAudit = await prisma.auditLog.findMany({ where: { obyektTuri: 'IshBeruvchi', obyektId: beruvchiId } });
+      const bYutgan = [b1, b2].findIndex((n) => n.ok) === 0 ? a : b;
+
+      /* ── эълон ── */
+      const e = await prisma.vacancy.create({
+        data: { lavozim: `Синов лавозим ${noyob()}`, korxonaNomi: 'Синов корхона', mahallaId: m.id, ornlarSoni: 1, moderatsiya: 'KUTILMOQDA' },
+        select: { id: true },
+      });
+      tozalanadi.elon.push(e.id);
+      const [e1, e2] = await Promise.all([
+        elonniHalQil({ vacancyId: e.id, userId: a, qabul: true, ip: IP }),
+        elonniHalQil({ vacancyId: e.id, userId: b, qabul: false, sabab: 'Маош йўқ', ip: IP }),
+      ]);
+      const eAudit = await prisma.auditLog.findMany({ where: { obyektTuri: 'Vacancy', obyektId: e.id } });
+      const eYutgan = [e1, e2].findIndex((n) => n.ok) === 0 ? a : b;
+
+      /* ── далил ── */
+      const odam = await prisma.unemployedPerson.create({
+        data: { mahallaId: m.id, fish: `Синов Аудит ${noyob()}`, jinsi: 'Erkak' },
+        select: { id: true },
+      });
+      tozalanadi.ishsiz.push(odam.id);
+      const d = await prisma.joylashuvDalili.create({
+        data: { ishsizId: odam.id, turi: 'SHARTNOMA', holati: 'KIRITILDI' },
+        select: { id: true },
+      });
+      tozalanadi.dalil.push(d.id);
+      const [d1, d2] = await Promise.all([
+        dalilniHalQil({ dalilId: d.id, userId: a, tasdiqlandi: true, ip: IP }),
+        dalilniHalQil({ dalilId: d.id, userId: b, tasdiqlandi: false, ip: IP }),
+      ]);
+      const dQayta = await dalilniHalQil({ dalilId: d.id, userId: a, tasdiqlandi: true, ip: IP });
+      const dAudit = await prisma.auditLog.findMany({ where: { obyektTuri: 'JoylashuvDalili', obyektId: d.id } });
+      const dYutgan = [d1, d2].findIndex((n) => n.ok) === 0 ? a : b;
+
+      return (
+        [b1, b2].filter((n) => n.ok).length === 1 && !bQayta.ok &&
+        bAudit.length === 1 && bAudit[0].userId === bYutgan && bAudit[0].amal === 'OZGARTIRISH' && bAudit[0].ip === IP && /Иш берувчи/.test(bAudit[0].izoh ?? '') &&
+        [e1, e2].filter((n) => n.ok).length === 1 &&
+        eAudit.length === 1 && eAudit[0].userId === eYutgan && eAudit[0].ip === IP && /Эълон/.test(eAudit[0].izoh ?? '') &&
+        [d1, d2].filter((n) => n.ok).length === 1 && !dQayta.ok &&
+        dAudit.length === 1 && dAudit[0].userId === dYutgan && dAudit[0].ip === IP && /Далил/.test(dAudit[0].izoh ?? '')
+      );
+    },
+  },
+  {
+    nomi: 'Telegram orqali berilgan қарор ҳам аудитга тушади: бот ва сайт БИТТА қарор функциясини чақиради (иккита нусха йўқ), йўллар аудитни иккинчи марта ёзмайди',
+    tekshir: () => {
+      const bot = oqi('src/app/api/telegram/webhook/route.ts');
+      const sayt = oqi('src/app/api/ish-beruvchilar/route.ts');
+      const dalil = oqi('src/app/api/ishsizlar/[id]/dalil/route.ts');
+      const kutubxona = oqi('src/lib/ish-beruvchi.ts');
+      return (
+        bot.includes('beruvchiniHalQil(') && bot.includes('elonniHalQil(') &&
+        /* bot qarorni o'zi yozmaydi: holatni to'g'ridan-to'g'ri o'zgartirish yo'q */
+        !/(moderatsiya|holati):\s*['"]?(TASDIQLANDI|RAD_ETILDI)/.test(bot) &&
+        sayt.includes('ip: sorovIp()') &&
+        !sayt.includes("izoh: qabul ? 'Иш берувчи тасдиқланди'") &&
+        !dalil.includes("izoh: xom.data.tasdiqlandi ? 'Далил тасдиқланди'") &&
+        (kutubxona.match(/tx\.auditLog\.create/g) ?? []).length === 2 &&
+        (kutubxona.match(/prisma\.\$transaction/g) ?? []).length >= 2
+      );
+    },
+  },
+
 ];
 
 async function tozala() {

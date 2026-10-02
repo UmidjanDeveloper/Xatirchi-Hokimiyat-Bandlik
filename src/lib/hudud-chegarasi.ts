@@ -78,6 +78,7 @@ export const HUDUD_XARITASI: Record<string, HududQoidasi> = {
   BotSuhbati: { turi: 'XODIM', orqali: ['userId'], izoh: 'Bot suhbat holati' },
   AgentFoydalanish: { turi: 'XODIM', orqali: ['userId'], izoh: 'Hudhud (AI agent) kunlik foydalanish hisobi, matnsiz' },
   AgentAmali: { turi: 'XODIM', orqali: ['userId'], izoh: 'Hudhud taklif qilgan, tasdiq kutayotgan yozish amali' },
+  ReyestrImport: { turi: 'XODIM', orqali: ['userId'], izoh: 'Reyestr ko‘chirmasini yuklash jarayoni (fayl izi, holat, sanoq); shaxsiy ma‘lumotsiz' },
 
   /* ── Tuman kataloglari: hozir yagona ── */
   Kurs: { turi: 'KATALOG', izoh: 'Kurslar katalogi: tuman bo‘yicha; ko‘p tumanda `tumanId`' },

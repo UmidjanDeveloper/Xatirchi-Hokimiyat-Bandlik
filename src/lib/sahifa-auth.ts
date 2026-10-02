@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import type { Rol } from '@prisma/client';
 import { prisma } from './prisma';
-import { joriySessiya } from './auth';
+import { avlodYaroqlimi, joriySessiya } from './auth';
 
 /**
  * ============================================================
@@ -98,8 +98,7 @@ export const haqiqiyXodim = cache(async (): Promise<JoriyXodim | null> => {
 
   if (!user || !user.faol) return null;
 
-  const cookieAvlodi = (sessiya as { v?: number }).v;
-  if (cookieAvlodi !== undefined && cookieAvlodi !== user.sessiyaVersiyasi) return null;
+  if (!avlodYaroqlimi((sessiya as { v?: number }).v, user.sessiyaVersiyasi)) return null;
 
   return {
     userId: sessiya.userId,
@@ -135,15 +134,13 @@ export const joriyXodim = cache(async (): Promise<JoriyXodim | null> => {
   /*
    * ── СЕССИЯ АВЛОДИ ──
    *
-   * Эски cookie'да бу майдон УМУМАН бўлмайди (`undefined`).
-   * Уни рад этмаймиз: миграция тушган пайтда ҳамма ходим
-   * бирданига чиқиб кетиши — хавфсизлик эмас, тўхташ.
-   *
-   * Эски cookie'лар ўз муддати (12 соат) билан ўзи тугайди,
-   * янгилари эса авлод билан ҳимояланади.
+   * Авлоди ЙЎҚ эски cookie (`undefined`) ҳам рад этилади —
+   * `avlodYaroqlimi`: сессия 12 соат яшайди, авлод эса ундан
+   * анча олдин жорий қилинган, яъни яроқли эски cookie
+   * қолмаган. Ўтказиб юбориш парол алмашганда ўлмайдиган
+   * сессияга йўл очарди.
    */
-  const cookieAvlodi = (sessiya as { v?: number }).v;
-  if (cookieAvlodi !== undefined && cookieAvlodi !== user.sessiyaVersiyasi) return null;
+  if (!avlodYaroqlimi((sessiya as { v?: number }).v, user.sessiyaVersiyasi)) return null;
 
   /*
    * ── КЎРИШ РЕЖИМИ ──

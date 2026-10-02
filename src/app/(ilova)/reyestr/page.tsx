@@ -15,6 +15,7 @@ import { Hisoblash } from '@/components/shared/hisoblash';
 import { DALIL_HOLATI_NOMI, DALIL_NOMI } from '@/lib/dalil-nomlari';
 import { ReyestrYuklash } from '@/components/dalil/reyestr-yuklash';
 import { formatDate } from '@/lib/utils';
+import { oxirgiImportlar } from '@/lib/reyestr-yuklash';
 
 /**
  * ============================================================
@@ -57,6 +58,14 @@ const SABAB_NOMI: Record<string, string> = {
   'ish-almashdi': 'Иш алмашган — эски ҳужжат ярамайди',
 };
 
+/** Import holati matni (rangdan tashqari matn bilan ham tushuntiriladi) */
+const IMPORT_HOLATI: Record<string, string> = {
+  KORILDI: 'Кўрилди — ёзилмаган',
+  YOZILMOQDA: 'Ёзилмоқда',
+  YOZILDI: 'Ёзилди',
+  XATO: 'Узилди — давом эттириш мумкин',
+};
+
 const SABAB_RANGI: Record<string, string> = {
   'dalil-yoq': 'text-ink-muted',
   tekshirilmagan: 'text-warn',
@@ -71,11 +80,13 @@ export default async function ReyestrSahifasi() {
   if (!sessiya) redirect('/kirish');
   if (!yolgaRuxsat(sessiya.rol, '/reyestr')) redirect(boshSahifa(sessiya.rol));
 
-  const [hisob, royxat, navbat, bogliqsizlar] = await Promise.all([
+  const [hisob, royxat, navbat, bogliqsizlar, importlar] = await Promise.all([
     tasdiqHisobi(),
     tasdiqsizlar(undefined, 50),
     tekshirishKutayotganlar(50),
     bogliqsizDalillar(50),
+    /* Importlar tarixi qo'shimcha: u yiqilsa asosiy sahifa ochilaveradi */
+    oxirgiImportlar(10).catch(() => []),
   ]);
 
   return (
@@ -243,6 +254,48 @@ export default async function ReyestrSahifasi() {
         рақамни ахтариб пастга тушарди.
       */}
       <ReyestrYuklash />
+
+      {importlar.length > 0 && (
+        <section className="karta p-4 sm:p-5" aria-labelledby="importlar-sarlavha">
+          <h2 id="importlar-sarlavha" className="text-base font-semibold text-ink">
+            {tr('Охирги юклашлар')}
+          </h2>
+          <p className="mt-1 text-xs text-ink-faint">
+            {tr('Ҳар юклаш ўз изи билан сақланади: ҳолати, ёзилган ва такрор сони, узилган бўлса — сабаби.')}
+          </p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[34rem] text-left text-xs">
+              <thead className="text-ink-faint">
+                <tr>
+                  <th className="py-1.5 pr-3 font-medium">{tr('Сана')}</th>
+                  <th className="py-1.5 pr-3 font-medium">{tr('Ҳолати')}</th>
+                  <th className="py-1.5 pr-3 font-medium">{tr('Сатр')}</th>
+                  <th className="py-1.5 pr-3 font-medium">{tr('Ёзилган')}</th>
+                  <th className="py-1.5 pr-3 font-medium">{tr('Такрор')}</th>
+                  <th className="py-1.5 font-medium">{tr('Файл изи')}</th>
+                </tr>
+              </thead>
+              <tbody className="text-ink-muted">
+                {importlar.map((y) => (
+                  <tr key={y.id} className="border-t border-line align-top">
+                    <td className="py-1.5 pr-3 tabular-nums">{formatDate(y.reyestrSanasi)}</td>
+                    <td className="py-1.5 pr-3">
+                      {IMPORT_HOLATI[y.holati] ? tr(IMPORT_HOLATI[y.holati]) : y.holati}
+                      {y.holati === 'XATO' && y.xatoMatni ? (
+                        <span className="block text-danger">{y.xatoMatni}</span>
+                      ) : null}
+                    </td>
+                    <td className="py-1.5 pr-3 tabular-nums">{y.satrSoni}</td>
+                    <td className="py-1.5 pr-3 tabular-nums">{y.holati === 'KORILDI' ? '—' : y.yozilgan}</td>
+                    <td className="py-1.5 pr-3 tabular-nums">{y.holati === 'KORILDI' ? '—' : y.takror}</td>
+                    <td className="py-1.5 font-mono">{y.faylIzi.slice(0, 10)}…</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/*
         ── ТЕКШИРИШ КУТАЁТГАН ҲУЖЖАТЛАР ──

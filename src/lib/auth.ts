@@ -98,8 +98,8 @@ export interface Sessiya {
    * yaroqsiz bo'ladi. Qisqa nom — cookie har so'rovda
    * yuboriladi.
    *
-   * Ixtiyoriy: eski cookie'larda bu maydon umuman yo'q va
-   * ular o'z muddati bilan tugaydi.
+   * Turi ixtiyoriy (`undefined` bo'lishi mumkin), lekin `avlodYaroqlimi`
+   * uni QABUL QILMAYDI: maydoni yo'q eski cookie tugagan hisoblanadi.
    */
   v?: number;
   /**
@@ -138,6 +138,23 @@ export function sessiyaYarat(
   const exp = Date.now() + SESSION_MS;
   const payload = Buffer.from(JSON.stringify({ ...data, exp })).toString('base64url');
   return { token: `${payload}.${imzola(payload)}`, exp };
+}
+
+/**
+ * Cookie avlodi bazadagi avlodga TENG bo'lishi shart.
+ *
+ * `v` maydoni YO'Q eski cookie (avlod joriy qilinishidan oldingi format)
+ * ENDI QABUL QILINMAYDI: tugagan deb hisoblanadi va xodim qayta kiradi.
+ *
+ * Nega: avval bunday cookie "o'z muddati bilan tugaydi" deb o'tkazib
+ * yuborilardi. Sessiya 12 soat yashaydi, avlod esa undan ancha oldin joriy
+ * qilingan - ya'ni yaroqli eski formatdagi cookie qolmagan, o'tkazib
+ * yuborish faqat teshik edi: parol almashtirilganda bekor bo'lmaydigan
+ * sessiya. Yangi cookie'lar (kirish, parol, ko'rish rejimi) hammasi avlod
+ * bilan yoziladi.
+ */
+export function avlodYaroqlimi(cookieAvlodi: number | undefined, bazaAvlodi: number): boolean {
+  return cookieAvlodi !== undefined && cookieAvlodi === bazaAvlodi;
 }
 
 /**

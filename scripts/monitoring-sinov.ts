@@ -35,7 +35,7 @@ import { PrismaClient } from '@prisma/client';
 import { prisma as ilovaPrisma } from '../src/lib/prisma';
 import { vazifalarim } from '../src/lib/vazifalar';
 import { navbatniYubor } from '../src/lib/xabarnoma';
-import { bazaChegarasi, bazaChegarasiniTozala } from '../src/lib/kirish-chegarasi';
+import { bazaChegarasi, bazaChegarasiniQaytar, bazaChegarasiniTozala } from '../src/lib/kirish-chegarasi';
 import { checkRateLimit, resetRateLimit } from '../src/lib/rate-limit';
 import { kalitXeshi, maxfiyniTozala, xatoXeshi, xatoXulosasi, XATO_UZUNLIGI } from '../src/lib/maxfiy';
 import {
@@ -522,6 +522,24 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    nomi: 'Baza chegarasi: QAYTARISH faqat ENG OXIRGI urinishni olib tashlaydi (qolgan xato urinishlar saqlanadi); boshqa kalitga tegmaydi; bo\'sh kalitda xato yo\'q',
+    tekshir: async () => {
+      const k = `kirish:ip:sinov_qaytar_${Date.now()}`;
+      const b = `kirish:ip:sinov_qaytar_boshqa_${Date.now()}`;
+      const t0 = new Date();
+      for (let i = 0; i < 4; i++) await bazaChegarasi(k, 5, 60_000, new Date(t0.getTime() + i * 1000));
+      await bazaChegarasi(b, 5, 60_000, t0);
+      await bazaChegarasiniQaytar(k);
+      const soni = await prisma.kirishUrinishi.count({ where: { kalit: kalitXeshi(k) } });
+      const eng = await prisma.kirishUrinishi.findMany({ where: { kalit: kalitXeshi(k) }, orderBy: { vaqt: 'asc' } });
+      const boshqa = await prisma.kirishUrinishi.count({ where: { kalit: kalitXeshi(b) } });
+      await bazaChegarasiniQaytar(`kirish:ip:yoq_${Date.now()}`);
+      /* 4 urinish edi, oxirgisi qaytarildi: 3 qoladi va ular ENG ESKI uchtasi */
+      const vaqtlar = eng.map((e) => e.vaqt.getTime() - t0.getTime());
+      return soni === 3 && vaqtlar.join(',') === '0,1000,2000' && boshqa === 1;
+    },
+  },
+  {
     nomi: 'Baza chegarasi: 12 ta PARALLEL urinish, limit 5 - aynan 5 tasi o\'tadi (advisory qulf: "oxirgi bo\'sh joy"ni ikkalasi olmaydi)',
     tekshir: async () => {
       const k = `kirish:ip:sinov_${Date.now()}`;
@@ -675,7 +693,7 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: 'Kod: cron yo\'llari ishniKuzat ichida; navbat yo\'lida kunlik tozalash Telegram tekshiruvidan OLDIN; xabarnoma xom xato matnini yozmaydi; kirish yo\'li ikki qatlam va ikkalasini tozalaydi',
+    nomi: 'Kod: cron yo\'llari ishniKuzat ichida; navbat yo\'lida kunlik tozalash Telegram tekshiruvidan OLDIN; xabarnoma xom xato matnini yozmaydi; kirish yo\'li ikki qatlam; muvaffaqiyatda hisobni tozalaydi, IP ni FAQAT qaytaradi (tozalamaydi)',
     tekshir: async () => {
       const brifing = oqi('src/app/api/cron/brifing/route.ts');
       const navbat = oqi('src/app/api/telegram/navbat/route.ts');
@@ -694,7 +712,9 @@ const SINOVLAR: Sinov[] = [
         hisob > 0 && hisobBaza > hisob && hisobBaza < kuser &&
         kirish.includes('if (ipBaza && !ipBaza.allowed) return juda_kop(ipBaza.retryAfter, false);') &&
         kirish.includes('if (hisobBaza && !hisobBaza.allowed) return juda_kop(hisobBaza.retryAfter, true);') &&
-        kirish.includes('bazaChegarasiniTozala(hisobKaliti(username), ipKaliti(ip))')
+        kirish.includes('bazaChegarasiniTozala(hisobKaliti(username))') &&
+        kirish.includes('bazaChegarasiniQaytar(ipKaliti(ip))') &&
+        !/bazaChegarasiniTozala\([^)]*ipKaliti/.test(kirish)
       );
     },
   },

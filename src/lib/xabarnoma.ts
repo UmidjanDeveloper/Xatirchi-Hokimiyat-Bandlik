@@ -3,6 +3,7 @@ import { maxfiyniTozala } from './maxfiy';
 import { BERUVCHI } from './beruvchi-belgilari';
 import type { Prisma, XabarTuri } from '@prisma/client';
 import { prisma, type Tranzaksiya } from './prisma';
+import { bazaChegarasi, bazaChegarasiniTozala } from './kirish-chegarasi';
 
 /**
  * ============================================================
@@ -47,6 +48,47 @@ export function telegramSozlanganmi(): boolean {
 
 /** Kod necha daqiqa amal qiladi */
 const KOD_MUDDATI_DAQIQA = 15;
+
+/**
+ * ── KOD TERISH URINISHLARI CHEGARASI ──
+ *
+ * Kod 6 belgi (32 harf/raqam alifbosi) va 15 daqiqa yashaydi. Bu kodni
+ * bitta urinishda topish ehtimolini juda kichik qiladi, lekin chegarasiz
+ * bot "taxmin qil" qurolga aylanardi: har bir javob "topilmadi" yoki
+ * "eskirgan" deb aytadi - ya'ni kod bor-yo'qligini ham bildirib turadi.
+ *
+ * Chegara CHAT bo'yicha va BAZADA (serverless nusxalari orasida umumiy).
+ * Boshqa chatlarga tegmaydi: bitta odamning xatosi butun tuman xodimlarini
+ * bloklamaydi.
+ *
+ * Baza javob bermasa - RAD ETILADI (fail-closed): kodni tekshirish ham
+ * bazasiz ishlamaydi, shuning uchun bu yerda "o'tkazib yuborish" yo'q.
+ */
+export const KOD_URINISH_LIMITI = 8;
+export const KOD_URINISH_OYNASI_MS = KOD_MUDDATI_DAQIQA * 60_000;
+const kodKaliti = (chatId: string) => `telegram-kod:${chatId}`;
+
+export interface KodUrinishi {
+  ruxsat: boolean;
+  /** Rad etilganda: necha daqiqadan keyin qayta urinish mumkin */
+  kutishDaqiqa: number;
+}
+
+/** Kod terish urinishini hisoblaydi va ruxsat beradi yoki rad etadi */
+export async function kodUrinishiniSana(chatId: string, hozir = new Date()): Promise<KodUrinishi> {
+  try {
+    const r = await bazaChegarasi(kodKaliti(chatId), KOD_URINISH_LIMITI, KOD_URINISH_OYNASI_MS, hozir);
+    return { ruxsat: r.allowed, kutishDaqiqa: r.allowed ? 0 : Math.max(1, Math.ceil(r.retryAfter / 60)) };
+  } catch (e) {
+    console.error('Kod urinishlari chegarasiga yozib bolmadi:', maxfiyniTozala(e));
+    return { ruxsat: false, kutishDaqiqa: 1 };
+  }
+}
+
+/** Muvaffaqiyatli ulanishdan keyin FAQAT shu chatning hisobi tozalanadi */
+export async function kodUrinishiniTozala(chatId: string): Promise<void> {
+  await bazaChegarasiniTozala(kodKaliti(chatId)).catch(() => undefined);
+}
 
 /**
  * Ходимга бир марталик боғлаш коди беради.

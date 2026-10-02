@@ -1153,6 +1153,30 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    /*
+     * GPT §3: «Dalilning tegishli davri, manbasi va tekshirish sanasi ko'rinsin.»
+     * Bu kod-darajasidagi tekshiruv (ekran matnini haqiqiy brauzersiz sinab bo'lmaydi):
+     * ma'lumot sahifadan komponentga yetib boradi va qatorda chiqariladi.
+     */
+    nomi: 'Далил қаторида манба ташкилот, ҳужжат санаси, кўчирма санаси, давр ва ТЕКШИРИЛГАН САНА (қарор берган ходим билан) кўринади',
+    tekshir: async () => {
+      const blok = kodiOl(readFileSync('src/components/dalil/dalil-blogi.tsx', 'utf8'));
+      const sahifa = kodiOl(readFileSync('src/app/(ilova)/ishsizlar/[id]/page.tsx', 'utf8'));
+      return (
+        blok.includes('d.manbaTashkilot') &&
+        blok.includes('d.hujjatSanasi') &&
+        blok.includes('d.reyestrSanasi') &&
+        blok.includes('d.davrBoshi') &&
+        blok.includes('d.davrOxiri') &&
+        blok.includes('d.tasdiqlanganSana') &&
+        blok.includes('d.tasdiqlaganNomi') &&
+        sahifa.includes('tasdiqlanganSana: d.tasdiqlanganSana') &&
+        sahifa.includes('davrBoshi: d.davrBoshi') &&
+        sahifa.includes('davrOxiri: d.davrOxiri')
+      );
+    },
+  },
+  {
     nomi: 'Миграция ҲЕЧ НАРСА ЎЧИРМАЙДИ — хатлов кетмоқда',
     tekshir: async () => {
       const m = readFileSync(

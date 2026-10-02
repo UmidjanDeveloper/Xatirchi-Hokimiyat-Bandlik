@@ -98,6 +98,22 @@ export function resetRateLimit(key: string): void {
 }
 
 /**
+ * Kalitning ENG OXIRGI urinishini qaytaradi (bitta urinishni "hisobga olmaydi").
+ *
+ * Muvaffaqiyatli login IP chegarasida o'zining urinishini qaytarib beradi,
+ * lekin kalitni TOZALAMAYDI. Avval tozalanardi: bitta haqiqiy hisobi bor
+ * kishi 59 ta noto'g'ri urinishdan keyin o'zi kirib, IP hisobini nolga
+ * tushirar va parol terish (bitta parolni ko'p hisobda sinash) cheksiz
+ * davom etardi. Endi muvaffaqiyat IP hisobiga TA'SIR QILMAYDI: xato
+ * urinishlar saqlanadi, idoradagi o'nlab xodimning muvaffaqiyatli
+ * kirishlari esa chegarani to'ldirmaydi.
+ */
+export function refundRateLimit(key: string): void {
+  const bucket = buckets.get(key);
+  if (bucket && bucket.hits.length > 0) bucket.hits.pop();
+}
+
+/**
  * So'rov yuborgan mijozning IP manzilini aniqlaydi.
  * Vercel `x-forwarded-for` sarlavhasini to'ldiradi.
  */

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { jurnal, talabQil } from '@/lib/api-auth';
+import { jurnal, sorovIp, talabQil } from '@/lib/api-auth';
 import { ishOrniXabarlari } from '@/lib/ish-orni-xabari';
 import { navbatniDarhol } from '@/lib/xabarnoma';
 import {
@@ -87,6 +87,8 @@ export async function PATCH(request: Request) {
       userId: q.sessiya.userId,
       qabul,
       sabab,
+      /* Аудит ёзуви қарор билан БИР транзакцияда ёзилади (`ish-beruvchi.ts`) */
+      ip: sorovIp(),
     });
     if (!n.ok) {
       /*
@@ -122,17 +124,11 @@ export async function PATCH(request: Request) {
       beruvchiQaroriMatni({ qabul, korxonaNomi: n.korxonaNomi ?? '—', sabab })
     );
 
-    await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
-      obyektTuri: 'IshBeruvchi',
-      obyektId: id,
-      izoh: qabul ? 'Иш берувчи тасдиқланди' : `Иш берувчи рад этилди: ${sabab ?? '—'}`,
-    });
-
     return NextResponse.json({ ok: true });
   }
 
   /* ── ЭЪЛОН ── */
-  const n = await elonniHalQil({ vacancyId: id, userId: q.sessiya.userId, qabul, sabab });
+  const n = await elonniHalQil({ vacancyId: id, userId: q.sessiya.userId, qabul, sabab, ip: sorovIp() });
   if (!n.ok) {
     return NextResponse.json(
       {
@@ -165,11 +161,18 @@ export async function PATCH(request: Request) {
 
   await beruvchigaXabarBer(n.chatId, elonQaroriMatni({ qabul, lavozim: n.lavozim ?? '—' }));
 
-  await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
-    obyektTuri: 'Vacancy',
-    obyektId: id,
-    izoh: qabul ? `Эълон тасдиқланди — ${kimga} та ходимга хабар` : 'Эълон рад этилди',
-  });
+  /*
+   * Қарорнинг аудити `elonniHalQil` ичида, қарор билан БИР транзакцияда
+   * ёзилди. Бу ерда фақат тарқатиш натижаси (қанча хабар навбатга
+   * қўйилгани) ёзилади — у қарордан кейин маълум бўлади.
+   */
+  if (qabul) {
+    await jurnal(q.sessiya.userId, 'OZGARTIRISH', {
+      obyektTuri: 'Vacancy',
+      obyektId: id,
+      izoh: `Эълон хабарлари навбатга қўйилди — ${kimga} та ходим`,
+    });
+  }
 
   return NextResponse.json({ ok: true, kimga });
 }

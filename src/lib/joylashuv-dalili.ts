@@ -650,6 +650,8 @@ export async function dalilniHalQil(p: {
   userId: string;
   tasdiqlandi: boolean;
   izoh?: string | null;
+  /** So'rov manzili (sayt yo'li beradi) - audit yozuviga tushadi */
+  ip?: string | null;
 }): Promise<{
   ok: boolean;
   sabab?: 'topilmadi' | 'allaqachon';
@@ -678,14 +680,35 @@ export async function dalilniHalQil(p: {
    * қилинади. Қарорни ЎЗГАРТИРИШ — алоҳида амал
    * (`dalilQaroriniOzgartir`), у сабаб талаб қилади.
    */
-  const natija = await prisma.joylashuvDalili.updateMany({
-    where: { id: p.dalilId, holati: 'KIRITILDI' },
-    data: {
-      holati: p.tasdiqlandi ? 'TASDIQLANDI' : 'RAD_ETILDI',
-      tasdiqlaganId: p.userId,
-      tasdiqlanganSana: new Date(),
-      ...(p.izoh !== undefined ? { izoh: p.izoh } : {}),
-    },
+  /*
+   * Қарор ва аудит — БИТТА транзакцияда: аудит ФАҚАТ қарор ўтганда ва
+   * шу транзакция ичида ёзилади (хато бўлса иккови ҳам ўтмайди).
+   * Воқеа ҳолатини янгилаш қасддан ПАСТДА ва алоҳида қолган: қарор
+   * йўқолмаслиги керак (изоҳ пастда).
+   */
+  const natija = await prisma.$transaction(async (tx) => {
+    const r = await tx.joylashuvDalili.updateMany({
+      where: { id: p.dalilId, holati: 'KIRITILDI' },
+      data: {
+        holati: p.tasdiqlandi ? 'TASDIQLANDI' : 'RAD_ETILDI',
+        tasdiqlaganId: p.userId,
+        tasdiqlanganSana: new Date(),
+        ...(p.izoh !== undefined ? { izoh: p.izoh } : {}),
+      },
+    });
+    if (r.count === 1) {
+      await tx.auditLog.create({
+        data: {
+          userId: p.userId,
+          amal: 'OZGARTIRISH',
+          obyektTuri: 'JoylashuvDalili',
+          obyektId: p.dalilId,
+          izoh: p.tasdiqlandi ? 'Далил тасдиқланди' : 'Далил рад этилди',
+          ip: p.ip ?? null,
+        },
+      });
+    }
+    return r;
   });
 
   if (natija.count === 0) {

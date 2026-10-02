@@ -66,6 +66,11 @@ export interface DalilMaydonlari {
   kiritganNomi: string | null;
   kiritganId: string | null;
   tasdiqlaganNomi: string | null;
+  /** Текширилган сана (текширувчи қарор берган кун) */
+  tasdiqlanganSana: Date | null;
+  /** Далил қамраб олган давр (бор бўлса) */
+  davrBoshi: Date | null;
+  davrOxiri: Date | null;
   /**
    * ── ДАЛИЛ ҚАЕРДАН КЕЛГАН ──
    *
@@ -405,9 +410,31 @@ export function DalilBlogi({
                     </p>
                   )}
                   {d.izoh && <p className="mt-1 text-xs text-warn">{tr(d.izoh)}</p>}
+                  {/*
+                    ── ДАВР, МАНБА ВА ТЕКШИРИШ САНАСИ ──
+
+                    Кўчирма санаси ва далил қамраган давр (бор бўлса) ҳамда
+                    текшириш куни ҚАРОР БЕРГАН ХОДИМ билан бирга кўринади:
+                    «қачон ва ким текширди» деган савол ҳар қаторда жавобли.
+                  */}
+                  {(d.reyestrSanasi || d.davrBoshi || d.davrOxiri) && (
+                    <p className="mt-1 text-xs text-ink-faint">
+                      {d.reyestrSanasi
+                        ? `${tr('Кўчирма санаси')}: ${formatDate(d.reyestrSanasi).split(',')[0]}`
+                        : ''}
+                      {d.davrBoshi || d.davrOxiri
+                        ? `${d.reyestrSanasi ? ' · ' : ''}${tr('Давр')}: ${
+                            d.davrBoshi ? formatDate(d.davrBoshi).split(',')[0] : '…'
+                          } — ${d.davrOxiri ? formatDate(d.davrOxiri).split(',')[0] : '…'}`
+                        : ''}
+                    </p>
+                  )}
                   {d.tasdiqlaganNomi && (
                     <p className="mt-1 text-xs text-ink-faint">
                       {tr('Текширди')}: {tr(d.tasdiqlaganNomi)}
+                      {d.tasdiqlanganSana
+                        ? ` · ${tr('текширилган сана')}: ${formatDate(d.tasdiqlanganSana).split(',')[0]}`
+                        : ''}
                     </p>
                   )}
                 </div>

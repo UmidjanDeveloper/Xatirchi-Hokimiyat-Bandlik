@@ -78,6 +78,12 @@ export interface NavbatYozuvi {
    * очиб солиштириши учун.
    */
   ziddiyat?: string;
+  /**
+   * Сервер «рухсат йўқ» деди (403): ҳуқуқ ёки ҳисоб ҳолати ўзгарган.
+   * Анкетанинг ўзида хато йўқ — уни қайта-қайта юбориш бефойда,
+   * текширувчи одам керак. Ёзув навбатда ҚОЛАДИ.
+   */
+  ruxsat?: boolean;
 }
 
 /**
@@ -455,6 +461,13 @@ export function urinishBelgila(localId: string): void {
  *                  yuborish foydasiz, lekin O'CHIRIB HAM
  *                  BO'LMAYDI: bu xodimning bir soatlik ishi.
  *                  Navbatda qoladi va xodimga ko'rsatiladi;
+ *  · `qayta-kirish` - sessiya tugagan (401). Anketa YAROQSIZ EMAS:
+ *                  urinish hisoblanmaydi, qolganlariga urinish ham
+ *                  behuda (hammasi 401 oladi) - to'xtaymiz va xodimga
+ *                  "qayta kiring" deymiz;
+ *  · `ruxsat`    - huquq yoki hisob holati o'zgargan (403). Anketani
+ *                  tuzatish foydasiz; navbatda qoladi, urinish
+ *                  hisoblanmaydi, odam tekshiradi. Qolganlari davom etadi;
  *  · `aloqa-yoq` - tarmoq yo'q yoki server javob bermadi.
  *                  Qolganlariga urinish ham behuda - to'xtaymiz.
  *
@@ -475,6 +488,8 @@ export type YuborishNatijasi =
   | 'takror'
   | 'ziddiyat'
   | 'yaroqsiz'
+  | 'qayta-kirish'
+  | 'ruxsat'
   | 'aloqa-yoq';
 
 /**
@@ -494,7 +509,7 @@ export const MAX_URINISH = 5;
  * тўсилиб турарди.
  */
 export function avtomatikYuboriladimi(y: NavbatYozuvi): boolean {
-  return y.urinishlar < MAX_URINISH && !y.ziddiyat;
+  return y.urinishlar < MAX_URINISH && !y.ziddiyat && !y.ruxsat;
 }
 
 /** Ходим кўриб чиқиши керак бўлган ёзув */
@@ -512,6 +527,34 @@ export function ziddiyatBelgila(localId: string, mavjudId: string): void {
   );
 }
 
+/** «Рухсат йўқ» (403) ни ёзиб қўяди — ёзув навбатда ҚОЛАДИ, уриниш ҳисобланмайди */
+export function ruxsatBelgila(localId: string): void {
+  if (!xotiraBormi()) return;
+  navbatYoz(navbatniOqi().map((y) => (y.localId === localId ? { ...y, ruxsat: true } : y)));
+}
+
+/**
+ * Ходим «Ҳозир юбориш» ни ўзи босганда: рухсат йўқ деб белгиланган ЎЗ
+ * ёзувларидан белгини олади. Администратор ҳисобни тузатган бўлиши
+ * мумкин; белги ёзув ўзи тузалмагунча олинмаса, анкета абадий қотиб
+ * қоларди. Автоматик юборишда белги ОЛИНМАЙДИ — у ҳар кириш сайин
+ * бир хил 403 олиб турмайди.
+ */
+export function ruxsatBelgisiniOl(egasi: string): number {
+  if (!xotiraBormi()) return 0;
+  let n = 0;
+  navbatYoz(
+    navbatniOqi().map((y) => {
+      if (y.ruxsat && y.egasi === egasi) {
+        n++;
+        return { ...y, ruxsat: undefined };
+      }
+      return y;
+    })
+  );
+  return n;
+}
+
 export interface NavbatNatijalari {
   /** Serverga yangi yozilganlar */
   yuborildi: number;
@@ -525,6 +568,10 @@ export interface NavbatNatijalari {
   etibor: number;
   /** Aloqa yo'qligi sababli to'xtadimi */
   aloqaYoq: boolean;
+  /** Sessiya tugagani (401) sababli to'xtadimi - xodim qayta kirishi kerak */
+  qaytaKirish: boolean;
+  /** Huquq/hisob holati (403) tufayli o'tmaganlar - odam tekshiradi */
+  ruxsat: number;
 }
 
 /**
@@ -560,7 +607,9 @@ export async function navbatniYubor(
   let yuborildi = 0;
   let takror = 0;
   let ziddiyat = 0;
+  let ruxsat = 0;
   let aloqaYoq = false;
+  let qaytaKirish = false;
 
   for (const yozuv of navbat) {
     let javob: YuborishNatijasi | BittaNatija;
@@ -590,6 +639,23 @@ export async function navbatniYubor(
       continue;
     }
 
+    if (natija === 'qayta-kirish') {
+      /*
+       * Sessiya tugagan. Anketada xato yo'q, shuning uchun urinish
+       * HISOBLANMAYDI (aks holda besh marta ochilgan sahifa ishlaydigan
+       * anketani "e'tibor talab qiladi"ga aylantirardi). Qolgan yozuvlar
+       * ham xuddi shu 401 ni oladi - to'xtaymiz.
+       */
+      qaytaKirish = true;
+      break;
+    }
+
+    if (natija === 'ruxsat') {
+      ruxsatBelgila(yozuv.localId);
+      ruxsat++;
+      continue;
+    }
+
     urinishBelgila(yozuv.localId);
     if (natija === 'aloqa-yoq') {
       aloqaYoq = true;
@@ -605,6 +671,8 @@ export async function navbatniYubor(
     qoldi: qolgan.length,
     etibor: qolgan.filter(etiborTalabQiladi).length,
     aloqaYoq,
+    qaytaKirish,
+    ruxsat,
   };
 }
 

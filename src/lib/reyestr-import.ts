@@ -314,6 +314,9 @@ export async function reyestrniSolishtir(
   return natija;
 }
 
+/** Yozish jarayoni shuncha satrdan keyin holatni yangilaydi (cheklangan bo'laklar) */
+export const BOLAK_SATR = 200;
+
 /**
  * ============================================================
  *  СОЛИШТИРАДИ ВА МОС КЕЛГАНЛАРГА ДАЛИЛ ЁЗАДИ
@@ -369,6 +372,20 @@ export async function reyestrniYukla(
     faylIzi?: string | null;
     /** Кўчирмани берган ташкилот — администратор ёзади */
     manbaTashkilot?: string | null;
+    /**
+     * Юклаш ёзувининг `id` си (`ReyestrImport`). Берилса, ҳар бир далил
+     * шу `id` билан сақланади: «бу далил қайси юклашдан?» деган
+     * саволга жавоб. Берилмаса — тасодифий белги.
+     */
+    yuklashIzi?: string;
+    /**
+     * Ёзиш БЎЛАКЛАРДА: ҳар `BOLAK_SATR` сатрдан кейин чақирилади
+     * (ёзилган ва такрор сони билан). Чақирувчи ҳолатни янгилаб туради —
+     * жараён нимагача етгани кўринади ва узилса нима ёзилгани маълум.
+     * Бўлак хатоси ёзишни тўхтатади (хато юқорига чиқади); қайта юборилса
+     * ёзилганлар такрорланмайди (`dalil_takrori`).
+     */
+    bolak?: (yozilgan: number, takror: number) => Promise<void>;
   }
 ): Promise<ReyestrNatijasi> {
   const natija = await reyestrniSolishtir(satrlar, p.mahallaId);
@@ -385,7 +402,7 @@ export async function reyestrniYukla(
    * Аввал жавоб йўқ эди: фақат сана бор, у эса кунда бир
    * нечта юклашни ажратмайди.
    */
-  const yuklashIzi = randomUUID();
+  const yuklashIzi = p.yuklashIzi ?? randomUUID();
 
   /*
    * ── ТАКРОР ЮКЛАШ ──
@@ -421,7 +438,12 @@ export async function reyestrniYukla(
    *
    * Энди тўплам ҳар ёзишдан кейин ЯНГИЛАНАДИ.
    */
+  let ishlandi = 0;
+  let yozilgan = 0;
   for (const m of natija.mos) {
+    ishlandi += 1;
+    if (ishlandi % BOLAK_SATR === 0 && p.bolak) await p.bolak(yozilgan, natija.takror);
+
     if (borlarToplami.has(m.ishsizId)) {
       natija.takror += 1;
       continue;
@@ -448,6 +470,7 @@ export async function reyestrniYukla(
           ? `Диққат: тизимда «${m.tizimIshJoyi ?? '—'}», реестрда «${m.reyestrIshJoyi ?? '—'}»`
           : null,
       });
+      yozilgan += 1;
     } catch (e) {
       /*
        * ── ИККИТА АДМИНИСТРАТОР БИР ВАҚТДА ──

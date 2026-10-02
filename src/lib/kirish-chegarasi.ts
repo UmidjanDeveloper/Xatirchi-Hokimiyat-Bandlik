@@ -66,6 +66,26 @@ export async function bazaChegarasiniTozala(...kalitlar: string[]): Promise<void
 }
 
 /**
+ * Kalitning ENG OXIRGI urinishini bazadan olib tashlaydi (bitta urinishni
+ * "hisobga olmaydi"). Muvaffaqiyatli login IP chegarasida o'z urinishini
+ * qaytaradi, lekin boshqalarning xato urinishlarini O'CHIRMAYDI
+ * (`bazaChegarasiniTozala` ni IP uchun ishlatish himoyani nolga tushirardi).
+ * Tekshirish bilan bir xil advisory qulf: parallel urinish bilan to'qnashmaydi.
+ */
+export async function bazaChegarasiniQaytar(kalit: string): Promise<void> {
+  const xesh = kalitXeshi(kalit);
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${xesh}))`;
+    const oxirgi = await tx.kirishUrinishi.findFirst({
+      where: { kalit: xesh },
+      orderBy: { vaqt: 'desc' },
+      select: { id: true },
+    });
+    if (oxirgi) await tx.kirishUrinishi.delete({ where: { id: oxirgi.id } });
+  });
+}
+
+/**
  * Login yo'li uchun: bazadagi chegara. Baza xatosi bo'lsa `null` qaytaradi
  * (chaqiruvchi xotiradagi natijaga tayanadi) va xato jurnalga yoziladi.
  */

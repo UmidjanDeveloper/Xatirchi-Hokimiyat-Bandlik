@@ -475,6 +475,8 @@ export async function beruvchiniHalQil(p: {
   userId: string;
   qabul: boolean;
   sabab?: string | null;
+  /** So'rov manzili (sayt yo'li beradi; bot yo'lida yo'q) - audit yozuviga tushadi */
+  ip?: string | null;
 }): Promise<{
   ok: boolean;
   korxonaNomi?: string;
@@ -509,14 +511,42 @@ export async function beruvchiniHalQil(p: {
    * келади ва у «аллақачон ҳал қилинган» деган жавоб
    * олади.
    */
-  const natija = await prisma.ishBeruvchi.updateMany({
-    where: { id: b.id, holati: 'KUTILMOQDA' },
-    data: {
-      holati: p.qabul ? 'TASDIQLANDI' : 'RAD_ETILDI',
-      radSababi: p.qabul ? null : (p.sabab ?? 'Маълумот етарли эмас'),
-      halQilganId: p.userId,
-      halQilinganSana: new Date(),
-    },
+  /*
+   * ── ҚАРОР ВА АУДИТ — БИТТА ТРАНЗАКЦИЯДА ──
+   *
+   * Аудит ёзуви ФАҚАТ қарор ўтган (`count === 1`) бўлса ва ШУ
+   * транзакция ичида ёзилади: қарор бор-у журналда йўқ ёки журналда
+   * бор-у қарор ўтмаган ҳолат бўлмайди. Аввал аудитни фақат САЙТ йўли
+   * алоҳида ёзарди ва Telegram орқали берилган қарор журналга УМУМАН
+   * тушмасди; хато бўлса «жим ютилар» эди.
+   *
+   * Иш берувчига хабар навбатга ЭМАС, тўғридан-тўғри юборилади (у `User`
+   * эмас, `Xabarnoma` навбати уни ташимайди) — шунинг учун у транзакцияга
+   * кирмайди; юборилмаса қарор кучда қолади.
+   */
+  const natija = await prisma.$transaction(async (tx) => {
+    const r = await tx.ishBeruvchi.updateMany({
+      where: { id: b.id, holati: 'KUTILMOQDA' },
+      data: {
+        holati: p.qabul ? 'TASDIQLANDI' : 'RAD_ETILDI',
+        radSababi: p.qabul ? null : (p.sabab ?? 'Маълумот етарли эмас'),
+        halQilganId: p.userId,
+        halQilinganSana: new Date(),
+      },
+    });
+    if (r.count === 1) {
+      await tx.auditLog.create({
+        data: {
+          userId: p.userId,
+          amal: 'OZGARTIRISH',
+          obyektTuri: 'IshBeruvchi',
+          obyektId: b.id,
+          izoh: p.qabul ? 'Иш берувчи тасдиқланди' : `Иш берувчи рад этилди: ${p.sabab ?? 'Маълумот етарли эмас'}`,
+          ip: p.ip ?? null,
+        },
+      });
+    }
+    return r;
   });
 
   if (natija.count === 0) {
@@ -591,6 +621,8 @@ export async function elonniHalQil(p: {
   userId: string;
   qabul: boolean;
   sabab?: string | null;
+  /** So'rov manzili (sayt yo'li beradi; bot yo'lida yo'q) - audit yozuviga tushadi */
+  ip?: string | null;
 }): Promise<{
   ok: boolean;
   lavozim?: string;
@@ -617,27 +649,43 @@ export async function elonniHalQil(p: {
    * раҳбарга боради ва иккови бир вақтда тугма босиши
    * мумкин. Шартни база ёзиш пайтида текширади.
    */
-  const natija = await prisma.vacancy.updateMany({
-    /*
-     * `faol: true` - ish beruvchi e'lonni moderatsiya kutayotganda
-     * o'zi yopib qo'ygan bo'lsa, rahbar uni "tasdiqlab" qayta tiriltira
-     * olmaydi va ish beruvchiga "e'loningiz tasdiqlandi" xabari bormaydi.
-     */
-    where: { id: e.id, moderatsiya: 'KUTILMOQDA', faol: true },
-    data: {
-      moderatsiya: p.qabul ? 'TASDIQLANDI' : 'RAD_ETILDI',
-      /* Ким, қачон ва нега — иш берувчи айнан шуни сўрайди */
-      moderatsiyaQilganId: p.userId,
-      moderatsiyaSanasi: new Date(),
-      moderatsiyaSababi: p.qabul ? null : (p.sabab ?? null),
+  /* Қарор ва аудит — БИТТА транзакцияда (изоҳ `beruvchiniHalQil` да) */
+  const natija = await prisma.$transaction(async (tx) => {
+    const r = await tx.vacancy.updateMany({
       /*
-       * Рад этилган эълон ЁПИЛАДИ ҳам. Акс ҳолда у базада
-       * `faol = true` бўлиб қоларди ва «муддати ўтганларни
-       * ёпиш» жараёнида кутилмаганда қайта пайдо бўлиши
-       * мумкин эди.
+       * `faol: true` - ish beruvchi e'lonni moderatsiya kutayotganda
+       * o'zi yopib qo'ygan bo'lsa, rahbar uni "tasdiqlab" qayta tiriltira
+       * olmaydi va ish beruvchiga "e'loningiz tasdiqlandi" xabari bormaydi.
        */
-      ...(p.qabul ? {} : { faol: false, yopilganSana: new Date() }),
-    },
+      where: { id: e.id, moderatsiya: 'KUTILMOQDA', faol: true },
+      data: {
+        moderatsiya: p.qabul ? 'TASDIQLANDI' : 'RAD_ETILDI',
+        /* Ким, қачон ва нега — иш берувчи айнан шуни сўрайди */
+        moderatsiyaQilganId: p.userId,
+        moderatsiyaSanasi: new Date(),
+        moderatsiyaSababi: p.qabul ? null : (p.sabab ?? null),
+        /*
+         * Рад этилган эълон ЁПИЛАДИ ҳам. Акс ҳолда у базада
+         * `faol = true` бўлиб қоларди ва «муддати ўтганларни
+         * ёпиш» жараёнида кутилмаганда қайта пайдо бўлиши
+         * мумкин эди.
+         */
+        ...(p.qabul ? {} : { faol: false, yopilganSana: new Date() }),
+      },
+    });
+    if (r.count === 1) {
+      await tx.auditLog.create({
+        data: {
+          userId: p.userId,
+          amal: 'OZGARTIRISH',
+          obyektTuri: 'Vacancy',
+          obyektId: e.id,
+          izoh: p.qabul ? 'Эълон тасдиқланди' : `Эълон рад этилди${p.sabab ? `: ${p.sabab}` : ''}`,
+          ip: p.ip ?? null,
+        },
+      });
+    }
+    return r;
   });
 
   if (natija.count === 0) {
@@ -734,8 +782,19 @@ export function beruvchiQaroriMatni(p: {
 
 /** Эълон бўйича қарор матни — бот ва сайт учун БИТТА */
 export function elonQaroriMatni(p: { qabul: boolean; lavozim: string }): string {
+  /*
+   * ── ЕТКАЗИЛИШ ҲАҚИДА ЁЛҒОН АЙТИЛМАЙДИ ──
+   *
+   * Аввал: «туманнинг маҳалла ходимларига хабар кетди». Бу қарор пайтида
+   * НОМАЛУМ эди: Telegram'га уланган ходим йўқ бўлиши, мос маҳалла
+   * топилмаслиги ёки юбориш хато билан тугаши мумкин. Иш берувчи эса
+   * «ҳамма ходим билди» деб ўйлаб, номзод кутиб ўтирарди.
+   *
+   * Энди фақат ТАСДИҚЛАНГАНИ ва хабарнинг навбатга қўйилиши айтилади,
+   * етказилиши кафолатланмаслиги ошкора ёзилади.
+   */
   return p.qabul
-    ? `✅ <b>${xavfsiz(p.lavozim)}</b> эълонингиз тасдиқланди — туманнинг маҳалла ходимларига хабар кетди.`
+    ? `✅ <b>${xavfsiz(p.lavozim)}</b> эълонингиз тасдиқланди ва ходимлар панелида кўринади. Telegram’га уланган маҳалла ходимларига хабар навбат билан юборилади — етказилиши кафолатланмайди.`
     : `❌ <b>${xavfsiz(p.lavozim)}</b> эълонингиз қабул қилинмади. Бандлик маркази билан боғланинг.`;
 }
 

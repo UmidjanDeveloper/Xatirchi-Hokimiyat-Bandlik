@@ -13,10 +13,12 @@ import {
   meniki,
   navbatniOqi,
   navbatniYubor,
+  ruxsatBelgisiniOl,
   type BittaNatija,
   type NavbatNatijalari,
   type NavbatYozuvi,
 } from '@/lib/offline';
+import { XATO_MATNI, xatoToifasi } from '@/lib/xato-toifasi';
 
 /**
  * ============================================================
@@ -103,10 +105,23 @@ async function bittasiniYubor(sorov: unknown): Promise<BittaNatija> {
   /* Ҳақиқий зиддият — ёзув навбатда қолади */
   if (javob.status === 409) return { holat: 'ziddiyat', mavjudId: tana.mavjudId ?? null };
 
-  // Сервер ишламаяпти — кейинроқ уриниш мантиқли
-  if (javob.status >= 500) return { holat: 'aloqa-yoq' };
-  // 400, 401, 403 — қайта юборишдан фойда йўқ
-  return { holat: 'yaroqsiz' };
+  /*
+   * Қолган жавоблар ТУРИГА қараб ажратилади (`xato-toifasi.ts`): сессия
+   * тугагани («қайта киринг») ва рухсат йўқлиги анкетанинг ўзидаги
+   * хатодан фарқ қилади ва «яроқсиз анкета» бўлиб қолмаслиги керак.
+   */
+  switch (xatoToifasi(javob.status)) {
+    case 'qayta-kirish':
+      return { holat: 'qayta-kirish' };
+    case 'ruxsat':
+      return { holat: 'ruxsat' };
+    case 'keyinroq':
+      // Сервер ишламаяпти — кейинроқ уриниш мантиқли
+      return { holat: 'aloqa-yoq' };
+    default:
+      // 400/422 — анкетани тузатиш керак, қайта юборишдан фойда йўқ
+      return { holat: 'yaroqsiz' };
+  }
 }
 
 interface Props {
@@ -133,10 +148,12 @@ export function XatlovNavbati({ egasi }: Props) {
     return m.length;
   }, [egasi]);
 
-  const yubor = useCallback(async () => {
+  const yubor = useCallback(async (qoldaBosildi = false) => {
     if (ishlamoqda) return;
     setIshlamoqda(true);
     try {
+      /* «Рухсат йўқ» белгиси фақат ходим ЎЗИ босганда олинади (қайта уриниш) */
+      if (qoldaBosildi) ruxsatBelgisiniOl(egasi);
       const n = await navbatniYubor(bittasiniYubor, egasi);
       setNatija(n);
       sana();
@@ -164,6 +181,7 @@ export function XatlovNavbati({ egasi }: Props) {
   const soni = mening.length;
   const etibor = mening.filter(etiborTalabQiladi).length;
   const ziddiyatlilar = mening.filter((y) => y.ziddiyat);
+  const ruxsatsizlar = mening.filter((y) => y.ruxsat);
 
   /* Ҳеч нарса йўқ — чизиқ умуман кўринмайди */
   if (soni === 0 && boshqalar === 0 && egasizlar === 0 && !natija) return null;
@@ -209,7 +227,7 @@ export function XatlovNavbati({ egasi }: Props) {
 
           <button
             type="button"
-            onClick={() => void yubor()}
+            onClick={() => void yubor(true)}
             disabled={ishlamoqda}
             className="flex shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
           >
@@ -247,6 +265,27 @@ export function XatlovNavbati({ egasi }: Props) {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {natija?.qaytaKirish && !ishlamoqda && (
+          <p className="mt-2 text-[11px] font-medium text-warn" role="alert">
+            {tr(XATO_MATNI['qayta-kirish'])}{' '}
+            <Link href="/kirish" className="font-semibold text-accent underline underline-offset-2">
+              {tr('Қайта кириш')}
+            </Link>
+          </p>
+        )}
+
+        {ruxsatsizlar.length > 0 && (
+          <div className="mt-2.5 rounded-md border border-line bg-surface p-2.5">
+            <p className="text-[11px] font-semibold text-ink">
+              {tr('Рухсат масаласи:')} <span className="raqam">{ruxsatsizlar.length}</span>{' '}
+              {tr('та хатлов')}
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+              {tr(XATO_MATNI.ruxsat)}
+            </p>
           </div>
         )}
 

@@ -50,10 +50,23 @@ interface Natija {
 interface Javob {
   ok: boolean;
   yozildi?: boolean;
+  /** Bu fayl avval yozilgan edi: takror yozilmadi, saqlangan natija */
+  allaqachon?: boolean;
   xabar?: string;
+  /** Server «ko'rish» ni shu yozuv bilan bog'lagan: «yozish» faqat shu bilan ishlaydi */
+  yuklashId?: string;
+  /** Faylning SHA-256 izi: faylning O'ZGARMAGANINI ko'rsatadi, haqiqiy ekanini emas */
+  faylIzi?: string;
+  oldingiYozilgan?: { id: string; sana: string | null } | null;
+  yuklash?: { id: string; holati: string; jami: number | null; yozilgan: number; takror: number } | null;
   ustunlar?: { ism: string; ishJoyi: string | null; sana: string | null };
   natija?: Natija;
 }
+
+const BUGUN = () => {
+  /* Toshkent kuni: UTC+5 */
+  return new Date(Date.now() + 5 * 3600_000).toISOString().slice(0, 10);
+};
 
 export function ReyestrYuklash() {
   const { t: tr } = useAlifbo();
@@ -61,7 +74,8 @@ export function ReyestrYuklash() {
 
   const faylRef = useRef<HTMLInputElement>(null);
   const [fayl, setFayl] = useState<File | null>(null);
-  const [sana, setSana] = useState(() => new Date().toISOString().slice(0, 10));
+  const [sana, setSana] = useState(() => BUGUN());
+  const [manba, setManba] = useState('');
   const [band, setBand] = useState(false);
   const [xato, setXato] = useState<string | null>(null);
   const [javob, setJavob] = useState<Javob | null>(null);
@@ -74,13 +88,20 @@ export function ReyestrYuklash() {
       const forma = new FormData();
       forma.append('fayl', fayl);
       forma.append('sana', sana);
-      if (yoz) forma.append('yoz', '1');
+      forma.append('manba', manba);
+      if (yoz) {
+        /* Yozish faqat serverdagi «ko'rish» yozuvi bilan ishlaydi */
+        if (!javob?.yuklashId) return;
+        forma.append('yoz', '1');
+        forma.append('yuklashId', javob.yuklashId);
+      }
 
       const javobXom = await fetch('/api/reyestr', { method: 'POST', body: forma });
       const n: Javob = await javobXom.json();
       if (!javobXom.ok || !n.ok) {
         setXato(n.xabar ?? 'Yuklab boʻlmadi');
-        setJavob(null);
+        /* Yozish uzilsa ko'rish natijasi QOLADI: xuddi shu bilan qayta bosilsa davom etadi */
+        if (!yoz) setJavob(null);
         return;
       }
       setJavob(n);
@@ -113,6 +134,7 @@ export function ReyestrYuklash() {
           accept=".xlsx,.xls,.csv"
           onChange={(e) => {
             setFayl(e.target.files?.[0] ?? null);
+            /* Boshqa fayl tanlandi: eski «ko'rish» unga tegishli emas */
             setJavob(null);
             setXato(null);
           }}
@@ -123,11 +145,28 @@ export function ReyestrYuklash() {
           <input
             type="date"
             value={sana}
-            onChange={(e) => setSana(e.target.value)}
+            min="2020-01-01"
+            max={BUGUN()}
+            onChange={(e) => {
+              setSana(e.target.value);
+              /* Сана ўзгарса, кўриш ёзуви ярамайди — қайта кўриш керак */
+              setJavob(null);
+            }}
             className="maydon"
           />
         </label>
       </div>
+
+      <label className="block text-xs text-ink-muted">
+        {tr('Кўчирмани берган ташкилот (ихтиёрий)')}
+        <input
+          type="text"
+          value={manba}
+          maxLength={120}
+          onChange={(e) => setManba(e.target.value)}
+          className="maydon mt-1 w-full"
+        />
+      </label>
 
       <div className="flex flex-wrap gap-2">
         <button
@@ -145,7 +184,7 @@ export function ReyestrYuklash() {
           чиқса, администратор натижани кўрмасдан босарди —
           ва икки қадамнинг маъноси қоларди.
         */}
-        {javob && !javob.yozildi && n && n.mos > 0 && (
+        {javob && javob.yuklashId && !javob.yozildi && n && n.mos > 0 && (
           <button
             type="button"
             disabled={band}
@@ -166,6 +205,34 @@ export function ReyestrYuklash() {
           {javob.ustunlar.ishJoyi ? ` · ${javob.ustunlar.ishJoyi}` : ''}
           {javob.ustunlar.sana ? ` · ${javob.ustunlar.sana}` : ''}
         </p>
+      )}
+
+      {javob?.faylIzi && (
+        <p className="text-xs text-ink-faint">
+          {tr('Файл изи')}: <span className="font-mono">{javob.faylIzi.slice(0, 12)}…</span>
+          {javob.yuklashId ? (
+            <>
+              {' · '}
+              {tr('Юклаш')}: <span className="font-mono">{javob.yuklashId.slice(-8)}</span>
+            </>
+          ) : null}
+          {' — '}
+          {tr('из файл ўзгармаганини кўрсатади, ҳақиқий эканини эмас')}
+        </p>
+      )}
+
+      {javob?.oldingiYozilgan && !javob.yozildi && (
+        <p className="text-xs text-warn">
+          ⚠ {tr('Бу файл шу сана билан аввал ёзилган — қайта ёзилса, такрор далил яратилмайди.')}
+        </p>
+      )}
+
+      {javob?.allaqachon && javob.yuklash && (
+        <div className="rounded-md border border-line bg-surface-muted p-3 text-sm text-ink">
+          {tr('Бу юклаш аввал ёзилган — такрор ёзилмади.')}{' '}
+          {tr('Ёзилган далиллар')}: {javob.yuklash.yozilgan}
+          {javob.yuklash.takror > 0 ? ` · ${tr('такрор')}: ${javob.yuklash.takror}` : ''}
+        </div>
       )}
 
       {n && (
