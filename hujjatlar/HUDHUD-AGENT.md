@@ -3,16 +3,23 @@
 **Kimga:** hokim, bandlik markazi mutaxassisi va rahbari, administrator.
 Mahalla yettiligi a'zosiga ko'rinmaydi. «Ko'rish rejimi»da ham yo'q.
 
-**Maskot va nom (2026-10-02 dan): Koala.** Egasi tanlagan koala rasmi (`public/maskot/`,
-WebP 128/256 + PNG zaxira, shaffof fon; komponent — `src/components/agent/maskot.tsx`).
+**Maskot va nom (2026-10-02 dan): Koala.** Egasi tanlagan koala rasmlari — **har bir holat
+uchun alohida poza** (`public/maskot/koala-v2-<holat>-{128,256}.webp` + `-128.png` zaxira,
+shaffof fon): `tayyor` — tik turibdi; `eshitmoqda` — qulog'iga qo'l tutgan; `oylamoqda` —
+iyagiga qo'l qo'ygan; `gapirmoqda` — og'zi ochiq, qo'li bilan ishora qilmoqda.
+To'rttasi bir xil kesimda tayyorlangan: poza almashganda koala o'lchami va o'rni sakramaydi.
+Tugma (har sahifada) faqat "tayyor" pozani yuklaydi (oddiy ekranda ~8 KB, zich ekranda ~19 KB); suhbat oynasi to'rttasini
+oldindan yuklaydi (poza almashganda rasm kutib turmaydi). Komponent —
+`src/components/agent/maskot.tsx`.
 Foydalanuvchiga ko'rinadigan nom — **Koala (Коала)**: tugma, oyna sarlavhasi, salom
 («Мен Коаламан»), rad matnlari va tizim ko'rsatmasi. Avval maskot supurgichi qush (Hudhud)
 edi; **ichki nomlar** (hujjat va fayl nomi `HUDHUD-AGENT`, voqea `hudhud:hisobot`, kalit
 `hudhud:suhbat:`/`hudhud:ovozli`, `AgentFoydalanish`/`AgentAmali` jadvallari) saqlandi —
 ularni o'zgartirish saqlangan suhbatlarni va hisobot tugmalari bilan aloqani buzardi.
-Holat (eshitmoqda / o'ylamoqda / gapirmoqda) burchakdagi **belgi** bilan ko'rinadi (rang va
+Poza holatni o'zi aytadi, lekin kichik o'lchamda ajralmay qolishi mumkin, shuning uchun
+holat (eshitmoqda / o'ylamoqda / gapirmoqda) burchakdagi **belgi** bilan ham ko'rinadi (rang va
 harakatsiz ham tushunarli); harakat faqat `prefers-reduced-motion: no-preference` va zaif
-qurilma bo'lmaganda. Rasmni almashtirish: yangi fayllarni `public/maskot/koala-v2-*` deb
+qurilma bo'lmaganda. Rasmni almashtirish: yangi fayllarni `public/maskot/koala-v3-*` deb
 qo'ying va `MASKOT_RASMI` yo'llarini yangilang (nomda versiya — kesh eskirmaydi). Sinov: `scripts/maskot-sinov.ts`.
 
 ## Nima qiladi

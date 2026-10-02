@@ -550,13 +550,12 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: '13k. Koala maskot rasmlari kirishsiz ham beriladi (middleware to\'sib qo\'ymaydi), to\'g\'ri turda, uzoq muddat keshlanadi; rasm bor-yo\'qligi yo\'l orqali tekshiriladi',
+    nomi: '13k. Koala maskotning to\'rtta holat rasmi (12 fayl) kirishsiz ham beriladi (middleware to\'sib qo\'ymaydi), to\'g\'ri turda, uzoq muddat keshlanadi; rasm bor-yo\'qligi yo\'l orqali tekshiriladi',
     tekshir: async () => {
-      const yollar: [string, string][] = [
-        ['/maskot/koala-v1-128.webp', 'image/webp'],
-        ['/maskot/koala-v1-256.webp', 'image/webp'],
-        ['/maskot/koala-v1-128.png', 'image/png'],
-      ];
+      const yollar: [string, string][] = [];
+      for (const h of ['tayyor', 'eshitmoqda', 'oylamoqda', 'gapirmoqda']) {
+        yollar.push([`/maskot/koala-v2-${h}-128.webp`, 'image/webp'], [`/maskot/koala-v2-${h}-256.webp`, 'image/webp'], [`/maskot/koala-v2-${h}-128.png`, 'image/png']);
+      }
       for (const [yol, tur] of yollar) {
         const r = await fetch(`${BAZA}${yol}`, { redirect: 'manual' });
         const bayt = (await r.arrayBuffer()).byteLength;

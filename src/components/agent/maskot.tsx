@@ -2,49 +2,80 @@
  * ============================================================
  *  KOALA — ovozli yordamchining maskoti
  *
- *  Maskot — foydalanuvchi tanlagan koala rasmi (`public/maskot/`):
- *  128 va 256 piksel, WebP (shaffof fon) va PNG zaxira. Rasm shaffof,
- *  shuning uchun orqasida och rangli "disk" turadi: qorong'i temada ham
- *  kulrang tanasi aniq ko'rinadi.
+ *  Maskot — foydalanuvchi tanlagan koala rasmlari (`public/maskot/`):
+ *  HAR BIR HOLAT UCHUN ALOHIDA POZA (tayyor, eshitmoqda, oylamoqda,
+ *  gapirmoqda). Hammasi bir xil kesimda: poza almashganda koala o'lchami
+ *  va o'rni sakramaydi. 128 va 256 piksel, WebP (shaffof fon) va PNG zaxira.
+ *  Rasm shaffof, shuning uchun orqasida och rangli "disk" turadi:
+ *  qorong'i temada ham kulrang tanasi aniq ko'rinadi.
  *
  *  Ichki nomlar (`agent`, `hudhud:*` voqea va kalit nomlari) oldingi
  *  nomdan qolgan: ularni o'zgartirish saqlangan suhbatlarni va hisobot
  *  tugmalari bilan aloqani buzardi. Foydalanuvchiga ko'rinadigan nom — Koala.
  *
  *  ── Holatlar RANGDAN va HARAKATDAN tashqari ham ko'rinadi ──
- *  GPT §16: holat matn va belgi orqali tushuntirilsin. Rasm bitta, shuning
- *  uchun holat burchakdagi BELGI bilan ko'rsatiladi:
+ *  GPT §16: holat matn va belgi orqali tushuntirilsin. Poza o'zi ham
+ *  holatni aytadi (qulog'iga qo'l — eshitmoqda, iyagiga qo'l — oylamoqda,
+ *  ochiq og'iz — gapirmoqda), lekin poza kichik o'lchamda (40 px) ajralmay
+ *  qolishi mumkin, shuning uchun burchakdagi BELGI ham saqlangan:
  *    · eshitmoqda  — ovoz yoylari;
  *    · oylamoqda   — uch nuqta;
  *    · gapirmoqda  — uch ustunli tovush chizig'i;
  *    · tayyor      — belgisiz.
- *  Harakat (nafas olish, quloq qimirlashi) faqat `prefers-reduced-motion`
- *  va `data-fx="lite"` (zaif qurilma) bo'lmaganda ishlaydi; belgilar esa
- *  doim joyida turadi.
+ *  Harakat (nafas olish va hokazo) faqat `prefers-reduced-motion` va
+ *  `data-fx="lite"` (zaif qurilma) bo'lmaganda ishlaydi; poza va belgilar
+ *  esa doim joyida turadi.
+ *
+ *  Yuklash: tugma (har sahifada) faqat "tayyor" pozani yuklaydi. Suhbat
+ *  oynasi `hammasi` bilan to'rttasini birdan yuklaydi — poza almashganda
+ *  rasm kutib turmaydi va miltillamaydi.
  * ============================================================
  */
 
 export type MaskotHolati = 'tayyor' | 'eshitmoqda' | 'oylamoqda' | 'gapirmoqda';
 
+export const MASKOT_HOLATLARI: readonly MaskotHolati[] = ['tayyor', 'eshitmoqda', 'oylamoqda', 'gapirmoqda'];
+
 /** Rasm manzillari (nomda versiya: rasm almashsa nom ham o'zgaradi, kesh eskirmaydi) */
-export const MASKOT_RASMI = {
-  webp1x: '/maskot/koala-v1-128.webp',
-  webp2x: '/maskot/koala-v1-256.webp',
-  png: '/maskot/koala-v1-128.png',
-} as const;
+export const MASKOT_RASMI: Record<MaskotHolati, { webp1x: string; webp2x: string; png: string }> = {
+  tayyor: {
+    webp1x: '/maskot/koala-v2-tayyor-128.webp',
+    webp2x: '/maskot/koala-v2-tayyor-256.webp',
+    png: '/maskot/koala-v2-tayyor-128.png',
+  },
+  eshitmoqda: {
+    webp1x: '/maskot/koala-v2-eshitmoqda-128.webp',
+    webp2x: '/maskot/koala-v2-eshitmoqda-256.webp',
+    png: '/maskot/koala-v2-eshitmoqda-128.png',
+  },
+  oylamoqda: {
+    webp1x: '/maskot/koala-v2-oylamoqda-128.webp',
+    webp2x: '/maskot/koala-v2-oylamoqda-256.webp',
+    png: '/maskot/koala-v2-oylamoqda-128.png',
+  },
+  gapirmoqda: {
+    webp1x: '/maskot/koala-v2-gapirmoqda-128.webp',
+    webp2x: '/maskot/koala-v2-gapirmoqda-256.webp',
+    png: '/maskot/koala-v2-gapirmoqda-128.png',
+  },
+};
 
 export function Maskot({
   holat = 'tayyor',
   olcham = 40,
   sarlavha,
+  hammasi = false,
   className = '',
 }: {
   holat?: MaskotHolati;
   olcham?: number;
   /** Ekran o'quvchi uchun nom; berilmasa bezak sifatida yashiriladi */
   sarlavha?: string;
+  /** To'rtta pozani ham oldindan yuklaydi (suhbat oynasi); aks holda faqat joriy poza */
+  hammasi?: boolean;
   className?: string;
 }) {
+  const pozalar = hammasi ? MASKOT_HOLATLARI : [holat];
   return (
     <span
       className={`maskot maskot-${holat} ${className}`}
@@ -54,20 +85,22 @@ export function Maskot({
       aria-hidden={sarlavha ? undefined : true}
     >
       <span className="maskot-disk" />
-      <picture>
-        <source type="image/webp" srcSet={`${MASKOT_RASMI.webp1x} 1x, ${MASKOT_RASMI.webp2x} 2x`} />
-        {/* Oldindan optimallashtirilgan statik rasm: `next/image` qayta ishlashi shart emas */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={MASKOT_RASMI.png}
-          alt=""
-          width={olcham}
-          height={olcham}
-          decoding="async"
-          draggable={false}
-          className="maskot-rasm"
-        />
-      </picture>
+      {pozalar.map((h) => (
+        <picture key={h} className={`maskot-poza${h === holat ? ' maskot-poza-faol' : ''}`}>
+          <source type="image/webp" srcSet={`${MASKOT_RASMI[h].webp1x} 1x, ${MASKOT_RASMI[h].webp2x} 2x`} />
+          {/* Oldindan optimallashtirilgan statik rasm: `next/image` qayta ishlashi shart emas */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={MASKOT_RASMI[h].png}
+            alt=""
+            width={olcham}
+            height={olcham}
+            decoding="async"
+            draggable={false}
+            className="maskot-rasm"
+          />
+        </picture>
+      ))}
 
       {holat !== 'tayyor' && (
         <svg className="maskot-belgi" viewBox="0 0 40 40" focusable="false" aria-hidden="true">
