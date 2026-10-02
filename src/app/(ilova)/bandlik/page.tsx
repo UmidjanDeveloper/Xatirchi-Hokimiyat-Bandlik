@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Hisoblash } from '@/components/shared/hisoblash';
 import { TasdiqlashNavbati } from '@/components/telegram/tasdiqlash-navbati';
 import { matnchi } from '@/lib/alifbo-server';
 import { redirect } from 'next/navigation';
@@ -314,6 +315,17 @@ export default async function BandlikSahifasi({
     0
   );
 
+  /*
+   * «Ёзувларни кўриш» ҳаволалари қамровни сақлайди: битта МФЙ танланган
+   * бўлса, рўйхат ҳам шу МФЙ бўйича очилади. Бу саҳифани очиш ҳуқуқи
+   * бор барча ролларда (`bandlikIshi`) рўйхат саҳифалари ҳам очилади.
+   */
+  const mfyQism = mahallaId ? `mahalla=${encodeURIComponent(mahallaId)}` : '';
+  const royxatYoli = (asos: string, shart?: string) => {
+    const q = [shart, mfyQism].filter(Boolean).join('&');
+    return q ? `${asos}?${q}` : asos;
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -367,18 +379,49 @@ export default async function BandlikSahifasi({
           nomi={tr("Суҳбат кутмоқда")}
           qiymat={t.voronka[0].soni - t.voronka[1].soni}
           xavfli={t.voronka[0].soni - t.voronka[1].soni > 30}
+          hisob={{
+            usuli: 'Ҳолати «Аниқланди» бўлган ишсиз фуқаролар сони: шахсий анкетаси бор, аммо суҳбат ўтказилмаган.',
+            manbasi: 'Ишсиз фуқаро ёзувларининг ҳолати (архивга ўтказилганлар олинмайди). Воронка кумулятив бўлгани учун сон «аниқланганлар» ва «суҳбат ўтганлар» фарқидан олинади.',
+            yol: royxatYoli('/ishsizlar', 'holati=ANIQLANDI'),
+            yolNomi: 'Суҳбат кутаётганлар рўйхати',
+          }}
+          tr={tr}
         />
         <Kpi
           ikonka={<Target className="h-4 w-4" />}
           nomi={tr("Таклиф кутмоқда")}
           qiymat={t.voronka[1].soni - t.voronka[2].soni}
+          hisob={{
+            usuli: 'Ҳолати «Суҳбат ўтказилди» бўлган фуқаролар сони: суҳбатдан ўтган, аммо таклиф берилмаган.',
+            manbasi: 'Ишсиз фуқаро ёзувларининг ҳолати (архивга ўтказилганлар олинмайди).',
+            yol: royxatYoli('/ishsizlar', 'holati=SUHBAT_OTKAZILDI'),
+            yolNomi: 'Таклиф кутаётганлар рўйхати',
+          }}
+          tr={tr}
         />
         <Kpi
           ikonka={<GraduationCap className="h-4 w-4" />}
           nomi={tr("Бўш иш ўрни")}
           qiymat={boshOrinlar}
+          hisob={{
+            usuli: 'Кучдаги эълонлар бўйича (тасдиқланган, муддати ўтмаган) ҳар бир эълоннинг жами ўринларидан банд қилинганлари айирилади; айирма манфий бўлса нол олинади, кейин эълонлар бўйича қўшилади.',
+            manbasi: 'Иш ўринлари эълонлари ва жойлаштириш ёзувлари.',
+            yol: mahallaId ? undefined : '/ish-orinlari',
+            yolNomi: 'Эълонлар рўйхатини кўриш',
+          }}
+          tr={tr}
         />
-        <Kpi ikonka={<Plane className="h-4 w-4" />} nomi={tr("Миграция номзоди")} qiymat={migratsiya} />
+        <Kpi
+          ikonka={<Plane className="h-4 w-4" />}
+          nomi={tr("Миграция номзоди")}
+          qiymat={migratsiya}
+          hisob={{
+            usuli: 'Таклифлар рўйхатида «Хорижга меҳнат миграцияси» белгиланган ишсиз фуқаролар сони.',
+            manbasi: 'Ишсиз фуқаро шахсий анкетасидаги «таклифлар» майдони (архивга ўтказилганлар олинмайди).',
+            ogohlik: 'Бу — ходим белгилаган таклиф: ҳақиқатда чиқиб кетганлар сони эмас.',
+          }}
+          tr={tr}
+        />
       </div>
 
       {/*
@@ -404,6 +447,12 @@ export default async function BandlikSahifasi({
           xavfli={t.jami.uzoqIshsiz > 0}
           yol="/ishsizlar?uzoq=1"
           izoh={tr('энг заиф гуруҳ — аввал шулар чақирилсин')}
+          hisob={{
+            usuli: 'Ҳали жойлашмаган (аниқланди, суҳбат ўтказилди, таклиф берилди) фуқаролардан: ишдан бошаган санаси 12 ой ва ундан олдин бўлганлар. Сана ёзилмаган бўлса — хонадон анкетасидаги ишсизлик муддати 12 ойдан кам бўлмаганлар.',
+            manbasi: 'Ишсиз фуқаро ёзувлари ва хонадон анкетаси (архивга ўтказилганлар олинмайди).',
+            ogohlik: 'Сана ёзилмаган фуқаро учун муддат хонадон анкетасидаги тахминий рақамдан олинади.',
+          }}
+          tr={tr}
         />
         <Kpi
           ikonka={<ClipboardCheck className="h-4 w-4" />}
@@ -412,6 +461,11 @@ export default async function BandlikSahifasi({
           xavfli={t.jami.tekshiruvKutayotgan > 0}
           yol="/ishsizlar?tekshiruv=1"
           izoh={tr('жойлаштирилгани 3 ойдан ошди, тасдиқланмаган')}
+          hisob={{
+            usuli: 'Ҳолати «Жойлаштирилди» бўлиб, ишга кирган санасидан 90 кун ва ундан кўп ўтган, аммо ҳали «Тасдиқланди» га ўтмаган фуқаролар сони.',
+            manbasi: 'Ишсиз фуқаро ёзувларининг ҳолати ва ишга кирган санаси.',
+          }}
+          tr={tr}
         />
         <Kpi
           ikonka={<UserX className="h-4 w-4" />}
@@ -419,6 +473,11 @@ export default async function BandlikSahifasi({
           qiymat={t.jami.radEtgan}
           yol="/ishsizlar?holati=RAD_ETDI"
           izoh={tr('воронкадан чиқиб кетган')}
+          hisob={{
+            usuli: 'Ҳолати «Рад этди» бўлган фуқаролар сони. Улар воронка бўйича (суҳбат, таклиф, жойлаштирилган) сонларга кирмайди.',
+            manbasi: 'Ишсиз фуқаро ёзувларининг ҳолати (архивга ўтказилганлар олинмайди).',
+          }}
+          tr={tr}
         />
       </div>
 
@@ -622,7 +681,9 @@ function Kpi({
   qiymat,
   xavfli,
   yol,
-  izoh }: {
+  izoh,
+  hisob,
+  tr }: {
   ikonka: React.ReactNode;
   nomi: string;
   qiymat: number;
@@ -630,6 +691,19 @@ function Kpi({
   /** Берилса — карта босилади ва рўйхатга олиб боради */
   yol?: string;
   izoh?: string;
+  /**
+   * «Қандай ҳисобланган»: рақам қандай чиққани, манбаси ва (бўлса) остидаги
+   * ёзувларга ҳавола. Карточкадан ТАШҚАРИДА туради — `<a>` ичига
+   * интерактив элемент қўйиб бўлмайди.
+   */
+  hisob?: {
+    usuli: string;
+    manbasi: string;
+    ogohlik?: string;
+    yol?: string;
+    yolNomi?: string;
+  };
+  tr?: (m: string) => string;
 }) {
   const ichi = (
     <>
@@ -648,18 +722,27 @@ function Kpi({
    * қила олади? Илгари рақам чиқарди-ю, ортидан ҳеч нарса
    * йўқ эди.
    */
-  if (yol) {
-    return (
-      <Link
-        href={yol}
-        className={`metric-card karta karta-bosiladigan p-4 ${xavfli ? 'border-warn' : ''}`}
-      >
-        {ichi}
-      </Link>
-    );
-  }
+  const karta = yol ? (
+    <Link
+      href={yol}
+      className={`metric-card karta karta-bosiladigan p-4 ${xavfli ? 'border-warn' : ''}`}
+    >
+      {ichi}
+    </Link>
+  ) : (
+    <div className={`metric-card karta p-4 ${xavfli ? 'border-warn' : ''}`}>{ichi}</div>
+  );
 
-  return <div className={`metric-card karta p-4 ${xavfli ? 'border-warn' : ''}`}>{ichi}</div>;
+  if (!hisob || !tr) return karta;
+
+  return (
+    <div>
+      {karta}
+      <div className="px-1">
+        <Hisoblash {...hisob} tr={tr} />
+      </div>
+    </div>
+  );
 }
 
 interface NavbatOdami {

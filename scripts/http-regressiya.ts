@@ -58,7 +58,7 @@ const rad = (r: Javob) => [401, 403, 404].includes(r.status) || (r.status >= 300
 /** Ruxsat berildi: 200 va yo'naltirish yo'q */
 const ruxsat = (r: Javob) => r.status === 200 && !/NEXT_REDIRECT/.test(r.matn);
 
-async function xodimYarat(rol: 'YETTILIK' | 'HOKIM' | 'BANDLIK', mahallaId: string | null, nom: string) {
+async function xodimYarat(rol: 'YETTILIK' | 'HOKIM' | 'BANDLIK' | 'BANDLIK_RAHBAR', mahallaId: string | null, nom: string) {
   const x = await prisma.user.create({
     data: {
       username: `${BELGI}_${nom}`.toLowerCase(),
@@ -321,6 +321,48 @@ const SINOVLAR: Sinov[] = [
     tekshir: async () => {
       const r = await Promise.all(['/api/health/x', '/api/healthz', '/api/health/readiness/x'].map((y) => sorov(y)));
       return r.every((x) => x.status === 401);
+    },
+  },
+  /* ══ 12. HISOBLASH USULI (GPT §16): raqam qanday chiqqani ko'rinadi, havola ruxsat doirasida ══ */
+  {
+    nomi: '12a. /panel HOKIM uchun: 9 ta asosiy raqamning har birida «Qanday hisoblangan» bor; yozuvlar ro\'yxatiga havola YO\'Q (hokim ro\'yxatni ocha olmaydi)',
+    tekshir: async () => {
+      const x = await xodimYarat('HOKIM', null, 'hokim_hisob');
+      const c = await kirish(x.username);
+      const r = await sorov('/panel', { cookie: c.cookie });
+      if (!ruxsat(r)) return false;
+      const bloklar = r.matn.match(/<details[\s\S]*?<\/details>/g) ?? [];
+      const hisoblar = bloklar.filter((b) => /(Қандай ҳисобланган|Qanday hisoblangan)/.test(b));
+      const havolali = hisoblar.filter((b) => /href="\/(xonadonlar|ishsizlar)/.test(b));
+      return hisoblar.length === 9 && havolali.length === 0;
+    },
+  },
+  {
+    nomi: '12b. /panel BANDLIK RAHBARI uchun: 9 ta blok bor va ikkitasida (xonadonlar, ishsizlar) ruxsat doirasidagi yozuvlar havolasi bor',
+    tekshir: async () => {
+      const x = await xodimYarat('BANDLIK_RAHBAR', null, 'rahbar_hisob');
+      const c = await kirish(x.username);
+      const r = await sorov('/panel', { cookie: c.cookie });
+      if (!ruxsat(r)) return false;
+      const bloklar = r.matn.match(/<details[\s\S]*?<\/details>/g) ?? [];
+      const hisoblar = bloklar.filter((b) => /(Қандай ҳисобланган|Qanday hisoblangan)/.test(b));
+      const xon = hisoblar.filter((b) => /href="\/xonadonlar/.test(b)).length;
+      const ish = hisoblar.filter((b) => /href="\/ishsizlar/.test(b)).length;
+      return hisoblar.length === 9 && xon === 1 && ish === 1;
+    },
+  },
+  {
+    nomi: '12c. /bandlik: 7 ta asosiy raqamning har birida «Qanday hisoblangan» bor; holat bo\'yicha ro\'yxatga havola holat filtrini saqlaydi',
+    tekshir: async () => {
+      const x = await xodimYarat('BANDLIK_RAHBAR', null, 'rahbar_bandlik_hisob');
+      const c = await kirish(x.username);
+      const r = await sorov('/bandlik', { cookie: c.cookie });
+      if (!ruxsat(r)) return false;
+      const bloklar = r.matn.match(/<details[\s\S]*?<\/details>/g) ?? [];
+      const hisoblar = bloklar.filter((b) => /(Қандай ҳисобланган|Qanday hisoblangan)/.test(b));
+      const anik = hisoblar.filter((b) => /href="\/ishsizlar\?holati=ANIQLANDI"/.test(b)).length;
+      const suhbat = hisoblar.filter((b) => /href="\/ishsizlar\?holati=SUHBAT_OTKAZILDI"/.test(b)).length;
+      return hisoblar.length === 7 && anik === 1 && suhbat === 1;
     },
   },
   {

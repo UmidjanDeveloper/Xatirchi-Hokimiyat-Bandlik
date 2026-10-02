@@ -107,6 +107,11 @@ jobs:
       - name: Tiplar
         run: npx tsc --noEmit -p tsconfig.json
 
+      # Lint avval CI'da yo'q edi: xato faqat qo'lda `npm run lint`
+      # yurgizilganda ko'rinardi. Hozir 0 ogohlantirish bilan o'tadi.
+      - name: Lint
+        run: npm run lint
+
       - name: Sinovlar
         run: npm run sinov
 

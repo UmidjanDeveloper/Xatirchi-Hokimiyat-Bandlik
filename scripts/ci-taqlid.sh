@@ -67,6 +67,8 @@ echo "▸ Boshlang'ich ma'lumot"
 npx prisma db seed >/dev/null
 echo "▸ Tiplar"
 npx tsc --noEmit -p tsconfig.json
+echo "▸ Lint"
+npm run lint
 echo "▸ Sinovlar"
 npm run sinov
 

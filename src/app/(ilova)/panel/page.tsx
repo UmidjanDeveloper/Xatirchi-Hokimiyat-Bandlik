@@ -39,6 +39,7 @@ import { bolimlarTahlili } from '@/lib/bolimlar-tahlili';
 import { HududXaritasi } from '@/components/xarita/hudud-xaritasi';
 import { xaritaMalumoti } from '@/lib/xarita/xarita-malumoti';
 import { VaucherNavbati } from '@/components/it-vaucher/vaucher-navbati';
+import { Hisoblash } from '@/components/shared/hisoblash';
 import { KuzatuvKorsatkichBlogi } from '@/components/kuzatuv/korsatkich-blogi';
 import { vaucherHisobi, vaucherNavbati } from '@/lib/it-vaucher';
 
@@ -133,6 +134,15 @@ export default async function PanelSahifasi({
   const tavsiyalar = tavsiyalarniHisobla(t);
 
   const bosh = t.jami;
+
+  /*
+   * «Ёзувларни кўриш» ҳаволаси — ФАҚАТ рўйхат саҳифасини очиш ҳуқуқи бор
+   * роллар учун. Ҳоким рўйхатларни (`/xonadonlar`, `/ishsizlar`) очолмайди:
+   * унга ҳавола кўрсатсак, у «рухсат йўқ» га тушарди. Ҳавола қамровни
+   * сақлайди: битта МФЙ танланган бўлса, рўйхат ҳам шу МФЙ бўйича очилади.
+   */
+  const yozuvlarKoradi = sessiya.rol === 'BANDLIK_RAHBAR' || sessiya.rol === 'ADMIN';
+  const mfyQism = mahallaId ? `?mahalla=${encodeURIComponent(mahallaId)}` : '';
 
   /*
    * ── МУНДАРИЖА ──
@@ -317,6 +327,13 @@ export default async function PanelSahifasi({
             nomi={tr("Хатловдан ўтган хонадон")}
             qiymat={raqam(bosh.xatlovXonadon)}
             izoh={tr(`${raqam(bosh.bazaXonadon)} тадан · ${percent(bosh.xatlovXonadon, bosh.bazaXonadon)}%`)}
+            hisob={{
+              usuli: 'Тугалланган хатлов анкеталари сони: қоралама ва архивга ўтказилган (ўчирилган) хонадонлар санамайди. Тагидаги фоиз — шу соннинг маҳалла статистикаси жадвалидаги хонадонлар сонига нисбати.',
+              manbasi: 'Хонадон хатлов анкеталари. Маҳалла танланган бўлса — фақат шу маҳалла.',
+              yol: yozuvlarKoradi ? `/xonadonlar${mfyQism}` : undefined,
+              yolNomi: 'Хонадонлар рўйхатини кўриш',
+            }}
+            tr={tr}
           />
           {/*
             ── ИККИТА БОШҚА-БОШҚА РАҚАМ ──
@@ -340,6 +357,12 @@ export default async function PanelSahifasi({
             nomi={tr("Хатловда топилган ишсиз")}
             qiymat={raqam(bosh.xatlovdaTopilgan)}
             izoh={tr(`Рўйхатда ${raqam(bosh.bazaIshsiz)} та · ${percent(bosh.xatlovdaTopilgan, bosh.bazaIshsiz)}%`)}
+            hisob={{
+              usuli: 'Хонадон анкеталарида ходим «хонадонда неча ишсиз бор» деб ёзган сонларнинг йиғиндиси. Бу шахсий анкета ёзувлари сони эмас.',
+              manbasi: 'Хонадон анкетасидаги «ишсизлар сони» майдони (қоралама ва архив олинмайди). Тагидаги фоиз — маҳалла статистикаси жадвалидаги ишсизлар сонига нисбати.',
+              ogohlik: 'Бу — ходим кўрсатган сон: у шахсий анкеталар билан алоҳида тасдиқланмаган.',
+            }}
+            tr={tr}
           />
           <Kpi
             ikonka={<UserCheck className="h-4 w-4" />}
@@ -351,6 +374,14 @@ export default async function PanelSahifasi({
                 : tr('Барчаси билан суҳбат ўтказилган')
             }
             ogoh={bosh.anketasiz > 0}
+            hisob={{
+              usuli: 'Шахсий анкетаси тўлдирилган ишсиз фуқаролар сони — барча ҳолатларда (суҳбат, таклиф, жойлаштирилган, рад этган ва ҳоказо).',
+              manbasi: 'Ишсиз фуқаро ёзувлари (архивга ўтказилганлар олинмайди).',
+              ogohlik: 'Хатловда топилган, аммо шахсий анкетаси йўқ фуқаролар бу сонга кирмайди.',
+              yol: yozuvlarKoradi ? `/ishsizlar${mfyQism}` : undefined,
+              yolNomi: 'Ишсизлар рўйхатини кўриш',
+            }}
+            tr={tr}
           />
           <Kpi
             ikonka={<Briefcase className="h-4 w-4" />}
@@ -358,12 +389,24 @@ export default async function PanelSahifasi({
             qiymat={raqam(bosh.joylashtirilgan)}
             izoh={tr(`Топилганларнинг ${percent(bosh.joylashtirilgan, bosh.xatlovdaTopilgan)}%`)}
             yaxshi
+            hisob={{
+              usuli: '«Жойлаштирилди» ва «Тасдиқланди» ҳолатидаги ишсиз фуқаролар сони. «Тасдиқланди» — иш 3 ойдан кейин қайта текширилгани. Тагидаги фоиз — хатловда топилганларга нисбати.',
+              manbasi: 'Ишсиз фуқаро ёзувларининг ҳолати.',
+              ogohlik: 'Бу рақам ҳолат бўйича ҳисобланади: ишга жойлашиш далил билан тасдиқланганми — бу рақамда ҳисобга олинмаган.',
+            }}
+            tr={tr}
           />
           <Kpi
             ikonka={<TrendingUp className="h-4 w-4" />}
             nomi={tr("Ишсизликка таъсир")}
             qiymat={`${percent(bosh.joylashtirilgan, bosh.bazaIshsiz)}%`}
             izoh={tr(`Рўйхатдаги ${raqam(bosh.bazaIshsiz)} тадан`)}
+            hisob={{
+              usuli: 'Жойлаштирилганлар сонининг маҳалла статистикаси жадвалидаги ишсизлар сонига нисбати, фоизда.',
+              manbasi: 'Жойлаштирилган фуқаролар (юқоридаги карта) ва маҳалла статистикаси жадвали.',
+              ogohlik: 'Маҳраж — хатловда топилганлар эмас, жадвалдаги ишсизлар: хатлов тугамагунча фоиз паст чиқади.',
+            }}
+            tr={tr}
           />
         </div>
 
@@ -385,6 +428,11 @@ export default async function PanelSahifasi({
               qiymat={raqam(b.oila.bolalar0_3)}
               izoh={tr(`${raqam(b.oila.bolalar0_3 + b.oila.bolalar3_17)} та бола 17 ёшгача`)}
               yol="#bolim-oila"
+              hisob={{
+                usuli: 'Хатлов анкеталарида «0–3 ёшдаги болалар» майдонининг йиғиндиси (қоралама ва архив олинмайди).',
+                manbasi: 'Хонадон анкетаси, оила таркиби бўлими: ходим ёзган сон. Тагидаги сон — 0–3 ва 3–17 ёшдаги болалар йиғиндиси.',
+              }}
+              tr={tr}
             />
             <Kpi
               ikonka={<GraduationCap className="h-4 w-4" />}
@@ -395,6 +443,12 @@ export default async function PanelSahifasi({
               )}
               izoh={tr('та бола қамровга олинмаган')}
               yol="#bolim-talim"
+              hisob={{
+                usuli: '(Боғча ёшидаги болалар − боғчада қамраб олинганлар) ва (мактаб ёшидаги болалар − мактабда қамраб олинганлар) айирмалари қўшилади; айирма манфий бўлса нол олинади.',
+                manbasi: 'Хонадон анкетасининг таълим бўлими: ёш ва қамров майдонлари, ходим киритган сонлар.',
+                ogohlik: 'Айирма ҳудуд бўйича умумий йиғиндидан олинади: бир хонадондаги ортиқча қамров бошқасидагини «ёпиб» кетади, шунинг учун хонадонма-хонадон ҳисобдан кам чиқиши мумкин.',
+              }}
+              tr={tr}
             />
             <Kpi
               ikonka={<Plane className="h-4 w-4" />}
@@ -402,6 +456,11 @@ export default async function PanelSahifasi({
               qiymat={raqam(b.chetEl.ishchi)}
               izoh={tr(`${raqam(b.chetEl.oila)} та оиладан`)}
               yol="#bolim-chet-el"
+              hisob={{
+                usuli: 'Анкеталарда «чет элда ишловчилар» майдонининг йиғиндиси. Тагидаги сон — чет элда меҳнат қиладиган одами бор оилалар (хонадонлар) сони.',
+                manbasi: 'Хонадон анкетаси, чет эл меҳнати бўлими: ходим ёзган сонлар (қоралама ва архив олинмайди).',
+              }}
+              tr={tr}
             />
             <Kpi
               ikonka={<Coins className="h-4 w-4" />}
@@ -410,6 +469,12 @@ export default async function PanelSahifasi({
               izoh={tr(`Йилига ${pul(b.chetEl.oylikSom * 12)} сўм`)}
               yaxshi
               yol="#bolim-chet-el"
+              hisob={{
+                usuli: 'Анкеталарда кўрсатилган чет элдан ойлик пул тушумининг (сўм) йиғиндиси. Йиллик сон — ойлик × 12, ўзгаришлар ҳисобга олинмаган оддий кўпайтма.',
+                manbasi: 'Хонадон анкетаси, чет эл меҳнати бўлими: оила ўзи айтган сумма.',
+                ogohlik: 'Бу — ходим ёзган тахминий сумма, банк ёки расмий маълумот эмас.',
+              }}
+              tr={tr}
             />
           </div>
         )}
@@ -625,7 +690,9 @@ function Kpi({
   izoh,
   yaxshi,
   ogoh,
-  yol }: {
+  yol,
+  hisob,
+  tr }: {
   ikonka: React.ReactNode;
   nomi: string;
   qiymat: string;
@@ -635,6 +702,19 @@ function Kpi({
   ogoh?: boolean;
   /** Берилса — карточка босилади ва тўлиқ бўлимга олиб ўтади */
   yol?: string;
+  /**
+   * «Қандай ҳисобланган» — рақам қандай чиққани, манбаси ва (ҳуқуқ
+   * бўлса) остидаги ёзувларга ҳавола. `<details>` карточкадан ТАШҚАРИДА
+   * туради: `<a>` ичига интерактив элемент қўйиб бўлмайди.
+   */
+  hisob?: {
+    usuli: string;
+    manbasi: string;
+    ogohlik?: string;
+    yol?: string;
+    yolNomi?: string;
+  };
+  tr?: (m: string) => string;
 }) {
   const ichi = (
     <>
@@ -651,17 +731,25 @@ function Kpi({
     </>
   );
 
-  if (yol) {
-    return (
-      <a
-        href={yol}
-        className="metric-card karta block p-4 transition-colors hover:border-accent hover:bg-accent-soft"
-      >
-        {ichi}
-      </a>
-    );
-  }
+  const karta = yol ? (
+    <a
+      href={yol}
+      className="metric-card karta block p-4 transition-colors hover:border-accent hover:bg-accent-soft"
+    >
+      {ichi}
+    </a>
+  ) : (
+    <div className="metric-card karta p-4">{ichi}</div>
+  );
 
-  return <div className="metric-card karta p-4">{ichi}</div>;
+  if (!hisob || !tr) return karta;
+
+  return (
+    <div>
+      {karta}
+      <div className="px-1">
+        <Hisoblash {...hisob} tr={tr} />
+      </div>
+    </div>
+  );
 }
-
