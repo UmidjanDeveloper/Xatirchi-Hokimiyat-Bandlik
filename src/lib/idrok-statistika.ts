@@ -86,6 +86,16 @@ export interface IdrokStatistika {
   vaqt: string;
   korsatkichlar: IdrokKorsatkich[];
   jadvallar: IdrokJadval[];
+  /**
+   * Chuqur ko'rish havolalari (shaxsiy ma'lumot YO'Q): IDROK hokimga "ro'yxatning o'zi" kerak bo'lsa,
+   * saytning o'zidagi sahifani ochib beradi - ro'yxat faqat shu yerda, hokimning o'z logini bilan ko'rinadi.
+   */
+  havolalar: {
+    /** Mahalla nomi -> saytdagi mahalla ID (ro'yxat sahifalarini ?mahalla=<id> bilan filtrlash uchun) */
+    mahallalar: { nomi: string; id: string }[];
+    /** Sahifa manzillari (saytga nisbatan): ishsizlar, xonadonlar (xatlov), ish o'rinlari, tablo */
+    sahifalar: Record<string, string>;
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -717,5 +727,16 @@ async function hisobla(hozir: Date): Promise<IdrokStatistika> {
     vaqt: new Date().toISOString(),
     korsatkichlar,
     jadvallar,
+    havolalar: {
+      mahallalar: mahallalar.map((m) => ({ nomi: m.nomi, id: String(m.id) })),
+      sahifalar: {
+        ishsizlar: '/ishsizlar?mahalla={mahalla}',
+        xonadonlar: '/xonadonlar?mahalla={mahalla}',
+        xatlov: '/xatlov',
+        ish_orinlari: '/ish-orinlari',
+        tablo: '/tablo',
+        panel: '/panel',
+      },
+    },
   };
 }
