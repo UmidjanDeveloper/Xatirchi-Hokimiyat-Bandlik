@@ -1043,3 +1043,53 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+   HUDHUD (AI agent) — maskot harakati
+   Harakat faqat zaif qurilma va "harakatni kamaytirish" YOQILMAGANDA.
+   Belgilar (ovoz yoylari, nuqtalar) animatsiyasiz ham ko'rinib turadi.
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-fx='lite']) .hudhud-tayyor .hudhud-toj {
+    animation: hudhud-nafas 5s ease-in-out infinite;
+  }
+  html:not([data-fx='lite']) .hudhud-eshitmoqda .hudhud-toj {
+    animation: hudhud-toj-kot 0.8s ease-in-out infinite;
+  }
+  html:not([data-fx='lite']) .hudhud-eshitmoqda .hudhud-tovush {
+    animation: hudhud-tovush 1.2s ease-out infinite;
+  }
+  html:not([data-fx='lite']) .hudhud-oylamoqda .hudhud-nuqta {
+    animation: hudhud-sakrash 1s ease-in-out infinite;
+  }
+  html:not([data-fx='lite']) .hudhud-oylamoqda .hudhud-nuqta-2 {
+    animation-delay: 0.15s;
+  }
+  html:not([data-fx='lite']) .hudhud-oylamoqda .hudhud-nuqta-3 {
+    animation-delay: 0.3s;
+  }
+  html:not([data-fx='lite']) .hudhud-gapirmoqda .hudhud-pastki-tumshuq {
+    animation: hudhud-gap 0.35s ease-in-out infinite alternate;
+  }
+}
+@keyframes hudhud-nafas {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04) translateY(-1px); }
+}
+@keyframes hudhud-toj-kot {
+  0%, 100% { transform: scale(1.06) rotate(-2deg); }
+  50% { transform: scale(1.12) rotate(2deg); }
+}
+@keyframes hudhud-tovush {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+@keyframes hudhud-sakrash {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes hudhud-gap {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(14deg); }
+}

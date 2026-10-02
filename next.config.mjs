@@ -44,10 +44,18 @@ const nextConfig = {
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-      /* Ilova bularning hech birini ishlatmaydi */
+      /*
+       * Kamera, joylashuv, to'lov va USB ishlatilmaydi — yopiq.
+       *
+       * MIKROFON esa `(self)`: Hudhud (ovozli yordamchi) shu sahifaning o'zida
+       * mikrofondan foydalanadi. `microphone=()` bo'lsa brauzer mikrofonni
+       * UMUMAN bermaydi (ruxsat so'ralmaydi ham): ovozli buyruq jimgina
+       * ishlamay qolardi. `(self)` — faqat bizning sahifa, boshqa saytning
+       * ramkasi emas (ramkaga solish `X-Frame-Options: DENY` bilan ham yopiq).
+       */
       {
         key: 'Permissions-Policy',
-        value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+        value: 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
       },
       /*
        * HSTS - faqat productionda. Mahalliy ishlab chiqishda

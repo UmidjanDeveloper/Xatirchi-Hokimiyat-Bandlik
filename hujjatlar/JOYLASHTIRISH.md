@@ -208,6 +208,7 @@ uchun **kodni qaytarish yetarli** (yuqoridagi «Orqaga qaytarish»).
 | `20261001200000_murojaat_va_yordam` | Murojaatlar, murojaat tarixi, yordam dasturlari katalogi (bo'sh) | §14 |
 | `20261001220000_monitoring` | Ish izlari, xato jurnali, kirish urinishlari, zaxira sinovi | §19 |
 | `20261001240000_murojaat_xabari` | Xabar turi `MUROJAAT_MUDDATI` (faqat enum qiymati qo'shiladi) | Laziz repo'sidan g'oya |
+| `20261002100000_agent` | Hudhud: kunlik foydalanish hisobi (matn saqlanmaydi) va tasdiq kutayotgan amallar — ikkita yangi jadval | §18 |
 
 Tekshirish (faqat o'qiydi): `npx prisma migrate status` — «up to date» bo'lishi kerak.
 
@@ -227,6 +228,15 @@ Tekshirish (faqat o'qiydi): `npx prisma migrate status` — «up to date» bo'li
 | `TELEGRAM_BOT_NOMI` | yo'q | Havolalarda ko'rsatiladigan bot nomi |
 | `AI_PROVAYDER` | yo'q | `groq` \| `openai` \| `gemini` \| `anthropic`. Yozilmasa kaliti bor birinchisi olinadi |
 | `GROQ_API_KEY` va boshqalar | yo'q | Tanlangan provayderning kaliti. Bo'lmasa AI tahlili o'chadi, qolgani ishlaydi |
+| `OPENAI_API_KEY` | yo'q | Hudhud (ovozli agent) uchun ham kerak (yoki `GROQ_API_KEY`). Bo'lmasa agent «oddiy rejim»da ishlaydi |
+| `AGENT_MODEL`, `AGENT_PROVAYDER` | yo'q | Hudhud modeli va provayderi (OpenAI yoki Groq). Batafsil: [HUDHUD-AGENT.md](HUDHUD-AGENT.md) |
+| `AGENT_KUNLIK_LIMIT`, `AGENT_OYLIK_LIMIT`, `AGENT_OVOZ_LIMIT` | yo'q | Hudhud xarajat limitlari (odatiy: kuniga 120/80/40 xabar, oyiga 4000, ovoz kuniga 900 soniya) |
 
-AI ga **faqat ismsiz, jamlangan** raqamlar yuboriladi — ism,
-manzil va telefon hech qachon chiqmaydi.
+AI **tahlil va xulosa** uchun **faqat ismsiz, jamlangan** raqamlar yuboriladi —
+fuqaro ismi, manzili va telefoni hech qachon chiqmaydi.
+
+**Hudhud (ovozli agent) bundan farq qiladi:** unga xodimning o'z ismi
+(salomlashuv uchun) va xodim aytgan yoki yozgan matn yuboriladi. Agent
+asboblari faqat jamlangan sonlar qaytaradi, lekin xodim ovozda fuqaro ismini
+aytsa, u ham provayderga ketadi. Shuning uchun oynada ogohlantirish turadi.
+Tafsilot: [HUDHUD-AGENT.md](HUDHUD-AGENT.md).

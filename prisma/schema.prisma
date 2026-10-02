@@ -2753,3 +2753,52 @@ model ZaxiraTekshiruvi {
 
   @@index([otkazilganSana])
 }
+
+/// Hudhud (AI agent): xodim bo'yicha KUNLIK foydalanish hisobi.
+/// Suhbat MATNI saqlanmaydi: unda fuqaro ismi bo'lishi mumkin. Xarajat limiti shu yerdan.
+model AgentFoydalanish {
+  id         String   @id @default(cuid())
+  userId     String
+  /// Toshkent kuni
+  kun        DateTime @db.Date
+  /// Til modeli chaqirilgan xabarlar soni
+  sorovlar   Int      @default(0)
+  /// Modelsiz, qoida bo'yicha berilgan javoblar
+  qoidali    Int      @default(0)
+  tokenlar   Int      @default(0)
+  /// Server tomonda matnga aylantirilgan ovoz (soniya)
+  ovozSoniya Int      @default(0)
+  xatolar    Int      @default(0)
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@unique([userId, kun])
+  @@index([kun])
+}
+
+enum AgentAmaliHolati {
+  KUTILMOQDA
+  BAJARILDI
+  RAD_ETILDI
+  MUDDATI_OTDI
+  XATO
+}
+
+/// Agent TAKLIF qilgan, xodim hali TASDIQLAMAGAN yozish amali.
+/// Taklif serverda saqlanadi (xodim o'zgartira olmaydi), bir marta ishlaydi, muddati bor.
+model AgentAmali {
+  id        String           @id @default(cuid())
+  userId    String
+  /// Ruxsat etilgan amal kaliti (`src/lib/agent/amallar.ts`)
+  amal      String
+  /// Xodimga ko'rsatiladigan matn
+  sarlavha  String
+  holati    AgentAmaliHolati @default(KUTILMOQDA)
+  muddat    DateTime
+  /// Tozalangan natija matni
+  natija    String?
+  createdAt DateTime         @default(now())
+  hal       DateTime?
+
+  @@index([userId, holati])
+  @@index([createdAt])
+}

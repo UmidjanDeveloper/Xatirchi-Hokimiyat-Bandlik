@@ -6,6 +6,8 @@ import { KorishLentasi } from '@/components/shell/korish-lentasi';
 import { ROL_NOMI } from '@/components/shell/navigatsiya';
 import { AlifboProvider } from '@/components/alifbo/alifbo-provider';
 import { alifboServer } from '@/lib/alifbo-server';
+import { agentOchiqmi } from '@/lib/agent/ruxsat';
+import { AgentTugmasi } from '@/components/agent/agent-tugmasi';
 
 /**
  * Tizimga kirgan xodimlar uchun umumiy qobiq.
@@ -90,6 +92,15 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
         <SessiyaQorovuli username={xodim.korish?.haqiqiyUsername ?? xodim.username} />
         {children}
       </AppShell>
+      {/*
+        ── ҲУДҲУД (овозли AI ёрдамчи) ──
+
+        Фақат ҳоким, бандлик маркази ва администраторга; МАҲАЛЛА ХОДИМИГА
+        кўринмайди. Кўриш режимида ҳам йўқ: администратор бошқа ходимнинг
+        кўзи билан қараётганда ёрдамчи ҳам унинг номидан гапирмаслиги керак.
+        Тугма жуда енгил; суҳбат ойнаси босилгандагина юкланади.
+      */}
+      {agentOchiqmi(xodim.rol) && !xodim.korish && <AgentTugmasi ism={xodim.fullName} rol={xodim.rol} />}
     </AlifboProvider>
   );
 }

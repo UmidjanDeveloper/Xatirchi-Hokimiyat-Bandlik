@@ -284,11 +284,25 @@ export function HisobotTugmalari({
     }
   }
 
+  /*
+   * Hudhud (ovozli yordamchi) "hisobotni yuklab ber" desa, tugmani O'zi
+   * bosmaydi: shu sahifaga voqea yuboradi va hisobot xuddi tugma bosilgandek
+   * tayyorlanadi (bir xil kod yo'li, bir xil huquq va hudud).
+   */
+  useEffect(() => {
+    const eshit = (e: Event) => {
+      const turi = (e as CustomEvent<{ turi?: string }>).detail?.turi;
+      if (turi === 'pdf' || turi === 'excel') void ol(turi);
+    };
+    window.addEventListener('hudhud:hisobot', eshit);
+    return () => window.removeEventListener('hudhud:hisobot', eshit);
+  });
+
   const tugma =
     'flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2.5 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:opacity-60';
 
   return (
-    <div className="space-y-2 sm:flex sm:flex-col sm:items-end">
+    <div className="space-y-2 sm:flex sm:flex-col sm:items-end" data-hisobot-tugmalari="ha">
       <div className="flex flex-wrap items-center gap-2">
         {/*
           Ҳудуд танлаш тугмалар ЁНИДА турибди, алоҳида блокда
