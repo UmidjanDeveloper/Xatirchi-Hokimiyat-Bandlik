@@ -359,7 +359,7 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Чегара ЁЗИШДАН ОЛДИН текширилади',
     tekshir: () => {
       const chegaraOrni = MODUL.indexOf('if (jamiQator > ENG_KOP_QATOR)');
-      const yozishOrni = MODUL.indexOf('kitob.xlsx.load(ANDOZA_BAYTI)');
+      const yozishOrni = MODUL.search(/kitob\.xlsx\.load\(ANDOZA_BAYTI\b/); // tur o'zgartirishi (as ...) bo'lsa ham shu qator
       return chegaraOrni > 0 && chegaraOrni < yozishOrni;
     },
   },
@@ -813,7 +813,7 @@ const SINOVLAR: Sinov[] = [
        * ҳар доим олиб кетади.
        */
       MODUL.includes("import { ANDOZA_BAYTI } from './andoza/andoza-fayli'") &&
-      MODUL.includes('kitob.xlsx.load(ANDOZA_BAYTI)') &&
+      /kitob\.xlsx\.load\(ANDOZA_BAYTI\b/.test(MODUL) &&
       /* Изоҳда «нега дискдан ўқилмайди» деб ёзилган — код текширилади */
       !MODUL_KODI.includes('readFile(') &&
       !MODUL_KODI.includes('process.cwd()'),

@@ -204,7 +204,7 @@ const SINOVLAR: Sinov[] = [
       XLSX.utils.book_append_sheet(wb, ws, 'Reyestr');
       const b: Buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-      const o = reyestrniOqi(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+      const o = reyestrniOqi(new Uint8Array(b).buffer);
       return o.ok && o.satrlar.length === 6 && o.ustunlar.ism.includes('Ф.И.Ш');
     },
   },

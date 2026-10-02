@@ -696,7 +696,8 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
   }
 
   const kitob = new ExcelJS.Workbook();
-  await kitob.xlsx.load(ANDOZA_BAYTI);
+  /* ExcelJS o'z `Buffer` turini e'lon qiladi (yangi @types/node bilan mos kelmaydi): ish vaqtida bu oddiy Node Buffer */
+  await kitob.xlsx.load(ANDOZA_BAYTI as unknown as ExcelJS.Buffer);
 
   for (const v of kitob.worksheets) {
     sarlavhaniYangila(v, yakka ? mahallalar[0].nomiKirill : null);
@@ -975,6 +976,7 @@ export async function mahallaJadvali(mahallaId?: string): Promise<JadvalNatijasi
     if (v) bosmaga(v, '1:1');
   }
 
-  const bayt = (await kitob.xlsx.writeBuffer()) as Buffer;
+  /* writeBuffer() ish vaqtida Node Buffer qaytaradi; turi esa ExcelJS'ning o'z `Buffer` e'loni (yuqoriga qarang) */
+  const bayt = (await kitob.xlsx.writeBuffer()) as unknown as Uint8Array;
   return { bayt: Buffer.from(bayt), sanoq };
 }
