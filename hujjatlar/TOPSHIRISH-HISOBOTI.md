@@ -54,10 +54,10 @@ o'lchandi» degan gap bu yerda **yo'q**.
 | **CI simulyatsiyasi** (`CI_TAQLID_TOLIQ=1 npm run ci-taqlid`, 2026-10-02): toza klon + TOZA baza | barcha migratsiyalar noldan qo'llandi, seed, `tsc` 0 xato, `lint` 0, `npm run sinov` — 61 to'plam, **XATO qatori yo'q**, build, sahifa hajmi byudjeti **31/31**, HTTP regressiya **39/39** |
 | Yangi/kengaytirilgan sinovlar | `reyestr-yuklash-sinov` 24, `navbat-sinov` 47, `webhook-sinov` 17, `moderatsiya-sinov` 14, `sessiya-sinov` 33, HTTP 14a–14f, 15a–15c, `gpt-talablari-sinov` (xarita) |
 | Mutatsiya sinovi (kodni ataylab buzib, sinov ushlashini tekshirish) | navbat 8/8, Telegram kodi 6/6 va 5/5, reyestr 19/19 (3 ta o'tib ketgani sinov kuchaytirilib yopildi), login chegarasi 4/4, moderatsiya audit 4/4, audit xaritasi 3/3. Bitta mutant «ekvivalent» (kodni buzmaydi: ortiqcha himoya qatori) — shunday qoldi |
-| GitHub CI (`Tekshiruv` #66, `f4bc377`) | muvaffaqiyatli |
+| GitHub CI (`Tekshiruv` #66 `f4bc377`; #69 `5f5988d`) | ikkalasi muvaffaqiyatli |
 | Oldingi tekshiruvlar (2026-10-01) | 5 rol bo'yicha brauzer (Playwright) ~440 sahifa: 5xx/konsol xatosi yo'q; Hudhud brauzer sinovi (ovoz soxta) |
 
-Bu sessiyadagi o'zgarishlardan KEYIN: GitHub CI hali **ishga tushmagan** (push qilingach tekshiriladi — natijani shu yerga yozmayman, ko'rmagunimcha).
+GitHub CI `Tekshiruv` #69 (`5f5988d`, audit tuzatishlari): tiplar, lint, sinovlar, qurish, hajm byudjeti va HTTP regressiya qadamlarining hammasi muvaffaqiyatli. Production deploy'ni men ko'rolmayman (yuqoriga qarang).
 
 Brauzer sinovida bitta ogohlantirish turi **filtrlandi**: «Failed to fetch RSC
 payload» — bu sinov skripti sahifadan oldinroq chiqib ketganda to'xtatilgan
