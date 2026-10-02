@@ -79,7 +79,7 @@ const ochish = async (p) => { await p.locator('button[data-agent-tugmasi]').clic
   const oldin = await p.evaluate(() => performance.getEntriesByType('resource').map((r) => r.name).filter((n) => /agent-oynasi|agent/i.test(n)).length);
   await ochish(p);
   const matn = await oyna(p).innerText();
-  t('Salom: hokim ISMI bilan (Tekshiruv HOKIM) va “Ҳудҳуд”', /Tekshiruv HOKIM|Тексшируу|Tekshiruv/i.test(matn) && /Ҳудҳуд|Hudhud/i.test(matn), matn.slice(0, 200));
+  t('Salom: hokim ISMI bilan (Tekshiruv HOKIM) va “Коала”', /Tekshiruv HOKIM|Тексшируу|Tekshiruv/i.test(matn) && /Коала|Koala/i.test(matn), matn.slice(0, 200));
   t('Salom o‘zbekcha: “hurmatli”/“ҳурматли” bor, rus/ingliz so‘zi yo‘q', /(hurmatli|ҳурматли)/i.test(matn) && !/(здравствуйте|hello|добрый)/i.test(matn));
   const takliflar = await oyna(p).locator('button:has-text("?")').count();
   t('Taklif tugmalari (boshlash uchun savollar) bor', takliflar >= 2, String(takliflar));
@@ -132,7 +132,7 @@ const ochish = async (p) => { await p.locator('button[data-agent-tugmasi]').clic
   await oyna(p).locator('textarea').fill('hisobotni yuklab ber');
   await oyna(p).locator('textarea').press('Enter');
   await oyna(p).locator('text=/PDF ёки Excel|PDF yoki Excel/').first().waitFor({ timeout: 15000 });
-  t('Format aytilmasa Hudhud SO‘RAYDI (“PDF yoki Excel?”), o‘zicha yuklamaydi', true);
+  t('Format aytilmasa Koala SO‘RAYDI (“PDF yoki Excel?”), o‘zicha yuklamaydi', true);
   t('Konsol/serverda xato yo‘q (hisobot)', p.__x.length === 0, p.__x.join(' | '));
   await k.close();
 }

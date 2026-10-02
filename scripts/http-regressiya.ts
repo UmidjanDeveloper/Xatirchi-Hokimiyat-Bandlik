@@ -550,6 +550,23 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    nomi: '13k. Koala maskot rasmlari kirishsiz ham beriladi (middleware to\'sib qo\'ymaydi), to\'g\'ri turda, uzoq muddat keshlanadi; rasm bor-yo\'qligi yo\'l orqali tekshiriladi',
+    tekshir: async () => {
+      const yollar: [string, string][] = [
+        ['/maskot/koala-v1-128.webp', 'image/webp'],
+        ['/maskot/koala-v1-256.webp', 'image/webp'],
+        ['/maskot/koala-v1-128.png', 'image/png'],
+      ];
+      for (const [yol, tur] of yollar) {
+        const r = await fetch(`${BAZA}${yol}`, { redirect: 'manual' });
+        const bayt = (await r.arrayBuffer()).byteLength;
+        if (r.status !== 200 || !(r.headers.get('content-type') ?? '').includes(tur) || bayt < 1000 || !/immutable/.test(r.headers.get('cache-control') ?? '')) return false;
+      }
+      const yoq = await fetch(`${BAZA}/maskot/yoq-rasm.webp`, { redirect: 'manual' });
+      return yoq.status === 404 || (yoq.status >= 300 && yoq.status < 400);
+    },
+  },
+  {
     nomi: '14a. Reyestr yuklash yo\'li: kirishsiz 401; mahalla xodimi, bandlik mutaxassisi va hokim — 403; fayl yo\'q 400',
     tekshir: async () => {
       const b = reyestrFayli('Hech Kim Yoq');

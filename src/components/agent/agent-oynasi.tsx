@@ -6,7 +6,7 @@ import { Mic, Send, Square, Volume2, VolumeX, X, ExternalLink, Check, FileDown }
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { salomMatni } from '@/lib/agent/matnlar';
 import type { Amal, Manba } from '@/lib/agent/turlar';
-import { Hudhud, type HudhudHolati } from './hudhud';
+import { Maskot, type MaskotHolati } from './maskot';
 import { gapir, gapirishniToxtat, ovozKirishMumkinmi, ovozliJavobMumkinmi, ovozniBoshla, type OvozXatosi } from './ovoz';
 
 /**
@@ -84,7 +84,7 @@ export default function AgentOynasi({
   const [tasdiq, setTasdiq] = useState<TasdiqHolati>({});
   const [matn, setMatn] = useState('');
   const [oraliq, setOraliq] = useState('');
-  const [holat, setHolat] = useState<HudhudHolati>('tayyor');
+  const [holat, setHolat] = useState<MaskotHolati>('tayyor');
   const [band, setBand] = useState(false);
   const [malumot, setMalumot] = useState<HolatMalumoti | null>(null);
   const [ovozliJavob, setOvozliJavob] = useState(true);
@@ -336,13 +336,13 @@ export default function AgentOynasi({
   return (
     <section
       role="dialog"
-      aria-label={t('Ҳудҳуд — овозли ёрдамчи')}
+      aria-label={t('Коала — овозли ёрдамчи')}
       className="karta fixed inset-x-2 bottom-2 z-50 flex h-[min(36rem,calc(100dvh-1rem))] flex-col overflow-hidden p-0 shadow-xl sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[26rem]"
     >
       <header className="flex items-center gap-2 border-b border-line bg-elev px-3 py-2">
-        <Hudhud holat={holat} olcham={40} />
+        <Maskot holat={holat} olcham={48} />
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-bold text-ink">{t('Ҳудҳуд')}</h2>
+          <h2 className="text-sm font-bold text-ink">{t('Коала')}</h2>
           <p className="truncate text-[11px] text-ink-faint">
             {malumot
               ? malumot.ai
@@ -398,7 +398,7 @@ export default function AgentOynasi({
               )}
 
               {x.rejim === 'ai' && x.manbalar && x.manbalar.length > 0 && (
-                <p className="mt-0.5 text-[11px] text-ink-faint">{t('Ҳудҳуд хулосаси — тасдиқланган далил эмас.')}</p>
+                <p className="mt-0.5 text-[11px] text-ink-faint">{t('Коала хулосаси — тасдиқланган далил эмас.')}</p>
               )}
 
               {x.amallar?.map((a) =>
@@ -520,7 +520,7 @@ export default function AgentOynasi({
             rows={1}
             maxLength={600}
             placeholder={t('Ёзинг ёки микрофонни босинг')}
-            aria-label={t('Ҳудҳудга савол ёки буйруқ')}
+            aria-label={t('Коалага савол ёки буйруқ')}
             className="max-h-24 min-h-[2.75rem] flex-1 resize-none rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
           />
           <button

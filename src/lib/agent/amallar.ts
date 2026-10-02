@@ -43,7 +43,7 @@ export const AMALLAR = {
       const soni = await xatoliNavbatniQaytar();
       await jurnal(userId, 'OZGARTIRISH', {
         obyektTuri: 'Xabarnoma',
-        izoh: `Hudhud orqali: xato bilan tugagan ${soni} ta xabar navbatga qaytarildi`,
+        izoh: `Koala orqali: xato bilan tugagan ${soni} ta xabar navbatga qaytarildi`,
       });
       return `${soni} ta xabar navbatga qaytarildi`;
     },
@@ -55,7 +55,7 @@ export const AMALLAR = {
       const soni = await xatolarniKorildi();
       await jurnal(userId, 'OZGARTIRISH', {
         obyektTuri: 'TizimXatosi',
-        izoh: `Hudhud orqali: xato jurnalida ${soni} ta yozuv «ko'rildi» deb belgilandi`,
+        izoh: `Koala orqali: xato jurnalida ${soni} ta yozuv «ko'rildi» deb belgilandi`,
       });
       return `${soni} ta yozuv «ko'rildi» deb belgilandi`;
     },

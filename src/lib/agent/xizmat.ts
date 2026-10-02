@@ -49,7 +49,7 @@ export async function agentJavobi(p: {
   model: ModelChaqiruvi | null;
 }): Promise<AgentJavobi> {
   const { ctx } = p;
-  if (!agentOchiqmi(ctx.rol)) throw new Error('Hudhud bu rol uchun ochiq emas');
+  if (!agentOchiqmi(ctx.rol)) throw new Error('Koala bu rol uchun ochiq emas');
 
   const qoida = async (sabab: NonNullable<AgentJavobi['sabab']>, izoh?: string): Promise<AgentJavobi> => {
     const z = await qoidaBilanJavob(ctx, p.xabar);

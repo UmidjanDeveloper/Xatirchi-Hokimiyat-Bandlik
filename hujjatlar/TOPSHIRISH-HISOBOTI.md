@@ -17,7 +17,7 @@ o'lchandi» degan gap bu yerda **yo'q**.
 | §16 (qolgan) | `/panel` (9 ta) va `/bandlik` (7 ta) asosiy raqamlarida «Qanday hisoblangan»: usul, manba, ogohlik, ruxsat doirasidagi yozuvlar havolasi (hokimga havola ko'rsatilmaydi: u ro'yxatlarni ocha olmaydi). Ta'riflar koddagi filtrlardan olingan, 5 ta raqam SQL bilan solishtirildi | `0ee14a4` |
 | §20 (lint) | `npm run lint` CI'ga va `ci-taqlid` ga qo'shildi (avval zanjirda yo'q edi; 0 ogohlantirish) | `0ee14a4` |
 | Laziz repo'sidan | `/api/health*`, murojaat muddati Telegram xabari, `zaxira-nusxa.sh`, xlsx prototip qo'riqchisi, Dependabot | `a7cfad5`, `8859af9` |
-| §18 | **Hudhud** — hokim, bandlik, rahbar va administrator uchun ovozli AI agent (hoopoe maskoti): sahifani ochadi, ko'rsatkichlarni aytadi, hisobot yuklaydi; yozish amali faqat taklif + egasi tasdig'i; AI yo'q bo'lsa qoidali rejim. `hujjatlar/HUDHUD-AGENT.md` | `f4bc377` (GitHub CI «Tekshiruv» #66 — muvaffaqiyatli) |
+| §18 | **Hudhud** — hokim, bandlik, rahbar va administrator uchun ovozli AI agent (maskot — egasi tanlagan **koala**, ko'rinadigan nom «Koala»): sahifani ochadi, ko'rsatkichlarni aytadi, hisobot yuklaydi; yozish amali faqat taklif + egasi tasdig'i; AI yo'q bo'lsa qoidali rejim. `hujjatlar/HUDHUD-AGENT.md` | `f4bc377` (GitHub CI «Tekshiruv» #66 — muvaffaqiyatli) |
 | §1–§21 audit | Prompt 21 bo'limi **dalil bilan** tekshirildi: 186 band (151 to'liq, 20 qisman, 15 hujjat); xarita mashina bilan tekshiriladi (`npm run sinov` ichida). **Haqiqiy kamchiliklar topilib tuzatildi**: reyestr ko'rish/yozish bog'lanmagan edi; 401/403 «yaroqsiz anketa» bo'lardi; Telegram kodida urinish chegarasi yo'q edi; ish beruvchiga «xabar ketdi» yolg'oni; login'da muvaffaqiyat IP hisobini nolga tushirardi; `v`siz cookie o'tardi; moderatsiya auditi tranzaksiyadan tashqarida (Telegram yo'lida umuman yo'q). `hujjatlar/GPT-TALABLARI-AUDITI.md` | shu commit |
 | Qasddan qilinmadi | Fuqaro kabineti; OneID/E-imzo/ERP (kalitlar yo'q — `INTEGRATSIYALAR-REJA.md`) | — |
 
@@ -41,7 +41,7 @@ o'lchandi» degan gap bu yerda **yo'q**.
 - Xodim: sahifalar uzun ro'yxatda sahifalanadi, qidiruv va mahalla filtri «Keyingi»ni bosganda saqlanadi; murojaat muddati Telegram'ga xabar bo'lib keladi (ulangan bo'lsa).
 - Rahbar/hokim: «Vazifalarim» da modullar natijasi va tizim holati bloklari.
 - Administrator: `/tizim` — avtomatik ishlar, xabar navbati, xatolar, zaxira sinovi.
-- Hokim/bandlik/rahbar/administrator: pastki o'ngda Hudhud (qush) — ovozda yoki yozib so'raysiz; hokimga ismi bilan, sof o'zbekcha murojaat qiladi. Sarlavhada «Сунъий интеллект · бугун яна N та сўров» (kalit ishlasa) yoki «Оддий режим» (kalitsiz/limit tugagan) ko'rinadi. Mahalla xodimida (YETTILIK) va faqat ko'rish rejimida YO'Q.
+- Hokim/bandlik/rahbar/administrator: pastki o'ngda Koala (maskot) — ovozda yoki yozib so'raysiz; hokimga ismi bilan, sof o'zbekcha murojaat qiladi. Sarlavhada «Сунъий интеллект · бугун яна N та сўров» (kalit ishlasa) yoki «Оддий режим» (kalitsiz/limit tugagan) ko'rinadi. Mahalla xodimida (YETTILIK) va faqat ko'rish rejimida YO'Q.
 - Administrator/rahbar: reyestr ko'chirmasini yuklashda fayl izi (SHA-256) ko'rinadi, «Ёзиш» faqat ko'rilgan fayl va sana bilan ishlaydi; «Охирги юклашлар» jadvali (holat, ёзилган/такрор, узилган бўлса сабаби).
 - Mahalla xodimi: sessiya tugasa yoki server band bo'lsa tayyor anketa **navbatga tushadi** (yo'qolmaydi); 403 da aniq matn.
 - Hamma: login chegarasi — idoradagi ko'p xodimning kirishi bloklanmaydi, lekin muvaffaqiyatli kirish boshqa hisoblardagi xato urinishlarni "yuvmaydi".
@@ -95,7 +95,7 @@ prefetch; haqiqiy 5xx esa alohida hisoblanadi va topilmadi.
 
 ## 8. Keyingi ustuvorlik (tartib bilan)
 
-1. Yangi OpenAI kaliti Vercel'da (`OPENAI_API_KEY`) — Hudhud ni haqiqiy savollar bilan sinab ko'ring; eski (chatga yozilgan) kalit bekor qilinganini tasdiqlang.
+1. Yangi OpenAI kaliti Vercel'da (`OPENAI_API_KEY`) — Koala (ovozli yordamchi) ni haqiqiy savollar bilan sinab ko'ring; eski (chatga yozilgan) kalit bekor qilinganini tasdiqlang.
 2. Production'da `/api/health/readiness` ni oching; UptimeRobot'ni ulang (`JOYLASHTIRISH.md`).
 3. Supabase → Database → Backups: tarif va PITR'ni tekshirib `ZAXIRA-VA-TIKLASH.md` ga yozing; keyin **bir marta tiklashni sinang**.
 4. Vercel'da `DIRECT_URL` borligini tekshiring.

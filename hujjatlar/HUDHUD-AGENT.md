@@ -3,9 +3,17 @@
 **Kimga:** hokim, bandlik markazi mutaxassisi va rahbari, administrator.
 Mahalla yettiligi a'zosiga ko'rinmaydi. «Ko'rish rejimi»da ham yo'q.
 
-**Nom:** Alisher Navoiyning «Lison ut-tayr» dostonidagi donishmand yo'lboshchi
-qush (supurgichi) — Xatirchi Navoiy viloyatida. Maskot — `src/components/agent/hudhud.tsx`
-(bitta SVG; boshqa hayvonga almashtirish shu faylni almashtirish bilan bo'ladi).
+**Maskot va nom (2026-10-02 dan): Koala.** Egasi tanlagan koala rasmi (`public/maskot/`,
+WebP 128/256 + PNG zaxira, shaffof fon; komponent — `src/components/agent/maskot.tsx`).
+Foydalanuvchiga ko'rinadigan nom — **Koala (Коала)**: tugma, oyna sarlavhasi, salom
+(«Мен Коаламан»), rad matnlari va tizim ko'rsatmasi. Avval maskot supurgichi qush (Hudhud)
+edi; **ichki nomlar** (hujjat va fayl nomi `HUDHUD-AGENT`, voqea `hudhud:hisobot`, kalit
+`hudhud:suhbat:`/`hudhud:ovozli`, `AgentFoydalanish`/`AgentAmali` jadvallari) saqlandi —
+ularni o'zgartirish saqlangan suhbatlarni va hisobot tugmalari bilan aloqani buzardi.
+Holat (eshitmoqda / o'ylamoqda / gapirmoqda) burchakdagi **belgi** bilan ko'rinadi (rang va
+harakatsiz ham tushunarli); harakat faqat `prefers-reduced-motion: no-preference` va zaif
+qurilma bo'lmaganda. Rasmni almashtirish: yangi fayllarni `public/maskot/koala-v2-*` deb
+qo'ying va `MASKOT_RASMI` yo'llarini yangilang (nomda versiya — kesh eskirmaydi). Sinov: `scripts/maskot-sinov.ts`.
 
 ## Nima qiladi
 
@@ -84,7 +92,7 @@ Hisob: `AgentFoydalanish` jadvali (xodim, kun, so'rovlar, tokenlar). Matn yo'q.
    `gpt-4o-mini` arzon, lekin o'zbek tilida zaifroq bo'lishi mumkin.
    **Modelning haqiqiy sifati production'da, haqiqiy savollarda tekshirilishi kerak.**
 3. Migratsiya `20261002100000_agent` build paytida o'zi qo'llanadi (faqat qo'shadi).
-4. Tekshirish: administrator sifatida kiring → pastki o'ngdagi qush tugmasi → oyna tepasida
+4. Tekshirish: administrator sifatida kiring → pastki o'ngdagi koala tugmasi → oyna tepasida
    «Sunʼiy intellekt · bugun yana N ta so'rov» ko'rinsa kalit ishlayapti; «Oddiy rejim» desa kalit yo'q.
 
 ## Nima SINALGAN va nima SINALMAGAN

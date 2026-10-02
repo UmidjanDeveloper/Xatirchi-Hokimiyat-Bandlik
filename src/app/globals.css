@@ -1045,51 +1045,120 @@
 }
 
 /* ============================================================
-   HUDHUD (AI agent) — maskot harakati
+   KOALA (AI agent maskoti)
+   Rasm — `public/maskot/`. Orqasida och disk: shaffof rasm qorong'i temada
+   ham aniq ko'rinsin. Holat burchakdagi BELGI bilan ham ko'rsatiladi
+   (rang va harakatsiz ham tushunarli).
    Harakat faqat zaif qurilma va "harakatni kamaytirish" YOQILMAGANDA.
-   Belgilar (ovoz yoylari, nuqtalar) animatsiyasiz ham ko'rinib turadi.
    ============================================================ */
+.maskot {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.maskot-disk {
+  position: absolute;
+  inset: 10%;
+  border-radius: 9999px;
+  background: #e4f3f2;
+  border: 2px solid var(--accent);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22);
+}
+.maskot picture {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.maskot-rasm {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 88%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.maskot-belgi {
+  position: absolute;
+  right: -4%;
+  top: -4%;
+  width: 40%;
+  height: 40%;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.3));
+}
+.maskot-ustun {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
 @media (prefers-reduced-motion: no-preference) {
-  html:not([data-fx='lite']) .hudhud-tayyor .hudhud-toj {
-    animation: hudhud-nafas 5s ease-in-out infinite;
+  html:not([data-fx='lite']) .maskot-tayyor .maskot-rasm {
+    animation: maskot-nafas 5s ease-in-out infinite;
   }
-  html:not([data-fx='lite']) .hudhud-eshitmoqda .hudhud-toj {
-    animation: hudhud-toj-kot 0.8s ease-in-out infinite;
+  html:not([data-fx='lite']) .maskot-eshitmoqda .maskot-rasm {
+    animation: maskot-quloq 0.9s ease-in-out infinite;
   }
-  html:not([data-fx='lite']) .hudhud-eshitmoqda .hudhud-tovush {
-    animation: hudhud-tovush 1.2s ease-out infinite;
+  html:not([data-fx='lite']) .maskot-eshitmoqda .maskot-disk {
+    animation: maskot-halqa 1.3s ease-out infinite;
   }
-  html:not([data-fx='lite']) .hudhud-oylamoqda .hudhud-nuqta {
-    animation: hudhud-sakrash 1s ease-in-out infinite;
+  html:not([data-fx='lite']) .maskot-eshitmoqda .maskot-tovush {
+    animation: maskot-tovush 1.2s ease-out infinite;
   }
-  html:not([data-fx='lite']) .hudhud-oylamoqda .hudhud-nuqta-2 {
+  html:not([data-fx='lite']) .maskot-oylamoqda .maskot-rasm {
+    animation: maskot-bosh 2.2s ease-in-out infinite;
+  }
+  html:not([data-fx='lite']) .maskot-oylamoqda .maskot-nuqta {
+    animation: maskot-sakrash 1s ease-in-out infinite;
+  }
+  html:not([data-fx='lite']) .maskot-oylamoqda .maskot-nuqta-2 {
     animation-delay: 0.15s;
   }
-  html:not([data-fx='lite']) .hudhud-oylamoqda .hudhud-nuqta-3 {
+  html:not([data-fx='lite']) .maskot-oylamoqda .maskot-nuqta-3 {
     animation-delay: 0.3s;
   }
-  html:not([data-fx='lite']) .hudhud-gapirmoqda .hudhud-pastki-tumshuq {
-    animation: hudhud-gap 0.35s ease-in-out infinite alternate;
+  html:not([data-fx='lite']) .maskot-gapirmoqda .maskot-rasm {
+    animation: maskot-gap 0.5s ease-in-out infinite alternate;
+  }
+  html:not([data-fx='lite']) .maskot-gapirmoqda .maskot-ustun {
+    animation: maskot-ustun 0.5s ease-in-out infinite alternate;
+  }
+  html:not([data-fx='lite']) .maskot-gapirmoqda .maskot-ustun-2 {
+    animation-delay: 0.12s;
+  }
+  html:not([data-fx='lite']) .maskot-gapirmoqda .maskot-ustun-3 {
+    animation-delay: 0.24s;
   }
 }
-@keyframes hudhud-nafas {
+@keyframes maskot-nafas {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.04) translateY(-1px); }
+  50% { transform: scale(1.035) translateY(-1px); }
 }
-@keyframes hudhud-toj-kot {
-  0%, 100% { transform: scale(1.06) rotate(-2deg); }
-  50% { transform: scale(1.12) rotate(2deg); }
+@keyframes maskot-quloq {
+  0%, 100% { transform: rotate(-3deg) scale(1.03); }
+  50% { transform: rotate(3deg) scale(1.06); }
 }
-@keyframes hudhud-tovush {
-  0% { opacity: 0.2; }
+@keyframes maskot-halqa {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  100% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+@keyframes maskot-tovush {
+  0% { opacity: 0.25; }
   50% { opacity: 1; }
-  100% { opacity: 0.2; }
+  100% { opacity: 0.25; }
 }
-@keyframes hudhud-sakrash {
+@keyframes maskot-bosh {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+@keyframes maskot-sakrash {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  50% { transform: translateY(-3px); }
 }
-@keyframes hudhud-gap {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(14deg); }
+@keyframes maskot-gap {
+  from { transform: translateY(0) scale(1); }
+  to { transform: translateY(-3%) scale(1.04); }
+}
+@keyframes maskot-ustun {
+  from { transform: scaleY(0.45); }
+  to { transform: scaleY(1.1); }
 }

@@ -103,6 +103,15 @@ const nextConfig = {
         source: '/oflayn.html',
         headers: [{ key: 'Cache-Control', value: 'no-cache, must-revalidate' }],
       },
+      {
+        /*
+         * Maskot rasmlari: fayl nomida versiya bor (`koala-v1-...`), rasm
+         * almashsa NOM ham o'zgaradi - shuning uchun uzoq muddat keshlash
+         * xavfsiz va har sahifa ochilganda qayta tekshirilmaydi.
+         */
+        source: '/maskot/:fayl*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
       { source: '/:yol*', headers: xavfsizlik },
     ];
   },
