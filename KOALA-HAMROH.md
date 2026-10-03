@@ -21,7 +21,7 @@ Deployment secret sozlamasida `OPENAI_API_KEY` kerak. Uni kodga yoki suhbatga yo
 `AGENT_TTS=1` bilan server ovozi yoqiladi; bu belgi yo‘q bo‘lsa mavjud qurilma ovozi saqlanadi.
 Model: `gpt-4o-mini-tts`; ovoz: `marin`; format MP3. AI suhbat uchun mavjud AGENT_PROVAYDER/AGENT_MODEL sozlamalari alohida ishlaydi. Groq orqali suhbat ishlatilsa ham ushbu TTS uchun OpenAI kaliti zarur.
 
-Bir javob 900 belgigacha; har hisob uchun daqiqada 6, 24 soatlik oynada 80 ta ovoz so‘rovi. Bu limitlar maxsus TTS kalitlari bilan mavjud baza limit xizmatidan foydalanadi. Xizmat so‘rovlari API xarajatini keltirib chiqaradi. Uzoq javob jim kesilmaydi: foydalanuvchiga qisqa variant so‘rash aytiladi.
+Bir javob 2200 belgigacha; har hisob uchun daqiqada 6, 24 soatlik oynada 80 ta ovoz so‘rovi. Bu limitlar maxsus TTS kalitlari bilan mavjud baza limit xizmatidan foydalanadi. Xizmat so‘rovlari API xarajatini keltirib chiqaradi. Uzoq javobning ovozi tugallangan gapda to‘xtaydi va yozma davomi borligi aytiladi; to‘liq matn ekranda qoladi.
 
 Rasmiy asos: https://developers.openai.com/api/docs/guides/text-to-speech
 Ovozlar ingliz tiliga optimallashtirilgan; o‘zbekcha talaffuz sifati bu ishda haqiqiy provayder bilan tasdiqlanmagan. TTS yo‘li pilot rejimida: uni mukammal o‘zbekcha ovoz deb taqdim etmang.

@@ -1,5 +1,6 @@
 import { maxfiyniTozala } from '@/lib/maxfiy';
-import { joriyModel, type Provayder } from '@/lib/ai';
+import { joriyModel } from '@/lib/ai';
+import { z } from 'zod';
 
 /**
  * ============================================================
@@ -86,7 +87,7 @@ export interface AgentProvayderi {
  *   AGENT_PROVAYDER (openai | groq) → aniq tanlov;
  *   aks holda AI_PROVAYDER shu ikkitadan biri bo'lsa — o'sha;
  *   aks holda OpenAI kaliti bo'lsa — OpenAI, yo'q bo'lsa Groq.
- * Model: AGENT_MODEL, bo'lmasa shu provayderning umumiy modeli (`ai.ts`).
+ * Model: AGENT_MODEL → provayder modeli → suhbat uchun odatiy model.
  */
 export function agentProvayderi(env: NodeJS.ProcessEnv = process.env): AgentProvayderi | null {
   const kalitOl = (p: 'openai' | 'groq') => env[KALIT_NOMI[p]]?.trim() || null;
@@ -101,11 +102,31 @@ export function agentProvayderi(env: NodeJS.ProcessEnv = process.env): AgentProv
   return { provayder: p, kalit: kalitOl(p) as string, baza: BAZA[p], model };
 }
 
-function modelNomi(p: Provayder, env: NodeJS.ProcessEnv): string {
+function modelNomi(p: 'openai' | 'groq', env: NodeJS.ProcessEnv): string {
   /* `joriyModel` jarayon muhitini o'qiydi; boshqa `env` berilsa, o'sha qiymatni hisobga olamiz */
   const nom = p === 'groq' ? 'GROQ_MODEL' : 'OPENAI_MODEL';
-  return env[nom]?.trim() || joriyModel(p);
+  return env[nom]?.trim() || (p === 'openai' ? 'gpt-4.1-mini' : joriyModel(p));
 }
+
+export function javobTokenChegarasi(env: NodeJS.ProcessEnv = process.env): number {
+  const n = Number(env.AGENT_JAVOB_TOKEN);
+  return Number.isInteger(n) && n >= 256 && n <= 4096 ? n : 2000;
+}
+
+const JavobSxemasi = z.object({
+  choices: z.array(z.object({
+    message: z.object({
+      content: z.string().nullable().optional(),
+      tool_calls: z.array(z.object({
+        id: z.string().min(1).max(120),
+        type: z.literal('function'),
+        function: z.object({ name: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]{0,79}$/), arguments: z.string().max(12_000) }),
+      })).max(20).optional(),
+    }),
+    finish_reason: z.string().nullable().optional(),
+  })).min(1),
+  usage: z.object({ total_tokens: z.number().nonnegative().optional() }).optional(),
+});
 
 async function xatoMatni(r: Response): Promise<string> {
   const xom = await r.text().catch(() => '');
@@ -124,70 +145,83 @@ interface Sozlama {
   tokenNomi: 'max_completion_tokens' | 'max_tokens';
 }
 
-export function haqiqiyModel(prov: AgentProvayderi | null = agentProvayderi()): ModelChaqiruvi | null {
+export function haqiqiyModel(
+  prov: AgentProvayderi | null = agentProvayderi(),
+  opt: { fetchFn?: typeof fetch; kutishMs?: number } = {}
+): ModelChaqiruvi | null {
   if (!prov) return null;
 
   return async ({ xabarlar, asboblar, signal }) => {
     const soz: Sozlama = { temperature: true, tokenNomi: prov.provayder === 'groq' ? 'max_tokens' : 'max_completion_tokens' };
+    let pakartota = false;
 
-    for (let urinish = 0; urinish < 3; urinish++) {
+    for (let urinish = 0; urinish < 4; urinish++) {
       const tana: Record<string, unknown> = {
         model: prov.model,
         messages: xabarlar,
-        tools: asboblar,
-        tool_choice: 'auto',
-        [soz.tokenNomi]: 900,
+        [soz.tokenNomi]: javobTokenChegarasi(),
       };
-      if (soz.temperature) tana.temperature = 0.2;
+      if (asboblar.length) {
+        tana.tools = asboblar;
+        tana.tool_choice = 'auto';
+      }
+      if (soz.temperature) tana.temperature = 0.3;
 
       /* Har chaqiruvning o'z chegarasi + umumiy suhbat signali */
       const ctrl = new AbortController();
-      const taymer = setTimeout(() => ctrl.abort(), MODEL_KUTISH_MS);
+      const taymer = setTimeout(() => ctrl.abort(), opt.kutishMs ?? MODEL_KUTISH_MS);
       const tashqi = () => ctrl.abort();
       signal?.addEventListener('abort', tashqi, { once: true });
+      if (signal?.aborted) ctrl.abort();
 
-      let r: Response;
       try {
-        r = await fetch(`${prov.baza}/chat/completions`, {
+        ctrl.signal.throwIfAborted();
+        const r = await (opt.fetchFn ?? fetch)(`${prov.baza}/chat/completions`, {
           method: 'POST',
           signal: ctrl.signal,
           headers: { 'content-type': 'application/json', authorization: `Bearer ${prov.kalit}` },
           body: JSON.stringify(tana),
         });
+
+        if (!r.ok) {
+          const matn = await xatoMatni(r);
+          if (r.status === 400 && urinish < 3) {
+            if (/temperature/i.test(matn) && soz.temperature) {
+              soz.temperature = false;
+              continue;
+            }
+            if (/max_completion_tokens|max_tokens/i.test(matn)) {
+              soz.tokenNomi = soz.tokenNomi === 'max_tokens' ? 'max_completion_tokens' : 'max_tokens';
+              continue;
+            }
+          }
+          const vaqtincha = r.status >= 500 || (r.status === 429 && !/quota|billing|credit|balance|insufficient|payment/i.test(matn));
+          if (vaqtincha && !pakartota && urinish < 3 && !ctrl.signal.aborted) {
+            pakartota = true;
+            await new Promise((r) => setTimeout(r, 200));
+            continue;
+          }
+          throw new ModelXatosi('provayder', maxfiyniTozala(`${prov.provayder} ${r.status}: ${matn}`));
+        }
+
+        // Tana ham shu taymer doirasida o'qiladi: sarlavhadan keyin oqim osilib qolmasin.
+        const d = JavobSxemasi.safeParse(await r.json().catch(() => null));
+        ctrl.signal.throwIfAborted();
+        if (!d.success) throw new ModelXatosi('bosh', 'Model javobi tushunarli shaklda kelmadi');
+        const tanlov = d.data.choices[0];
+        return {
+          xabar: { content: tanlov.message.content ?? null, tool_calls: tanlov.message.tool_calls },
+          tokenlar: d.data.usage?.total_tokens ?? 0,
+          tugash: tanlov.finish_reason ?? '',
+        };
       } catch (e) {
+        if (e instanceof ModelXatosi) throw e;
         if ((e as Error)?.name === 'AbortError') throw new ModelXatosi('vaqt', 'Model javobi vaqtida kelmadi');
         throw new ModelXatosi('tarmoq', maxfiyniTozala(e));
       } finally {
         clearTimeout(taymer);
         signal?.removeEventListener('abort', tashqi);
       }
-
-      if (!r.ok) {
-        const matn = await xatoMatni(r);
-        if (r.status === 400 && urinish < 2) {
-          if (/temperature/i.test(matn) && soz.temperature) {
-            soz.temperature = false;
-            continue;
-          }
-          if (/max_completion_tokens|max_tokens/i.test(matn)) {
-            soz.tokenNomi = soz.tokenNomi === 'max_tokens' ? 'max_completion_tokens' : 'max_tokens';
-            continue;
-          }
-        }
-        throw new ModelXatosi('provayder', maxfiyniTozala(`${prov.provayder} ${r.status}: ${matn}`));
-      }
-
-      const d = (await r.json().catch(() => null)) as {
-        choices?: { message?: { content?: string | null; tool_calls?: ChaqiruvQismi[] }; finish_reason?: string }[];
-        usage?: { total_tokens?: number };
-      } | null;
-      const tanlov = d?.choices?.[0];
-      if (!tanlov?.message) throw new ModelXatosi('bosh', "Model bo'sh javob qaytardi");
-      return {
-        xabar: { content: tanlov.message.content ?? null, tool_calls: tanlov.message.tool_calls },
-        tokenlar: d?.usage?.total_tokens ?? 0,
-        tugash: tanlov.finish_reason ?? '',
-      };
     }
     throw new ModelXatosi('provayder', 'Model so‘rov sozlamalarini qabul qilmadi');
   };

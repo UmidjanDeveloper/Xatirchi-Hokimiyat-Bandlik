@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mic, Send, Square, Trash2, Volume2, VolumeX, X, ExternalLink, Check, FileDown } from 'lucide-react';
+import { Mic, Send, Square, Trash2, Volume2, VolumeX, X, ExternalLink, Check, FileDown, Headphones } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { salomMatni } from '@/lib/agent/matnlar';
 import type { Amal, Manba } from '@/lib/agent/turlar';
 import { Maskot, type MaskotHolati } from './maskot';
-import { javobOvozi } from './javob-ovozi';
 import { ovozKirishMumkinmi, ovozliJavobMumkinmi, ovozniBoshla, type OvozBoshqaruvi, type OvozXatosi } from './ovoz';
+import { javobniGapir, nutqniTayyorla, nutqniToxtat, nutqMuhitiniYop } from './nutq-ijrosi';
+import { ENG_KOP_TARIX, ENG_UZUN_TARIX_XABARI, ENG_UZUN_XABAR } from '@/lib/agent/chegaralar';
 
 /**
  * ============================================================
@@ -85,7 +86,6 @@ export default function AgentOynasi({
   yopish: () => void;
   ism: string;
   rol: string;
-  /** Ko'rish rejimi: administrator hokim yoki rahbar "ko'zi bilan" qarayapti; Koala faqat o'qiydi */
   korish?: boolean;
 }) {
   const { t, alifbo } = useAlifbo();
@@ -104,10 +104,9 @@ export default function AgentOynasi({
   const [bildirish, setBildirish] = useState('');
   const [malumotTayyor, setMalumotTayyor] = useState(false);
   const [ishlov, setIshlov] = useState(false);
+  const [nutqYuklanmoqda, setNutqYuklanmoqda] = useState(false);
+  const [suhbatRejimi, setSuhbatRejimi] = useState(false);
 
-  const nutq = useRef(javobOvozi());
-  const sorov = useRef<AbortController | null>(null);
-  const [ovozTayyor, setOvozTayyor] = useState(false);
   const royxat = useRef<HTMLDivElement>(null);
   const kiritish = useRef<HTMLTextAreaElement>(null);
   const tanish = useRef<OvozBoshqaruvi | null>(null);
@@ -115,14 +114,54 @@ export default function AgentOynasi({
   /** `yubor` ishlayaptimi (state emas: bir zumda ham ko'rinishi kerak) */
   const bandRef = useRef(false);
   const idSanagich = useRef(0);
-  const saqlashKaliti = `${SAQLASH_KALITI}${ism}`;
+  const saqlashKaliti = `${SAQLASH_KALITI}${ism}:${rol}:${korish ? "korish" : "asosiy"}`;
+  const xotiraRef = useRef<string | undefined>();
+  const sorovRef = useRef<AbortController | null>(null);
+  const sorovSoni = useRef(0);
+  const suhbatRef = useRef(false);
+  const ochiqRef = useRef(ochiq);
+  ochiqRef.current = ochiq;
+  const davomTaymeri = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mikrofonRef = useRef<() => void>(() => {});
+
+  const toxtat = useCallback(() => {
+    suhbatRef.current = false;
+    setSuhbatRejimi(false);
+    if (davomTaymeri.current) clearTimeout(davomTaymeri.current);
+    sorovSoni.current++;
+    sorovRef.current?.abort();
+    sorovRef.current = null;
+    tanish.current?.bekor();
+    tanish.current = null;
+    nutqniToxtat();
+    bandRef.current = false;
+    setBand(false);
+    setIshlov(false);
+    setNutqYuklanmoqda(false);
+    setOraliq('');
+    setHolat('tayyor');
+  }, []);
+
+  const davomEt = useCallback(() => {
+    if (davomTaymeri.current) clearTimeout(davomTaymeri.current);
+    if (!suhbatRef.current) return;
+    davomTaymeri.current = setTimeout(() => {
+      if (suhbatRef.current && ochiqRef.current && !document.hidden && !bandRef.current) mikrofonRef.current();
+    }, 450);
+  }, []);
 
   /* Salom (kod yozadi) + saqlangan suhbatni tiklash */
   useEffect(() => {
     let tiklandi: Xabar[] = [];
     try {
       const s = sessionStorage.getItem(saqlashKaliti);
-      if (s) tiklandi = JSON.parse(s) as Xabar[];
+      if (s) {
+        const d: unknown = JSON.parse(s);
+        if (Array.isArray(d)) tiklandi = d.filter((x): x is Xabar =>
+          x && typeof x.id === 'number' && (x.r === 'f' || x.r === 'a') && typeof x.matn === 'string'
+        ).slice(-ENG_KOP_SAQLASH);
+      }
+      xotiraRef.current = sessionStorage.getItem(`${saqlashKaliti}:xotira`) ?? undefined;
     } catch {
       /* sessionStorage yo'q yoki buzuq: salomdan boshlaymiz */
     }
@@ -173,34 +212,20 @@ export default function AgentOynasi({
 
   /* Oyna yopilsa yoki ilova fonga o'tsa: yozuv yuborilmasdan bekor qilinadi, mikrofon bo'shaydi */
   useEffect(() => {
-    if (!ochiq) {
-      tanish.current?.bekor();
-      sorov.current?.abort();
-      nutq.current.toxtat();
-      setOvozTayyor(false);
-      setHolat('tayyor');
-    }
-  }, [ochiq]);
+    if (!ochiq) toxtat();
+  }, [ochiq, toxtat]);
 
   useEffect(() => {
-    const ijro = nutq.current;
     const f = () => {
-      if (document.hidden) {
-        tanish.current?.bekor();
-        sorov.current?.abort();
-        nutq.current.toxtat();
-        setOvozTayyor(false);
-        setHolat('tayyor');
-      }
+      if (document.hidden) toxtat();
     };
     document.addEventListener('visibilitychange', f);
     return () => {
       document.removeEventListener('visibilitychange', f);
-      tanish.current?.bekor();
-      sorov.current?.abort();
-      ijro.toxtat();
+      toxtat();
+      nutqMuhitiniYop();
     };
-  }, []);
+  }, [toxtat]);
 
   /* Qurilmada o'zbekcha ovoz bormi (ovozlar kech yuklanishi mumkin) */
   useEffect(() => {
@@ -227,6 +252,25 @@ export default function AgentOynasi({
     setXabarlar((o) => [...o, { ...x, kanal: suhbatTuri, id: idSanagich.current++ }]);
   }, [suhbatTuri]);
 
+  const gapirish = useCallback((javob: string, tugadi?: () => void) => {
+    javobniGapir(t(javob), {
+      serverMumkin: Boolean(malumot?.ovozChiqish),
+      onYuklash: () => { setNutqYuklanmoqda(true); setHolat('gapirmoqda'); },
+      onBoshlandi: () => { setNutqYuklanmoqda(false); setHolat('gapirmoqda'); },
+      onXato: (xabar) => {
+        suhbatRef.current = false;
+        setSuhbatRejimi(false);
+        setBildirish(t(xabar));
+      },
+      onTugadi: () => {
+        setNutqYuklanmoqda(false);
+        setHolat((h) => (h === 'gapirmoqda' ? 'tayyor' : h));
+        tugadi?.();
+        davomEt();
+      },
+    });
+  }, [malumot?.ovozChiqish, t, davomEt]);
+
   /*
    * Hisobot: tugmalar turgan sahifani ochamiz (kerak bo'lsa), tugmalar paydo
    * bo'lishini kutamiz va sahifaga "hudhud:hisobot" voqeasini yuboramiz —
@@ -246,55 +290,38 @@ export default function AgentOynasi({
     [router]
   );
 
-  const javobniOqi = useCallback((javob: string) => {
-    setBildirish('');
-    if (javob.length > 900) {
-      setBildirish(t('Жавоб узун. «Қисқача айт» деб сўранг ёки матнни ўқинг.'));
-      return;
-    }
-    setOvozTayyor(true);
-    void nutq.current.oqi(javob, Boolean(malumot?.ovozChiqish), {
-      boshlandi: () => { setOvozTayyor(false); setHolat('gapirmoqda'); },
-      tugadi: () => { setOvozTayyor(false); setHolat((h) => (h === 'gapirmoqda' ? 'tayyor' : h)); },
-      xato: () => {
-        setOvozTayyor(false); setHolat('tayyor');
-        setBildirish(t('Овоз очилмади. Жавоб остидаги «Тинглаш»ни босиб кўринг.'));
-      },
-    });
-  }, [malumot?.ovozChiqish, t]);
-
   const yubor = useCallback(
     async (xom: string) => {
       const savol = xom.trim();
       if (!savol || bandRef.current) return;
+      if (davomTaymeri.current) clearTimeout(davomTaymeri.current);
       tanish.current?.bekor();
-      setOvozTayyor(false);
-      nutq.current.toxtat();
+      nutqniToxtat();
+      if (ovozliJavob) nutqniTayyorla();
+      const ctrl = new AbortController();
+      sorovRef.current = ctrl;
+      const sorovId = ++sorovSoni.current;
+      const kutish = setTimeout(() => ctrl.abort(), 55_000);
       bandRef.current = true;
       setBildirish('');
       setMatn('');
       setOraliq('');
       setBand(true);
       setHolat('oylamoqda');
+      setNutqYuklanmoqda(false);
       qosh({ r: 'f', matn: savol });
 
       /* Server tarixi: faqat oddiy matn (xato va salom xabarlari tushmaydi) */
       const tarix = xabarlar
-        .filter((x) => !x.xato && (x.kanal ?? 'koala') === suhbatTuri)
-        .slice(-8)
-        .map((x) => ({ r: x.r, m: x.matn.slice(0, 800) }));
+        .filter((x) => !x.xato && (x.kanal ?? 'koala') === suhbatTuri && !(x.r === 'a' && /^(Хайрли|Xayrli)/.test(x.matn)))
+        .slice(suhbatTuri === 'jarvis' ? -8 : -ENG_KOP_TARIX)
+        .map((x) => ({ r: x.r, m: x.matn.slice(0, suhbatTuri === 'jarvis' ? 800 : ENG_UZUN_TARIX_XABARI) }));
 
-      const ctrl = new AbortController();
-      sorov.current = ctrl;
-      const soat = setTimeout(() => {
-        setBildirish(t('Жавоб кечикди. Қайта уриниб кўринг.'));
-        ctrl.abort();
-      }, 55_000);
       try {
         const r = await fetch(suhbatTuri === 'jarvis' ? '/api/agent/jarvis' : '/api/agent/suhbat', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ xabar: savol, tarix }),
+          body: JSON.stringify({ xabar: savol, tarix, ...(suhbatTuri === 'koala' ? { xotira: xotiraRef.current } : {}) }),
           signal: ctrl.signal,
         });
         if (r.status === 401) {
@@ -309,16 +336,23 @@ export default function AgentOynasi({
           izoh?: string;
           rejim?: 'ai' | 'qoida' | 'jarvis';
           qolgan?: number;
+          xotira?: string;
         };
+        if (sorovId !== sorovSoni.current || !ochiqRef.current) return;
 
-        if (ctrl.signal.aborted) return;
         if (!r.ok || !d.javob) {
           qosh({ r: 'a', matn: d.xabar ?? t('Жавоб олиб бўлмади. Бир оздан кейин қайта уриниб кўринг.'), xato: true });
+          suhbatRef.current = false;
+          setSuhbatRejimi(false);
           return;
         }
 
         qosh({ r: 'a', matn: d.javob, manbalar: d.manbalar, amallar: d.amallar, izoh: d.izoh, rejim: d.rejim });
-        if (typeof d.qolgan === 'number') setMalumot((m) => (m ? { ...m, qolgan: d.qolgan as number } : m));
+        if (suhbatTuri === 'koala' && d.xotira) {
+          xotiraRef.current = d.xotira;
+          try { sessionStorage.setItem(`${saqlashKaliti}:xotira`, d.xotira); } catch { /* Joy yetmadi. */ }
+        }
+        if (suhbatTuri === 'koala' && typeof d.qolgan === 'number') setMalumot((m) => (m ? { ...m, qolgan: d.qolgan as number } : m));
 
         /* Ovozli buyruq BAJARILADI: hisobot yuklanadi */
         const hisobot = d.amallar?.find((a): a is Extract<Amal, { tur: 'hisobot' }> => a.tur === 'hisobot');
@@ -327,26 +361,30 @@ export default function AgentOynasi({
         /* Ovozli buyruq BAJARILADI: sahifa ochiladi */
         const ochish = d.amallar?.find((a): a is Extract<Amal, { tur: 'ochish' }> => a.tur === 'ochish');
         if (ochish) {
-          setTimeout(() => {
-            if (ctrl.signal.aborted) return;
-            router.push(ochish.url);
-            if (window.innerWidth < 640) yopish();
-          }, 450);
+          router.push(ochish.url);
         }
+        const ochilgachYop = () => {
+          if (ochish && window.innerWidth < 640 && !suhbatRef.current) yopish();
+        };
 
-        if (ovozliJavob && (malumot?.ovozChiqish || uzbekOvozBor)) javobniOqi(d.javob);
+        if (ovozliJavob && (uzbekOvozBor || malumot?.ovozChiqish)) gapirish(d.javob, ochilgachYop);
+        else { ochilgachYop(); davomEt(); }
       } catch {
-        if (ctrl.signal.aborted) return;
+        if (sorovId !== sorovSoni.current || !ochiqRef.current) return;
+        suhbatRef.current = false;
+        setSuhbatRejimi(false);
         qosh({ r: 'a', matn: t('Алоқа узилди. Интернетни текшириб, қайта уриниб кўринг.'), xato: true });
       } finally {
-        clearTimeout(soat);
-        if (sorov.current === ctrl) sorov.current = null;
-        bandRef.current = false;
-        setBand(false);
-        setHolat((h) => (h === 'gapirmoqda' ? h : 'tayyor'));
+        clearTimeout(kutish);
+        if (sorovId === sorovSoni.current) {
+          sorovRef.current = null;
+          bandRef.current = false;
+          setBand(false);
+          setHolat((h) => (h === 'gapirmoqda' ? h : 'tayyor'));
+        }
       }
     },
-    [xabarlar, qosh, router, yopish, t, ovozliJavob, hisobotniBoshla, javobniOqi, malumot?.ovozChiqish, uzbekOvozBor, suhbatTuri]
+    [xabarlar, qosh, router, yopish, t, ovozliJavob, hisobotniBoshla, gapirish, davomEt, saqlashKaliti, suhbatTuri, uzbekOvozBor, malumot?.ovozChiqish]
   );
 
   /** Mikrofon kuchi → tugma atrofidagi halqa (gapirayotganingiz eshitilayotganini ko'rsatadi) */
@@ -361,8 +399,8 @@ export default function AgentOynasi({
       return;
     }
     if (band || holat === 'oylamoqda') return;
-    nutq.current.toxtat();
-    setOvozTayyor(false);
+    nutqniToxtat();
+    nutqniTayyorla();
     setBildirish('');
     setOraliq('');
     setIshlov(false);
@@ -374,7 +412,11 @@ export default function AgentOynasi({
           setOraliq('');
           void yubor(t(m));
         },
-        onXato: (k, xabar) => setBildirish(xabar ?? t(XATO_MATNI[k])),
+        onXato: (k, xabar) => {
+          suhbatRef.current = false;
+          setSuhbatRejimi(false);
+          setBildirish(xabar ?? t(XATO_MATNI[k]));
+        },
         onIshlov: () => {
           setIshlov(true);
           setHolat('oylamoqda');
@@ -391,6 +433,7 @@ export default function AgentOynasi({
       Boolean(malumot?.ovozServer)
     );
   };
+  mikrofonRef.current = mikrofon;
 
   const ovozTugmasi = () => {
     const yangi = !ovozliJavob;
@@ -400,11 +443,7 @@ export default function AgentOynasi({
     } catch {
       /* ruxsat yo'q */
     }
-    if (!yangi) {
-      nutq.current.toxtat();
-      setOvozTayyor(false);
-      setHolat('tayyor');
-    }
+    if (!yangi) toxtat();
   };
 
   const tasdiqla = async (id: string, qaror: 'ha' | 'yoq') => {
@@ -424,13 +463,10 @@ export default function AgentOynasi({
   };
 
   const tozala = () => {
-    sorov.current?.abort();
-    tanish.current?.bekor();
-    setOvozTayyor(false);
-    setHolat('tayyor');
-    nutq.current.toxtat();
+    toxtat();
+    if (suhbatTuri === 'koala') xotiraRef.current = undefined;
     try {
-      sessionStorage.removeItem(saqlashKaliti);
+      if (suhbatTuri === 'koala') sessionStorage.removeItem(`${saqlashKaliti}:xotira`);
     } catch {
       /* ruxsat yo'q */
     }
@@ -441,9 +477,9 @@ export default function AgentOynasi({
 
   if (!ochiq) return null;
 
-  const ovozBor = uzbekOvozBor || Boolean(malumot?.ovozChiqish);
   const mikrofonMumkin = ovozKirishMumkinmi(Boolean(malumot?.ovozServer));
-  const holatMatni = ovozTayyor ? 'Овоз тайёрланяпти…' :
+  const nutqMumkin = uzbekOvozBor || Boolean(malumot?.ovozChiqish);
+  const holatMatni =
     holat === 'eshitmoqda'
       ? 'Эшитяпман…'
       : holat === 'oylamoqda'
@@ -451,7 +487,7 @@ export default function AgentOynasi({
           ? 'Матнга айлантиряпман…'
           : 'Ўйлаяпман…'
         : holat === 'gapirmoqda'
-          ? 'Гапиряпман…'
+          ? nutqYuklanmoqda ? 'Овоз тайёрланяпти…' : 'Гапиряпман…'
           : '';
   const korinadiganlar = xabarlar.filter((x) => (x.kanal ?? 'koala') === suhbatTuri);
   const takliflar = suhbatTuri === 'jarvis' ? ['Сунъий интеллект нима?', 'Ўзбек тилида суҳбатлашайлик', 'Инглиз тилини ўрганиш режасини туз'] : TAKLIFLAR[rol] ?? [];
@@ -476,14 +512,31 @@ export default function AgentOynasi({
         </div>
         <button
           type="button"
+          disabled={!mikrofonMumkin || !malumotTayyor || !nutqMumkin || band}
+          onClick={() => {
+            if (suhbatRef.current) { toxtat(); return; }
+            suhbatRef.current = true;
+            setSuhbatRejimi(true);
+            setOvozliJavob(true);
+            mikrofon();
+          }}
+          title={t('Кетма-кет овозли суҳбат')}
+          aria-label={t('Кетма-кет овозли суҳбат')}
+          aria-pressed={suhbatRejimi}
+          className={`flex h-9 w-9 items-center justify-center rounded-md disabled:opacity-40 ${suhbatRejimi ? 'bg-accent text-accent-contrast' : 'text-ink-muted hover:bg-surface-muted'}`}
+        >
+          <Headphones className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
           onClick={ovozTugmasi}
-          disabled={!ovozBor}
-          title={ovozBor ? t('Жавобни овозда ўқиш') : t('Ўзбекча овоз йўқ — жавоб ёзма')}
+          disabled={!nutqMumkin}
+          title={nutqMumkin ? t('Жавобни овозда ўқиш') : t('Ўзбекча овоз йўқ — жавоб ёзма')}
           aria-label={t('Жавобни овозда ўқиш')}
-          aria-pressed={ovozliJavob && ovozBor}
+          aria-pressed={ovozliJavob && nutqMumkin}
           className="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink disabled:opacity-40"
         >
-          {ovozliJavob && ovozBor ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4" aria-hidden="true" />}
+          {ovozliJavob && nutqMumkin ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4" aria-hidden="true" />}
         </button>
         <button
           type="button"
@@ -510,7 +563,7 @@ export default function AgentOynasi({
             disabled={band || ishlov || holat === 'eshitmoqda' || (tur === 'jarvis' && !malumot?.jarvis)}
             title={tur === 'jarvis' && !malumot?.jarvis ? t('JARVIS сервери ҳали уланмаган') : undefined}
             className={`rounded-full border px-3 py-1 text-xs disabled:opacity-40 ${suhbatTuri === tur ? 'border-accent text-accent' : 'border-line text-ink-muted'}`}
-            onClick={() => { nutq.current.toxtat(); setOvozTayyor(false); setHolat('tayyor'); setBildirish(''); setMatn(''); setSuhbatTuri(tur); }}>
+            onClick={() => { toxtat(); setBildirish(''); setMatn(''); setSuhbatTuri(tur); }}>
             {tur === 'koala' ? t('Коала · платформа ва суҳбат') : malumotTayyor && !malumot?.jarvis ? t('JARVIS · уланмаган') : 'JARVIS'}
           </button>
         ))}
@@ -527,14 +580,15 @@ export default function AgentOynasi({
               }`}
             >
               <p className="whitespace-pre-wrap">{x.r === 'f' ? x.matn : t(x.matn)}</p>
-
-              {x.r === 'a' && !x.xato && ovozBor && (
+              {x.r === 'a' && !x.xato && nutqMumkin && (
                 <button type="button" disabled={band || holat === 'eshitmoqda'}
-                  className="mt-2 inline-flex items-center gap-1 text-xs underline disabled:opacity-40"
-                  onClick={() => javobniOqi(t(x.matn))}>
-                  <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />{t('Тинглаш')}
+                  onClick={() => { nutqniTayyorla(); setBildirish(''); gapirish(x.matn); }}
+                  aria-label={t('Жавобни қайта эшитиш')}
+                  className="mt-1 inline-flex items-center gap-1 text-[11px] text-ink-faint hover:text-accent disabled:opacity-40">
+                  <Volume2 className="h-3 w-3" aria-hidden="true" />{t('Тинглаш')}
                 </button>
               )}
+
               {x.izoh && <p className="mt-1.5 text-[11px] text-warn">{t(x.izoh)}</p>}
 
               {x.manbalar && x.manbalar.length > 0 && (
@@ -627,12 +681,6 @@ export default function AgentOynasi({
             {bildirish || (oraliq ? `«${oraliq}»` : t(holatMatni))}
           </p>
         )}
-        {(ovozTayyor || holat === 'gapirmoqda') && (
-          <button type="button" className="mb-2 rounded-md border border-line px-3 py-1 text-xs"
-            onClick={() => { nutq.current.toxtat(); setOvozTayyor(false); setHolat('tayyor'); }}>
-            {t('Овозни тўхтатиш')}
-          </button>
-        )}
         <form
           className="flex items-end gap-2"
           onSubmit={(e) => {
@@ -667,20 +715,22 @@ export default function AgentOynasi({
               }
             }}
             rows={1}
-            maxLength={600}
+            maxLength={ENG_UZUN_XABAR}
             placeholder={t('Ёзинг ёки микрофонни босинг')}
             aria-label={t('Коалага савол ёки буйруқ')}
             className="max-h-24 min-h-[2.75rem] flex-1 resize-none rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
           />
           <button
-            type="submit"
-            disabled={band || matn.trim().length === 0}
-            aria-label={t('Юбориш')}
+            type={band || holat === 'gapirmoqda' ? 'button' : 'submit'}
+            onClick={band || holat === 'gapirmoqda' ? toxtat : undefined}
+            disabled={!band && holat !== 'gapirmoqda' && matn.trim().length === 0}
+            aria-label={band || holat === 'gapirmoqda' ? t('Жавобни тўхтатиш') : t('Юбориш')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-accent-contrast transition-opacity disabled:opacity-40"
           >
-            <Send className="h-4 w-4" aria-hidden="true" />
+            {band || holat === 'gapirmoqda' ? <Square className="h-4 w-4" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
           </button>
         </form>
+        {suhbatRejimi && <p className="mt-1 text-[11px] text-accent" role="status">{t('Овозли суҳбат ёқилган. Жавобдан сўнг яна эшитаман.')}</p>}
         <p className="mt-1.5 text-[10px] leading-snug text-ink-faint">
           {t('Овоз ташқи хизматда матнга айланади. Фуқаро исми ва телефонини айтманг.')}
         </p>
