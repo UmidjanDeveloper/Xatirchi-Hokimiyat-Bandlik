@@ -1,0 +1,17 @@
+# Include inside an EXISTING HTTPS server block with valid TLS certificates.
+# Replace the placeholder with a random secret identical to JARVIS_GATEWAY_TOKEN.
+# Keep the upstream Python server bound to 127.0.0.1, never public port 8004.
+location = /hugginggpt {
+    if ($http_authorization != "Bearer REPLACE_WITH_RANDOM_GATEWAY_TOKEN") { return 401; }
+    limit_except POST { deny all; }
+    client_max_body_size 32k;
+    access_log off;
+    proxy_pass http://127.0.0.1:8004/hugginggpt;
+    proxy_set_header Authorization "";
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 45s;
+    proxy_send_timeout 10s;
+    proxy_next_upstream off;
+}
+# On a dedicated gateway host, refuse all other upstream routes.
+location / { return 404; }

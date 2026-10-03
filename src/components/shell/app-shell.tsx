@@ -28,6 +28,7 @@ import {
   Settings,
   Route,
   Target,
+  UserCog,
   Users,
   UsersRound,
   X,
@@ -37,7 +38,7 @@ import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { AlifboTugmasi } from '@/components/alifbo/alifbo-provider';
 import { Gerb } from '@/components/shared/gerb';
 import { chiqishdaTozala } from '@/lib/offline';
-import { menyuOl, MUNDARIJA_UYASI, MUNDARIJA_YOLI, ROL_NOMI } from './navigatsiya';
+import { menyuGuruhlari, MUNDARIJA_UYASI, MUNDARIJA_YOLI, ROL_NOMI } from './navigatsiya';
 import { initials } from '@/lib/utils';
 
 interface Props {
@@ -101,6 +102,7 @@ const IKONKALAR: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   Route,
   Target,
+  UserCog,
   Users,
   UsersRound,
 };
@@ -116,7 +118,7 @@ export function AppShell({ fullName, username, rol, mahallaNomi, children }: Pro
   const yol = usePathname();
   const router = useRouter();
   const [ochiq, setOchiq] = useState(false);
-  const bandlar = menyuOl(rol);
+  const guruhlar = menyuGuruhlari(rol);
 
   async function chiq() {
     /*
@@ -216,46 +218,65 @@ export function AppShell({ fullName, username, rol, mahallaNomi, children }: Pro
         <aside
           className={`workspace-sidebar ${
             ochiq ? 'block' : 'hidden'
-          } fixed inset-x-0 top-16 z-20 border-b border-line bg-elev p-3 lg:sticky lg:top-16 lg:block lg:h-[calc(100dvh-4rem)] lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:bg-transparent`}
+          } fixed inset-x-0 top-16 z-[45] max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-b border-line bg-elev p-3 lg:sticky lg:top-16 lg:z-20 lg:block lg:h-[calc(100dvh-4rem)] lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:bg-transparent`}
         >
-          <nav className="space-y-0.5">
-            {bandlar.map((b) => (
-              <Fragment key={b.yol}>
-                <Link
-                  href={b.yol}
-                  onClick={() => setOchiq(false)}
-                  aria-current={faolmi(b.yol) ? 'page' : undefined}
-                  className={`relative flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                    faolmi(b.yol)
-                      ? 'bg-accent-soft font-semibold text-accent'
-                      : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
-                  }`}
-                >
-                  <Ikonka nomi={b.ikonka} className="h-[18px] w-[18px] shrink-0" />
-                  <span className="truncate">{tr(b.nomi)}</span>
-                </Link>
+          {/*
+            ── ТЕЛЕФОНДА МЕНЮ АЙЛАНАДИ ──
 
-                {/*
-                  ── МУНДАРИЖАНИНГ УЯСИ ──
-
-                  Бўш `div` — мундарижа саҳифадан шу ерга
-                  портал орқали тушади. Рўйхатнинг ЎЗИ шу
-                  ерда ясалмайди: у қайси бўлимлар экранда
-                  борлигига боғлиқ, буни эса фақат саҳифа
-                  билади.
-
-                  Уя фақат таҳлил панелида чизилади — бошқа
-                  саҳифада мундарижа йўқ ва бўш қути меню
-                  остида ортиқча оралиқ очиб турарди.
-
-                  Кичик экранда меню — очиладиган рўйхат;
-                  мундарижа у ерда эмас, саҳифанинг тепасида
-                  ўз тугмаси билан чиқади.
-                */}
-                {b.yol === MUNDARIJA_YOLI && faolmi(b.yol) && (
-                  <div id={MUNDARIJA_UYASI} className="hidden lg:block" />
+            Очилган меню `fixed` туради. Илгари унинг баландлиги чегараланмаган
+            ва `overflow` йўқ эди: администраторда 19 та банд бор, телефон
+            экранига эса 14 таси сиғарди — «Бошқарув», «Тасдиқлаш», «Тизим
+            ҳолати» экрандан ПАСТДА қолиб, уларга етиб бўлмасди. Энди меню
+            экран баландлигидан ошмайди ва ичида айланади. Коала (z-40) ҳам
+            менюнинг устида қолмайди.
+          */}
+          <nav aria-label={tr('Асосий меню')}>
+            {guruhlar.map((g) => (
+              <div key={g.guruh} className="space-y-0.5">
+                {g.nomi && (
+                  <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                    {tr(g.nomi)}
+                  </p>
                 )}
-              </Fragment>
+                {g.bandlar.map((b) => (
+                  <Fragment key={b.yol}>
+                    <Link
+                      href={b.yol}
+                      onClick={() => setOchiq(false)}
+                      aria-current={faolmi(b.yol) ? 'page' : undefined}
+                      className={`relative flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                        faolmi(b.yol)
+                          ? 'bg-accent-soft font-semibold text-accent'
+                          : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
+                      }`}
+                    >
+                      <Ikonka nomi={b.ikonka} className="h-[18px] w-[18px] shrink-0" />
+                      <span className="truncate">{tr(b.nomi)}</span>
+                    </Link>
+
+                    {/*
+                      ── МУНДАРИЖАНИНГ УЯСИ ──
+
+                      Бўш `div` — мундарижа саҳифадан шу ерга
+                      портал орқали тушади. Рўйхатнинг ЎЗИ шу
+                      ерда ясалмайди: у қайси бўлимлар экранда
+                      борлигига боғлиқ, буни эса фақат саҳифа
+                      билади.
+
+                      Уя фақат таҳлил панелида чизилади — бошқа
+                      саҳифада мундарижа йўқ ва бўш қути меню
+                      остида ортиқча оралиқ очиб турарди.
+
+                      Кичик экранда меню — очиладиган рўйхат;
+                      мундарижа у ерда эмас, саҳифанинг тепасида
+                      ўз тугмаси билан чиқади.
+                    */}
+                    {b.yol === MUNDARIJA_YOLI && faolmi(b.yol) && (
+                      <div id={MUNDARIJA_UYASI} className="hidden lg:block" />
+                    )}
+                  </Fragment>
+                ))}
+              </div>
             ))}
           </nav>
 

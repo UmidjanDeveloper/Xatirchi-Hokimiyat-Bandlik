@@ -148,6 +148,8 @@ export async function qoidaBilanJavob(ctx: AgentKontekst, matn: string): Promise
         ? 'xatolarni_korildi'
         : null;
   if (amal) {
+    /* Ko'rish rejimi: yozish taklifi ham yaratilmaydi (bazaga hech narsa tushmaydi) */
+    if (ctx.oqishFaqat) return oddiy('korishRejimi');
     const t = await taklifYarat(ctx.userId, ctx.rol, amal, ctx.hozir);
     if (!t.ok) return oddiy('amalRuxsatYoq');
     return {

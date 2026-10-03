@@ -914,6 +914,57 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    nomi: 'Ko‘rish rejimi (oqishFaqat): "amalni_taklif_qil" asbobi ro‘yxatda va modelga berilgan asboblarda YO‘Q (oddiy rejimda bor); majburan chaqirilsa ham taklif YARATILMAYDI',
+    tekshir: async () => {
+      const ids = [users.ADMIN.id, users.BANDLIK_RAHBAR.id];
+      const hisob = () => prisma.agentAmali.count({ where: { userId: { in: ids } } });
+      const oldin = await hisob();
+      const oddiyda = (['ADMIN', 'BANDLIK_RAHBAR'] as Rol[]).every((r) => rolAsboblari(r).some((x) => x.nomi === 'amalni_taklif_qil'));
+      const korishda = (['ADMIN', 'BANDLIK_RAHBAR'] as Rol[]).every(
+        (r) => !rolAsboblari(r, true).some((x) => x.nomi === 'amalni_taklif_qil') && !modelAsboblari(r, true).some((f) => f.function.name === 'amalni_taklif_qil')
+      );
+      const n = await asbobniBajar({ ...adminCtx, oqishFaqat: true }, 'amalni_taklif_qil', { amal: 'xatolarni_korildi' });
+      const r = await asbobniBajar({ ...rahbarCtx, oqishFaqat: true }, 'amalni_taklif_qil', { amal: 'navbatni_qayta_yubor' });
+      /* Boshqa asboblar ko‘rish rejimida ham ishlaydi: Koala ma’lumot beradi va sahifa ochadi */
+      const oqish = await asbobniBajar({ ...adminCtx, oqishFaqat: true }, 'korsatkichlar', {});
+      return oddiyda && korishda && n.xato === true && r.xato === true && !n.amallar?.length && !r.amallar?.length && !oqish.xato && (await hisob()) === oldin;
+    },
+  },
+  {
+    nomi: 'Ko‘rish rejimi: qoidali javob yozish taklifini yaratmaydi (aniq matn, tasdiq kartasi yo‘q, bazaga hech narsa tushmaydi); oddiy rejimda esa taklif yaratiladi',
+    tekshir: async () => {
+      const hisob = () => prisma.agentAmali.count({ where: { userId: users.ADMIN.id } });
+      await prisma.agentAmali.deleteMany({ where: { userId: users.ADMIN.id } });
+      const k = await qoidaBilanJavob({ ...adminCtx, alifbo: 'kir', oqishFaqat: true }, 'xatolarni korildi deb belgila');
+      const l = await qoidaBilanJavob({ ...adminCtx, alifbo: 'lot', oqishFaqat: true }, 'xatolarni korildi deb belgila');
+      const koryapman = await hisob();
+      const oddiy = await qoidaBilanJavob(adminCtx, 'xatolarni korildi deb belgila');
+      return (
+        k.amallar.length === 0 && l.amallar.length === 0 && k.javob === A(MATN.korishRejimi, 'kir') && l.javob === A(MATN.korishRejimi, 'lot') &&
+        koryapman === 0 && oddiy.amallar[0]?.tur === 'tasdiq' && (await hisob()) === 1
+      );
+    },
+  },
+  {
+    nomi: 'Ko‘rish rejimi: to‘liq oqim — model asboblari ro‘yxatida taklif asbobi yo‘q, tizim ko‘rsatmasida "KO‘RISH REJIMI" bor (oddiy rejimda yo‘q), yozish so‘ralganda bazaga taklif tushmaydi',
+    tekshir: async () => {
+      const hisob = () => prisma.agentAmali.count({ where: { userId: users.ADMIN.id } });
+      await prisma.agentAmali.deleteMany({ where: { userId: users.ADMIN.id } });
+      const korish = soxtaModel((q) => (q === 0 ? asbobJavob([{ id: 'c1', nomi: 'amalni_taklif_qil', args: { amal: 'xatolarni_korildi' } }]) : matnJavob('Bu rejimda o‘zgartirib bo‘lmaydi.')));
+      const n = await suhbatniYurit({ ctx: { ...adminCtx, oqishFaqat: true }, tarix: [], xabar: 'xato jurnalini ko‘rildi qil', model: korish.fn });
+      const nomlar = (korish.chaqiruvlar[0].asboblar as { function: { name: string } }[]).map((a) => a.function.name);
+      const tizim = korish.chaqiruvlar[0].xabarlar[0].content as string;
+      const asbobNatijasi = korish.chaqiruvlar[1].xabarlar.find((x) => x.role === 'tool') as { content: string } | undefined;
+      const oddiy = soxtaModel(() => matnJavob('Xo‘p.'));
+      await suhbatniYurit({ ctx: adminCtx, tarix: [], xabar: 'salom', model: oddiy.fn });
+      const oddiyTizim = oddiy.chaqiruvlar[0].xabarlar[0].content as string;
+      return (
+        !nomlar.includes('amalni_taklif_qil') && /KO'RISH REJIMI/.test(tizim) && !/KO'RISH REJIMI/.test(oddiyTizim) &&
+        /asbob_yoq/.test(asbobNatijasi?.content ?? '') && n.amallar.length === 0 && (await hisob()) === 0
+      );
+    },
+  },
+  {
     nomi: 'Taklif: bir xil amal uchun muddati o‘tmagan taklif bor — yangisi yaratilmaydi (karta takrorlanmaydi)',
     tekshir: async () => {
       const a = await taklifYarat(users.ADMIN.id, 'ADMIN', 'navbatni_qayta_yubor');

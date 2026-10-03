@@ -243,7 +243,13 @@ const SINOVLAR: Sinov[] = [
      */
     nomi: 'Ён устун ва рўйхат айлана олади — сиғмаса кесилмайди',
     tekshir: () =>
-      QOBIQ_KODI.includes('lg:overflow-y-auto') &&
+      /*
+       * Yon menyu endi telefonda ham aylanadi (`overflow-y-auto` hamma
+       * ekranda), shuning uchun faqat `lg:` variantini izlamaymiz: asosiy
+       * shart - kompyuterda balandlik ekranga bog'langan va aylantirish bor.
+       */
+      /(^|\s)overflow-y-auto(\s|`)/.test(QOBIQ_KODI) &&
+      QOBIQ_KODI.includes('lg:h-[calc(100dvh-4rem)]') &&
       MUNDARIJA_KODI.includes('max-h-[46vh] overflow-y-auto'),
   },
   {

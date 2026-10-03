@@ -1,0 +1,25 @@
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const { NextResponse } = require('next/server');
+const mock = (p, exports) => { const id = require.resolve(path.join(root, p)); require.cache[id] = { id, filename: id, loaded: true, exports }; };
+let auth, enabled = true, allowed = true, budget = true, calls = 0, fail = false;
+mock('src/lib/api-auth.ts', { talabQil: async () => auth });
+mock('src/lib/alifbo-server.ts', { alifboServer: () => 'lot' });
+mock('src/lib/kirish-chegarasi.ts', { bazaChegarasi: async () => ({ allowed }) });
+mock('src/lib/agent/hisob.ts', { modelXabariniBandQil: async () => ({ ruxsat: budget, qolgan: 9 }) });
+const original = require(path.join(root, 'src/lib/agent/jarvis.ts'));
+mock('src/lib/agent/jarvis.ts', { ...original, jarvisSozlama: () => enabled ? {} : null, jarvisJavobi: async () => { calls++; if (fail) throw new Error('PRIVATE-UPSTREAM-ERROR'); return 'Salom'; } });
+const { POST } = require(path.join(root, 'src/app/api/agent/jarvis/route.ts'));
+const request = (body = { xabar: 'salom' }) => new Request('https://mock.invalid/api/agent/jarvis', { method: 'POST', body: JSON.stringify(body) });
+(async () => {
+ auth = NextResponse.json({}, { status: 401 }); assert.equal((await POST(request())).status, 401);
+ auth = { sessiya: { userId: 'fake', rol: 'YETTILIK' } }; assert.equal((await POST(request())).status, 403);
+ auth.sessiya.rol = 'ADMIN'; enabled = false; assert.equal((await POST(request())).status, 503); enabled = true;
+ assert.equal((await POST(request({ xabar: 'hi', api_key: 'injected' }))).status, 400);
+ allowed = false; assert.equal((await POST(request())).status, 429); allowed = true;
+ budget = false; assert.equal((await POST(request())).status, 429); budget = true; assert.equal(calls, 0);
+ const ok = await POST(request()); assert.equal(ok.status, 200); const data = await ok.json(); assert.deepEqual(data.amallar, []); assert.deepEqual(data.manbalar, []); assert.equal(data.rejim, 'jarvis'); assert.equal(calls, 1);
+ fail = true; const bad = await POST(request()); assert.equal(bad.status, 502); assert.doesNotMatch(await bad.text(), /PRIVATE-UPSTREAM-ERROR/);
+ console.log('8/8 API scenarios passed (mock auth, rate limit, budget and upstream; no DB/network)');
+})().catch(e => { console.error(e); process.exitCode = 1; });

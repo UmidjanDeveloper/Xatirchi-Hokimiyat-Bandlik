@@ -498,14 +498,29 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat {ai, ovozServer, limit, qolgan}; kalit yo\'q — ai:false; ovoz yo\'li 503',
+    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat {ai, ovozServer, ovozChiqish, jarvis, limit, qolgan}; kalit yo\'q — ai:false, ovozChiqish:false, jarvis:false; ovoz, gapirish va JARVIS yo\'llari 503',
     tekshir: async () => {
       const x = await xodimYarat('ADMIN', null, 'agent_admin_a');
       const c = await kirish(x.username);
       const h = await sorov('/api/agent/holat', { cookie: c.cookie });
       const d = JSON.parse(h.matn) as Record<string, unknown>;
       const o = await sorov('/api/agent/ovoz', { cookie: c.cookie, method: 'POST', body: {} });
-      return h.status === 200 && Object.keys(d).sort().join() === 'ai,limit,ovozServer,qolgan' && d.ai === false && d.limit === 120 && o.status === 503;
+      /* Server ovozi (TTS) sozlanmagan: `ovozChiqish` false, `/api/agent/gapir` — 503 (kalit ham, model nomi ham ochilmaydi) */
+      const g = await sorov('/api/agent/gapir', { cookie: c.cookie, method: 'POST', body: { matn: 'salom' } });
+      /* JARVIS sozlanmagan: `jarvis` false, `/api/agent/jarvis` — 503 (shlyuz manzili va token ochilmaydi) */
+      const j = await sorov('/api/agent/jarvis', { cookie: c.cookie, method: 'POST', body: { xabar: 'salom' } });
+      return (
+        h.status === 200 &&
+        Object.keys(d).sort().join() === 'ai,jarvis,limit,ovozChiqish,ovozServer,qolgan' &&
+        d.ai === false &&
+        d.ovozChiqish === false &&
+        d.jarvis === false &&
+        d.limit === 120 &&
+        o.status === 503 &&
+        g.status === 503 &&
+        j.status === 503 &&
+        !/JARVIS_|Bearer|hugginggpt/i.test(j.matn)
+      );
     },
   },
   {
@@ -563,6 +578,116 @@ const SINOVLAR: Sinov[] = [
       }
       const yoq = await fetch(`${BAZA}/maskot/yoq-rasm.webp`, { redirect: 'manual' });
       return yoq.status === 404 || (yoq.status >= 300 && yoq.status < 400);
+    },
+  },
+  {
+    nomi: '13l. Ko\'rish rejimida Koala ISHLAYDI, lekin faqat o\'qiydi: savol-javob (suhbat, jarvis, gapir, ovoz) administratorning o\'z hisobi bilan o\'tadi, yozish taklifi YARATILMAYDI, tasdiqlash va boshqa yozish yo\'llari 403 (korish:true); mahalla xodimi ko\'zi bilan — Koala yo\'q (403); o\'z hisobiga qaytgach tasdiqlash yo\'li ochiq',
+    tekshir: async () => {
+      const admin = await xodimYarat('ADMIN', null, 'koz_admin');
+      const hokim = await xodimYarat('HOKIM', null, 'koz_hokim');
+      const rahbar = await xodimYarat('BANDLIK_RAHBAR', null, 'koz_rahbar');
+      const yettilik = await xodimYarat('YETTILIK', A, 'koz_yettilik');
+      const oz = await kirish(admin.username);
+
+      const kozCookie = async (nishonId: string) => {
+        const r = await fetch(`${BAZA}/api/admin/korish`, {
+          method: 'POST',
+          headers: { cookie: oz.cookie, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: nishonId }),
+        });
+        if (r.status !== 200) throw new Error(`Ko'rish rejimi yoqilmadi: ${r.status}`);
+        const c = r.headers.getSetCookie().find((x) => /^[^=]+=[^;]+/.test(x));
+        if (!c) throw new Error('Cookie kelmadi');
+        return c.split(';')[0];
+      };
+      const amallar = () => prisma.agentAmali.count({ where: { userId: admin.id } });
+      const korishRad = (r: Javob) => r.status === 403 && /"korish":true/.test(r.matn);
+
+      /* Hokim ko'zi bilan */
+      const c1 = await kozCookie(hokim.id);
+      const holat = await sorov('/api/agent/holat', { cookie: c1 });
+      const suhbat = await sorov('/api/agent/suhbat', { cookie: c1, method: 'POST', body: { xabar: 'салом' } });
+      const jarvis = await sorov('/api/agent/jarvis', { cookie: c1, method: 'POST', body: { xabar: 'salom' } });
+      const gapir = await sorov('/api/agent/gapir', { cookie: c1, method: 'POST', body: { matn: 'salom' } });
+      const ovoz = await sorov('/api/agent/ovoz', { cookie: c1, method: 'POST', body: {} });
+      const tasdiq = await sorov('/api/agent/tasdiq', { cookie: c1, method: 'POST', body: { id: 'x', qaror: 'ha' } });
+      const reyestr = await sorov('/api/reyestr', { cookie: c1, method: 'POST', body: {} });
+      const suhbatJson = JSON.parse(suhbat.matn) as { javob?: string; amallar?: unknown[] };
+
+      /* Bandlik rahbari ko'zi bilan: yozish iborasi — taklif ham, tasdiq kartasi ham yo'q */
+      const c2 = await kozCookie(rahbar.id);
+      const yozish = await sorov('/api/agent/suhbat', { cookie: c2, method: 'POST', body: { xabar: 'xatoli xabarlarni qayta yubor' } });
+      const yozishJson = JSON.parse(yozish.matn) as { javob?: string; amallar?: { tur: string }[] };
+      const rahbarTasdiq = await sorov('/api/agent/tasdiq', { cookie: c2, method: 'POST', body: { id: 'x', qaror: 'ha' } });
+
+      /* Mahalla xodimi ko'zi bilan: ularda Koala yo'q */
+      const c3 = await kozCookie(yettilik.id);
+      const yet = await sorov('/api/agent/suhbat', { cookie: c3, method: 'POST', body: { xabar: 'салом' } });
+
+      /* Nishon o'chirilsa (faol emas) cookie'da "ko'z" qoladi: bu oraliq holatda ham Koala yozish taklif QILMAYDI */
+      const nishonYoq = await xodimYarat('BANDLIK_RAHBAR', null, 'koz_ochgan');
+      const c4 = await kozCookie(nishonYoq.id);
+      await prisma.user.update({ where: { id: nishonYoq.id }, data: { faol: false } });
+      const oraliq = await sorov('/api/agent/suhbat', { cookie: c4, method: 'POST', body: { xabar: 'xatolarni korildi deb belgila' } });
+      const oraliqJson = JSON.parse(oraliq.matn) as { amallar?: { tur: string }[] };
+      const oraliqAmal = await amallar();
+
+      /* O'z hisobi: yozish iborasi taklif yaratadi, tasdiqlash yo'li ochiq (mavjud emas id — 404, ko'rish 403 emas) */
+      const oddiy = await sorov('/api/agent/suhbat', { cookie: oz.cookie, method: 'POST', body: { xabar: 'xatoli xabarlarni qayta yubor' } });
+      const oddiyJson = JSON.parse(oddiy.matn) as { amallar?: { tur: string }[] };
+      const ozTasdiq = await sorov('/api/agent/tasdiq', { cookie: oz.cookie, method: 'POST', body: { id: 'yoq-id', qaror: 'ha' } });
+
+      return (
+        ruxsat(holat) &&
+        ruxsat(suhbat) && typeof suhbatJson.javob === 'string' && suhbatJson.javob.length > 0 &&
+        /* Sozlanmagan xizmatlar 503 beradi: ko'rish to'sig'idan o'tib, o'z holatiga yetdi */
+        jarvis.status === 503 && gapir.status === 503 && ovoz.status === 503 &&
+        !/"korish":true/.test(jarvis.matn + gapir.matn + ovoz.matn) &&
+        korishRad(tasdiq) && korishRad(rahbarTasdiq) && korishRad(reyestr) &&
+        ruxsat(yozish) && !(yozishJson.amallar ?? []).some((a) => a.tur === 'tasdiq') &&
+        yet.status === 403 && !/"korish":true/.test(yet.matn) &&
+        (oddiyJson.amallar ?? []).some((a) => a.tur === 'tasdiq') && ozTasdiq.status === 404 &&
+        ruxsat(oraliq) && !(oraliqJson.amallar ?? []).some((a) => a.tur === 'tasdiq') && oraliqAmal === 0 &&
+        /* ko'rish rejimida bazaga taklif tushmadi; faqat o'z hisobidagi bitta taklif bor */
+        (await amallar()) === 1
+      );
+    },
+  },
+  {
+    nomi: '13m. `/xodimlar` (login/parol va rol panellari) FAQAT administratorga: administrator — 200 va rol kartalari; rahbar, hokim, bandlik, mahalla xodimi va kirishsiz — rad, HTML ichida ro\'yxat ham, login ham YO\'Q; ko\'rish rejimida hokim ko\'zi bilan ham yopiq',
+    tekshir: async () => {
+      const admin = await xodimYarat('ADMIN', null, 'xl_admin');
+      const rahbar = await xodimYarat('BANDLIK_RAHBAR', null, 'xl_rahbar');
+      const hokim = await xodimYarat('HOKIM', null, 'xl_hokim');
+      const bandlik = await xodimYarat('BANDLIK', null, 'xl_bandlik');
+      const yettilik = await xodimYarat('YETTILIK', A, 'xl_yettilik');
+      /* Begona hisob: uning logini hech kimning (administratordan boshqa) javobida bo'lmasligi shart */
+      const begona = await xodimYarat('BANDLIK', null, 'xl_begona');
+
+      const a = await sorov('/xodimlar', { cookie: (await kirish(admin.username)).cookie });
+      /* HTML ichida RSC oqimi ham bor, shuning uchun belgilar ikki marta uchraydi: har rolning kartasi borligi tekshiriladi */
+      const kartalar = ['HOKIM', 'BANDLIK_RAHBAR', 'BANDLIK', 'YETTILIK', 'ADMIN'].every((r) => a.matn.includes(`data-rol-kartasi="${r}"`));
+
+      /* Boshqalar: rad va sizib chiqish yo'q (ro'yxat ham, kartalar ham, login ham) */
+      /* Ro'yxat sarlavhasi, rol kartalari, begona hisob logini va mahalla xodimlarining `mfy_` loginlari chiqmasligi kerak.
+       * O'z logini esa sahifada turaveradi (yuqori panel), shuning uchun u tekshirilmaydi. */
+      const sizmaydi = (r: Javob) => !/data-rol-kartasi|Логин ва парол рўйхати/.test(r.matn) && !r.matn.includes(begona.username) && !r.matn.includes('mfy_');
+      const boshqalar: Javob[] = [];
+      for (const x of [rahbar, hokim, bandlik, yettilik]) boshqalar.push(await sorov('/xodimlar', { cookie: (await kirish(x.username)).cookie }));
+      const kirishsiz = await sorov('/xodimlar');
+
+      /* Administrator hokim ko'zi bilan: sahifa hokimning huquqi bilan chiziladi — yopiq */
+      const oz = await kirish(admin.username);
+      const kz = await fetch(`${BAZA}/api/admin/korish`, { method: 'POST', headers: { cookie: oz.cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: hokim.id }) });
+      const kozCookie = (kz.headers.getSetCookie().find((x) => /^[^=]+=[^;]+/.test(x)) ?? '').split(';')[0];
+      const kozda = await sorov('/xodimlar', { cookie: kozCookie });
+
+      return (
+        ruxsat(a) && kartalar && a.matn.includes('Ходимлар ва панеллар') &&
+        boshqalar.every((r) => rad(r) && sizmaydi(r)) &&
+        rad(kirishsiz) && sizmaydi(kirishsiz) &&
+        kz.status === 200 && rad(kozda) && sizmaydi(kozda)
+      );
     },
   },
   {

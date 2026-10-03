@@ -7,6 +7,7 @@ import { bazaChegarasi } from '@/lib/kirish-chegarasi';
 import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 import { A } from '@/lib/alifbo';
 import { agentJavobi } from '@/lib/agent/xizmat';
+import { korishdami } from '@/lib/korish-rejimi';
 import { haqiqiyModel } from '@/lib/agent/model';
 import { MATN } from '@/lib/agent/matnlar';
 import { AGENT_ROLLARI, DAQIQALIK_LIMIT, ENG_KOP_TARIX, ENG_UZUN_TARIX_XABARI, ENG_UZUN_XABAR } from '@/lib/agent/ruxsat';
@@ -29,7 +30,7 @@ const Sxema = z.object({
  * daqiqalik chegara. Qolgan hammasi `lib/agent/xizmat.ts` da.
  */
 export async function POST(request: Request) {
-  const q = await talabQil([...AGENT_ROLLARI]);
+  const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
   if (q instanceof NextResponse) return q;
   const alifbo = alifboServer();
 
@@ -61,6 +62,8 @@ export async function POST(request: Request) {
         mahallaId: q.sessiya.mahallaId,
         alifbo,
         hozir: new Date(),
+        /* Ko'rish rejimida (administrator hokim/rahbar "ko'zi bilan") Koala faqat o'qiydi */
+        oqishFaqat: Boolean(q.korish) || korishdami(q.sessiya),
       },
       xabar: tana.data.xabar,
       tarix: tana.data.tarix,

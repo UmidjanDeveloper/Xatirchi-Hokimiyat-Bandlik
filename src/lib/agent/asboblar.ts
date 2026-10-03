@@ -513,6 +513,10 @@ export const ASBOBLAR: readonly Asbob[] = [
     rollar: ['ADMIN', 'BANDLIK_RAHBAR'],
     async bajar(ctx, args) {
       const a = z.object({ amal: z.string().max(40) }).parse(args ?? {});
+      /* Ikkinchi qatlam: ro'yxatdan chiqarilgan bo'lsa ham, ko'rish rejimida taklif yaratilmaydi */
+      if (ctx.oqishFaqat) {
+        return { malumot: { xato: 'korish_rejimi', izoh: "Ko'rish rejimida yozish amali taklif qilinmaydi" }, manbalar: [] };
+      }
       const t = await taklifYarat(ctx.userId, ctx.rol, a.amal, ctx.hozir);
       if (!t.ok) {
         return { malumot: { xato: t.sabab, izoh: t.sabab === 'ruxsat_yoq' ? 'Bu amal sizning rolingiz uchun emas' : "Bunday amal yo'q" }, manbalar: [] };
@@ -530,10 +534,16 @@ export const ASBOBLAR: readonly Asbob[] = [
   },
 ];
 
-/** Rolga ochiq asboblar */
-export function rolAsboblari(rol: Rol): Asbob[] {
+/**
+ * Rolga ochiq asboblar.
+ *
+ * `oqishFaqat` (ko'rish rejimi): yozish amalini taklif qiluvchi asbob
+ * ro'yxatda umuman YO'Q — model uni ko'rmaydi ham, chaqira ham olmaydi.
+ */
+export function rolAsboblari(rol: Rol, oqishFaqat = false): Asbob[] {
   return ASBOBLAR.filter((a) => a.rollar.includes(rol)).filter((a) => {
     if (a.nomi !== 'amalni_taklif_qil') return true;
+    if (oqishFaqat) return false;
     return (AMAL_KALITLARI as AmalKaliti[]).some((k) => amalRolgaOchiqmi(k, rol));
   });
 }
@@ -543,8 +553,8 @@ export function rolAsboblari(rol: Rol): Asbob[] {
  * ROLGA qarab quriladi: model ruxsatsiz sahifani tanlay olmaydi (tanlasa ham
  * `sahifaManzili` rad etadi — bu ikkinchi qatlam).
  */
-export function modelAsboblari(rol: Rol): { type: 'function'; function: { name: string; description: string; parameters: Record<string, unknown> } }[] {
-  return rolAsboblari(rol).map((a) => {
+export function modelAsboblari(rol: Rol, oqishFaqat = false): { type: 'function'; function: { name: string; description: string; parameters: Record<string, unknown> } }[] {
+  return rolAsboblari(rol, oqishFaqat).map((a) => {
     let parametrlar = a.parametrlar;
     if (a.nomi === 'sahifani_och') {
       const sahifalar = rolSahifalari(rol);
@@ -572,8 +582,8 @@ export function modelAsboblari(rol: Rol): { type: 'function'; function: { name: 
   });
 }
 
-export function asbobniTop(rol: Rol, nomi: string): Asbob | undefined {
-  return rolAsboblari(rol).find((a) => a.nomi === nomi);
+export function asbobniTop(rol: Rol, nomi: string, oqishFaqat = false): Asbob | undefined {
+  return rolAsboblari(rol, oqishFaqat).find((a) => a.nomi === nomi);
 }
 
 /**
@@ -585,7 +595,7 @@ export async function asbobniBajar(
   nomi: string,
   args: unknown
 ): Promise<AsbobNatijasi & { xato?: boolean }> {
-  const asbob = asbobniTop(ctx.rol, nomi);
+  const asbob = asbobniTop(ctx.rol, nomi, ctx.oqishFaqat);
   if (!asbob) {
     return { malumot: { xato: 'asbob_yoq', izoh: "Bunday asbob yo'q yoki sizning rolingiz uchun emas" }, manbalar: [], xato: true };
   }

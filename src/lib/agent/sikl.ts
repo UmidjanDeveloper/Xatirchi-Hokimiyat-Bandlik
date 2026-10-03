@@ -65,7 +65,7 @@ export async function suhbatniYurit(k: SiklKirishi): Promise<SiklNatijasi> {
     ...k.tarix.map<ModelXabari>((t) => (t.r === 'f' ? { role: 'user', content: t.m } : { role: 'assistant', content: t.m })),
     { role: 'user', content: k.xabar },
   ];
-  const asboblar = modelAsboblari(ctx.rol);
+  const asboblar = modelAsboblari(ctx.rol, ctx.oqishFaqat);
 
   const amallar: Amal[] = [];
   const manbalar = new Map<string, Manba>();

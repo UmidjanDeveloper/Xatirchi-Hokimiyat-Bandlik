@@ -17,6 +17,12 @@ export interface AgentKontekst {
   mahallaId: string | null;
   alifbo: Alifbo;
   hozir: Date;
+  /**
+   * Ko'rish rejimi: administrator hokim yoki rahbar "ko'zi bilan" qarayapti.
+   * Koala javob beradi va sahifa ochadi, lekin yozish amalini TAKLIF QILMAYDI
+   * (taklif ham yaratilmaydi): bu rejimda hech narsa o'zgarmasligi shart.
+   */
+  oqishFaqat?: boolean;
 }
 
 /** Javob qaysi manbadan olingani — xodimga ko'rinadi */

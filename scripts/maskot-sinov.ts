@@ -144,7 +144,7 @@ const SINOVLAR: Sinov[] = [
       KOMPONENT.includes('aria-hidden={sarlavha ? undefined : true}') &&
       KOMPONENT.includes("role={sarlavha ? 'img' : undefined}") &&
       TUGMA.includes('aria-label={t(') &&
-      TUGMA.includes('Коала — овозли ёрдамчини очиш'),
+      TUGMA.includes('Коала — ёрдамчини очиш'),
   },
   {
     nomi: 'Holat belgisi RANGDAN va HARAKATDAN tashqari: eshitmoqda — ovoz yoylari, oylamoqda — uch nuqta, gapirmoqda — tovush ustunlari, tayyor — belgisiz',
@@ -156,22 +156,34 @@ const SINOVLAR: Sinov[] = [
       OYNA.includes('<Maskot holat={holat}'),
   },
   {
-    nomi: 'Harakat FAQAT prefers-reduced-motion: no-preference va zaif qurilma (data-fx=lite) bo‘lmaganda: barcha maskot animatsiyalari shu blok ichida',
+    nomi: 'Harakat FAQAT prefers-reduced-motion: no-preference va zaif qurilma (data-fx=lite) bo‘lmaganda: barcha maskot animatsiyalari shu bloklar ichida',
     tekshir: () => {
       const bosh = CSS.indexOf('KOALA (AI agent maskoti)');
       if (bosh < 0) return false;
-      const qism = CSS.slice(bosh);
-      const mediaBoshi = qism.indexOf('@media (prefers-reduced-motion: no-preference)');
-      const birinchiKadr = qism.indexOf('@keyframes maskot-');
-      if (mediaBoshi < 0 || birinchiKadr < mediaBoshi) return false;
-      const blok = qism.slice(mediaBoshi, birinchiKadr);
-      const tashqari = qism.slice(0, mediaBoshi) + qism.slice(birinchiKadr);
-      // blok ichidagi har bir animatsiya zaif qurilmani istisno qiladi; tashqarida `animation:` yo'q (keyframes ichidagilarsiz)
-      const bloklar = blok.match(/[^{}]+\{[^}]*animation:[^}]*\}/g) ?? [];
+      let qism = CSS.slice(bosh);
+      /* Barcha `@media (prefers-reduced-motion: no-preference) { ... }` bloklarini qavs bo'yicha ajratib olamiz */
+      const BELGI = '@media (prefers-reduced-motion: no-preference)';
+      const bloklar: string[] = [];
+      for (let i = qism.indexOf(BELGI); i >= 0; i = qism.indexOf(BELGI)) {
+        const ochiq = qism.indexOf('{', i);
+        let chuqurlik = 0;
+        let j = ochiq;
+        for (; j < qism.length; j++) {
+          if (qism[j] === '{') chuqurlik++;
+          else if (qism[j] === '}' && --chuqurlik === 0) break;
+        }
+        bloklar.push(qism.slice(ochiq, j + 1));
+        qism = qism.slice(0, i) + qism.slice(j + 1);
+      }
+      if (bloklar.length === 0) return false;
+      /* Qoida ichidagi animatsiyalar: har biri zaif qurilmani istisno qiladi; `animation: none` istisno emas */
+      const qoidalar = bloklar.join('\n').match(/[^{}]+\{[^}]*animation:[^}]*\}/g) ?? [];
+      const harakatli = qoidalar.filter((q) => !/animation:\s*none/.test(q));
+      /* Bloklardan TASHQARIDA `animation:` yo'q (keyframes ichida u uchramaydi) */
       return (
-        bloklar.length >= 8 &&
-        bloklar.every((b) => b.includes("html:not([data-fx='lite'])")) &&
-        !/\banimation:/.test(tashqari)
+        harakatli.length >= 8 &&
+        harakatli.every((q) => q.includes("html:not([data-fx='lite'])")) &&
+        !/\banimation:/.test(qism)
       );
     },
   },
@@ -196,13 +208,20 @@ const SINOVLAR: Sinov[] = [
       !/Lison ut-tayr|qushdan olingan/.test(KURSATMA),
   },
   {
-    nomi: 'Tugma: kamida 44x44 piksel (4.5rem = 72 piksel), klaviatura fokusi ko‘rinadi, bosilganda oyna ochiladi, ustiga kelganda kod oldindan yuklanadi',
-    tekshir: () =>
-      TUGMA.includes('h-[4.5rem] w-[4.5rem]') &&
-      TUGMA.includes('focus-visible:outline') &&
-      TUGMA.includes('onMouseEnter={isit}') &&
-      TUGMA.includes('onFocus={isit}') &&
-      TUGMA.includes('<Maskot olcham={72} />'),
+    nomi: 'Tugma: kamida 44x44 piksel (CSS: 88x100), klaviatura fokusi ko‘rinadi, bosilganda oyna ochiladi, ustiga kelganda kod oldindan yuklanadi',
+    tekshir: () => {
+      const olcham = /\.koala-pet\s*\{[^}]*width:\s*(\d+)px;[^}]*height:\s*(\d+)px/.exec(CSS);
+      return (
+        !!olcham &&
+        Number(olcham[1]) >= 44 &&
+        Number(olcham[2]) >= 44 &&
+        TUGMA.includes('focus-visible:outline') &&
+        /onMouseEnter=\{\(\) => \{[^}]*isit\(\)/.test(TUGMA) &&
+        /onFocus=\{\(\) => \{[^}]*isit\(\)/.test(TUGMA) &&
+        TUGMA.includes('setOchiq(true)') &&
+        TUGMA.includes('<Maskot olcham={80} />')
+      );
+    },
   },
   {
     nomi: 'Rasm uzoq muddat keshlanadi: /maskot/ uchun `public, max-age=31536000, immutable` (nomda versiya bor, shuning uchun xavfsiz)',

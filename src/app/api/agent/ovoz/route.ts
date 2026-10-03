@@ -32,7 +32,7 @@ const ENG_KATTA_BAYT = 1_500_000;
 const RUXSAT_ETILGAN = /^(audio\/(webm|ogg|mp4|mpeg|wav|x-wav|x-m4a|aac|mp3)|video\/webm)(;.*)?$/i;
 
 export async function POST(request: Request) {
-  const q = await talabQil([...AGENT_ROLLARI]);
+  const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
   if (q instanceof NextResponse) return q;
   const alifbo = alifboServer();
   const xabar = (m: string) => ({ xabar: A(m, alifbo) });
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
   try {
     /* Provayderga so'rov: sabab aniqlanadi, parametr rad etilsa moslashib qayta uriladi (`lib/agent/stt.ts`) */
-    const n = await ovozniMatnga(prov, fayl, { model: process.env.AGENT_STT_MODEL?.trim() || undefined });
+    const n = await ovozniMatnga(prov, fayl, { model: process.env.AGENT_STT_MODEL?.trim() || undefined, signal: request.signal });
 
     if (!n.ok) {
       /* Matn chiqmadi: xodimning kunlik soniyalari behuda ketmasin */
