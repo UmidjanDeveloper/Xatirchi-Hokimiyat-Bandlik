@@ -41,8 +41,11 @@ import { HECH_QAYSI_MAHALLA, avlodYaroqlimi, mahallaFiltri, sessiyaOqi, sessiyaY
 import { checkRateLimit, refundRateLimit, resetRateLimit } from '../src/lib/rate-limit';
 import {
   KORISH_ISTISNOLARI,
+  KORISH_OQISH_POSTLARI,
   OQISH_USULLARI,
   istisnomi,
+  korishdaOqishmi,
+  korishdami,
   kozniOqi,
   ozgartirishmi,
 } from '../src/lib/korish-rejimi';
@@ -279,6 +282,82 @@ const SINOVLAR: Sinov[] = [
       KORISH_ISTISNOLARI.length === 2,
   },
   {
+    nomi: 'Коала ва JARVIS савол-жавоби кўриш режимида очиқ — аммо ТЎЛИҚ мос келиш билан, тасдиқлаш йўли ёпиқ',
+    tekshir: () =>
+      KORISH_OQISH_POSTLARI.length === 4 &&
+      ['/api/agent/suhbat', '/api/agent/ovoz', '/api/agent/gapir', '/api/agent/jarvis'].every(korishdaOqishmi) &&
+      /* Ёзишни БАЖАРАДИГАН йўл ва унга ўхшаш манзиллар ёпиқ қолади */
+      ['/api/agent/tasdiq', '/api/agent/holat', '/api/agent', '/api/agent/suhbat/', '/api/agent/suhbat/x', '/api/agent/suhbat2', '/api/xatlov', '/api/admin/korish', ''].every((y) => !korishdaOqishmi(y)) &&
+      /* Истисно рўйхати билан аралашмаган: у ҳамон фақат иккита */
+      !istisnomi('/api/agent/suhbat'),
+  },
+  {
+    nomi: '`korishdami`: «кўз» бор ва ўзига қаратилмаган бўлса — ҳа; нишон фаол ёки йўқлигига қарамайди',
+    tekshir: () =>
+      korishdami({ userId: 'admin-1', koz: 'xodim-9' }) &&
+      !korishdami({ userId: 'admin-1' }) &&
+      !korishdami({ userId: 'admin-1', koz: null }) &&
+      !korishdami({ userId: 'admin-1', koz: '' }) &&
+      /* Ўзига ўзи қараш — кўриш режими эмас (`talabQil` ҳам шундай қарайди) */
+      !korishdami({ userId: 'admin-1', koz: 'admin-1' }),
+  },
+  {
+    nomi: 'Миддлевар рўйхатни қўллайди ва тасдиқлаш йўлини тўсишда давом этади',
+    tekshir: () => {
+      const k = oqi('src/middleware.ts');
+      return (
+        k.includes('!korishdaOqishmi(pathname)') &&
+        k.includes('ozgartirishmi(req.method)') &&
+        k.includes('kozniOqi(token)') &&
+        !k.includes('/api/agent')
+      );
+    },
+  },
+  {
+    /*
+     * Иккинчи калит: `korishdaOqish: true` фақат шу тўрт йўлнинг ўзида ёзилган.
+     * Янги йўлга уни қўшиш миддлевар рўйхатини ҳам ўзгартиришни талаб қилади —
+     * иккови бир-бирини текшириб туради.
+     */
+    nomi: 'Иккинчи калит (`korishdaOqish: true`) фақат Коала/JARVIS савол-жавоб йўлларида; `tasdiq` ва бошқалар — йўқ',
+    tekshir: () => {
+      const topildi: string[] = [];
+      const yur = (ildiz: string) => {
+        for (const band of readdirSync(ildiz, { withFileTypes: true })) {
+          const yol = join(ildiz, band.name);
+          if (band.isDirectory()) yur(yol);
+          else if (band.name === 'route.ts' && oqi(yol).includes('korishdaOqish: true')) topildi.push(yol.replace(/\\/g, '/'));
+        }
+      };
+      yur('src/app/api');
+      const kutilgan = KORISH_OQISH_POSTLARI.map((y) => `src/app${y}/route.ts`).sort();
+      return JSON.stringify(topildi.sort()) === JSON.stringify(kutilgan);
+    },
+  },
+  {
+    nomi: 'Кўриш режимида Коала ЁЗМАЙДИ: суҳбат йўли контекстга `oqishFaqat: Boolean(q.korish)` беради, агент уни таклиф яратишдан олдин текширади',
+    tekshir: () => {
+      const yol = oqi('src/app/api/agent/suhbat/route.ts');
+      const asboblar = oqi('src/lib/agent/asboblar.ts');
+      const zaxira = oqi('src/lib/agent/zaxira.ts');
+      const sikl = oqi('src/lib/agent/sikl.ts');
+      return (
+        yol.includes('oqishFaqat: Boolean(q.korish) || korishdami(q.sessiya)') &&
+        asboblar.includes('if (oqishFaqat) return false;') &&
+        asboblar.includes('if (ctx.oqishFaqat) {') &&
+        zaxira.includes("if (ctx.oqishFaqat) return oddiy('korishRejimi');") &&
+        sikl.includes('modelAsboblari(ctx.rol, ctx.oqishFaqat)')
+      );
+    },
+  },
+  {
+    nomi: 'Қоровулнинг иккинчи қавати калитсиз ҳамон тўсади: калит `sozlama` орқали, сўров йўли орқали эмас',
+    tekshir: () => {
+      const k = oqi('src/lib/api-auth.ts');
+      return k.includes('korishdaOqish?: boolean') && !k.includes('x-invoke-path') && !/headers\(\)\.get\('referer'\)/.test(k);
+    },
+  },
+  {
     nomi: 'Миддлевар кўриш режимида ёзишни тўсади',
     tekshir: () => {
       const k = oqi('src/middleware.ts');
@@ -296,7 +375,7 @@ const SINOVLAR: Sinov[] = [
       const k = oqi('src/lib/api-auth.ts');
       return (
         k.includes('const usul = headers().get(USUL_SARLAVHASI)') &&
-        k.includes('if (ozgartirishmi(usul))')
+        k.includes('if (ozgartirishmi(usul) && !sozlama?.korishdaOqish)')
       );
     },
   },

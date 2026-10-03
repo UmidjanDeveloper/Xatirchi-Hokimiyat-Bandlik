@@ -12,7 +12,7 @@ export const maxDuration = 25;
 const Tana = z.object({ matn: z.string().trim().min(1).max(900) });
 
 export async function POST(request: Request) {
-  const q = await talabQil([...AGENT_ROLLARI]);
+  const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
   if (q instanceof NextResponse) return q;
   const xato = (matn: string, status: number) => NextResponse.json(
     { xabar: A(matn, alifboServer()) }, { status, headers: { 'Cache-Control': 'no-store' } }

@@ -3,6 +3,7 @@ import { SESSION_COOKIE } from '@/lib/sessiya-nomi';
 import {
   USUL_SARLAVHASI,
   istisnomi,
+  korishdaOqishmi,
   kozniOqi,
   ozgartirishmi,
 } from '@/lib/korish-rejimi';
@@ -145,11 +146,16 @@ export function middleware(req: NextRequest) {
      *
      * Иккита истисно `korish-rejimi.ts` да ёзилган: кўз
      * режимидан чиқиш ва тизимдан чиқиш.
+     *
+     * Яна тўртта йўл ЁЗМАЙДИ ва шунинг учун очиқ: Коала ва
+     * JARVIS билан савол-жавоб (`korishdaOqishmi`). Ёзиш амалини
+     * тасдиқлайдиган `/api/agent/tasdiq` уларнинг ичида йўқ.
      */
     if (
       pathname.startsWith('/api/') &&
       ozgartirishmi(req.method) &&
       !istisnomi(pathname) &&
+      !korishdaOqishmi(pathname) &&
       kozniOqi(token)
     ) {
       return NextResponse.json(

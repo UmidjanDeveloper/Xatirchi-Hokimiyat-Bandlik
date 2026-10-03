@@ -11,7 +11,7 @@ import { chegaraliMatn, JarvisSxemasi, jarvisJavobi, jarvisSozlama } from '@/lib
 export const dynamic = 'force-dynamic';
 export const maxDuration = 50;
 export async function POST(request: Request) {
-  const q = await talabQil([...AGENT_ROLLARI]);
+  const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
   if (q instanceof NextResponse) return q;
   const alifbo = alifboServer();
   const xato = (xabar: string, status: number) => NextResponse.json(

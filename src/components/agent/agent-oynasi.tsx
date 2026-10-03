@@ -79,11 +79,14 @@ export default function AgentOynasi({
   yopish,
   ism,
   rol,
+  korish = false,
 }: {
   ochiq: boolean;
   yopish: () => void;
   ism: string;
   rol: string;
+  /** Ko'rish rejimi: administrator hokim yoki rahbar "ko'zi bilan" qarayapti; Koala faqat o'qiydi */
+  korish?: boolean;
 }) {
   const { t, alifbo } = useAlifbo();
   const router = useRouter();
@@ -508,10 +511,11 @@ export default function AgentOynasi({
             title={tur === 'jarvis' && !malumot?.jarvis ? t('JARVIS сервери ҳали уланмаган') : undefined}
             className={`rounded-full border px-3 py-1 text-xs disabled:opacity-40 ${suhbatTuri === tur ? 'border-accent text-accent' : 'border-line text-ink-muted'}`}
             onClick={() => { nutq.current.toxtat(); setOvozTayyor(false); setHolat('tayyor'); setBildirish(''); setMatn(''); setSuhbatTuri(tur); }}>
-            {tur === 'koala' ? t('Коала · платформа ва суҳбат') : 'JARVIS'}
+            {tur === 'koala' ? t('Коала · платформа ва суҳбат') : malumotTayyor && !malumot?.jarvis ? t('JARVIS · уланмаган') : 'JARVIS'}
           </button>
         ))}
       </div>
+      {korish && <p className="px-3 py-2 text-xs text-warn" data-korish-eslatma="ha">{t('Кўриш режими: Коала фақат ўқийди ва ёзиш амалларини таклиф қилмайди. Ўзгартириш учун ўз ҳисобингизга қайтинг.')}</p>}
       {suhbatTuri === 'jarvis' && <p className="px-3 py-2 text-xs text-warn">{t('Бу суҳбат JARVIS серверига юборилади. Фуқароларнинг шахсий маълумотларини киритманг. Платформа амаллари учун Коалани танланг.')}</p>}
       <p className="px-3 py-1 text-[11px] text-ink-faint">{t('Коала — сунъий интеллект. Овозли жавоб ташқи хизматда тайёрланиши мумкин.')}</p>
       <div ref={royxat} className="flex-1 space-y-3 overflow-y-auto px-3 py-3" aria-live="polite" aria-relevant="additions">

@@ -60,6 +60,15 @@ Alohida branchda har bir kerakli patch uchun avval git apply --check, so‘ng gi
 - Oldingi Koala ovoz testlari regressiya uchun qayta bajariladi.
 - To‘liq typecheck/build, haqiqiy server va vizual brauzer QA hali tasdiqlanmagan.
 
+### Koala va JARVIS qaysi panellarda ko'rinadi
+
+- **Rollar:** hokim, bandlik markazi (mutaxassis va rahbar) va administrator (`AGENT_ROLLARI`, `src/lib/agent/ruxsat.ts`). Mahalla xodimi (YETTILIK) uchun Koala ATAYLAB yo'q.
+- **Sahifalar:** menyudagi HAR bir bo'lim, kompyuterda ham, telefonda ham. Kirish, parolni almashtirish va devor ekrani (`/tablo`) sahifalarida yo'q.
+- **Ko'rish rejimi:** administrator hokim yoki bandlik rahbari "ko'zi bilan" qaraganda ham Koala ko'rinadi, ya'ni hokimga qanday ko'rinsa, shunday. Lekin u FAQAT O'QIYDI: salom va hisob administratorning haqiqiy hisobiga tegishli, yozish amali taklif qilinmaydi, tasdiqlash yo'li (`/api/agent/tasdiq`) yopiq turadi. Savol-javob yo'llari (`suhbat`, `ovoz`, `gapir`, `jarvis`) `korish-rejimi.ts` dagi tor ro'yxat va yo'lning o'zidagi `korishdaOqish: true` kaliti bilan ochilgan: ikkalasi kelishmasa yozish to'siladi.
+- **JARVIS:** Koala oynasidagi ikkinchi tab. Server sozlanmagan bo'lsa tab "JARVIS · уланмаган" deb o'chiq turadi; Koala bundan ta'sirlanmaydi.
+- **Tekshirish:** `npm run sinov:brauzer-panellar` — har bir rol uchun menyudagi barcha sahifalarda (kompyuter va telefon) Koala tugmasi bor, ekran ichida, boshqa element bilan yopilmagan va rasmi yuklanganini, ko'rish rejimida esa oyna ishlashini tekshiradi.
+- **Koala ko'rinmasa:** (1) hisob roli hokim/bandlik/administrator ekani; (2) sayt oxirgi versiyada ekani (Vercel → Deployments, oxirgi commit `Ready`); (3) brauzer keshi (qattiq yangilash). Yana ko'rinmasa, qaysi hisob va qurilmada ekanini ko'rsatuvchi skrinshot kerak.
+
 ### Brauzer sinovi (o'rnatishda qo'shildi)
 
 `npm run sinov:brauzer-jarvis` (qo'lda, Chromium, faqat mahalliy baza): skript ichidagi SOXTA shlyuz bilan 10 ta tekshiruv (JARVIS yoqilgan) va 3 ta (o'chiq). Tekshiriladi: ikki rejim tugmasi, JARVIS sozlanmagan bo'lsa tugma o'chiq va API 503; shlyuzga faqat `{ messages }`, `Bearer` token, cookie yo'q, birinchi xabar `system`; Koala matni JARVISga ketmaydi; rejimlar tarixi aralashmaydi; daqiqada 3 so'rovdan keyin "band"; shlyuz 500 qaytarsa matn sizmaydi va Koala ishlayveradi; telefon/qorong'i mavzu. Bu haqiqiy Microsoft JARVIS bilan sinov EMAS.

@@ -65,7 +65,16 @@ export async function talabQil(
    * Истисно — БИР МАРТА, ва у чақирадиган йўлнинг ўзида
    * ёзилган. Ўқиганда кўринади, унутилса эса тўсилади.
    */
-  sozlama?: { parolsizHam?: boolean }
+  sozlama?: {
+    parolsizHam?: boolean;
+    /**
+     * Кўриш режимида ҲАМ ўтадиган, лекин ЁЗМАЙДИГАН йўл (Коала ва
+     * JARVIS билан савол-жавоб). Калит фақат шу йўлларнинг ўзида
+     * ёзилади ва миддлеварнинг `KORISH_OQISH_POSTLARI` рўйхати билан
+     * бирга ишлайди: иккови ҳам келишмаса, ёзиш тўсилаверади.
+     */
+    korishdaOqish?: boolean;
+  }
 ): Promise<Qoriqchi | NextResponse> {
   const sessiya = sorovSessiyasi();
   if (!sessiya) return ruxsatYoq();
@@ -149,7 +158,7 @@ export async function talabQil(
 
   if (koz && koz !== sessiya.userId && user.rol === 'ADMIN') {
     const usul = headers().get(USUL_SARLAVHASI);
-    if (ozgartirishmi(usul)) {
+    if (ozgartirishmi(usul) && !sozlama?.korishdaOqish) {
       return NextResponse.json(
         {
           xabar: 'Ko‘rish rejimida o‘zgartirish mumkin emas. Avval o‘z hisobingizga qayting.',

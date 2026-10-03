@@ -32,7 +32,7 @@ const ENG_KATTA_BAYT = 1_500_000;
 const RUXSAT_ETILGAN = /^(audio\/(webm|ogg|mp4|mpeg|wav|x-wav|x-m4a|aac|mp3)|video\/webm)(;.*)?$/i;
 
 export async function POST(request: Request) {
-  const q = await talabQil([...AGENT_ROLLARI]);
+  const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
   if (q instanceof NextResponse) return q;
   const alifbo = alifboServer();
   const xabar = (m: string) => ({ xabar: A(m, alifbo) });

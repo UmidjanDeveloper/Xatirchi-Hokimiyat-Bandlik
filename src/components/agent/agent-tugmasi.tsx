@@ -9,7 +9,7 @@ import { petChegarasi, type PetJoy } from './pet-joy';
 const Oyna = dynamic(() => import('./agent-oynasi'), { ssr: false, loading: () => null });
 const JOY = 'koala:joy:v1';
 
-export function AgentTugmasi({ ism, rol }: { ism: string; rol: string }) {
+export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: string; korish?: boolean }) {
   const { t } = useAlifbo();
   const [ochiq, setOchiq] = useState(false);
   const [yuklangan, setYuklangan] = useState(false);
@@ -96,7 +96,7 @@ export function AgentTugmasi({ ism, rol }: { ism: string; rol: string }) {
       )}
       {yuklangan && <Oyna ochiq={ochiq} yopish={() => {
         setOchiq(false); uygot(); setTimeout(() => tugma.current?.focus(), 0);
-      }} ism={ism} rol={rol} />}
+      }} ism={ism} rol={rol} korish={korish} />}
     </>
   );
 }

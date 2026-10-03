@@ -26,7 +26,8 @@
     "sinov:koala": "tsx scripts/koala-hamroh-sinov.ts && tsx scripts/ovoz-sinov.ts && tsx scripts/stt-sinov.ts && node --import tsx scripts/koala-api-sinov.cjs",
     "sinov:jarvis": "tsx scripts/jarvis-sinov.ts && node --import tsx scripts/jarvis-api-sinov.cjs",
     "sinov:brauzer-koala": "tsx scripts/koala-brauzer.ts",
-    "sinov:brauzer-jarvis": "tsx scripts/jarvis-brauzer.ts"
+    "sinov:brauzer-jarvis": "tsx scripts/jarvis-brauzer.ts",
+    "sinov:brauzer-panellar": "tsx scripts/koala-panellar.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
