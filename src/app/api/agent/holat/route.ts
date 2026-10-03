@@ -1,3 +1,4 @@
+import { jarvisSozlama } from '@/lib/agent/jarvis';
 import { ttsSozlama } from '@/lib/agent/tts';
 import { NextResponse } from 'next/server';
 import { talabQil } from '@/lib/api-auth';
@@ -20,7 +21,7 @@ export async function GET() {
   const prov = agentProvayderi();
   const h = await bugungiHisob(q.sessiya.userId, rol);
   return NextResponse.json(
-    { ai: Boolean(prov), ovozServer: Boolean(prov), ovozChiqish: Boolean(ttsSozlama()), limit: h.limit, qolgan: h.qolgan },
+    { ai: Boolean(prov), ovozServer: Boolean(prov), ovozChiqish: Boolean(ttsSozlama()), jarvis: Boolean(jarvisSozlama()), limit: h.limit, qolgan: h.qolgan },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }

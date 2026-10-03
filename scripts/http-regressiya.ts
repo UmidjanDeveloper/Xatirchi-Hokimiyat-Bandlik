@@ -498,7 +498,7 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat {ai, ovozServer, ovozChiqish, limit, qolgan}; kalit yo\'q — ai:false, ovozChiqish:false; ovoz va gapirish yo\'llari 503',
+    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat {ai, ovozServer, ovozChiqish, jarvis, limit, qolgan}; kalit yo\'q — ai:false, ovozChiqish:false, jarvis:false; ovoz, gapirish va JARVIS yo\'llari 503',
     tekshir: async () => {
       const x = await xodimYarat('ADMIN', null, 'agent_admin_a');
       const c = await kirish(x.username);
@@ -507,14 +507,19 @@ const SINOVLAR: Sinov[] = [
       const o = await sorov('/api/agent/ovoz', { cookie: c.cookie, method: 'POST', body: {} });
       /* Server ovozi (TTS) sozlanmagan: `ovozChiqish` false, `/api/agent/gapir` — 503 (kalit ham, model nomi ham ochilmaydi) */
       const g = await sorov('/api/agent/gapir', { cookie: c.cookie, method: 'POST', body: { matn: 'salom' } });
+      /* JARVIS sozlanmagan: `jarvis` false, `/api/agent/jarvis` — 503 (shlyuz manzili va token ochilmaydi) */
+      const j = await sorov('/api/agent/jarvis', { cookie: c.cookie, method: 'POST', body: { xabar: 'salom' } });
       return (
         h.status === 200 &&
-        Object.keys(d).sort().join() === 'ai,limit,ovozChiqish,ovozServer,qolgan' &&
+        Object.keys(d).sort().join() === 'ai,jarvis,limit,ovozChiqish,ovozServer,qolgan' &&
         d.ai === false &&
         d.ovozChiqish === false &&
+        d.jarvis === false &&
         d.limit === 120 &&
         o.status === 503 &&
-        g.status === 503
+        g.status === 503 &&
+        j.status === 503 &&
+        !/JARVIS_|Bearer|hugginggpt/i.test(j.matn)
       );
     },
   },
