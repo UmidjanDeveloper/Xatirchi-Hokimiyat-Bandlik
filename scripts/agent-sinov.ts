@@ -535,6 +535,31 @@ const SINOVLAR: Sinov[] = [
 
   /* ══ 7. TIL, ISM, SOF O'ZBEKCHA ══ */
   {
+    nomi: 'Xizmat: keyingi savolda server olgan jamlama xotiradan modelga o‘tadi; eski amal bajarilmaydi',
+    tekshir: async () => envBilan({ SESSION_SECRET: 'koala-xotira-integratsiya-sinov-kaliti-32-belgidan-uzun' }, async () => {
+      const ctx = { ...hokimCtx, hozir: new Date('2030-04-11T09:00:00Z') };
+      const m = soxtaModel((q) => q === 0 ? asbobJavob([{ id: 'xo1', nomi: 'korsatkichlar', args: {} }]) : matnJavob('Xatlov natijasi olindi.'));
+      const a = await agentJavobi({ ctx, xabar: 'Xatlov qanday?', tarix: [], model: m.fn });
+      const davom = soxtaModel(() => matnJavob('Bu avvalgi natijaning izohi.'));
+      const b = await agentJavobi({ ctx, xabar: 'Nega?', tarix: [{ r: 'f', m: 'Xatlov qanday?' }, { r: 'a', m: a.javob }], xotira: a.xotira, model: davom.fn });
+      const oldingi = davom.chaqiruvlar[0].xabarlar.find((x) => x.role === 'tool');
+      return Boolean(a.xotira) && Boolean(oldingi?.content?.includes('oldingiNatija')) && b.rejim === 'ai' && b.amallar.length === 0;
+    }),
+  },
+  {
+    nomi: 'Xizmat: foydalanuvchi suhbatni bekor qilsa band qilingan AI xabari qaytariladi',
+    tekshir: async () => {
+      const ctx = { ...hokimCtx, hozir: new Date('2030-04-12T09:00:00Z') };
+      const c = new AbortController();
+      const m = soxtaModel(() => { c.abort(); throw new ModelXatosi('vaqt', 'Bekor qilindi'); });
+      let rad = false;
+      try { await agentJavobi({ ctx, xabar: 'Xatlov qanday?', tarix: [], model: m.fn, signal: c.signal }); }
+      catch { rad = true; }
+      const h = await bugungiHisob(ctx.userId, 'HOKIM', ctx.hozir);
+      return rad && h.ishlatilgan === 0;
+    },
+  },
+  {
     nomi: 'Salomlashuv hokimni ISMI bilan chaqiradi; kun vaqti Toshkent vaqti bo‘yicha (UTC+5): 01:00 UTC → "Xayrli kun"; 20:00 UTC → "Xayrli tun"',
     tekshir: () => {
       const a = salomMatni('Aziz Karimov', new Date('2026-10-02T01:00:00Z'), 'lot'); // 06:00 Toshkent → tong

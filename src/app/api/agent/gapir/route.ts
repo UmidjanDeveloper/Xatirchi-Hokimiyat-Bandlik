@@ -5,11 +5,12 @@ import { bazaChegarasi } from '@/lib/kirish-chegarasi';
 import { AGENT_ROLLARI, agentOchiqmi } from '@/lib/agent/ruxsat';
 import { A } from '@/lib/alifbo';
 import { alifboServer } from '@/lib/alifbo-server';
+import { ENG_UZUN_NUTQ } from '@/lib/agent/chegaralar';
 import { matnniOvozga, ttsSozlama } from '@/lib/agent/tts';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 25;
-const Tana = z.object({ matn: z.string().trim().min(1).max(900) });
+const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ) });
 
 export async function POST(request: Request) {
   const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   if (!agentOchiqmi(q.sessiya.rol)) return xato('Рухсат йўқ.', 403);
   const sozlama = ttsSozlama();
   if (!sozlama) return xato('Овозли жавоб созланмаган. Матнни ўқишингиз мумкин.', 503);
-  if (Number(request.headers.get('content-length')) > 8000) return xato('Матн жуда узун.', 413);
+  if (Number(request.headers.get('content-length')) > 16_000) return xato('Матн жуда узун.', 413);
   // Bound chunked bodies too; never buffer an unbounded request.
   const reader = request.body?.getReader();
   if (!reader) return xato('Матн йўқ.', 400);
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 8000) { await reader.cancel(); return xato('Матн жуда узун.', 413); }
+      if (size > 16_000) { await reader.cancel(); return xato('Матн жуда узун.', 413); }
       chunks.push(value);
     }
   } catch { return xato('Матн ўқилмади.', 400); }

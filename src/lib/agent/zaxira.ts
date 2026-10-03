@@ -4,7 +4,7 @@ import { tumanHolati } from '@/lib/tuman-holati';
 import { taklifYarat } from './amallar';
 import { MATN } from './matnlar';
 import { hisobotSahifasi, rolSahifalari, SAHIFALAR, sahifaManzili, sahifaMumkinmi, type FiltrQiymati, type SahifaTavsifi } from './sahifalar';
-import type { Amal, AgentKontekst, Manba } from './turlar';
+import type { Amal, AgentKontekst, Manba, TarixXabari } from './turlar';
 
 /**
  * ============================================================
@@ -101,7 +101,12 @@ async function tumanJavobi(ctx: AgentKontekst): Promise<ZaxiraJavobi> {
   };
 }
 
-export async function qoidaBilanJavob(ctx: AgentKontekst, matn: string): Promise<ZaxiraJavobi> {
+export async function qoidaBilanJavob(ctx: AgentKontekst, matn: string, tarix: TarixXabari[] = []): Promise<ZaxiraJavobi> {
+  // Format javobi oldingi hisobot so'rovining mahallasini ham saqlaydi.
+  if (/^(pdf|excel|eksel)[.!?\s]*$/i.test(matn.trim())) {
+    const oldingi = [...tarix].reverse().find((x) => x.r === 'f');
+    if (oldingi && iboraMos(kalitSozlar(oldingi.m).split(' '), 'hisobot')) matn = `${oldingi.m} ${matn}`;
+  }
   const soz = kalitSozlar(matn).split(' ').filter(Boolean);
   const oddiy = (k: keyof typeof MATN, tushunildi = true): ZaxiraJavobi => ({
     javob: A(MATN[k], ctx.alifbo),
@@ -111,6 +116,8 @@ export async function qoidaBilanJavob(ctx: AgentKontekst, matn: string): Promise
   });
 
   if (soz.length === 0) return oddiy('tushunmadim', false);
+  if (['sen kim', 'kimsan', 'isming', 'noming'].some((i) => iboraMos(soz, i)) && soz.length <= 6) return oddiy('tanishuv');
+  if (['yaxshimisan', 'qalesan', 'qalaysan', 'ahvoling'].some((i) => iboraMos(soz, i)) && soz.length <= 4) return oddiy('holAhvol');
 
   const sahifalar = rolSahifalari(ctx.rol);
   /* Avval BARCHA sahifalar orasidan: rolga yopiq sahifa so'ralsa "tushunmadim" emas, aniq rad */

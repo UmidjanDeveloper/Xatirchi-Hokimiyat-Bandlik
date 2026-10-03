@@ -7,6 +7,7 @@ import { agentOchiqmi } from './ruxsat';
 import { suhbatniYurit } from './sikl';
 import type { Amal, AgentKontekst, Manba, TarixXabari } from './turlar';
 import { qoidaBilanJavob } from './zaxira';
+import { xotiraniOqi, xotiraniQadoqla } from './xotira';
 
 /**
  * ============================================================
@@ -39,6 +40,7 @@ export interface AgentJavobi {
   izoh?: string;
   /** Bugun yana nechta AI xabari qoldi (AI rejimida) */
   qolgan?: number;
+  xotira?: string;
 }
 
 export async function agentJavobi(p: {
@@ -47,12 +49,14 @@ export async function agentJavobi(p: {
   tarix: TarixXabari[];
   /** `null` — kalit sozlanmagan */
   model: ModelChaqiruvi | null;
+  xotira?: string;
+  signal?: AbortSignal;
 }): Promise<AgentJavobi> {
   const { ctx } = p;
   if (!agentOchiqmi(ctx.rol)) throw new Error('Koala bu rol uchun ochiq emas');
 
   const qoida = async (sabab: NonNullable<AgentJavobi['sabab']>, izoh?: string): Promise<AgentJavobi> => {
-    const z = await qoidaBilanJavob(ctx, p.xabar);
+    const z = await qoidaBilanJavob(ctx, p.xabar, p.tarix);
     await hisobniYoz(ctx.userId, { qoidali: 1 }, ctx.hozir);
     return {
       javob: z.javob,
@@ -72,7 +76,7 @@ export async function agentJavobi(p: {
   }
 
   try {
-    const n = await suhbatniYurit({ ctx, tarix: p.tarix, xabar: p.xabar, model: p.model });
+    const n = await suhbatniYurit({ ctx, tarix: p.tarix, xabar: p.xabar, model: p.model, xotira: xotiraniOqi(ctx, p.xotira), signal: p.signal });
     await hisobniYoz(ctx.userId, { tokenlar: n.tokenlar }, ctx.hozir);
     return {
       javob: n.javob,
@@ -80,11 +84,13 @@ export async function agentJavobi(p: {
       manbalar: n.manbalar,
       rejim: 'ai',
       qolgan: band.qolgan,
+      xotira: xotiraniQadoqla(ctx, n.xotira),
     };
   } catch (e) {
     /* Javob olinmadi: xodimning bir xabari kuymasin */
     await modelXabariniQaytar(ctx.userId, ctx.hozir).catch(() => {});
     await hisobniYoz(ctx.userId, { xatolar: 1 }, ctx.hozir).catch(() => {});
+    if (p.signal?.aborted) throw e;
     if (!(e instanceof ModelXatosi)) await serverXatosi('agent:xizmat', e);
     else if (e.kod !== 'vaqt') await serverXatosi('agent:model', e);
     return qoida('model_xatosi', MATN.aiYoq);

@@ -1,5 +1,8 @@
 # Hudhud — xodimlar uchun ovozli AI agent
 
+**Davomiy suhbat va server ovozi:** yangilangan xotira, ovozli suhbat boshqaruvlari
+va sozlamalar [KOALA-SUHBAT.md](KOALA-SUHBAT.md) da.
+
 **Kimga:** hokim, bandlik markazi mutaxassisi va rahbari, administrator.
 Mahalla yettiligi a'zosiga ko'rinmaydi. «Ko'rish rejimi»da ham yo'q.
 
@@ -135,7 +138,7 @@ ko'rolmayman.
 | Oylik umumiy to'siq | 4000 xabar (`AGENT_OYLIK_LIMIT`); tekshiruv taxminiy: bir necha xabar ortiqcha o'tishi mumkin |
 | Daqiqalik chegara | 12 xabar |
 | Ovoz | 900 soniya/kun/xodim (`AGENT_OVOZ_LIMIT`), bitta yozuv ≤ 60 soniya, ≤ 1,5 MB. Brauzer faqat nutq atrofini yuboradi (odatda 2–4 s), shuning uchun soniyalar kam sarflanadi |
-| Bir suhbat | ≤ 4 aylanish, ≤ 6 asbob chaqiruvi, ≤ 900 token/javob |
+| Bir suhbat | ≤ 4 aylanish, ≤ 6 asbob chaqiruvi, odatda ≤ 2000 token/javob (`AGENT_JAVOB_TOKEN`) |
 | Limit tugasa | Oddiy rejim: sahifani ochish va tuman holati ishlayveradi |
 | Model yiqilsa | Band qilingan xabar qaytariladi (xodim zarar ko'rmaydi) |
 
@@ -145,7 +148,7 @@ Hisob: `AgentFoydalanish` jadvali (xodim, kun, so'rovlar, tokenlar). Matn yo'q.
 
 1. `OPENAI_API_KEY` Vercel'da bor (yoki `GROQ_API_KEY`). **Qo'shimcha hech narsa shart emas.**
 2. Ixtiyoriy: `AGENT_MODEL` — o'zbekcha va asbob chaqirish uchun kuchliroq model; odatiy
-   `gpt-4o-mini` arzon, lekin o'zbek tilida zaifroq bo'lishi mumkin.
+   OpenAI uchun sozlama bo'lmasa `gpt-4.1-mini`; `OPENAI_MODEL` yozilgan bo'lsa u ishlaydi.
    **Modelning haqiqiy sifati production'da, haqiqiy savollarda tekshirilishi kerak.**
 3. Migratsiya `20261002100000_agent` build paytida o'zi qo'llanadi (faqat qo'shadi).
 4. Tekshirish: administrator sifatida kiring → pastki o'ngdagi koala tugmasi → oyna tepasida
@@ -169,13 +172,13 @@ Hisob: `AgentFoydalanish` jadvali (xodim, kun, so'rovlar, tokenlar). Matn yo'q.
 | Haqiqiy ovoz: Chrome'ning `uz-UZ` aniqligi, mikrofon, ismlar (mahalla nomlari) | Mikrofon va real ovoz yo'q |
 | **Haqiqiy iPhone** (WebKit, Chrome iOS): mikrofon ruxsati, WebAudio, yozuv | Bu muhitda iPhone yo'q: faqat Chromium'da iPhone belgisi bilan sinalgan. Telefonda bir marta sinab ko'rish kerak |
 | Server STT (OpenAI/Groq `whisper`) o'zbekcha aniqligi | Idem |
-| Qurilmada o'zbekcha ovoz bilan javobni o'qish | Ko'p qurilmalarda o'zbekcha ovoz YO'Q — shunda javob faqat yoziladi (ataylab: rus ovozi o'zbekcha matnni buzib o'qiydi) |
+| Haqiqiy o'zbekcha talaffuz | Qurilmada o'zbekcha ovoz bo'lmasa OpenAI nutq xizmati ishlaydi; haqiqiy talaffuz alohida eshitib tekshirilishi kerak |
 | Vercel'da ko'p nusxali muhit | Mahalliy sinov bitta jarayonda |
 
 ## Ma'lum cheklovlar
 
-- Hisobot yuklash (PDF/Excel) ovozli buyruq bilan **ishlamaydi**: hisobot tugmalari brauzerda
-  yaratadi. Agent «tahlil paneli»ni ochadi, tugmani siz bosasiz.
+- Hisobot yuklash (PDF/Excel) brauzerdagi mavjud hisobot tugmalari bilan ishlaydi:
+  agent kerakli sahifani ochib, yuklashni boshlaydi; tayyorlashga bir necha soniya kerak.
 - Yozish amallari hozir ikkita (administrator uchun: xabar navbatini qaytarish, xato jurnalini
   belgilash). Yangi amal qo'shish: `lib/agent/amallar.ts` ro'yxatiga bitta yozuv + test.
 - «Bo'sh ish o'rni» kabi ba'zi sahifalar hudud filtrini qabul qilmaydi.

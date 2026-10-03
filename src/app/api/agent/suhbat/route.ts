@@ -10,6 +10,7 @@ import { agentJavobi } from '@/lib/agent/xizmat';
 import { korishdami } from '@/lib/korish-rejimi';
 import { haqiqiyModel } from '@/lib/agent/model';
 import { MATN } from '@/lib/agent/matnlar';
+import { ENG_UZUN_XOTIRA } from '@/lib/agent/xotira';
 import { AGENT_ROLLARI, DAQIQALIK_LIMIT, ENG_KOP_TARIX, ENG_UZUN_TARIX_XABARI, ENG_UZUN_XABAR } from '@/lib/agent/ruxsat';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,7 @@ export const maxDuration = 60;
 
 const Sxema = z.object({
   xabar: z.string().trim().min(1).max(ENG_UZUN_XABAR),
+  xotira: z.string().max(ENG_UZUN_XOTIRA).optional(),
   tarix: z
     .array(z.object({ r: z.enum(['f', 'a']), m: z.string().max(ENG_UZUN_TARIX_XABARI) }))
     .max(ENG_KOP_TARIX)
@@ -67,6 +69,8 @@ export async function POST(request: Request) {
       },
       xabar: tana.data.xabar,
       tarix: tana.data.tarix,
+      xotira: tana.data.xotira,
+      signal: request.signal,
       model: haqiqiyModel(),
     });
 

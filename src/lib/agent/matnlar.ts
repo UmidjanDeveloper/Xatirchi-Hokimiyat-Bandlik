@@ -1,5 +1,6 @@
 import { A } from '@/lib/alifbo';
 import type { Alifbo } from './turlar';
+import { ENG_UZUN_NUTQ } from './chegaralar';
 
 /**
  * ============================================================
@@ -60,6 +61,15 @@ export function javobniTozala(matn: string): string {
     .trim();
 }
 
+/** Uzun izohning ovozli qismini tugallangan gapda tugatadi; to'liq javob ekranda qoladi. */
+export function nutqParchasi(matn: string): string {
+  if (matn.length <= ENG_UZUN_NUTQ) return matn;
+  const izoh = ' Давомини ёзма жавобдан ўқишингиз мумкин.';
+  const bosh = matn.slice(0, ENG_UZUN_NUTQ - izoh.length);
+  const gap = bosh.match(/^[\s\S]*[.!?](?=\s|$)/)?.[0];
+  return `${gap || bosh.slice(0, bosh.lastIndexOf(' ')).trimEnd() + '…'}${izoh}`;
+}
+
 export const ROL_NOMI_AGENT: Record<string, string> = {
   HOKIM: 'Ҳоким',
   BANDLIK: 'Бандлик маркази мутахассиси',
@@ -92,6 +102,8 @@ export const MATN = {
   rahmatga: 'Марҳамат!',
   salomga: 'Ассалому алайкум! Сизга қандай ёрдам бера оламан?',
   yordam: 'Саҳифа очаман, кўрсаткичларни айтаман. Фуқаро исми ва телефони менга кўринмайди.',
+  tanishuv: 'Мен Коаламан — ёрдамчингиз. Саҳифа очаман, рақамларни тушунтираман ва ҳисобот тайёрлайман.',
+  holAhvol: 'Яхшиман, раҳмат! Сизга қулоқ соляпман. Нимадан бошлаймиз?',
 } as const;
 
 export type MatnKaliti = keyof typeof MATN;

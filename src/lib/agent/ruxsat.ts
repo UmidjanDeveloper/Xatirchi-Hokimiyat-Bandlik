@@ -55,8 +55,6 @@ export function ovozKunlikLimit(): number {
 }
 
 /** Bir xabarning eng katta uzunligi — uzun matn token va pul degani */
-export const ENG_UZUN_XABAR = 600;
-export const ENG_UZUN_TARIX_XABARI = 800;
-export const ENG_KOP_TARIX = 8;
+export { ENG_UZUN_XABAR, ENG_UZUN_TARIX_XABARI, ENG_KOP_TARIX } from './chegaralar';
 /** Bir daqiqada nechta xabar (bazadagi chegara) */
 export const DAQIQALIK_LIMIT = 12;

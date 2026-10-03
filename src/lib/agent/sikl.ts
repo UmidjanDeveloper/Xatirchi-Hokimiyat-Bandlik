@@ -4,6 +4,7 @@ import { tizimKursatmasi } from './kursatma';
 import { ModelXatosi, MODEL_KUTISH_MS, type ChaqiruvQismi, type ModelChaqiruvi, type ModelXabari } from './model';
 import { MATN, javobniTozala } from './matnlar';
 import type { Amal, AgentKontekst, Manba, TarixXabari } from './turlar';
+import { xotiragaQosh, type XotiraYozuvi } from './xotira';
 
 /**
  * ============================================================
@@ -36,6 +37,7 @@ export interface SiklNatijasi {
   asboblar: string[];
   /** Model yakuniy javob berdimi (aylanish tugab qolmadimi) */
   tugallandi: boolean;
+  xotira: XotiraYozuvi[];
 }
 
 export interface SiklKirishi {
@@ -43,6 +45,8 @@ export interface SiklKirishi {
   tarix: TarixXabari[];
   xabar: string;
   model: ModelChaqiruvi;
+  xotira?: XotiraYozuvi[];
+  signal?: AbortSignal;
 }
 
 function qisqartir(matn: string): string {
@@ -60,8 +64,14 @@ function argumentlar(q: ChaqiruvQismi): { ok: true; qiymat: unknown } | { ok: fa
 
 export async function suhbatniYurit(k: SiklKirishi): Promise<SiklNatijasi> {
   const { ctx } = k;
+  let xotira = k.xotira ?? [];
+  const oldingi: ModelXabari[] = xotira.flatMap((y, i) => [
+    { role: 'assistant', content: null, tool_calls: [{ id: `xotira_${i}`, type: 'function', function: { name: y.asbob, arguments: '{}' } }] },
+    { role: 'tool', tool_call_id: `xotira_${i}`, content: JSON.stringify({ oldingiNatija: true, olinganVaqt: y.vaqt, malumot: JSON.parse(y.natija) }) },
+  ]);
   const xabarlar: ModelXabari[] = [
     { role: 'system', content: tizimKursatmasi(ctx) },
+    ...oldingi,
     ...k.tarix.map<ModelXabari>((t) => (t.r === 'f' ? { role: 'user', content: t.m } : { role: 'assistant', content: t.m })),
     { role: 'user', content: k.xabar },
   ];
@@ -75,9 +85,13 @@ export async function suhbatniYurit(k: SiklKirishi): Promise<SiklNatijasi> {
 
   const toxtatgich = new AbortController();
   const soat = setTimeout(() => toxtatgich.abort(), SIKL_KUTISH_MS);
+  const bekor = () => toxtatgich.abort();
+  k.signal?.addEventListener('abort', bekor, { once: true });
+  if (k.signal?.aborted) bekor();
 
   try {
     for (let aylanish = 0; aylanish < ENG_KOP_AYLANISH; aylanish++) {
+      toxtatgich.signal.throwIfAborted();
       const javob = await k.model({ xabarlar, asboblar, signal: toxtatgich.signal });
       tokenlar += javob.tokenlar;
 
@@ -91,12 +105,14 @@ export async function suhbatniYurit(k: SiklKirishi): Promise<SiklNatijasi> {
           tokenlar,
           asboblar: chaqirilgan,
           tugallandi: true,
+          xotira,
         };
       }
 
       xabarlar.push({ role: 'assistant', content: javob.xabar.content ?? null, tool_calls: chaqiruvlar });
 
       for (const q of chaqiruvlar) {
+        toxtatgich.signal.throwIfAborted();
         let natijaMatni: string;
         if (asbobSoni >= ENG_KOP_ASBOB) {
           natijaMatni = JSON.stringify({ xato: 'chegara', izoh: "Asbob chaqiruvlari chegarasi tugadi. Mavjud ma'lumot bilan javob bering." });
@@ -110,6 +126,7 @@ export async function suhbatniYurit(k: SiklKirishi): Promise<SiklNatijasi> {
             const n = await asbobniBajar(ctx, q.function.name, a.qiymat);
             for (const m of n.manbalar) manbalar.set(m.nom, m);
             if (n.amallar) amallar.push(...n.amallar);
+            xotira = xotiragaQosh(xotira, q.function.name, n.malumot, n.manbalar, ctx.hozir);
             natijaMatni = JSON.stringify(n.malumot);
           }
         }
@@ -124,6 +141,7 @@ export async function suhbatniYurit(k: SiklKirishi): Promise<SiklNatijasi> {
       tokenlar,
       asboblar: chaqirilgan,
       tugallandi: false,
+      xotira,
     };
   } catch (e) {
     if (e instanceof ModelXatosi) throw e;
@@ -132,6 +150,7 @@ export async function suhbatniYurit(k: SiklKirishi): Promise<SiklNatijasi> {
     throw new ModelXatosi('bosh', 'Suhbat sikli xato bilan tugadi');
   } finally {
     clearTimeout(soat);
+    k.signal?.removeEventListener('abort', bekor);
   }
 }
 

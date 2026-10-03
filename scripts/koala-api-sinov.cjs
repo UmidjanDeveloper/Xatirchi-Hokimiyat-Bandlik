@@ -15,8 +15,8 @@ const request = (matn) => new Request('https://mock.invalid/api/agent/gapir', { 
   auth = NextResponse.json({}, { status: 401 }); assert.equal((await POST(request('salom'))).status, 401);
   auth = { sessiya: { rol: 'YETTILIK', userId: 'test' } }; assert.equal((await POST(request('salom'))).status, 403);
   auth.sessiya.rol = 'ADMIN'; configured = false; assert.equal((await POST(request('salom'))).status, 503); configured = true;
-  assert.equal((await POST(request('x'.repeat(901)))).status, 400);
-  assert.equal((await POST(request('x'.repeat(9000)))).status, 413);
+  assert.equal((await POST(request('x'.repeat(2201)))).status, 400);
+  assert.equal((await POST(request('x'.repeat(17000)))).status, 413);
   allowed = false; assert.equal((await POST(request('salom'))).status, 429); allowed = true;
   assert.equal(calls, 0);
   const r = await POST(request('Ассалому алайкум')); assert.equal(r.status, 200); assert.equal(r.headers.get('content-type'), 'audio/mpeg'); assert.match(r.headers.get('cache-control'), /no-store/); assert.equal((await r.arrayBuffer()).byteLength, 2); assert.equal(calls, 1);
