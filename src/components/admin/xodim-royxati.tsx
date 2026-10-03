@@ -46,6 +46,9 @@ export const ROLLAR: Rol[] = ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 
  * ============================================================
  */
 
+/** Ro'yxatda bir bosishda ko'rsatiladigan qatorlar soni */
+const ENG_KOP_QATOR = 30;
+
 export interface Xodim {
   id: string;
   username: string;
@@ -117,6 +120,14 @@ export function XodimRoyxati({
    * Bayroq hisob boshqa odamga o'tayotganda yoqiladi.
    */
   const [majburlash, setMajburlash] = useState(false);
+
+  /*
+   * Ro'yxat 96 tagacha hisobni o'z ichiga oladi va har biri katta qator:
+   * hammasi birdan chizilsa sahifa 9 000 piksel bo'lib, telefonda tugamaydi.
+   * Dastlab ENG_KOP_QATOR ta ko'rsatiladi, qolganini tugma ochadi; qidiruv
+   * butun ro'yxatdan qidiradi.
+   */
+  const [korsatish, setKorsatish] = useState(ENG_KOP_QATOR);
 
   const royxat = useMemo(() => {
     const s = kalit(sorov);
@@ -232,7 +243,10 @@ export function XodimRoyxati({
         <input
           type="search"
           value={sorov}
-          onChange={(e) => setSorov(e.target.value)}
+          onChange={(e) => {
+            setSorov(e.target.value);
+            setKorsatish(ENG_KOP_QATOR);
+          }}
           placeholder={tr('Исм, логин, маҳалла ёки телефон бўйича қидириш…')}
           aria-label={tr('Қидириш')}
           className="w-full rounded-md border border-line bg-surface py-2.5 pl-9 pr-3 text-sm text-ink outline-none transition-colors focus:border-accent"
@@ -281,7 +295,7 @@ export function XodimRoyxati({
           </p>
         )}
 
-        {royxat.map((x) =>
+        {royxat.slice(0, korsatish).map((x) =>
           tahrirId === x.id ? (
             <TahrirQatori
               key={x.id}
@@ -419,6 +433,16 @@ export function XodimRoyxati({
           )
         )}
       </div>
+
+      {royxat.length > korsatish && (
+        <button
+          type="button"
+          onClick={() => setKorsatish((k) => k + ENG_KOP_QATOR)}
+          className="w-full rounded-md border border-line px-4 py-3 text-sm font-medium text-ink-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          {tr('Яна кўрсатиш')} ({royxat.length - korsatish} {tr('та қолди')})
+        </button>
+      )}
     </div>
   );
 }

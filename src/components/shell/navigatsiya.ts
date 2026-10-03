@@ -11,12 +11,20 @@ import type { Rol } from '@prisma/client';
  * ============================================================
  */
 
+/**
+ * Menyu guruhlari. Uzun menyuda (administratorda 20 tagacha band) bandlar
+ * ma'no bo'yicha guruhlanadi va sarlavha bilan ajratiladi: "Tahlil paneli"
+ * bilan "Operatsion panel" fuqaro ro'yxatlari orasida adashib yurmasin.
+ */
+export type MenyuGuruhi = 'bosh' | 'panel' | 'ish' | 'fuqaro' | 'xizmat' | 'boshqaruv';
+
 export interface MenyuBandi {
   yol: string;
   nomi: string;
   /** Lucide ikonka nomi */
   ikonka: string;
   rollar: Rol[];
+  guruh: MenyuGuruhi;
 }
 
 /**
@@ -56,18 +64,21 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Вазифаларим',
     ikonka: 'ListTodo',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'],
+    guruh: 'bosh',
   },
   {
     yol: '/xatlov',
     nomi: 'Хатловларим',
     ikonka: 'ClipboardList',
     rollar: ['YETTILIK'],
+    guruh: 'ish',
   },
   {
     yol: '/xatlov/yangi',
     nomi: 'Янги хатлов',
     ikonka: 'HousePlus',
     rollar: ['YETTILIK', 'BANDLIK', 'ADMIN'],
+    guruh: 'ish',
   },
   {
     yol: '/xonadonlar',
@@ -81,12 +92,14 @@ export const MENYU: MenyuBandi[] = [
      */
     ikonka: 'House',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'fuqaro',
   },
   {
     yol: '/ishsizlar',
     nomi: 'Ишсизлар',
     ikonka: 'Users',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'fuqaro',
   },
   {
     /* 30/60/90 kunlik kuzatuv - bandlik markazining ishi */
@@ -94,6 +107,7 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Кузатув 30/60/90',
     ikonka: 'CalendarCheck',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'fuqaro',
   },
   {
     /*
@@ -105,6 +119,7 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Курслар',
     ikonka: 'GraduationCap',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'xizmat',
   },
   {
     /*
@@ -116,6 +131,7 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Маҳаллий буюртмалар',
     ikonka: 'HandHelping',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'xizmat',
   },
   {
     /*
@@ -127,6 +143,7 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Мурожаатлар',
     ikonka: 'MessageSquareText',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'ish',
   },
   {
     /*
@@ -137,24 +154,28 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Ёрдам дастурлари',
     ikonka: 'LifeBuoy',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'],
+    guruh: 'xizmat',
   },
   {
     yol: '/bandlik',
     nomi: 'Операцион панел',
     ikonka: 'Target',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'panel',
   },
   {
     yol: '/ish-orinlari',
     nomi: 'Бўш иш ўринлари',
     ikonka: 'Briefcase',
     rollar: ['BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'xizmat',
   },
   {
     yol: '/chora-tadbirlar',
     nomi: 'Чора-тадбирлар',
     ikonka: 'ListChecks',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'],
+    guruh: 'ish',
   },
   {
     /*
@@ -166,12 +187,14 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Оила режалари',
     ikonka: 'Route',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'fuqaro',
   },
   {
     yol: '/panel',
     nomi: 'Таҳлил панели',
     ikonka: 'ChartColumn',
     rollar: ['HOKIM', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'panel',
   },
   {
     /*
@@ -183,6 +206,7 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Маҳалла ходимлари',
     ikonka: 'UsersRound',
     rollar: ['BANDLIK_RAHBAR'],
+    guruh: 'boshqaruv',
   },
   {
     /*
@@ -196,6 +220,7 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Ўчирилганлар',
     ikonka: 'Archive',
     rollar: ['YETTILIK', 'BANDLIK', 'BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'fuqaro',
   },
   {
     /*
@@ -212,6 +237,7 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Иш берувчилар',
     ikonka: 'Building2',
     rollar: ['BANDLIK_RAHBAR', 'ADMIN'],
+    guruh: 'xizmat',
   },
   {
     /*
@@ -228,12 +254,31 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Тасдиқлаш',
     ikonka: 'BadgeCheck',
     rollar: ['BANDLIK_RAHBAR', 'HOKIM', 'ADMIN'],
+    guruh: 'panel',
+  },
+  {
+    /*
+     * «Ходимлар ва панеллар» — одамлар бир жойда.
+     *
+     * Илгари ходимлар рўйхати «Бошқарув» саҳифасининг ўртасида, олтита
+     * бошқа блокдан кейин турарди: 70 та маҳалла ходимининг логини ва
+     * паролини, ҳоким ва раҳбар ҳисобини шу ердан излаб топиш қийин
+     * эди. Энди улар алоҳида саҳифада: рол бўйича карточкалар (нечта
+     * ҳисоб бор, панелини «кўзи билан» кўриш), рол бўйича фильтр ва
+     * логин/парол рўйхати.
+     */
+    yol: '/xodimlar',
+    nomi: 'Ходимлар ва панеллар',
+    ikonka: 'UserCog',
+    rollar: ['ADMIN'],
+    guruh: 'boshqaruv',
   },
   {
     yol: '/admin',
     nomi: 'Бошқарув',
     ikonka: 'Settings',
     rollar: ['ADMIN'],
+    guruh: 'boshqaruv',
   },
   {
     /*
@@ -244,12 +289,57 @@ export const MENYU: MenyuBandi[] = [
     nomi: 'Тизим ҳолати',
     ikonka: 'Activity',
     rollar: ['ADMIN'],
+    guruh: 'boshqaruv',
   },
 ];
 
 /** Rolga tegishli menyu bandlari */
 export function menyuOl(rol: Rol): MenyuBandi[] {
   return MENYU.filter((b) => b.rollar.includes(rol));
+}
+
+/** Guruh sarlavhalari (kirillda: butun ilova bitta alifbodan o'giriladi) */
+export const GURUH_NOMI: Record<MenyuGuruhi, string | null> = {
+  bosh: null,
+  panel: 'Панеллар ва ҳисобот',
+  ish: 'Кундалик иш',
+  fuqaro: 'Фуқаро ва хонадон',
+  xizmat: 'Бандлик ва хизматлар',
+  boshqaruv: 'Бошқарув',
+};
+
+/** Guruhlarning ekrandagi tartibi */
+export const GURUH_TARTIBI: readonly MenyuGuruhi[] = ['bosh', 'panel', 'ish', 'fuqaro', 'xizmat', 'boshqaruv'];
+
+/**
+ * Shundan ko'p band bo'lgan menyuda sarlavhalar chiqadi. Qisqa menyu
+ * (mahalla xodimi - 10, hokim - 5) o'zgarmaydi: 70 ta xodim shu tartibga
+ * o'rganib qolgan va unga sarlavha kerak emas.
+ */
+export const GURUH_CHEGARASI = 11;
+
+export interface MenyuGuruhiBandlari {
+  guruh: MenyuGuruhi;
+  /** `null` - sarlavhasiz (qisqa menyu yoki birinchi band) */
+  nomi: string | null;
+  bandlar: MenyuBandi[];
+}
+
+/**
+ * Rolning menyusi sarlavhali guruhlar bilan.
+ *
+ * Qisqa menyuda bitta sarlavhasiz guruh qaytadi va bandlar `MENYU`
+ * tartibida qoladi. Uzun menyuda bandlar guruhlarga bo'linadi; guruh
+ * ichida tartib `MENYU` dagi tartib.
+ */
+export function menyuGuruhlari(rol: Rol): MenyuGuruhiBandlari[] {
+  const bandlar = menyuOl(rol);
+  if (bandlar.length <= GURUH_CHEGARASI) return [{ guruh: 'bosh', nomi: null, bandlar }];
+  return GURUH_TARTIBI.map((g) => ({
+    guruh: g,
+    nomi: GURUH_NOMI[g],
+    bandlar: bandlar.filter((b) => b.guruh === g),
+  })).filter((g) => g.bandlar.length > 0);
 }
 
 /**

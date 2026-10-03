@@ -654,6 +654,43 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
+    nomi: '13m. `/xodimlar` (login/parol va rol panellari) FAQAT administratorga: administrator — 200 va rol kartalari; rahbar, hokim, bandlik, mahalla xodimi va kirishsiz — rad, HTML ichida ro\'yxat ham, login ham YO\'Q; ko\'rish rejimida hokim ko\'zi bilan ham yopiq',
+    tekshir: async () => {
+      const admin = await xodimYarat('ADMIN', null, 'xl_admin');
+      const rahbar = await xodimYarat('BANDLIK_RAHBAR', null, 'xl_rahbar');
+      const hokim = await xodimYarat('HOKIM', null, 'xl_hokim');
+      const bandlik = await xodimYarat('BANDLIK', null, 'xl_bandlik');
+      const yettilik = await xodimYarat('YETTILIK', A, 'xl_yettilik');
+      /* Begona hisob: uning logini hech kimning (administratordan boshqa) javobida bo'lmasligi shart */
+      const begona = await xodimYarat('BANDLIK', null, 'xl_begona');
+
+      const a = await sorov('/xodimlar', { cookie: (await kirish(admin.username)).cookie });
+      /* HTML ichida RSC oqimi ham bor, shuning uchun belgilar ikki marta uchraydi: har rolning kartasi borligi tekshiriladi */
+      const kartalar = ['HOKIM', 'BANDLIK_RAHBAR', 'BANDLIK', 'YETTILIK', 'ADMIN'].every((r) => a.matn.includes(`data-rol-kartasi="${r}"`));
+
+      /* Boshqalar: rad va sizib chiqish yo'q (ro'yxat ham, kartalar ham, login ham) */
+      /* Ro'yxat sarlavhasi, rol kartalari, begona hisob logini va mahalla xodimlarining `mfy_` loginlari chiqmasligi kerak.
+       * O'z logini esa sahifada turaveradi (yuqori panel), shuning uchun u tekshirilmaydi. */
+      const sizmaydi = (r: Javob) => !/data-rol-kartasi|Логин ва парол рўйхати/.test(r.matn) && !r.matn.includes(begona.username) && !r.matn.includes('mfy_');
+      const boshqalar: Javob[] = [];
+      for (const x of [rahbar, hokim, bandlik, yettilik]) boshqalar.push(await sorov('/xodimlar', { cookie: (await kirish(x.username)).cookie }));
+      const kirishsiz = await sorov('/xodimlar');
+
+      /* Administrator hokim ko'zi bilan: sahifa hokimning huquqi bilan chiziladi — yopiq */
+      const oz = await kirish(admin.username);
+      const kz = await fetch(`${BAZA}/api/admin/korish`, { method: 'POST', headers: { cookie: oz.cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: hokim.id }) });
+      const kozCookie = (kz.headers.getSetCookie().find((x) => /^[^=]+=[^;]+/.test(x)) ?? '').split(';')[0];
+      const kozda = await sorov('/xodimlar', { cookie: kozCookie });
+
+      return (
+        ruxsat(a) && kartalar && a.matn.includes('Ходимлар ва панеллар') &&
+        boshqalar.every((r) => rad(r) && sizmaydi(r)) &&
+        rad(kirishsiz) && sizmaydi(kirishsiz) &&
+        kz.status === 200 && rad(kozda) && sizmaydi(kozda)
+      );
+    },
+  },
+  {
     nomi: '14a. Reyestr yuklash yo\'li: kirishsiz 401; mahalla xodimi, bandlik mutaxassisi va hokim — 403; fayl yo\'q 400',
     tekshir: async () => {
       const b = reyestrFayli('Hech Kim Yoq');

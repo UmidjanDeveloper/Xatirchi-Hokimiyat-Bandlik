@@ -12,7 +12,8 @@ import {
   Target,
   UserCheck,
   UserX } from 'lucide-react';
-import { bandlikIshi } from '@/lib/auth';
+import { bandlikIshi, tahlilKoradi } from '@/lib/auth';
+import { YigmaBlok } from '@/components/shared/yigma-blok';
 import { joriyXodim } from '@/lib/sahifa-auth';
 import { panelQamroviniOl } from '@/lib/panel-qamrovi';
 import { prisma } from '@/lib/prisma';
@@ -326,6 +327,16 @@ export default async function BandlikSahifasi({
     return q ? `${asos}?${q}` : asos;
   };
 
+  /*
+   * Tahlil paneliga kira oladigan rolda (rahbar, administrator) AI xulosa va
+   * dinamika bu sahifada YOPIQ turadi: ular tahlil panelining o'zida ham bor
+   * va ikki sahifa bir xil blok bilan boshlanib, bir-biridan farqsiz ko'rinardi.
+   * Bandlik mutaxassisi tahlil paneliga kira olmaydi - unga ular ochiq.
+   */
+  const tahlilPanelda = tahlilKoradi(sessiya.rol);
+  const aiXulosa = <AiXulosa mahallaId={mahallaId} qamrovNomi={qamrov.nomi} />;
+  const dinamikaBloglari = <DinamikaBloglari dinamika={t.dinamika} davr={davr} qamrovNomi={qamrov.nomi} />;
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -371,7 +382,16 @@ export default async function BandlikSahifasi({
         гаплашиши керак, акс ҳолда «менда бошқача ёзилган» деган
         баҳс чиқади.
       */}
-      <AiXulosa mahallaId={mahallaId} qamrovNomi={qamrov.nomi} />
+      {tahlilPanelda ? (
+        <YigmaBlok
+          sarlavha={tr('Таҳлил хулосаси ва тавсиялар')}
+          izoh={tr('Таҳлил панелида ҳам бор — бу ерда ёпиқ турибди, очиш учун босинг')}
+        >
+          {aiXulosa}
+        </YigmaBlok>
+      ) : (
+        aiXulosa
+      )}
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Kpi
@@ -489,7 +509,16 @@ export default async function BandlikSahifasi({
         устун юқорига кетган бўлса, сабабини ойлик оқим
         диаграммасидан ўша ернинг ўзида топади.
       */}
-      <DinamikaBloglari dinamika={t.dinamika} davr={davr} qamrovNomi={qamrov.nomi} />
+      {tahlilPanelda ? (
+        <YigmaBlok
+          sarlavha={tr('Ўсиш ва камайиш, ойлик оқим')}
+          izoh={tr('Таҳлил панелида ҳам бор — бу ерда ёпиқ турибди, очиш учун босинг')}
+        >
+          {dinamikaBloglari}
+        </YigmaBlok>
+      ) : (
+        dinamikaBloglari
+      )}
 
       {/*
         ── ХАРИТА ──

@@ -32,9 +32,15 @@ export function XodimBoshqaruvi({
   xodimlar,
   mahallalar,
   faqatYettilik = false,
+  boshlangichRol = 'YETTILIK',
+  ochiqBoshlash = false,
 }: {
   xodimlar: Xodim[];
   mahallalar: Mahalla[];
+  /** "Hisob yaratish" havolasidan kelganda shakl shu rol bilan boshlanadi */
+  boshlangichRol?: Rol;
+  /** Shakl ochiq holda boshlansin (rol kartasidagi "Hisob yaratish" havolasi uchun) */
+  ochiqBoshlash?: boolean;
   /**
    * Cheklangan rejim - bandlik markazi rahbari uchun.
    *
@@ -49,12 +55,12 @@ export function XodimBoshqaruvi({
   const { t: tr } = useAlifbo();
 
   const router = useRouter();
-  const [ochiq, setOchiq] = useState(false);
+  const [ochiq, setOchiq] = useState(ochiqBoshlash);
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [position, setPosition] = useState('');
   const [telefon, setTelefon] = useState('');
-  const [rol, setRol] = useState<Rol>('YETTILIK');
+  const [rol, setRol] = useState<Rol>(faqatYettilik ? 'YETTILIK' : boshlangichRol);
   const [mahallaId, setMahallaId] = useState('');
   const [parol, setParol] = useState(() => parolYarat());
   const [xato, setXato] = useState<string | null>(null);

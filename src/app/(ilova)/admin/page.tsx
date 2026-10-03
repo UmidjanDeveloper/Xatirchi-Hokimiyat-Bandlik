@@ -1,11 +1,12 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { ArrowRight } from 'lucide-react';
 import { matnchi } from '@/lib/alifbo-server';
 import { joriyXodim } from '@/lib/sahifa-auth';
 import { prisma } from '@/lib/prisma';
 import { FAOL_ELON } from '@/lib/elon-muddati';
 import { davrOqi, tahlilOl } from '@/lib/tahlil';
 import { formatDate } from '@/lib/utils';
-import { XodimBoshqaruvi } from '@/components/admin/xodim-boshqaruvi';
 import { AiHolati } from '@/components/admin/ai-holati';
 import { TezlikOlchagich } from '@/components/admin/tezlik-olchagich';
 import { BrifingKorish } from '@/components/admin/brifing-korish';
@@ -20,6 +21,7 @@ import { panelQamroviniOl, topshiriqQamrovi } from '@/lib/panel-qamrovi';
 import { DublikatRoyxati } from '@/components/dublikat/dublikat-royxati';
 import { XabarHolati } from '@/components/telegram/xabar-holati';
 import { HisobotTugmalari } from '@/components/panel/hisobot-tugmalari';
+import { YigmaBlok } from '@/components/shared/yigma-blok';
 
 /*
  * Sahifa sarlavhasi ham alifboga ergashadi.
@@ -65,20 +67,9 @@ export default async function AdminSahifasi({
   const mahallaId = qamrov.mahallaId;
   const mahallaShart = mahallaId ? { mahallaId } : {};
 
-  const [xodimlar, jurnal, statistika, tahlil, vHisob, vNavbat] = await Promise.all([
-    prisma.user.findMany({
-      orderBy: [{ faol: 'desc' }, { rol: 'asc' }, { fullName: 'asc' }],
-      select: {
-        id: true,
-        username: true,
-        fullName: true,
-        position: true,
-        phone: true,
-        rol: true,
-        faol: true,
-        parolAlmashtirilsin: true,
-        oxirgiKirish: true,
-        mahalla: { select: { nomiKirill: true } } } }),
+  const [rolSoni, jurnal, statistika, tahlil, vHisob, vNavbat] = await Promise.all([
+    /* Ro'yxatning o'zi `/xodimlar` sahifasida; bu yerda faqat sonlar kerak */
+    prisma.user.groupBy({ by: ['rol'], _count: { _all: true } }),
     prisma.auditLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 60,
@@ -99,13 +90,16 @@ export default async function AdminSahifasi({
 
   const [xonadon, ishsiz, topshiriq, ishOrni] = statistika;
 
+  const soniOl = (rol: string) => rolSoni.find((r) => r.rol === rol)?._count._all ?? 0;
+  const jamiXodim = rolSoni.reduce((j, r) => j + r._count._all, 0);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="sahifa-sarlavha">{tr('Бошқарув')}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {tr(qamrov.nomi)} · {tr('ходимлар, логинлар ва аудит журнали')}
+            {tr(qamrov.nomi)} · {tr('тизим созламалари, ходимлар ва аудит журнали')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -152,16 +146,12 @@ export default async function AdminSahifasi({
       </div>
 
       {/*
-        ── ТАҲЛИЛ ХУЛОСАСИ ──
+        ── ТЎРТТА КАРТА ──
 
-        Администратор панелида ҳам бўлиши керак: у тизимни
-        созлайди ва «AI ишлаяптими» деган саволга айнан шу
-        ердан жавоб олади. Илгари бу блок фақат ҳоким ва
-        бандлик панелида бор эди — администратор эса AI
-        ишламай турганини умуман билмасди.
+        Бошқарув саҳифаси энди ишга тушадиган нарсалар билан
+        бошланади: рақамлар, ходимлар, тизим. Таҳлил блоклари пастда,
+        ёпиқ.
       */}
-      <AiXulosa mahallaId={mahallaId} qamrovNomi={qamrov.nomi} />
-
       <div className="grid gap-3 sm:grid-cols-4">
         <Karta nomi={tr("Хонадон")} soni={xonadon} />
         <Karta nomi={tr("Ишсиз фуқаро")} soni={ishsiz} />
@@ -170,22 +160,34 @@ export default async function AdminSahifasi({
       </div>
 
       {/*
-        ── Ўсиш ва камайиш сурати ──
+        ── ХОДИМЛАР — АЛОҲИДА САҲИФАДА ──
 
-        Администратор ҳам шу диаграммани кўради. Сабаби техник:
-        рақам нотўғри кўринса, «маълумот базасидами ёки
-        ҳисоблашдами» деган саволга жавоб керак бўлади, ва у
-        жавоб худди ҳоким кўраётган графикда бўлиши шарт —
-        бошқа графикда эмас.
+        Илгари 96 қаторли рўйхат шу ерда, олтита блокдан кейин
+        турарди ва саҳифани 9 000 пикселга чўзарди. Энди у «Ходимлар
+        ва панеллар» саҳифасида: рол бўйича фильтр, ҳар рол панелини
+        «кўзи билан» кўриш ва логин/парол рўйхати.
       */}
-      {xonadon > 0 && (
-        <DinamikaBloglari dinamika={tahlil.dinamika} davr={davr} qamrovNomi={qamrov.nomi} />
-      )}
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-bold text-ink">{tr('Ходимлар (')}{xodimlar.length})</h2>
-        <XodimBoshqaruvi xodimlar={xodimlar} mahallalar={mahallalar} />
-      </section>
+      <Link
+        href="/xodimlar"
+        className="karta flex flex-wrap items-center justify-between gap-3 p-4 transition-colors hover:border-accent"
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-bold text-ink">
+            {tr('Ходимлар ва панеллар')} ({jamiXodim})
+          </span>
+          <span className="mt-0.5 block text-xs text-ink-faint">
+            {tr('Ҳоким')} {soniOl('HOKIM')} · {tr('раҳбар')} {soniOl('BANDLIK_RAHBAR')} · {tr('мутахассис')}{' '}
+            {soniOl('BANDLIK')} · {tr('маҳалла')} {soniOl('YETTILIK')} · {tr('админ')} {soniOl('ADMIN')}
+          </span>
+          <span className="mt-0.5 block text-xs text-ink-muted">
+            {tr('Логин ва паролни бошқариш, ҳоким ва раҳбар панелини кўриш')}
+          </span>
+        </span>
+        <span className="flex items-center gap-1 text-sm font-medium text-accent">
+          {tr('Очиш')}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </Link>
 
       {/*
         ── ТАКРОРЛАНГАН ФУҚАРОЛАР ──
@@ -234,6 +236,23 @@ export default async function AdminSahifasi({
       <TezlikOlchagich />
 
       <ChoraToldirgich />
+
+      {/*
+        ── ТАҲЛИЛ БЛОКЛАРИ — ТАҲЛИЛ ПАНЕЛИДАГИ БИЛАН БИР ХИЛ ──
+
+        Администраторга ҳам керак: «AI ишлаяптими» ва «рақам нега
+        бундай» деган саволларга жавоб ҳоким кўраётган блокнинг
+        АЙНАН ўзидан олинади. Лекин улар Таҳлил панелида ҳам бор,
+        шунинг учун бу ерда ёпиқ: Бошқарув саҳифаси таҳлил панелидан
+        фарқсиз кўринмасин.
+      */}
+      <YigmaBlok
+        sarlavha={tr('Таҳлил хулосаси ва динамика')}
+        izoh={tr('Таҳлил панелидаги билан бир хил — очиш учун босинг')}
+      >
+        <AiXulosa mahallaId={mahallaId} qamrovNomi={qamrov.nomi} />
+        {xonadon > 0 && <DinamikaBloglari dinamika={tahlil.dinamika} davr={davr} qamrovNomi={qamrov.nomi} />}
+      </YigmaBlok>
 
       {/*
         Audit jurnali. Xatlov ma'lumotlari oila daromadi va sog'liq
