@@ -498,14 +498,24 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat {ai, ovozServer, limit, qolgan}; kalit yo\'q — ai:false; ovoz yo\'li 503',
+    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat {ai, ovozServer, ovozChiqish, limit, qolgan}; kalit yo\'q — ai:false, ovozChiqish:false; ovoz va gapirish yo\'llari 503',
     tekshir: async () => {
       const x = await xodimYarat('ADMIN', null, 'agent_admin_a');
       const c = await kirish(x.username);
       const h = await sorov('/api/agent/holat', { cookie: c.cookie });
       const d = JSON.parse(h.matn) as Record<string, unknown>;
       const o = await sorov('/api/agent/ovoz', { cookie: c.cookie, method: 'POST', body: {} });
-      return h.status === 200 && Object.keys(d).sort().join() === 'ai,limit,ovozServer,qolgan' && d.ai === false && d.limit === 120 && o.status === 503;
+      /* Server ovozi (TTS) sozlanmagan: `ovozChiqish` false, `/api/agent/gapir` — 503 (kalit ham, model nomi ham ochilmaydi) */
+      const g = await sorov('/api/agent/gapir', { cookie: c.cookie, method: 'POST', body: { matn: 'salom' } });
+      return (
+        h.status === 200 &&
+        Object.keys(d).sort().join() === 'ai,limit,ovozChiqish,ovozServer,qolgan' &&
+        d.ai === false &&
+        d.ovozChiqish === false &&
+        d.limit === 120 &&
+        o.status === 503 &&
+        g.status === 503
+      );
     },
   },
   {

@@ -1182,3 +1182,19 @@
     transition: box-shadow 90ms linear;
   }
 }
+
+/* Koala companion: direct manipulation, no page-wide pointer tracking. */
+.koala-pet { width: 88px; height: 100px; touch-action: none; user-select: none; cursor: grab; }
+.koala-pet-tana { display: block; transform-origin: 50% 85%; filter: drop-shadow(0 7px 8px rgb(0 0 0 / .12)); }
+.koala-pet-yozuv { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; background: var(--surface); color: var(--text); font-size: 11px; line-height: 16px; }
+.koala-sudrash { cursor: grabbing; }
+.koala-uyqu .koala-pet-yozuv { letter-spacing: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-fx='lite']) .koala-uygoq .koala-pet-tana { animation: koala-hamroh 8s ease-in-out infinite; }
+  html:not([data-fx='lite']) .koala-pet:hover .koala-pet-tana { animation: koala-salom .7s ease-in-out; }
+  html:not([data-fx='lite']) .koala-sudrash .koala-pet-tana { animation: none; transform: rotate(-9deg) scale(1.06); }
+  html:not([data-fx='lite']) .koala-uyqu .koala-pet-tana { animation: koala-dam 5s ease-in-out infinite; }
+}
+@keyframes koala-hamroh { 0%, 65%, 100% { transform: translateY(0) rotate(0); } 72% { transform: translateY(-4px) rotate(-5deg); } 82% { transform: translateY(-2px) rotate(5deg); } }
+@keyframes koala-salom { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-10deg) translateY(-5px); } 65% { transform: rotate(9deg) translateY(-3px); } }
+@keyframes koala-dam { 0%, 100% { transform: rotate(9deg) scale(.95); } 50% { transform: rotate(9deg) scale(.98); } }

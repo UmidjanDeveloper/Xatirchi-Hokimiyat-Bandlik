@@ -410,10 +410,10 @@ const SINOVLAR: Sinov[] = [
     tekshir: () => (OYNA_XOM.match(/Ўйлаяпман…/g) ?? []).length === 1,
   },
   {
-    nomi: 'Tizim ko‘rsatmasi modelga javobni JUDA qisqa (1–2 gap), kirish/xulosa gaplarisiz yozishni buyuradi',
+    nomi: 'Tizim ko‘rsatmasi odatda qisqa, so‘ralganda batafsil javobga ruxsat beradi',
     tekshir: () => {
       const k = oqi('src/lib/agent/kursatma.ts');
-      return /Javob JUDA qisqa: odatda 1–2 gap/.test(k) && /salomlashma, savolni takrorlama/.test(k);
+      return /Javob odatda qisqa: 1–3 gap/.test(k) && /batafsil tushuntirishni/.test(k) && /salomlashma, savolni takrorlama/.test(k);
     },
   },
   {

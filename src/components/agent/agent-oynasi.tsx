@@ -7,7 +7,8 @@ import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { salomMatni } from '@/lib/agent/matnlar';
 import type { Amal, Manba } from '@/lib/agent/turlar';
 import { Maskot, type MaskotHolati } from './maskot';
-import { gapir, gapirishniToxtat, ovozKirishMumkinmi, ovozliJavobMumkinmi, ovozniBoshla, type OvozBoshqaruvi, type OvozXatosi } from './ovoz';
+import { javobOvozi } from './javob-ovozi';
+import { ovozKirishMumkinmi, ovozliJavobMumkinmi, ovozniBoshla, type OvozBoshqaruvi, type OvozXatosi } from './ovoz';
 
 /**
  * ============================================================
@@ -46,6 +47,7 @@ interface TasdiqHolati {
 interface HolatMalumoti {
   ai: boolean;
   ovozServer: boolean;
+  ovozChiqish?: boolean;
   limit: number;
   qolgan: number;
 }
@@ -97,6 +99,9 @@ export default function AgentOynasi({
   const [malumotTayyor, setMalumotTayyor] = useState(false);
   const [ishlov, setIshlov] = useState(false);
 
+  const nutq = useRef(javobOvozi());
+  const sorov = useRef<AbortController | null>(null);
+  const [ovozTayyor, setOvozTayyor] = useState(false);
   const royxat = useRef<HTMLDivElement>(null);
   const kiritish = useRef<HTMLTextAreaElement>(null);
   const tanish = useRef<OvozBoshqaruvi | null>(null);
@@ -154,26 +159,40 @@ export default function AgentOynasi({
         clearTimeout(kutish);
         setMalumotTayyor(true);
       });
-    setTimeout(() => kiritish.current?.focus(), 50);
+    const fokus = setTimeout(() => {
+      if (window.matchMedia('(pointer: fine)').matches) kiritish.current?.focus();
+    }, 50);
+    return () => { clearTimeout(fokus); clearTimeout(kutish); };
   }, [ochiq]);
 
   /* Oyna yopilsa yoki ilova fonga o'tsa: yozuv yuborilmasdan bekor qilinadi, mikrofon bo'shaydi */
   useEffect(() => {
     if (!ochiq) {
       tanish.current?.bekor();
-      gapirishniToxtat();
+      sorov.current?.abort();
+      nutq.current.toxtat();
+      setOvozTayyor(false);
+      setHolat('tayyor');
     }
   }, [ochiq]);
 
   useEffect(() => {
+    const ijro = nutq.current;
     const f = () => {
-      if (document.hidden) tanish.current?.bekor();
+      if (document.hidden) {
+        tanish.current?.bekor();
+        sorov.current?.abort();
+        nutq.current.toxtat();
+        setOvozTayyor(false);
+        setHolat('tayyor');
+      }
     };
     document.addEventListener('visibilitychange', f);
     return () => {
       document.removeEventListener('visibilitychange', f);
       tanish.current?.bekor();
-      gapirishniToxtat();
+      sorov.current?.abort();
+      ijro.toxtat();
     };
   }, []);
 
@@ -221,11 +240,30 @@ export default function AgentOynasi({
     [router]
   );
 
+  const javobniOqi = useCallback((javob: string) => {
+    setBildirish('');
+    if (javob.length > 900) {
+      setBildirish(t('Жавоб узун. «Қисқача айт» деб сўранг ёки матнни ўқинг.'));
+      return;
+    }
+    setOvozTayyor(true);
+    void nutq.current.oqi(javob, Boolean(malumot?.ovozChiqish), {
+      boshlandi: () => { setOvozTayyor(false); setHolat('gapirmoqda'); },
+      tugadi: () => { setOvozTayyor(false); setHolat((h) => (h === 'gapirmoqda' ? 'tayyor' : h)); },
+      xato: () => {
+        setOvozTayyor(false); setHolat('tayyor');
+        setBildirish(t('Овоз очилмади. Жавоб остидаги «Тинглаш»ни босиб кўринг.'));
+      },
+    });
+  }, [malumot?.ovozChiqish, t]);
+
   const yubor = useCallback(
     async (xom: string) => {
       const savol = xom.trim();
-      if (!savol || band) return;
-      gapirishniToxtat();
+      if (!savol || bandRef.current) return;
+      tanish.current?.bekor();
+      setOvozTayyor(false);
+      nutq.current.toxtat();
       bandRef.current = true;
       setBildirish('');
       setMatn('');
@@ -240,11 +278,18 @@ export default function AgentOynasi({
         .slice(-8)
         .map((x) => ({ r: x.r, m: x.matn.slice(0, 800) }));
 
+      const ctrl = new AbortController();
+      sorov.current = ctrl;
+      const soat = setTimeout(() => {
+        setBildirish(t('Жавоб кечикди. Қайта уриниб кўринг.'));
+        ctrl.abort();
+      }, 55_000);
       try {
         const r = await fetch('/api/agent/suhbat', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ xabar: savol, tarix }),
+          signal: ctrl.signal,
         });
         if (r.status === 401) {
           window.location.href = '/kirish';
@@ -260,6 +305,7 @@ export default function AgentOynasi({
           qolgan?: number;
         };
 
+        if (ctrl.signal.aborted) return;
         if (!r.ok || !d.javob) {
           qosh({ r: 'a', matn: d.xabar ?? t('Жавоб олиб бўлмади. Бир оздан кейин қайта уриниб кўринг.'), xato: true });
           return;
@@ -276,25 +322,25 @@ export default function AgentOynasi({
         const ochish = d.amallar?.find((a): a is Extract<Amal, { tur: 'ochish' }> => a.tur === 'ochish');
         if (ochish) {
           setTimeout(() => {
+            if (ctrl.signal.aborted) return;
             router.push(ochish.url);
             if (window.innerWidth < 640) yopish();
           }, 450);
         }
 
-        if (ovozliJavob) {
-          setHolat('gapirmoqda');
-          const gapirdi = gapir(d.javob, () => setHolat((h) => (h === 'gapirmoqda' ? 'tayyor' : h)));
-          if (!gapirdi) setHolat('tayyor');
-        }
+        if (ovozliJavob && (malumot?.ovozChiqish || uzbekOvozBor)) javobniOqi(d.javob);
       } catch {
+        if (ctrl.signal.aborted) return;
         qosh({ r: 'a', matn: t('Алоқа узилди. Интернетни текшириб, қайта уриниб кўринг.'), xato: true });
       } finally {
+        clearTimeout(soat);
+        if (sorov.current === ctrl) sorov.current = null;
         bandRef.current = false;
         setBand(false);
         setHolat((h) => (h === 'gapirmoqda' ? h : 'tayyor'));
       }
     },
-    [band, xabarlar, qosh, router, yopish, t, ovozliJavob, hisobotniBoshla]
+    [xabarlar, qosh, router, yopish, t, ovozliJavob, hisobotniBoshla, javobniOqi, malumot?.ovozChiqish, uzbekOvozBor]
   );
 
   /** Mikrofon kuchi → tugma atrofidagi halqa (gapirayotganingiz eshitilayotganini ko'rsatadi) */
@@ -309,7 +355,8 @@ export default function AgentOynasi({
       return;
     }
     if (band || holat === 'oylamoqda') return;
-    gapirishniToxtat();
+    nutq.current.toxtat();
+    setOvozTayyor(false);
     setBildirish('');
     setOraliq('');
     setIshlov(false);
@@ -348,7 +395,8 @@ export default function AgentOynasi({
       /* ruxsat yo'q */
     }
     if (!yangi) {
-      gapirishniToxtat();
+      nutq.current.toxtat();
+      setOvozTayyor(false);
       setHolat('tayyor');
     }
   };
@@ -370,7 +418,11 @@ export default function AgentOynasi({
   };
 
   const tozala = () => {
-    gapirishniToxtat();
+    sorov.current?.abort();
+    tanish.current?.bekor();
+    setOvozTayyor(false);
+    setHolat('tayyor');
+    nutq.current.toxtat();
     try {
       sessionStorage.removeItem(saqlashKaliti);
     } catch {
@@ -383,8 +435,9 @@ export default function AgentOynasi({
 
   if (!ochiq) return null;
 
+  const ovozBor = uzbekOvozBor || Boolean(malumot?.ovozChiqish);
   const mikrofonMumkin = ovozKirishMumkinmi(Boolean(malumot?.ovozServer));
-  const holatMatni =
+  const holatMatni = ovozTayyor ? 'Овоз тайёрланяпти…' :
     holat === 'eshitmoqda'
       ? 'Эшитяпман…'
       : holat === 'oylamoqda'
@@ -403,7 +456,7 @@ export default function AgentOynasi({
       className="karta fixed inset-x-2 bottom-2 z-50 flex h-[min(36rem,calc(100dvh-1rem))] flex-col overflow-hidden p-0 shadow-xl sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[26rem]"
     >
       <header className="flex items-center gap-2 border-b border-line bg-elev px-3 py-2">
-        <Maskot holat={holat} olcham={56} hammasi />
+        <Maskot holat={holat} olcham={80} hammasi />
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-bold text-ink">{t('Коала')}</h2>
           <p className="truncate text-[11px] text-ink-faint">
@@ -417,13 +470,13 @@ export default function AgentOynasi({
         <button
           type="button"
           onClick={ovozTugmasi}
-          disabled={!uzbekOvozBor}
-          title={uzbekOvozBor ? t('Жавобни овозда ўқиш') : t('Ўзбекча овоз йўқ — жавоб ёзма')}
+          disabled={!ovozBor}
+          title={ovozBor ? t('Жавобни овозда ўқиш') : t('Ўзбекча овоз йўқ — жавоб ёзма')}
           aria-label={t('Жавобни овозда ўқиш')}
-          aria-pressed={ovozliJavob && uzbekOvozBor}
+          aria-pressed={ovozliJavob && ovozBor}
           className="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink disabled:opacity-40"
         >
-          {ovozliJavob && uzbekOvozBor ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4" aria-hidden="true" />}
+          {ovozliJavob && ovozBor ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4" aria-hidden="true" />}
         </button>
         <button
           type="button"
@@ -444,6 +497,7 @@ export default function AgentOynasi({
         </button>
       </header>
 
+      <p className="px-3 py-1 text-[11px] text-ink-faint">{t('Коала — сунъий интеллект. Овозли жавоб ташқи хизматда тайёрланиши мумкин.')}</p>
       <div ref={royxat} className="flex-1 space-y-3 overflow-y-auto px-3 py-3" aria-live="polite" aria-relevant="additions">
         {xabarlar.map((x) => (
           <div key={x.id} className={x.r === 'f' ? 'flex justify-end' : 'flex justify-start'}>
@@ -454,6 +508,13 @@ export default function AgentOynasi({
             >
               <p className="whitespace-pre-wrap">{x.r === 'f' ? x.matn : t(x.matn)}</p>
 
+              {x.r === 'a' && !x.xato && ovozBor && (
+                <button type="button" disabled={band || holat === 'eshitmoqda'}
+                  className="mt-2 inline-flex items-center gap-1 text-xs underline disabled:opacity-40"
+                  onClick={() => javobniOqi(t(x.matn))}>
+                  <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />{t('Тинглаш')}
+                </button>
+              )}
               {x.izoh && <p className="mt-1.5 text-[11px] text-warn">{t(x.izoh)}</p>}
 
               {x.manbalar && x.manbalar.length > 0 && (
@@ -545,6 +606,12 @@ export default function AgentOynasi({
           <p className={`mb-1.5 text-xs ${bildirish ? 'text-warn' : 'text-ink-faint'}`} role="status">
             {bildirish || (oraliq ? `«${oraliq}»` : t(holatMatni))}
           </p>
+        )}
+        {(ovozTayyor || holat === 'gapirmoqda') && (
+          <button type="button" className="mb-2 rounded-md border border-line px-3 py-1 text-xs"
+            onClick={() => { nutq.current.toxtat(); setOvozTayyor(false); setHolat('tayyor'); }}>
+            {t('Овозни тўхтатиш')}
+          </button>
         )}
         <form
           className="flex items-end gap-2"

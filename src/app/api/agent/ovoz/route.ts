@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
   try {
     /* Provayderga so'rov: sabab aniqlanadi, parametr rad etilsa moslashib qayta uriladi (`lib/agent/stt.ts`) */
-    const n = await ovozniMatnga(prov, fayl, { model: process.env.AGENT_STT_MODEL?.trim() || undefined });
+    const n = await ovozniMatnga(prov, fayl, { model: process.env.AGENT_STT_MODEL?.trim() || undefined, signal: request.signal });
 
     if (!n.ok) {
       /* Matn chiqmadi: xodimning kunlik soniyalari behuda ketmasin */

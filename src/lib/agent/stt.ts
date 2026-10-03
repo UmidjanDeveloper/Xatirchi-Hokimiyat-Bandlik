@@ -112,9 +112,10 @@ interface Parametrlar {
 export async function ovozniMatnga(
   prov: Pick<AgentProvayderi, 'provayder' | 'kalit' | 'baza'>,
   fayl: File,
-  opt: { model?: string; fetchFn?: typeof fetch; kutishMs?: number } = {}
+  opt: { model?: string; fetchFn?: typeof fetch; kutishMs?: number; signal?: AbortSignal } = {}
 ): Promise<SttNatija> {
   const fetchFn = opt.fetchFn ?? fetch;
+  const zaxiraModeli = prov.provayder === 'groq' ? 'whisper-large-v3-turbo' : ZAXIRA_MODELI;
   const p: Parametrlar = {
     model: opt.model?.trim() || (prov.provayder === 'groq' ? 'whisper-large-v3-turbo' : ZAXIRA_MODELI),
     til: true,
@@ -125,7 +126,15 @@ export async function ovozniMatnga(
   let oxirgi: SttNatija = { ok: false, sabab: 'bosh', holat: 0, tafsilot: '', urinish: 0 };
   let besh = 0;
 
+  const ctrl = new AbortController();
+  const bekor = () => ctrl.abort();
+  opt.signal?.addEventListener('abort', bekor, { once: true });
+  if (opt.signal?.aborted) ctrl.abort();
+  const soat = setTimeout(bekor, opt.kutishMs ?? PROVAYDER_KUTISH_MS);
+  const vaqtXatosi = (urinish: number): SttNatija => ({ ok: false, sabab: 'vaqt', holat: 0, tafsilot: 'javob kechikdi', urinish });
+  try {
   for (let urinish = 1; urinish <= ENG_KOP_URINISH; urinish++) {
+    if (ctrl.signal.aborted) return vaqtXatosi(urinish);
     const forma = new FormData();
     forma.set('file', fayl, fayl.name || 'ovoz.wav');
     forma.set('model', p.model);
@@ -133,8 +142,6 @@ export async function ovozniMatnga(
     if (p.harorat) forma.set('temperature', '0');
     if (p.izoh) forma.set('prompt', IZOH);
 
-    const ctrl = new AbortController();
-    const soat = setTimeout(() => ctrl.abort(), opt.kutishMs ?? PROVAYDER_KUTISH_MS);
     let r: Response;
     try {
       r = await fetchFn(`${prov.baza}/audio/transcriptions`, {
@@ -146,16 +153,16 @@ export async function ovozniMatnga(
     } catch (e) {
       const vaqt = (e as { name?: string } | null)?.name === 'AbortError';
       return { ok: false, sabab: vaqt ? 'vaqt' : 'tarmoq', holat: 0, tafsilot: vaqt ? 'javob kechikdi' : maxfiyniTozala(e).slice(0, 200), urinish };
-    } finally {
-      clearTimeout(soat);
     }
 
     if (r.ok) {
       const d = (await r.json().catch(() => null)) as { text?: string } | null;
+      if (ctrl.signal.aborted) return vaqtXatosi(urinish);
       return { ok: true, matn: (d?.text ?? '').replace(/\s+/g, ' ').trim(), model: p.model, urinish };
     }
 
     const x = xatoniOqi(await r.text().catch(() => ''));
+    if (ctrl.signal.aborted) return vaqtXatosi(urinish);
     const tafsilot = maxfiyniTozala(`${x.kod ? `${x.kod}: ` : ''}${x.xabar}`).slice(0, 200);
     oxirgi = { ok: false, sabab: sababniAniqla(r.status, x), holat: r.status, tafsilot, urinish };
 
@@ -176,8 +183,8 @@ export async function ovozniMatnga(
       continue;
     }
     /* Model yo'q yoki unga ruxsat yo'q: eng ishonchli modelga qaytamiz */
-    if (p.model !== ZAXIRA_MODELI && (oxirgi.sabab === 'model' || (rad && /model/.test(m)))) {
-      p.model = ZAXIRA_MODELI;
+    if (p.model !== zaxiraModeli && (oxirgi.sabab === 'model' || (rad && /model/.test(m)))) {
+      p.model = zaxiraModeli;
       continue;
     }
     /* Provayderning vaqtincha xatosi: bir marta qayta */
@@ -188,4 +195,5 @@ export async function ovozniMatnga(
     break;
   }
   return oxirgi;
+  } finally { clearTimeout(soat); opt.signal?.removeEventListener('abort', bekor); }
 }
