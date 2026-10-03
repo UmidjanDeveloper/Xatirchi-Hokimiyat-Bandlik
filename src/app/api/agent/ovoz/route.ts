@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { talabQil } from '@/lib/api-auth';
 import { alifboServer } from '@/lib/alifbo-server';
 import { bazaChegarasi } from '@/lib/kirish-chegarasi';
-import { maxfiyniTozala } from '@/lib/maxfiy';
 import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 import { A } from '@/lib/alifbo';
-import { ovozniBandQil } from '@/lib/agent/hisob';
+import { ovozniBandQil, ovozniQaytar } from '@/lib/agent/hisob';
 import { agentProvayderi } from '@/lib/agent/model';
 import { MATN } from '@/lib/agent/matnlar';
+import { ovozniMatnga, STT_XABARI } from '@/lib/agent/stt';
 import { AGENT_ROLLARI, ENG_UZUN_XABAR } from '@/lib/agent/ruxsat';
 
 export const dynamic = 'force-dynamic';
@@ -58,43 +58,36 @@ export async function POST(request: Request) {
   if (!RUXSAT_ETILGAN.test(fayl.type)) return NextResponse.json(xabar('Овоз формати мос эмас.'), { status: 415 });
 
   const soniya = Number(forma.get('soniya'));
-  const band = await ovozniBandQil(q.sessiya.userId, Number.isFinite(soniya) && soniya > 0 ? soniya : 10);
+  const sarf = Number.isFinite(soniya) && soniya > 0 ? soniya : 10;
+  const band = await ovozniBandQil(q.sessiya.userId, sarf);
   if (!band.ruxsat) return NextResponse.json(xabar('Бугунги овоз чегараси тугади. Ёзинг.'), { status: 429 });
 
   try {
-    const uzatma = new FormData();
-    uzatma.set('file', fayl, fayl.name || 'ovoz.webm');
-    uzatma.set('model', process.env.AGENT_STT_MODEL?.trim() || (prov.provayder === 'groq' ? 'whisper-large-v3-turbo' : 'whisper-1'));
-    uzatma.set('language', 'uz');
-    uzatma.set('temperature', '0');
-    /* Soha so'zlari: ismlar va atamalar to'g'ri yozilishiga yordam beradi (qisqa) */
-    uzatma.set('prompt', 'Xatirchi tumani, mahalla, xatlov, ishsiz, bandlik, murojaat, hokim, xonadon, hisobot, tahlil paneli');
+    /* Provayderga so'rov: sabab aniqlanadi, parametr rad etilsa moslashib qayta uriladi (`lib/agent/stt.ts`) */
+    const n = await ovozniMatnga(prov, fayl, { model: process.env.AGENT_STT_MODEL?.trim() || undefined });
 
-    const ctrl = new AbortController();
-    const soat = setTimeout(() => ctrl.abort(), 20_000);
-    let r: Response;
-    try {
-      r = await fetch(`${prov.baza}/audio/transcriptions`, {
-        method: 'POST',
-        signal: ctrl.signal,
-        headers: { authorization: `Bearer ${prov.kalit}` },
-        body: uzatma,
-      });
-    } finally {
-      clearTimeout(soat);
+    if (!n.ok) {
+      /* Matn chiqmadi: xodimning kunlik soniyalari behuda ketmasin */
+      await ovozniQaytar(q.sessiya.userId, sarf).catch(() => {});
+      const { izId } = await serverXatosi(
+        'api:agent-ovoz',
+        new Error(`${prov.provayder} ${n.holat || '-'} (${n.sabab}), ${n.urinish} urinish: ${n.tafsilot}`)
+      );
+      /* Administratorga sababning qisqa belgisi ham ko'rinadi: "[openai 429]" */
+      const belgi = q.sessiya.rol === 'ADMIN' ? ` [${prov.provayder} ${n.holat || n.sabab}]` : '';
+      const holat = n.sabab === 'hajm' ? 413 : n.sabab === 'band' ? 429 : 502;
+      return NextResponse.json({ ...xabar(`${STT_XABARI[n.sabab]}${belgi}`), sabab: n.sabab, izId }, { status: holat });
     }
 
-    if (!r.ok) {
-      const matn = maxfiyniTozala(await r.text().catch(() => ''));
-      await serverXatosi('api:agent-ovoz', new Error(`${prov.provayder} ${r.status}: ${matn.slice(0, 200)}`));
-      return NextResponse.json(xabar('Овоз матнга айланмади. Ёзинг.'), { status: 502 });
+    const matn = n.matn.slice(0, ENG_UZUN_XABAR);
+    if (!matn) {
+      await ovozniQaytar(q.sessiya.userId, sarf).catch(() => {});
+      return NextResponse.json(xabar('Овоз эшитилмади. Қайта айтинг.'), { status: 422 });
     }
-    const d = (await r.json().catch(() => null)) as { text?: string } | null;
-    const matn = (d?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, ENG_UZUN_XABAR);
-    if (!matn) return NextResponse.json(xabar('Овоз эшитилмади. Қайта айтинг.'), { status: 422 });
     return NextResponse.json({ matn }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
+    await ovozniQaytar(q.sessiya.userId, sarf).catch(() => {});
     const { izId } = await serverXatosi('api:agent-ovoz', e);
-    return NextResponse.json({ ...xabar('Овоз матнга айланмади. Ёзинг.'), izId }, { status: 502 });
+    return NextResponse.json({ ...xabar(STT_XABARI.bosh), izId }, { status: 502 });
   }
 }

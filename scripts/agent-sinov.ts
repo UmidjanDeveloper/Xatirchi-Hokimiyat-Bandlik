@@ -38,7 +38,7 @@ import { ASBOBLAR, asbobniBajar, modelAsboblari, rolAsboblari } from '../src/lib
 import { agentProvayderi, ModelXatosi, type ModelJavobi, type ModelSorovi } from '../src/lib/agent/model';
 import { amallarniTozala, suhbatniYurit, ENG_KOP_AYLANISH, ENG_KOP_ASBOB } from '../src/lib/agent/sikl';
 import {
-  bugungiHisob, modelXabariniBandQil, modelXabariniQaytar, ovozniBandQil, toshkentSanasi, hisobniYoz,
+  bugungiHisob, modelXabariniBandQil, modelXabariniQaytar, ovozniBandQil, ovozniQaytar, toshkentSanasi, hisobniYoz,
 } from '../src/lib/agent/hisob';
 import { taklifYarat, taklifniHalQil, TAKLIF_MUDDATI_DAQIQA } from '../src/lib/agent/amallar';
 import { qoidaBilanJavob } from '../src/lib/agent/zaxira';
@@ -663,6 +663,23 @@ const SINOVLAR: Sinov[] = [
         const c = await ovozniBandQil(users.HOKIM.id, 10, hozir);
         const d = await ovozniBandQil(users.ADMIN.id, 500, hozir); // 60 ga qisqartiriladi > 25 limit
         return a.ruxsat && b.ruxsat && !c.ruxsat && !d.ruxsat;
+      });
+    },
+  },
+  {
+    nomi: 'Ovoz soniyalari QAYTARILADI: matn chiqmagan yozuv kunlik limitni sarflamaydi; ortiqcha qaytarish noldan pastga tushirmaydi (keyin 25 o‘tadi, yana 1 — rad)',
+    tekshir: async () => {
+      const hozir = new Date('2030-03-01T09:00:00Z');
+      return envBilan({ AGENT_OVOZ_LIMIT: '25' }, async () => {
+        await ovozniBandQil(users.HOKIM.id, 10, hozir);
+        await ovozniBandQil(users.HOKIM.id, 10, hozir);
+        const toldi = await ovozniBandQil(users.HOKIM.id, 10, hozir); // 30 > 25 — rad
+        await ovozniQaytar(users.HOKIM.id, 10, hozir); // 20 → 10
+        const qaytadan = await ovozniBandQil(users.HOKIM.id, 10, hozir); // 10 + 10 = 20 — o‘tadi
+        await ovozniQaytar(users.HOKIM.id, 60, hozir); // ortiqcha: 0 bo‘ladi, manfiy EMAS
+        const toliq = await ovozniBandQil(users.HOKIM.id, 25, hozir);
+        const ortiqcha = await ovozniBandQil(users.HOKIM.id, 1, hozir);
+        return !toldi.ruxsat && qaytadan.ruxsat && toliq.ruxsat && !ortiqcha.ruxsat;
       });
     },
   },

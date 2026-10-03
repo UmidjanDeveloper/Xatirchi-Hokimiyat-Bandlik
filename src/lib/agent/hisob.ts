@@ -134,6 +134,20 @@ export async function ovozniBandQil(
   return { ruxsat: true, qolgan: Math.max(0, limit - qator[0].ovozSoniya) };
 }
 
+/**
+ * Matnga aylanmagan yozuvning soniyalarini qaytaradi: provayder xato bergan yoki
+ * jim yozuv chiqqan bo'lsa, xodimning kunlik ovoz limiti behuda sarflanmasin.
+ * `ovozniBandQil` bilan bir xil yaxlitlash (1..60 soniya).
+ */
+export async function ovozniQaytar(userId: string, soniya: number, hozir: Date = new Date()): Promise<void> {
+  const s = Math.max(1, Math.min(60, Math.round(soniya)));
+  await prisma.$executeRaw`
+    UPDATE "AgentFoydalanish"
+    SET "ovozSoniya" = GREATEST("ovozSoniya" - ${s}, 0)
+    WHERE "userId" = ${userId} AND "kun" = ${toshkentSanasi(hozir)}::date
+  `;
+}
+
 /** Bugungi hisob (xodim ko'rishi uchun) */
 export async function bugungiHisob(userId: string, rol: AgentRoli, hozir: Date = new Date()) {
   const q = await prisma.$queryRaw<{ sorovlar: number; tokenlar: number }[]>`

@@ -79,6 +79,27 @@ Kafolatlar (har biri `scripts/ovoz-sinov.ts` va brauzer sinovida tekshiriladi):
 - Yozish paytida tugma atrofidagi halqa ovozga qarab kengayadi (gapirayotganingiz eshitilayotganini
   ko'rasiz). Zaif qurilmada va «harakatni kamaytirish»da o'chiq.
 
+### Ovoz serverda matnga aylanmasa: sabab oynada aytiladi
+
+Yozuv serverga yetib borib, OpenAI/Groq rad etsa, oynada **sababi** chiqadi (administratorga oxirida
+`[openai 429]` kabi belgi ham ko'rinadi; boshqa rollarga belgisiz). Batafsil matn **Tizim → xato jurnali**da
+(`api:agent-ovoz`, kalit yashirilgan).
+
+| Oynadagi xabar | Sabab | Nima qilinadi |
+|---|---|---|
+| «Овоз хизматининг калити ишламаяпти» `[openai 401]` | Kalit noto'g'ri yoki o'chirilgan | Vercel'da `OPENAI_API_KEY` ni yangilang |
+| «Овоз хизмати ҳисобида маблағ тугаган» `[openai 429]` | OpenAI hisobida kvota/mablag' yo'q | OpenAI Billing'da hisobni to'ldiring |
+| «Овоз хизматига рухсат йўқ» `[openai 403]` | Kalit (cheklangan) yoki loyiha ovoz xizmatiga/`whisper-1` modeliga ruxsat bermaydi | OpenAI'da kalit ruxsatlarini (audio/model) va loyiha modellarini tekshiring |
+| «Овоз модели топилмади» `[openai 404]` | Model nomi noto'g'ri (`AGENT_STT_MODEL`) | O'zgaruvchini olib tashlang |
+| «Овоз хизмати банд…» `[openai 429]` | Daqiqalik chegara (vaqtincha) | Bir oz kuting |
+| «Овоз хизмати кечикди» / «уланмади» / «вақтинча ишламаяпти» | Tarmoq yoki OpenAI uzilishi | Qayta urining |
+
+Server o'zi ham tuzatadi: OpenAI **til, harorat yoki izoh** parametrini rad etsa — shu parametrsiz qayta
+uradi; `AGENT_STT_MODEL` modeli topilmasa — `whisper-1` bilan qayta uradi (eng ko'pi 4 urinish).
+Matn chiqmagan yozuvning soniyalari kunlik ovoz limitiga **hisoblanmaydi** (qaytariladi).
+Sinov: `scripts/stt-sinov.ts` (17, tarmoqsiz) va `scripts/brauzer/stt-brauzer.mjs` (haqiqiy marshrut,
+soxta OpenAI bilan). OpenAI'ning haqiqiy javoblari bu yerda sinalmagan.
+
 Yozuv MediaRecorder bilan emas, WebAudio orqali **o'zimiz** yig'iladi va oddiy WAV (16 kHz, 16 bit,
 bitta kanal) bo'lib ketadi: iPhone'da MediaRecorder bo'laklangan MP4 beradi, uni serverdagi dekoder
 qabul qilishiga kafolat yo'q edi. WAV baytma-bayt tekshiriladi.
@@ -140,7 +161,7 @@ Hisob: `AgentFoydalanish` jadvali (xodim, kun, so'rovlar, tokenlar). Matn yo'q.
 | Asboblar, ruxsat, URL xavfsizligi, PII, limit (atomar), tasdiq (bir marta), zaxira rejim, til matnlari | `scripts/agent-sinov.ts` + mutatsiya sinovi |
 | API: kirishsiz 401, mahalla xodimi 403, tekshiruv 400, chegara 429, tasdiq oqimi | `scripts/http-regressiya.ts` (13a–13i) |
 | Brauzer: salom ismi bilan, javob, manba, sahifa ochilishi, tasdiq kartasi, mobil, lotin/kirill | Playwright; ovoz tanish **soxta** (test dublyor) bilan |
-| Mikrofon: iPhone yo'li, xatodan keyin qotib qolmaslik, zaxiraga o'tish, gap tugagach to'xtash, jimlik, oyna yopilishi, fonga o'tish, serverga ketgan WAV fayl | `scripts/ovoz-sinov.ts` (43 ta, brauzersiz) + `scripts/brauzer/mikrofon-brauzer.mjs` (22 stsenariy, Chromium soxta mikrofon oqimi bilan); ataylab buzib sinalgan |
+| Mikrofon: iPhone yo'li, xatodan keyin qotib qolmaslik, zaxiraga o'tish, gap tugagach to'xtash, jimlik, oyna yopilishi, fonga o'tish, serverga ketgan WAV fayl | `scripts/ovoz-sinov.ts` (43 ta, brauzersiz) + `scripts/brauzer/mikrofon-brauzer.mjs` (22 stsenariy, Chromium soxta mikrofon oqimi bilan) + `scripts/stt-sinov.ts` va `stt-brauzer.mjs` (server xatolari); ataylab buzib sinalgan |
 
 | **SINALMAGAN** | Sabab |
 |---|---|
