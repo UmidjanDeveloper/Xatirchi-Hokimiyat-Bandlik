@@ -500,7 +500,7 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat {ai, ovozServer, ovozChiqish, jarvis, limit, qolgan}; kalit yo\'q — ai:false, ovozChiqish:false, jarvis:false; ovoz, gapirish va JARVIS yo\'llari 503',
+    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat ulanish holati, limitlar va vazifa sonlari; kalit yo\'q — ai:false, ovozChiqish:false, jarvis:false; ovoz, gapirish va JARVIS yo\'llari 503',
     tekshir: async () => {
       const x = await xodimYarat('ADMIN', null, 'agent_admin_a');
       const c = await kirish(x.username);
@@ -513,7 +513,10 @@ const SINOVLAR: Sinov[] = [
       const j = await sorov('/api/agent/jarvis', { cookie: c.cookie, method: 'POST', body: { xabar: 'salom' } });
       return (
         h.status === 200 &&
-        Object.keys(d).sort().join() === 'ai,jarvis,limit,ovozChiqish,ovozServer,qolgan' &&
+        Object.keys(d).sort().join() === 'ai,jarvis,limit,ovozChiqish,ovozServer,ovozUlanishi,qolgan,vazifa' &&
+        d.ovozUlanishi === 'kalit_yoq' &&
+        (d.vazifa === null || (typeof d.vazifa === 'object' && d.vazifa !== null &&
+          Object.keys(d.vazifa).sort().join() === 'kayfiyat,kechikkan,shoshilinch')) &&
         d.ai === false &&
         d.ovozChiqish === false &&
         d.jarvis === false &&

@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
  * bugun yana nechta xabar qoldi. Kalit yoki model nomi QAYTARILMAYDI.
  */
 export async function GET() {
-  const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
+  const q = await talabQil([...AGENT_ROLLARI]);
   if (q instanceof NextResponse) return q;
   const rol = q.sessiya.rol;
   if (!agentOchiqmi(rol)) return NextResponse.json({ xabar: 'Ruxsat yo‘q' }, { status: 403 });
