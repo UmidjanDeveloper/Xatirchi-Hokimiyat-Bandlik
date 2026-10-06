@@ -6,6 +6,7 @@ import { Mic, Send, Square, Trash2, Volume2, VolumeX, X, ExternalLink, Check, Fi
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { ovozTasdiqQarori } from '@/lib/agent/ovoz-tasdiq';
 import { jonliBoshla, jonliMumkinmi } from './jonli-suhbat';
+import { geminiJonliBoshla, geminiJonliMumkinmi } from './jonli-gemini';
 import { hisobotniIjroQil } from './hisobot-ijrosi';
 import { suhbatIfodasi } from '@/lib/agent/robot-ifoda';
 import { salomMatni } from '@/lib/agent/matnlar';
@@ -57,6 +58,7 @@ interface HolatMalumoti {
   ovozServer: boolean;
   ovozChiqish?: boolean;
   jonli?: boolean;
+  jonliProvayder?: 'gemini' | 'openai' | null;
   limit: number;
   qolgan: number;
 }
@@ -98,6 +100,8 @@ export default function AgentOynasi({
   const router = useRouter();
 
   const [jonliFaol, setJonliFaol] = useState(false);
+  const [tekshirilmoqda, setTekshirilmoqda] = useState(false);
+  const [tekshiruv, setTekshiruv] = useState<{ ok: boolean; qadamlar: { nom: string; ok: boolean; ms?: number; izoh: string }[] } | null>(null);
   const jonli = useRef<ReturnType<typeof jonliBoshla> | null>(null);
   const jonliMatnRef = useRef<(id: string, r: 'f' | 'a', m: string) => void>(() => {});
   const jonliAmalRef = useRef<(a: Amal[], m: Manba[], s: AbortSignal) => Promise<Record<string, unknown>>>(async () => ({}));
@@ -555,9 +559,10 @@ export default function AgentOynasi({
 
   const jonliniBoshla = () => {
     if (jonli.current) { toxtat(); return; }
-    if (!jonliMumkinmi()) { setBildirish(t('Bu brauzerda jonli ovoz ishlamaydi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.')); return; }
+    const gemini = malumot?.jonliProvayder === 'gemini';
+    if (!(gemini ? geminiJonliMumkinmi() : jonliMumkinmi())) { setBildirish(t('Bu brauzerda jonli ovoz ishlamaydi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.')); return; }
     toxtat(); nutqniTayyorla(); setBildirish(''); setJonliFaol(true); setMimikaSinovi(false);
-    jonli.current = jonliBoshla({
+    jonli.current = (gemini ? geminiJonliBoshla : jonliBoshla)({
       onHolat: setHolat, onDaraja: setOgizDarajasi,
       onMatn: (id, r, m) => jonliMatnRef.current(id, r, m),
       onAmallar: (a, m, s) => jonliAmalRef.current(a, m, s),
@@ -565,6 +570,17 @@ export default function AgentOynasi({
       onXato: (m) => { setBildirish(t(m)); setKayfiyat('xavotir'); },
       onTugadi: () => { jonli.current = null; setJonliFaol(false); },
     });
+  };
+
+  const jonliniTekshir = async () => {
+    setTekshirilmoqda(true); setTekshiruv(null);
+    try {
+      const r = await fetch('/api/agent/jonli-tekshir', { method: 'POST' });
+      const d = await r.json() as { ok?: boolean; qadamlar?: { nom: string; ok: boolean; ms?: number; izoh: string }[]; xabar?: string };
+      setTekshiruv({ ok: Boolean(d.ok), qadamlar: d.qadamlar ?? [{ nom: 'Текширув', ok: false, izoh: d.xabar ?? 'Жавоб олинмади.' }] });
+    } catch {
+      setTekshiruv({ ok: false, qadamlar: [{ nom: 'Текширув', ok: false, izoh: 'Алоқа узилди. Қайта уриниб кўринг.' }] });
+    } finally { setTekshirilmoqda(false); }
   };
 
   const tozala = () => {
@@ -674,9 +690,19 @@ export default function AgentOynasi({
             aria-pressed={jonliFaol} onClick={jonliniBoshla}>
             {t(jonliFaol ? 'Жонли суҳбатни тўхтатиш' : 'Жонли суҳбат')}
           </button>
-          {rol === 'ADMIN' && malumotTayyor && !malumot?.jonli && <details className="mt-1 text-ink-muted">
-            <summary className="cursor-pointer">{t('Жонли суҳбатни ёқиш')}</summary>
-            <p className="mt-1">{t('Vercel махфий созламаларида OPENAI_API_KEY ва AGENT_REALTIME=1 ни ўрнатиб, қайта жойланг. Калитни суҳбатга ёзманг.')}</p>
+          {rol === 'ADMIN' && malumotTayyor && <details className="mt-1 text-ink-muted" data-jonli-tekshiruv="ha">
+            <summary className="cursor-pointer">{t(malumot?.jonli ? 'Жонли уланишни текшириш' : 'Жонли суҳбатни ёқиш')}</summary>
+            {!malumot?.jonli && <p className="mt-1">{t('Vercel махфий созламаларида GEMINI_API_KEY ва ElevenLabs созламаларини (ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, AGENT_TTS=1) ўрнатиб, қайта жойланг. Калитни суҳбатга ёзманг.')}</p>}
+            {malumot?.jonli && <p className="mt-1">{t(malumot.jonliProvayder === 'gemini' ? 'Суҳбат: Gemini Live · овоз: ElevenLabs' : 'Суҳбат: OpenAI Realtime')}</p>}
+            <button type="button" className="mt-1 rounded border border-line px-2 py-2 text-ink hover:bg-surface-muted disabled:opacity-40"
+              disabled={tekshirilmoqda || jonliFaol} onClick={jonliniTekshir}>
+              {t(tekshirilmoqda ? 'Текширилмоқда…' : 'Уланишни текшириш')}
+            </button>
+            {tekshiruv && <ul className="mt-1 space-y-1" data-tekshiruv-natijasi={tekshiruv.ok ? 'ok' : 'xato'}>
+              {tekshiruv.qadamlar.map((q, i) => <li key={i} className={q.ok ? 'text-ink' : 'text-warn'}>
+                {q.ok ? '✓' : '✗'} <b>{q.nom}</b>{typeof q.ms === 'number' ? ` · ${q.ms} мс` : ''}: {q.izoh}
+              </li>)}
+            </ul>}
           </details>}
           <button type="button" className="mt-2 rounded-md border border-line px-3 py-2 text-ink hover:bg-surface-muted disabled:opacity-40"
             disabled={band || jonliFaol || holat === 'eshitmoqda' || !malumotTayyor}
@@ -872,7 +898,7 @@ export default function AgentOynasi({
         {suhbatRejimi && <p className="mt-1 text-[11px] text-accent" role="status">{t('Овозли суҳбат ёқилган. Жавобдан сўнг яна эшитаман.')}</p>}
         {jonliFaol && <p className="mt-1 text-[11px] text-accent" role="status">{t('Жонли суҳбат ёқилган. Гапимни бўлиб савол беришингиз мумкин.')}</p>}
         <p className="mt-1.5 text-[10px] leading-snug text-ink-faint">
-          {t(jonliFaol && malumot?.ovozXizmati === 'elevenlabs' ? 'OpenAI тинглайди, ElevenLabs гапиради. Фуқаро исми ва телефонини айтманг.'
+          {t(jonliFaol && malumot?.ovozXizmati === 'elevenlabs' ? `${malumot.jonliProvayder === 'gemini' ? 'Gemini' : 'OpenAI'} тинглайди, ElevenLabs гапиради. Фуқаро исми ва телефонини айтманг.`
             : jonliFaol ? 'Овоз OpenAI хизматида ишланади. Фуқаро исми ва телефонини айтманг.' : 'Овоз ташқи хизматда матнга айланади. Фуқаро исми ва телефонини айтманг.')}
         </p>
       </div>

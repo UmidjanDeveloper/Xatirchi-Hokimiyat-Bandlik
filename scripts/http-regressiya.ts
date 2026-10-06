@@ -515,7 +515,8 @@ const SINOVLAR: Sinov[] = [
       const j = await sorov('/api/agent/jonli', { cookie: c.cookie, method: 'POST', body: { tur: 'ulanish', sdp: 'v=0 test-offer' } });
       return (
         h.status === 200 &&
-        Object.keys(d).sort().join() === 'ai,jonli,limit,ovozChiqish,ovozServer,ovozUlanishi,ovozXizmati,qolgan,vazifa' &&
+        Object.keys(d).sort().join() === 'ai,jonli,jonliProvayder,limit,ovozChiqish,ovozServer,ovozUlanishi,ovozXizmati,qolgan,vazifa' &&
+        d.jonliProvayder === null &&
         d.ovozUlanishi === 'kalit_yoq' &&
         d.ovozXizmati === 'openai' &&
         (d.vazifa === null || (typeof d.vazifa === 'object' && d.vazifa !== null &&
@@ -695,6 +696,48 @@ const SINOVLAR: Sinov[] = [
         boshqalar.every((r) => rad(r) && sizmaydi(r)) &&
         rad(kirishsiz) && sizmaydi(kirishsiz) &&
         kz.status === 200 && rad(kozda) && sizmaydi(kozda)
+      );
+    },
+  },
+  {
+    nomi: '13n. Jonli ulanishni tekshirish (`/api/agent/jonli-tekshir`) FAQAT administratorga: kirishsiz, hokim, rahbar, bandlik, mahalla xodimi va ko\'rish rejimi — rad; administratorga qadamlar ro\'yxati (sozlanmagan bo\'lsa YETISHMAYOTGAN NOMLAR, qiymat emas); soatiga 8 martadan ko\'p emas; mikrofon skripti kirgan xodimga beriladi, kirishsizga yo\'q',
+    tekshir: async () => {
+      const admin = await xodimYarat('ADMIN', null, 'tek_admin');
+      const hokim = await xodimYarat('HOKIM', null, 'tek_hokim');
+      const rahbar = await xodimYarat('BANDLIK_RAHBAR', null, 'tek_rahbar');
+      const bandlik = await xodimYarat('BANDLIK', null, 'tek_bandlik');
+      const yettilik = await xodimYarat('YETTILIK', A, 'tek_yettilik');
+      const oz = await kirish(admin.username);
+      const post = (cookie?: string) => sorov('/api/agent/jonli-tekshir', { cookie, method: 'POST', body: {} });
+
+      const kirishsiz = await post();
+      const roller = await Promise.all([hokim, rahbar, bandlik, yettilik].map(async (x) => post((await kirish(x.username)).cookie)));
+      const r = await fetch(`${BAZA}/api/admin/korish`, { method: 'POST', headers: { cookie: oz.cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: hokim.id }) });
+      const koz = r.headers.getSetCookie().find((x) => /^[^=]+=[^;]+/.test(x))!.split(';')[0];
+      const kozda = await post(koz);
+
+      const birinchi = await post(oz.cookie);
+      const d = JSON.parse(birinchi.matn) as { ok?: boolean; qadamlar?: { nom: string; ok: boolean; izoh: string }[] };
+      const sozlama = d.qadamlar?.find((q) => q.nom === 'Sozlama');
+      const ovoz = d.qadamlar?.find((q) => q.nom === 'ElevenLabs ovozi');
+
+      /* chegara: 8 ta ruxsat, 9-si 429 */
+      let oxirgi = birinchi;
+      for (let i = 0; i < 8; i++) oxirgi = await post(oz.cookie);
+
+      const skript = await fetch(`${BAZA}/gemini-pcm-worklet.js`, { headers: { cookie: oz.cookie }, redirect: 'manual' });
+      const skriptMatni = await skript.text();
+      const skriptKirishsiz = await fetch(`${BAZA}/gemini-pcm-worklet.js`, { redirect: 'manual' });
+
+      return (
+        rad(kirishsiz) && roller.every(rad) && kozda.status === 403 && /"korish":true/.test(kozda.matn) &&
+        ruxsat(birinchi) && d.ok === false && Array.isArray(d.qadamlar) &&
+        /* CI muhitida Gemini/ElevenLabs sozlanmagan: sabab NOM bilan aytiladi, hech narsa tashqariga yuborilmaydi */
+        sozlama?.ok === false && /GEMINI_API_KEY/.test(sozlama.izoh) && ovoz?.ok === false &&
+        !/AIza|sk-|xi-api-key|auth_tokens/.test(birinchi.matn) &&
+        oxirgi.status === 429 &&
+        skript.status === 200 && /javascript/.test(skript.headers.get('content-type') ?? '') && /registerProcessor\('gemini-pcm'/.test(skriptMatni) &&
+        skriptKirishsiz.status >= 300 && skriptKirishsiz.status < 400
       );
     },
   },

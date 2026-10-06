@@ -23,19 +23,24 @@ export function jonliSozlama(env: NodeJS.ProcessEnv = process.env) {
   };
 }
 
-export function jonliSessiya(ctx: AgentKontekst, sozlama: NonNullable<ReturnType<typeof jonliSozlama>>, nomlar: string[]) {
-  return {
-    type: 'realtime', model: sozlama.model, output_modalities: [sozlama.tashqiOvoz ? 'text' : 'audio'], max_output_tokens: 1000, tracing: null,
-    instructions: `${tizimKursatmasi(ctx)}
+/** Jonli suhbat ko'rsatmasi: OpenAI va Gemini uchun bir xil (faqat ovoz qaysi xizmatdaligi farq qiladi). */
+export function jonliKursatma(ctx: AgentKontekst, nomlar: string[], tashqiOvoz: boolean): string {
+  return `${tizimKursatmasi(ctx)}
 
 JONLI OVOZLI SUHBAT
-${sozlama.tashqiOvoz ? '- Javob matni ElevenLabs orqali o‘qiladi. Har javobni odatda 2–4 qisqa jumlada yoz, maxsus audio teglar yoki sahna ko‘rsatmalarini yozma. Kerakli buyruq asboblarini odatdagidek chaqir.' : ''}
+${tashqiOvoz ? '- Javob matni ElevenLabs orqali o‘qiladi. Har javobni odatda 2–4 qisqa jumlada yoz, maxsus audio teglar yoki sahna ko‘rsatmalarini yozma. Kerakli buyruq asboblarini odatdagidek chaqir.' : ''}
 - Ovozning o'zini eshitasan; yozma transkript yordamchi, u xato bo'lishi mumkin. Faqat ravon adabiy o'zbekchada so'zla. O'zbek o‘, g‘, q, x va h tovushlarini aniq ayt, ruscha yoki inglizcha urg'u ishlatma. O'rtacha tezlikda, iliq va ishonchli ohangda gapir.
 - Qisqa tabiiy gaplar ishlat. Vaziyatga mos yengil hazil qilish mumkin; fuqarolar yoki qiyinchiliklar ustidan kulma. Gapni bo'lishsa to'xta va yangi so'rovni tingla.
 - Rasmiy mahalla nomlari: ${nomlar.join(', ')}. Bu faqat nomlar katalogi, raqamlar emas. Noaniq eshitilgan nomni taxminan almashtirma: mahallani_top asbobidan foydalan. mahalla_noaniq qaytsa "${nomlar[0] ?? 'shu mahalla'}ni nazarda tutdingizmi?" kabi haqiqiy variant bilan aniqlashtir; javobni kut. mahalla_topilmadi bo'lsa "Ro'yxatda bunday mahalla yo'q, nomini yana aytasizmi?" de.
 - Excel so'ralsa hisobotni_yukla asbobini ishlat. Asbobdagi brauzerNatijasi fayl yaratilgani va yuklash boshlanganini tasdiqlaydi, fayl diskka saqlanganini bila olmaysan. Xato bo'lsa tayyor deb aytma.
 - Yozish takliflari ekranda ko'rinadi. Foydalanuvchi tugmani bosishi yoki aynan "tasdiqlayman" deyishi mumkin. Oddiy "ha" yozish amali uchun yetmaydi. Tasdiq interfeys tomonidan bajariladi, tasdiqlovchi asbobni o'zing o'ylab topma. Server natijasi kelmaguncha bajarildi dema. Amalni taklif qilgan javobingda o'zing "tasdiqlayman" so'zini ovozda aytma: qanday tasdiqlash ekranda yozilgan, faqat tasdiqni kutayotganingni ayt.
-- Tizimda faqat taqdim etilgan asboblar ishlaydi; boshqa vazifani bajargandek ko'rsatma. Manbasiz raqam aytma.`,
+- Tizimda faqat taqdim etilgan asboblar ishlaydi; boshqa vazifani bajargandek ko'rsatma. Manbasiz raqam aytma.`;
+}
+
+export function jonliSessiya(ctx: AgentKontekst, sozlama: NonNullable<ReturnType<typeof jonliSozlama>>, nomlar: string[]) {
+  return {
+    type: 'realtime', model: sozlama.model, output_modalities: [sozlama.tashqiOvoz ? 'text' : 'audio'], max_output_tokens: 1000, tracing: null,
+    instructions: jonliKursatma(ctx, nomlar, sozlama.tashqiOvoz),
     audio: {
       input: {
         noise_reduction: { type: 'near_field' },
@@ -52,6 +57,8 @@ ${sozlama.tashqiOvoz ? '- Javob matni ElevenLabs orqali o‘qiladi. Har javobni 
 const Ruxsat = z.object({
   v: z.literal(1), id: z.string().uuid(), call: z.string().regex(/^[a-zA-Z0-9_-]{1,150}$/),
   userId: z.string(), rol: z.string(), mahallaId: z.string().nullable(), oqishFaqat: z.boolean(), muddat: z.number().int(),
+  // Eski tokenlarda yo'q: ular OpenAI hisoblanadi. Token faqat shu server tomonidan imzolanadi.
+  prov: z.enum(['openai', 'gemini']).default('openai'),
 }).strict();
 export type JonliRuxsat = z.infer<typeof Ruxsat>;
 
@@ -59,10 +66,10 @@ function imzo(yuk: string, kalit: string): string {
   return createHmac('sha256', kalit).update(`hamroh-jonli-v1:${yuk}`).digest('base64url');
 }
 
-export function jonliRuxsatYarat(ctx: AgentKontekst, call: string, kalit = process.env.SESSION_SECRET): string {
+export function jonliRuxsatYarat(ctx: AgentKontekst, call: string, kalit = process.env.SESSION_SECRET, prov: 'openai' | 'gemini' = 'openai'): string {
   if (!kalit || kalit.length < 32) throw new Error('Sessiya sozlanmagan');
   const q = Ruxsat.parse({ v: 1, id: randomUUID(), call, userId: ctx.userId, rol: ctx.rol, mahallaId: ctx.mahallaId,
-    oqishFaqat: Boolean(ctx.oqishFaqat), muddat: ctx.hozir.getTime() + JONLI_MUDDAT_MS });
+    oqishFaqat: Boolean(ctx.oqishFaqat), muddat: ctx.hozir.getTime() + JONLI_MUDDAT_MS, prov });
   const yuk = Buffer.from(JSON.stringify(q)).toString('base64url');
   return `${yuk}.${imzo(yuk, kalit)}`;
 }

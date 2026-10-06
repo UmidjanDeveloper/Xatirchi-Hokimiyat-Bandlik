@@ -77,6 +77,9 @@ deploy qilishini tekshiring.
 
 ## 6. Jonli suhbat
 
+> **Yangi:** jonli suhbatni OpenAI o'rniga **Gemini Live** yuritishi mumkin (ElevenLabs ovozi o'sha-o'sha).
+> Sozlash va tekshirish: [GEMINI-JONLI.md](GEMINI-JONLI.md). `GEMINI_API_KEY` qo'yilsa Gemini ishlatiladi.
+
 Jonli rejim uchun serverda `OPENAI_API_KEY` va `AGENT_REALTIME=1` bo'lsin.
 Mavjud `AGENT_TTS=1` ham jonli rejimni ochadi, agar `AGENT_REALTIME=0` bilan
 ataylab o'chirilmagan bo'lsa.
