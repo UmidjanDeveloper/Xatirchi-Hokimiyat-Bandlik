@@ -103,7 +103,7 @@ async function tumanJavobi(ctx: AgentKontekst): Promise<ZaxiraJavobi> {
 
 export async function qoidaBilanJavob(ctx: AgentKontekst, matn: string, tarix: TarixXabari[] = []): Promise<ZaxiraJavobi> {
   // Format javobi oldingi hisobot so'rovining mahallasini ham saqlaydi.
-  if (/^(pdf|excel|eksel)[.!?\s]*$/i.test(matn.trim())) {
+  if (/^(pdf|excel|eksel|tuman|butun tuman|xatirchi|butun xatirchi)( bo['‘’ʻʼ`]?yicha)?[.!?\s]*$/i.test(matn.trim())) {
     const oldingi = [...tarix].reverse().find((x) => x.r === 'f');
     if (oldingi && iboraMos(kalitSozlar(oldingi.m).split(' '), 'hisobot')) matn = `${oldingi.m} ${matn}`;
   }
@@ -137,6 +137,9 @@ export async function qoidaBilanJavob(ctx: AgentKontekst, matn: string, tarix: T
     const format = iboraMos(soz, 'excel') || iboraMos(soz, 'eksel') ? 'excel' : iboraMos(soz, 'pdf') ? 'pdf' : null;
     if (!format) return { javob: A('Қайси кўринишда: PDF ёки Excel?', ctx.alifbo), amallar: [], manbalar: [], tushunildi: true };
     const mahH = await mahallaniTop(matn);
+    if (!mahH && !['tuman', 'xatirchi'].some((w) => iboraMos(soz, w))) {
+      return { javob: A('Бутун Хатирчи бўйичами ёки қайси маҳалла бўйича?', ctx.alifbo), amallar: [], manbalar: [], tushunildi: true };
+    }
     const m = hisobotSahifasi(ctx.rol, mahH?.id);
     if (!m.ok) return oddiy('ruxsatYoq');
     return {

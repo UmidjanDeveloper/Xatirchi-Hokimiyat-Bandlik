@@ -22,7 +22,7 @@ export function nutqProvayderi(env: NodeJS.ProcessEnv = process.env): NutqProvay
   return {
     kalit,
     model: env.AGENT_TTS_MODEL?.trim() || 'gpt-4o-mini-tts',
-    ovoz: (OVOZLAR as readonly string[]).includes(ovoz) ? ovoz : 'marin',
+    ovoz: (OVOZLAR as readonly string[]).includes(ovoz) ? ovoz : 'cedar',
   };
 }
 

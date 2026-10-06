@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileSpreadsheet, FileText, Loader2, Sparkles, Table2 } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { lotinga } from '@/lib/alifbo';
@@ -107,6 +107,7 @@ export function HisobotTugmalari({
   const [ishlayapti, setIshlayapti] = useState<'pdf' | 'excel' | 'jadval' | null>(null);
   const [xato, setXato] = useState<string | null>(null);
   const [holat, setHolat] = useState<string | null>(null);
+  const yuklashBand = useRef(false);
 
   /**
    * Танланган ҳудуд — бўш сатр «бутун туман» дегани.
@@ -127,6 +128,17 @@ export function HisobotTugmalari({
   useEffect(() => {
     setTanlangan(qamrov.mahallaId ?? '');
   }, [qamrov.mahallaId]);
+  useEffect(() => {
+    const tanla = (e: Event) => {
+      const id = (e as CustomEvent<{ mahallaId?: string }>).detail?.mahallaId;
+      if (typeof id !== 'string' || ishlayapti || yuklashBand.current) return;
+      if (ozMahallasi && id !== (qamrov.mahallaId ?? '')) return;
+      if (id && id !== qamrov.mahallaId && !mahallalar?.some((m) => m.id === id)) return;
+      setTanlangan(id);
+    };
+    window.addEventListener('hudhud:hisobot-hudud', tanla);
+    return () => window.removeEventListener('hudhud:hisobot-hudud', tanla);
+  }, [ishlayapti, mahallalar, ozMahallasi, qamrov.mahallaId]);
 
   const sana = new Date().toISOString().slice(0, 10);
   const qoshimcha = alifbo === 'lot' ? '' : '-kirill';
@@ -175,8 +187,12 @@ export function HisobotTugmalari({
     return d as Hisobot;
   }
 
-  async function ol(turi: 'pdf' | 'excel') {
-    if (ishlayapti) return;
+  async function ol(turi: 'pdf' | 'excel', id?: string) {
+    const natija = (ok: boolean, xabar: string) => {
+      if (id) window.dispatchEvent(new CustomEvent('hudhud:hisobot-natija', { detail: { id, ok, xabar } }));
+    };
+    if (ishlayapti || yuklashBand.current) { natija(false, tr('Ҳисобот аллақачон тайёрланмоқда. Бир оз кутинг.')); return; }
+    yuklashBand.current = true;
     setXato(null);
     setIshlayapti(turi);
     try {
@@ -192,9 +208,12 @@ export function HisobotTugmalari({
         const { excelYasa } = await import('@/lib/hisobot/excel');
         await excelYasa(m, faylNomi(m, 'xlsx'));
       }
+      natija(true, tr(`${turi === 'excel' ? 'Excel' : 'PDF'} ҳисобот яратилди, юклаш бошланди.`));
     } catch (e) {
-      setXato(e instanceof Error ? e.message : tr('Ҳисобот тайёрланмади'));
+      const xabar = e instanceof Error ? e.message : tr('Ҳисобот тайёрланмади');
+      setXato(xabar); natija(false, xabar);
     } finally {
+      yuklashBand.current = false;
       setIshlayapti(null);
       setHolat(null);
     }
@@ -291,8 +310,8 @@ export function HisobotTugmalari({
    */
   useEffect(() => {
     const eshit = (e: Event) => {
-      const turi = (e as CustomEvent<{ turi?: string }>).detail?.turi;
-      if (turi === 'pdf' || turi === 'excel') void ol(turi);
+      const d = (e as CustomEvent<{ turi?: string; id?: string }>).detail;
+      if (d?.turi === 'pdf' || d?.turi === 'excel') void ol(d.turi, d.id);
     };
     window.addEventListener('hudhud:hisobot', eshit);
     return () => window.removeEventListener('hudhud:hisobot', eshit);
@@ -302,7 +321,7 @@ export function HisobotTugmalari({
     'flex items-center gap-2 rounded-md border border-line bg-surface px-3.5 py-2.5 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:opacity-60';
 
   return (
-    <div className="space-y-2 sm:flex sm:flex-col sm:items-end" data-hisobot-tugmalari="ha">
+    <div className="space-y-2 sm:flex sm:flex-col sm:items-end" data-hisobot-tugmalari="ha" data-hisobot-hudud={joriyMahalla ?? ''}>
       <div className="flex flex-wrap items-center gap-2">
         {/*
           Ҳудуд танлаш тугмалар ЁНИДА турибди, алоҳида блокда

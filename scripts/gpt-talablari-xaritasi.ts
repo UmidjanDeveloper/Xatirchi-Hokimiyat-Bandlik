@@ -1142,7 +1142,7 @@ export const BOLIMLAR: Bolim[] = [
         raqam: '15.3',
         matn: 'Hokim: tasdiqlangan va xodim bildirgan natijalar, barqaror bandlik, daromad o‘zgarishi, resurs ehtiyoji — raqamlar izohlanadi',
         holat: 'TOLIQ',
-        dalil: [t(HT, '12a. /panel HOKIM uchun: 9 ta asosiy raqamning har birida'), t(J, 'Брифинг расмий манба сонини АЛОҲИДА айтади'), t(MD, "Hokim jamlamani ko'radi")],
+        dalil: [t(HT, '12a. /panel HOKIM uchun: 5 asosiy va xatlov bor'), t(J, 'Брифинг расмий манба сонини АЛОҲИДА айтади'), t(MD, "Hokim jamlamani ko'radi")],
       },
       {
         raqam: '15.4',

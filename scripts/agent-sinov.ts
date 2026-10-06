@@ -307,7 +307,7 @@ const SINOVLAR: Sinov[] = [
       ];
       const t = (q: string) => { const x = mahallaniTanla(r, q); return x.holat === 'topildi' ? x.mahalla.id : x.holat; };
       return t('Qorabuloq') === 'm1xxxxxxxxx' && t('qorabuloq mahallasi') === 'm1xxxxxxxxx' && t('Қорабулоқ') === 'm1xxxxxxxxx' &&
-        t('Qoraboloq') === 'm1xxxxxxxxx' && t('uyshun mfy') === 'm2xxxxxxxxx' && nomniTozala('Uyshun mahallasi') === 'Uyshun';
+        t('Qoraboloq') === 'noaniq' && t('uyshun mfy') === 'm2xxxxxxxxx' && nomniTozala('Uyshun mahallasi') === 'Uyshun';
     },
   },
   {
@@ -881,8 +881,8 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Hisobot yuklash asbobi: hokim → /panel, bandlik mutaxassisi → /bandlik (hisobot tugmalari turgan sahifa); mahalla aytilsa ?mfy=<id>; format faqat pdf|excel; hamma 4 rolda bor',
     tekshir: async () => {
       mahallaKeshiniTozala();
-      const h = await asbobniBajar(hokimCtx, 'hisobotni_yukla', { format: 'pdf' });
-      const b = await asbobniBajar(bandlikCtx, 'hisobotni_yukla', { format: 'excel' });
+      const h = await asbobniBajar(hokimCtx, 'hisobotni_yukla', { format: 'pdf', qamrov: 'tuman' });
+      const b = await asbobniBajar(bandlikCtx, 'hisobotni_yukla', { format: 'excel', qamrov: 'tuman' });
       const m = await asbobniBajar(hokimCtx, 'hisobotni_yukla', { format: 'excel', mahalla: mahalla.nomi });
       const yomon = await asbobniBajar(hokimCtx, 'hisobotni_yukla', { format: 'word' });
       const a = (n: { amallar?: Amal[] }) => n.amallar?.[0] as { tur: string; format: string; url: string } | undefined;
@@ -894,9 +894,9 @@ const SINOVLAR: Sinov[] = [
   {
     nomi: 'Zaxira: "excel hisobotni yuklab ber" → hisobot amali (hokim /panel); format aytilmasa — SAVOL ("PDF yoki Excel?"), amal YO‘Q; "tahlil hisobotini och" (yuklash fe‘lisiz) — oddiy sahifa ochish',
     tekshir: async () => {
-      const a = await qoidaBilanJavob(hokimCtx, 'excel hisobotni yuklab ber');
+      const a = await qoidaBilanJavob(hokimCtx, 'butun tuman excel hisobotni yuklab ber');
       const b = await qoidaBilanJavob(hokimCtx, 'hisobotni yuklab ber');
-      const c = await qoidaBilanJavob(bandlikCtx, 'PDF hisobot ol');
+      const c = await qoidaBilanJavob(bandlikCtx, 'butun tuman PDF hisobot ol');
       const d = await qoidaBilanJavob(hokimCtx, 'tahlil hisobotini och');
       const t = (r: { amallar: Amal[] }) => r.amallar[0] as { tur: string; format?: string; url: string } | undefined;
       return t(a)?.tur === 'hisobot' && t(a)?.format === 'excel' && t(a)?.url === '/panel' && b.amallar.length === 0 && /PDF/.test(b.javob) && /Excel/.test(b.javob) &&

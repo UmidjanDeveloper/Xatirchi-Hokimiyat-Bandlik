@@ -347,7 +347,7 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Oyna: yopilsa/fonga o‘tsa yozuv bekor qilinadi (yuborilmaydi); tugma holat kelguncha yopiq (server yo‘li ma’lum bo‘lsin); TTS tugashi mikrofon holatini buzmaydi',
     tekshir: () =>
       /if \(!ochiq\) toxtat\(\)/.test(OYNA) && /const toxtat = useCallback\([\s\S]*?tanish\.current\?\.bekor\(\)/.test(OYNA) && /visibilitychange/.test(OYNA) && /document\.hidden/.test(OYNA) &&
-      /disabled=\{!mikrofonMumkin \|\| !malumotTayyor \|\| holat === 'oylamoqda'\}/.test(OYNA) &&
+      /disabled=\{!jonliFaol && \(!mikrofonMumkin \|\| !malumotTayyor \|\| holat === 'oylamoqda'\)\}/.test(OYNA) &&
       /setHolat\(\(h\) => \(!bandRef\.current && h !== 'eshitmoqda' \? 'tayyor' : h\)\)/.test(OYNA),
   },
   {
@@ -382,7 +382,7 @@ const SINOVLAR: Sinov[] = [
   {
     nomi: 'Pastki eslatma QISQA (≤ 80 belgi, lotinda) va maxfiylikni saqlaydi: ovoz tashqi xizmatda matnga aylanadi, fuqaro ismi/telefonini aytmaslik',
     tekshir: () => {
-      const m = /t\('(Овоз ташқи[^']+)'\)/.exec(OYNA)?.[1] ?? '';
+      const m = /'(Овоз ташқи[^']+)'/.exec(OYNA)?.[1] ?? '';
       const lot = A(m, 'lot');
       return m.length > 0 && lot.length <= 80 && /tashqi xizmat/.test(lot) && /telefon/.test(lot) && /fuqaro/i.test(lot);
     },

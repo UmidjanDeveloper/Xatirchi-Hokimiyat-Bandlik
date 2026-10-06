@@ -71,7 +71,7 @@ export function istisnomi(yol: string): boolean {
 
 /**
  * Кўриш режимида ҲАМ ишлайдиган, лекин ЁЗМАЙДИГАН POST йўллари —
- * Коала ва JARVIS билан савол-жавоб.
+ * Ҳамроҳ билан савол-жавоб.
  *
  * ── Нега улар POST ──
  *
@@ -99,7 +99,7 @@ export const KORISH_OQISH_POSTLARI = [
   '/api/agent/suhbat',
   '/api/agent/ovoz',
   '/api/agent/gapir',
-  '/api/agent/jarvis',
+  '/api/agent/jonli',
 ] as const;
 
 export function korishdaOqishmi(yol: string): boolean {

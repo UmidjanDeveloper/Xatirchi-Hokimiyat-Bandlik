@@ -70,4 +70,4 @@ shu muhitda sinalmagan. Deploydan keyin administrator Koalaga «Qorabuloq
 mahallasida xatlov qanday?», «Nega?», «Endi nima qilamiz?» deb ketma-ket so‘rab,
 javobni eshitishi va ekrandagi raqamlar bilan solishtirishi kerak.
 
-Ovozli javobning mavjud chegarasi: har xodimga daqiqada 6, oxirgi 24 soatda 80 so‘rov. Koala va JARVIS suhbatlari alohida; JARVIS sozlamalari [JARVIS-ULASH.md](../JARVIS-ULASH.md) da. Ko‘rish rejimida yangi xotira va ovoz ishlaydi, yozish amali taklif qilinmaydi.
+Ovozli javobning mavjud chegarasi: har xodimga daqiqada 6, oxirgi 24 soatda 80 so‘rov. Suhbat yagona Hamroh orqali ishlaydi. Jonli ovoz va hisobot sozlamalari [README.md](../README.md) da. Ko‘rish rejimida yangi xotira va ovoz ishlaydi, yozish amali taklif qilinmaydi.

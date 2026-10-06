@@ -1,7 +1,7 @@
 import { nutqUlanishi } from '@/lib/agent/nutq';
 import { vazifalarim } from '@/lib/vazifalar';
 import { robotVazifaHolati } from '@/lib/agent/robot-kayfiyati';
-import { jarvisSozlama } from '@/lib/agent/jarvis';
+import { jonliSozlama } from '@/lib/agent/jonli';
 import { ttsSozlama } from '@/lib/agent/tts';
 import { NextResponse } from 'next/server';
 import { talabQil } from '@/lib/api-auth';
@@ -26,7 +26,7 @@ export async function GET() {
   // Counts follow the existing role/mahalla boundary; no task rows leave this endpoint.
   const vazifa = await vazifalarim(q.sessiya).then((v) => robotVazifaHolati(v.bloklar)).catch(() => null);
   return NextResponse.json(
-    { vazifa, ovozUlanishi: nutqUlanishi(), ai: Boolean(prov), ovozServer: Boolean(prov), ovozChiqish: Boolean(ttsSozlama()), jarvis: Boolean(jarvisSozlama()), limit: h.limit, qolgan: h.qolgan },
+    { vazifa, ovozUlanishi: nutqUlanishi(), ai: Boolean(prov), ovozServer: Boolean(prov), ovozChiqish: Boolean(ttsSozlama()), jonli: Boolean(jonliSozlama()), limit: h.limit, qolgan: h.qolgan },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }

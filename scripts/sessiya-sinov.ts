@@ -282,10 +282,10 @@ const SINOVLAR: Sinov[] = [
       KORISH_ISTISNOLARI.length === 2,
   },
   {
-    nomi: 'Коала ва JARVIS савол-жавоби кўриш режимида очиқ — аммо ТЎЛИҚ мос келиш билан, тасдиқлаш йўли ёпиқ',
+    nomi: 'Коала ва Ҳамроҳ савол-жавоби кўриш режимида очиқ — аммо ТЎЛИҚ мос келиш билан, тасдиқлаш йўли ёпиқ',
     tekshir: () =>
       KORISH_OQISH_POSTLARI.length === 4 &&
-      ['/api/agent/suhbat', '/api/agent/ovoz', '/api/agent/gapir', '/api/agent/jarvis'].every(korishdaOqishmi) &&
+      ['/api/agent/suhbat', '/api/agent/ovoz', '/api/agent/gapir', '/api/agent/jonli'].every(korishdaOqishmi) &&
       /* Ёзишни БАЖАРАДИГАН йўл ва унга ўхшаш манзиллар ёпиқ қолади */
       ['/api/agent/tasdiq', '/api/agent/holat', '/api/agent', '/api/agent/suhbat/', '/api/agent/suhbat/x', '/api/agent/suhbat2', '/api/xatlov', '/api/admin/korish', ''].every((y) => !korishdaOqishmi(y)) &&
       /* Истисно рўйхати билан аралашмаган: у ҳамон фақат иккита */
@@ -319,7 +319,7 @@ const SINOVLAR: Sinov[] = [
      * Янги йўлга уни қўшиш миддлевар рўйхатини ҳам ўзгартиришни талаб қилади —
      * иккови бир-бирини текшириб туради.
      */
-    nomi: 'Иккинчи калит (`korishdaOqish: true`) фақат Коала/JARVIS савол-жавоб йўлларида; `tasdiq` ва бошқалар — йўқ',
+    nomi: 'Иккинчи калит (`korishdaOqish: true`) фақат Коала/Ҳамроҳ савол-жавоб йўлларида; `tasdiq` ва бошқалар — йўқ',
     tekshir: () => {
       const topildi: string[] = [];
       const yur = (ildiz: string) => {

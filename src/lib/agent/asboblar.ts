@@ -68,10 +68,10 @@ async function mahallaniHalQil(
         t.holat === 'noaniq'
           ? {
               xato: 'mahalla_noaniq',
-              izoh: "Bir nechta mahalla mos keldi. Foydalanuvchidan qaysi biri ekanini so'rang.",
+              izoh: "Nom aniq mos kelmadi. Bitta variant bo'lsa: shu mahallani nazarda tutdingizmi, deb so'rang. Tasdiqlamaguncha ma'lumot yoki hisobot olmang; tasdiqdan keyin rasmiy nom bilan qayta chaqiring.",
               variantlar: t.variantlar.map((m) => mahallaKorinishi(m, ctx.alifbo)),
             }
-          : { xato: 'mahalla_topilmadi', izoh: "Bunday nomli mahalla topilmadi. Nomni qayta so'rang." },
+          : { xato: 'mahalla_topilmadi', izoh: "Xatirchi ro'yxatida bunday mahalla yo'q. Nomni qayta so'rang; boshqa hududni tanlamang." },
       manbalar: [],
     },
   };
@@ -158,6 +158,17 @@ const QAMROV_SARALASH = ['xatlov_kam', 'xatlov_kop', 'natija_kam', 'natija_kop']
 
 /** Asboblar ro'yxati. Tartib modelga ko'rsatiladigan tartib. */
 export const ASBOBLAR: readonly Asbob[] = [
+  {
+    nomi: 'mahallani_top',
+    tavsif: "Aytilgan mahalla nomini rasmiy ro'yxat bilan tekshiradi. Noaniq nomga yaqin variantlar qaytaradi: foydalanuvchidan tasdiq so'rang. Mos kelmasa bunday mahalla yo'q deb ayting.",
+    parametrlar: { type: 'object', properties: { mahalla: { type: 'string' } }, required: ['mahalla'], additionalProperties: false },
+    rollar: rollar.hammasi,
+    async bajar(ctx, args) {
+      const a = z.object({ mahalla: z.string().trim().min(2).max(80) }).strict().parse(args);
+      const h = await mahallaniHalQil(ctx, a.mahalla);
+      return h.ok ? { malumot: { topildi: true, nomi: h.nomi }, manbalar: [] } : h.natija;
+    },
+  },
   {
     nomi: 'korsatkichlar',
     tavsif:
@@ -417,19 +428,24 @@ export const ASBOBLAR: readonly Asbob[] = [
     nomi: 'hisobotni_yukla',
     tavsif:
       "Foydalanuvchi hisobotni YUKLAB BERISHNI so'raganda: PDF yoki Excel. Hisobot brauzerda tayyorlanadi va yuklab olinadi (bir necha soniya). " +
-      "Format aytilmagan bo'lsa, avval foydalanuvchidan so'rang: PDF yoki Excel.",
+      "Format aytilmagan bo'lsa, avval foydalanuvchidan so'rang: PDF yoki Excel. Hudud aytilmagan bo'lsa butun Xatirchimi yoki qaysi mahallami deb aniqlashtiring. Mavjud panelning hisobot tugmasi ishlatiladi.",
     parametrlar: {
       type: 'object',
       properties: {
         format: { type: 'string', enum: ['pdf', 'excel'] },
+        qamrov: { type: 'string', enum: ['tuman', 'mahalla'], description: "Foydalanuvchi tanlagan hudud. Aniqlanmagan bo'lsa avval so'rang." },
         mahalla: { type: 'string', description: "Mahalla nomi (ixtiyoriy). Bo'sh qoldirilsa butun tuman." },
       },
-      required: ['format'],
+      required: ['format', 'qamrov'],
       additionalProperties: false,
     },
     rollar: rollar.hammasi,
     async bajar(ctx, args) {
-      const a = z.object({ format: z.enum(['pdf', 'excel']), mahalla: mahallaSxemasi }).parse(args ?? {});
+      const a = z.object({ format: z.enum(['pdf', 'excel']), qamrov: z.enum(['tuman', 'mahalla']).optional(), mahalla: mahallaSxemasi }).strict().parse(args ?? {});
+      if ((!a.qamrov && !a.mahalla) || (a.qamrov === 'mahalla' && !a.mahalla)) {
+        return { malumot: { xato: 'hudud_kerak', izoh: "Butun Xatirchi bo'yichami yoki qaysi mahalla bo'yicha? Hududni foydalanuvchidan aniqlang." }, manbalar: [] };
+      }
+      if (a.qamrov === 'tuman' && a.mahalla) return { malumot: { xato: 'hudud_noaniq', izoh: 'Tumanmi yoki mahallami, aniqlashtiring.' }, manbalar: [] };
       let mahallaId: string | undefined;
       let hudud = 'Xatirchi tumani';
       if (a.mahalla) {

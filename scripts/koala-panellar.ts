@@ -2,7 +2,7 @@
  * ============================================================
  *  KOALA HAR PANELDA — ROL × SAHIFA AUDITI (qo'lda ishga tushiriladi)
  *
- *  Savol: "Koala (va JARVIS tugmasi) hokim, bandlik markazi, bandlik
+ *  Savol: "Hamroh hokim, bandlik markazi, bandlik
  *  rahbari va administrator panelining HAR sahifasida bormi?"
  *
  *  Har bir rol uchun menyudagi barcha sahifalar (va bosh sahifa) ochiladi
@@ -14,7 +14,7 @@
  *  Mahalla xodimi (YETTILIK) uchun Koala bo'lmasligi KERAK (ataylab yopiq).
  *
  *  Ko'rish rejimi (administrator hokim yoki bandlik rahbari "ko'zi bilan"
- *  qarayotganda) alohida bo'limda: u yerda ham Koala (va JARVIS tabi) bor,
+ *  qarayotganda) alohida bo'limda: u yerda ham Hamroh bor,
  *  salom ADMINISTRATORning haqiqiy ismi bilan, oynada "faqat o'qiydi"
  *  eslatmasi turadi va suhbat ishlaydi.
  *
@@ -167,24 +167,23 @@ async function korishOynasi(page: Sahifa, nomi: string, adminBelgi: string, nish
   await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
   await page.waitForTimeout(900);
   const eslatma = (await page.locator('[data-korish-eslatma]').count()) > 0;
-  const boshi: string = await page.locator('[aria-live="polite"]').first().innerText();
+  const boshi: string = await page.locator('[role="dialog"] [aria-relevant="additions"]').innerText();
   const ism = boshi.includes(adminBelgi) && !boshi.includes(nishonBelgi);
-  const tabMatni: string = await page.locator('[role="group"][aria-label="Ёрдамчи режими"]').innerText();
-  const jarvisTab = tabMatni.includes('JARVIS');
+  const jonliTugma = await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count() === 1;
 
-  const kiritish = page.getByLabel('Коалага савол ёки буйруқ');
+  const kiritish = page.getByLabel('Ҳамроҳга савол ёки буйруқ');
   await kiritish.fill('Салом');
   await kiritish.press('Enter');
   const javob = await page
-    .waitForFunction(() => (document.querySelector('[aria-live="polite"]')?.children.length ?? 0) >= 3, undefined, { timeout: 20000 })
+    .waitForFunction(() => (document.querySelector('[role="dialog"] [aria-relevant="additions"]')?.children.length ?? 0) >= 3, undefined, { timeout: 20000 })
     .then(() => true)
     .catch(() => false);
-  const xatoQuti = (await page.locator('[aria-live="polite"] .quti-ogoh').count()) > 0;
+  const xatoQuti = (await page.locator('[role="dialog"] [aria-relevant="additions"] .quti-ogoh').count()) > 0;
   await page.screenshot({ path: skrin });
   console.log(
-    `${eslatma && ism && jarvisTab && javob && !xatoQuti ? 'OK  ' : 'XATO'} ${nomi}: eslatma=${eslatma}, salom admin ismi bilan=${ism}, JARVIS tabi=${jarvisTab}, javob keldi=${javob}, xato qutisi=${xatoQuti}`
+    `${eslatma && ism && jonliTugma && javob && !xatoQuti ? 'OK  ' : 'XATO'} ${nomi}: eslatma=${eslatma}, salom admin ismi bilan=${ism}, Jonli suhbat tugmasi=${jonliTugma}, javob keldi=${javob}, xato qutisi=${xatoQuti}`
   );
-  return eslatma && ism && jarvisTab && javob && !xatoQuti;
+  return eslatma && ism && jonliTugma && javob && !xatoQuti;
 }
 
 const sahifalarRol = (rol: Rol) => ['/', ...MENYU.filter((b) => b.rollar.includes(rol)).map((b) => b.yol)].filter((v, i, a) => a.indexOf(v) === i);

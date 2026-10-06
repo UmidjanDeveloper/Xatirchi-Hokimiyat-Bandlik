@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { hududBahosi } from '@/lib/hudud-qidiruv';
+import { lotinga } from '@/lib/alifbo';
 import type { Alifbo } from './turlar';
 
 /**
@@ -38,16 +39,23 @@ export const ENG_PAST_BALL = 55;
 export const BAHS_ORALIGI = 8;
 
 /** Nom bilan birga aytiladigan, nomga kirmaydigan so'zlar */
-const QOSHIMCHA_SOZLAR = /\b(mahalla(si|da|ga|ning|dagi)?|mfy|fuqarolar|yig['‘’ʻʼ`]?ini|махалла(си|да|га|нинг|даги)?|мфй|фуқаролар|йиғини)\b/giu;
+const QOSHIMCHA_SOZLAR = /\b(mahalla(si|da|ga|ning|dagi)?|mfy|fuqarolar|yig['‘’ʻʼ`]?ini)\b/giu;
 
 export function nomniTozala(matn: string): string {
-  return matn.replace(QOSHIMCHA_SOZLAR, ' ').replace(/\s+/g, ' ').trim();
+  return lotinga(matn).replace(QOSHIMCHA_SOZLAR, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function aniqKalit(matn: string): string {
+  return nomniTozala(matn).toLowerCase().replace(/[‘’ʻʼ`´′']/g, '').replace(/[^a-z0-9]/g, '');
 }
 
 /** Toza hisob: ro'yxat va so'rov beriladi, xotira/baza kerak emas (sinov uchun) */
 export function mahallaniTanla(royxat: MahallaNomi[], sorov: string): MahallaNatijasi {
   const q = nomniTozala(sorov);
   if (q.length < 3) return { holat: 'yoq' };
+  const aniq = royxat.filter((m) => [m.nomi, m.nomiKirill].some((n) => aniqKalit(n) === aniqKalit(q)));
+  if (aniq.length === 1) return { holat: 'topildi', mahalla: aniq[0] };
+  if (aniq.length > 1) return { holat: 'noaniq', variantlar: aniq.slice(0, 5) };
 
   const baholar = royxat
     .map((m) => ({ m, ball: Math.max(hududBahosi(m.nomiKirill, q), hududBahosi(m.nomi, q)) }))
@@ -59,19 +67,14 @@ export function mahallaniTanla(royxat: MahallaNomi[], sorov: string): MahallaNat
   const eng = baholar[0];
   const yaqinlar = baholar.filter((x) => eng.ball - x.ball <= BAHS_ORALIGI);
 
-  /* Aniq (100) moslik bahsli emas: ikkinchisi ham 100 bo'lmasa */
-  if (eng.ball === 100 && yaqinlar.filter((x) => x.ball === 100).length === 1) {
-    return { holat: 'topildi', mahalla: eng.m };
-  }
-  if (yaqinlar.length === 1) return { holat: 'topildi', mahalla: eng.m };
-
+  // Fonetik 100 ball ham boshqa yozilish: xato eshitilgan nomni indamay almashtirmaymiz.
   return { holat: 'noaniq', variantlar: yaqinlar.slice(0, 5).map((x) => x.m) };
 }
 
 let keshdagi: { vaqt: number; royxat: MahallaNomi[] } | null = null;
 const KESH_MS = 5 * 60_000;
 
-async function royxatniOl(): Promise<MahallaNomi[]> {
+export async function mahallaRoyxati(): Promise<MahallaNomi[]> {
   if (keshdagi && Date.now() - keshdagi.vaqt < KESH_MS) return keshdagi.royxat;
   const royxat = await prisma.mahalla.findMany({
     select: { id: true, nomi: true, nomiKirill: true },
@@ -86,7 +89,7 @@ export function mahallaKeshiniTozala(): void {
 }
 
 export async function mahallaTop(sorov: string): Promise<MahallaNatijasi> {
-  return mahallaniTanla(await royxatniOl(), sorov);
+  return mahallaniTanla(await mahallaRoyxati(), sorov);
 }
 
 /** Mahalla nomini foydalanuvchi alifbosida beradi */

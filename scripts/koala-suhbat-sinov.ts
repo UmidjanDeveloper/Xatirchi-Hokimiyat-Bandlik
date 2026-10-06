@@ -117,7 +117,7 @@ const sinovlar: [string, () => unknown | Promise<unknown>][] = [
   ['Nutq: Groq suhbatidan mustaqil, kalitsiz/o‘chiq xizmat yo‘q', () => {
     assert.equal(nutqProvayderi({ NODE_ENV: 'test' }), null);
     assert.equal(nutqProvayderi({ NODE_ENV: 'test', OPENAI_API_KEY: 'sinov', AGENT_TTS: '0' }), null);
-    assert.equal(nutqProvayderi({ NODE_ENV: 'test', OPENAI_API_KEY: 'sinov', AGENT_PROVAYDER: 'groq', AGENT_TTS: '1' })?.ovoz, 'marin');
+    assert.equal(nutqProvayderi({ NODE_ENV: 'test', OPENAI_API_KEY: 'sinov', AGENT_PROVAYDER: 'groq', AGENT_TTS: '1' })?.ovoz, 'cedar');
   }],
   ['Nutq: o‘zbek kirilli, foiz va belgilardan ravon matn', () => {
     const m = nutqMatni('**Қорабулоқ**: 83,5%. PDF ҳисобот.');

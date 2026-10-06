@@ -93,7 +93,7 @@ export default async function IlovaLayout({ children }: { children: React.ReactN
         {children}
       </AppShell>
       {/*
-        ── КОАЛА (овозли AI ёрдамчи ва JARVIS) ──
+        ── ҲАМРОҲ (овозли AI ёрдамчи) ──
 
         Фақат ҳоким, бандлик маркази (мутахассис ва раҳбар) ва
         администраторга; МАҲАЛЛА ХОДИМИГА кўринмайди. Тугма жуда енгил;

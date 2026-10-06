@@ -609,8 +609,50 @@ endi sabab yashirilmaydi; administrator uchun sozlash ko'rsatmasi chiqadi.
 Server ovozi uchun hostingning **maxfiy muhit sozlamalarida** `OPENAI_API_KEY`
 va `AGENT_TTS=1` kerak. Sozlamani o'zgartirgach ilovani qayta joylang.
 Kalitni suhbatga, GitHub'ga yoki brauzer kodiga yozmang. Suhbat modeli
-(Groq/JARVIS va boshqalar) ulangan bo'lishi nutq xizmati ham ulanganini anglatmaydi.
+(Groq/OpenAI va boshqalar) ulangan bo'lishi nutq xizmati ham ulanganini anglatmaydi.
 O'zbekcha qurilma ovozi mavjud bo'lsa, server ovozisiz undan foydalaniladi.
+
+**Jonli suhbat** tugmasi OpenAI Realtime orqali to'g'ridan-to'g'ri ovozli
+muloqotni boshlaydi: javobni kutib mikrofonni qayta bosish shart emas,
+gapni bo'lib yangi savol berish mumkin. `OPENAI_API_KEY` va mavjud
+`AGENT_TTS=1` bilan tugma ochiladi; uni mustaqil yoqish uchun
+`AGENT_REALTIME=1`, o'chirish uchun `AGENT_REALTIME=0` ishlatiladi.
+OpenAI loyihangiz Realtime modeliga ruxsat va API balansiga ega bo'lishi kerak.
+Standart model `gpt-realtime`, ovoz `cedar`; `AGENT_REALTIME_MODEL` va
+`AGENT_REALTIME_VOICE` bilan almashtiriladi. Oddiy ovozning standarti ham
+`cedar`; oldindan o'rnatilgan `AGENT_TTS_VOICE` o'z kuchida qoladi.
+Bu ChatGPT xizmatining aynan o'zi emas; o'zbekcha talaffuz va hazil sifati
+jonli provider bilan alohida baholanadi, aksentsiz talaffuz kafolatlanmaydi.
+
+Mahalla nomi katalogga aniq mos kelmasa, yagona yaqin variant bo'lsa ham
+Hamroh avval aniqlashtiradi. Mos variant bo'lmasa, ro'yxatda bunday mahalla
+yo'qligini aytadi. Excel so'ralganda hudud aniqlanmagan bo'lsa, avval
+butun Xatirchi yoki qaysi mahalla ekanini so'raydi. Keyin hokim, rahbar yoki
+adminning mavjud panelidagi hisobot tugmasi ishlaydi. Eksport natijasi
+kelmaguncha "tayyor" demaydi; brauzer yuklashni boshlaganini aytadi.
+Ruxsatlar har buyruqda serverda qayta tekshiriladi. Yozish amallari mavjud
+takliflar ro'yxati bilan cheklangan: bir dona muddati o'tmagan karta bo'lsa,
+aynan "tasdiqlayman" yoki "bekor qil" deyish mumkin; "ha" yetarli emas.
+Bir nechta karta bo'lsa, keraklisining tugmasi bosiladi. Ko'rish rejimida
+yozish takliflari va ovoz bilan tasdiqlash ishlamaydi.
+
+API kaliti brauzerga berilmaydi: SDP kelishuvi server orqali o'tadi.
+Mikrofon va javob audiosi foydalanuvchi Jonli suhbat tugmasini bosgach
+OpenAI bilan WebRTC orqali almashinadi. Suhbat bizning bazaga yozilmaydi,
+brauzer varag'idagi mavjud tarixda turadi. Ilova fonga o'tsa yoki oyna
+yopilsa, mikrofon va ulanish bo'shatiladi, server hangup so'rovi yuboriladi.
+Interfeys besh daqiqada sessiyani yopadi; server asbob ruxsati ham besh
+daqiqa yashaydi. Bu brauzer taymeri provider audio hisobining qat'iy
+server cheklovi emas. OpenAI loyihasida xarajat chegarasini ham o'rnating.
+24 soatda bir xodimga odatda 6 ta ulanish (`AGENT_REALTIME_DAILY_LIMIT`, 1–24),
+bir sessiyada 30 ta server buyrug'i, umumiy 30 kunda 240 ta ulanish ruxsat
+etiladi. Rad bo'lgan provider ulanishi ham urinish limitiga kiradi.
+
+Jonli oqimning tekshiruvlari: `npm run sinov:jonli` (provider/DB/media
+o'rniga fixture), `ROBOT_BAZA=http://127.0.0.1:3100 npm run sinov:jonli-brauzer`
+(mahalliy haqiqiy rol, baza va Excel eksporti; faqat provider/WebRTC fixture).
+Bu tekshiruvlar haqiqiy o'zbekcha ovoz yoki provider modeliga kirishni
+tasdiqlamaydi.
 
 `Tabassum qil` va `Jahlingni ko'rsat` buyruqlari mimikani darhol ko'rsatadi;
 bular topshiriq bajarilganligi haqidagi xabar emas. Muddati o'tgan topshiriq

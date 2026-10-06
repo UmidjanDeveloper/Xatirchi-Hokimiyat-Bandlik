@@ -382,7 +382,7 @@ const SINOVLAR: Sinov[] = [
   },
   /* ══ 12. HISOBLASH USULI (GPT §16): raqam qanday chiqqani ko'rinadi, havola ruxsat doirasida ══ */
   {
-    nomi: '12a. /panel HOKIM uchun: 9 ta asosiy raqamning har birida «Qanday hisoblangan» bor; yozuvlar ro\'yxatiga havola YO\'Q (hokim ro\'yxatni ocha olmaydi)',
+    nomi: '12a. /panel HOKIM uchun: 5 asosiy va xatlov bor bo\'lsa 4 qo\'shimcha raqamning hisoblash izohi bor; yozuvlar ro\'yxatiga havola YO\'Q',
     tekshir: async () => {
       const x = await xodimYarat('HOKIM', null, 'hokim_hisob');
       const c = await kirish(x.username);
@@ -391,11 +391,12 @@ const SINOVLAR: Sinov[] = [
       const bloklar = r.matn.match(/<details[\s\S]*?<\/details>/g) ?? [];
       const hisoblar = bloklar.filter((b) => /(Қандай ҳисобланган|Qanday hisoblangan)/.test(b));
       const havolali = hisoblar.filter((b) => /href="\/(xonadonlar|ishsizlar)/.test(b));
-      return hisoblar.length === 9 && havolali.length === 0;
+      const kutilgan = r.matn.includes('id="qism-oila-raqamlari"') ? 9 : 5;
+      return hisoblar.length === kutilgan && havolali.length === 0;
     },
   },
   {
-    nomi: '12b. /panel BANDLIK RAHBARI uchun: 9 ta blok bor va ikkitasida (xonadonlar, ishsizlar) ruxsat doirasidagi yozuvlar havolasi bor',
+    nomi: '12b. /panel BANDLIK RAHBARI uchun: mavjud 5 yoki 9 blokda hisoblash izohi, ikkitasida ruxsat doirasidagi yozuvlar havolasi bor',
     tekshir: async () => {
       const x = await xodimYarat('BANDLIK_RAHBAR', null, 'rahbar_hisob');
       const c = await kirish(x.username);
@@ -405,7 +406,8 @@ const SINOVLAR: Sinov[] = [
       const hisoblar = bloklar.filter((b) => /(Қандай ҳисобланган|Qanday hisoblangan)/.test(b));
       const xon = hisoblar.filter((b) => /href="\/xonadonlar/.test(b)).length;
       const ish = hisoblar.filter((b) => /href="\/ishsizlar/.test(b)).length;
-      return hisoblar.length === 9 && xon === 1 && ish === 1;
+      const kutilgan = r.matn.includes('id="qism-oila-raqamlari"') ? 9 : 5;
+      return hisoblar.length === kutilgan && xon === 1 && ish === 1;
     },
   },
   {
@@ -500,7 +502,7 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat ulanish holati, limitlar va vazifa sonlari; kalit yo\'q — ai:false, ovozChiqish:false, jarvis:false; ovoz, gapirish va JARVIS yo\'llari 503',
+    nomi: '13g. Hudhud holati kalit va model nomini OCHMAYDI: faqat ulanish holati, limitlar va vazifa sonlari; kalit yo\'q — ai:false, ovozChiqish:false, jonli:false; ovoz, gapirish va jonli yo\'llari 503',
     tekshir: async () => {
       const x = await xodimYarat('ADMIN', null, 'agent_admin_a');
       const c = await kirish(x.username);
@@ -509,22 +511,22 @@ const SINOVLAR: Sinov[] = [
       const o = await sorov('/api/agent/ovoz', { cookie: c.cookie, method: 'POST', body: {} });
       /* Server ovozi (TTS) sozlanmagan: `ovozChiqish` false, `/api/agent/gapir` — 503 (kalit ham, model nomi ham ochilmaydi) */
       const g = await sorov('/api/agent/gapir', { cookie: c.cookie, method: 'POST', body: { matn: 'salom' } });
-      /* JARVIS sozlanmagan: `jarvis` false, `/api/agent/jarvis` — 503 (shlyuz manzili va token ochilmaydi) */
-      const j = await sorov('/api/agent/jarvis', { cookie: c.cookie, method: 'POST', body: { xabar: 'salom' } });
+      /* jonli sozlanmagan: `jonli` false, `/api/agent/jonli` — 503 (shlyuz manzili va token ochilmaydi) */
+      const j = await sorov('/api/agent/jonli', { cookie: c.cookie, method: 'POST', body: { tur: 'ulanish', sdp: 'v=0 test-offer' } });
       return (
         h.status === 200 &&
-        Object.keys(d).sort().join() === 'ai,jarvis,limit,ovozChiqish,ovozServer,ovozUlanishi,qolgan,vazifa' &&
+        Object.keys(d).sort().join() === 'ai,jonli,limit,ovozChiqish,ovozServer,ovozUlanishi,qolgan,vazifa' &&
         d.ovozUlanishi === 'kalit_yoq' &&
         (d.vazifa === null || (typeof d.vazifa === 'object' && d.vazifa !== null &&
           Object.keys(d.vazifa).sort().join() === 'kayfiyat,kechikkan,shoshilinch')) &&
         d.ai === false &&
         d.ovozChiqish === false &&
-        d.jarvis === false &&
+        d.jonli === false &&
         d.limit === 120 &&
         o.status === 503 &&
         g.status === 503 &&
         j.status === 503 &&
-        !/JARVIS_|Bearer|hugginggpt/i.test(j.matn)
+        !/OPENAI_API_KEY|Bearer|realtime\/calls/i.test(j.matn)
       );
     },
   },
@@ -586,7 +588,7 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: '13l. Ko\'rish rejimida Koala ISHLAYDI, lekin faqat o\'qiydi: savol-javob (suhbat, jarvis, gapir, ovoz) administratorning o\'z hisobi bilan o\'tadi, yozish taklifi YARATILMAYDI, tasdiqlash va boshqa yozish yo\'llari 403 (korish:true); mahalla xodimi ko\'zi bilan — Koala yo\'q (403); o\'z hisobiga qaytgach tasdiqlash yo\'li ochiq',
+    nomi: '13l. Ko\'rish rejimida Koala ISHLAYDI, lekin faqat o\'qiydi: savol-javob (suhbat, jonli, gapir, ovoz) administratorning o\'z hisobi bilan o\'tadi, yozish taklifi YARATILMAYDI, tasdiqlash va boshqa yozish yo\'llari 403 (korish:true); mahalla xodimi ko\'zi bilan — Koala yo\'q (403); o\'z hisobiga qaytgach tasdiqlash yo\'li ochiq',
     tekshir: async () => {
       const admin = await xodimYarat('ADMIN', null, 'koz_admin');
       const hokim = await xodimYarat('HOKIM', null, 'koz_hokim');
@@ -612,7 +614,7 @@ const SINOVLAR: Sinov[] = [
       const c1 = await kozCookie(hokim.id);
       const holat = await sorov('/api/agent/holat', { cookie: c1 });
       const suhbat = await sorov('/api/agent/suhbat', { cookie: c1, method: 'POST', body: { xabar: 'салом' } });
-      const jarvis = await sorov('/api/agent/jarvis', { cookie: c1, method: 'POST', body: { xabar: 'salom' } });
+      const jonli = await sorov('/api/agent/jonli', { cookie: c1, method: 'POST', body: { xabar: 'salom' } });
       const gapir = await sorov('/api/agent/gapir', { cookie: c1, method: 'POST', body: { matn: 'salom' } });
       const ovoz = await sorov('/api/agent/ovoz', { cookie: c1, method: 'POST', body: {} });
       const tasdiq = await sorov('/api/agent/tasdiq', { cookie: c1, method: 'POST', body: { id: 'x', qaror: 'ha' } });
@@ -646,8 +648,8 @@ const SINOVLAR: Sinov[] = [
         ruxsat(holat) &&
         ruxsat(suhbat) && typeof suhbatJson.javob === 'string' && suhbatJson.javob.length > 0 &&
         /* Sozlanmagan xizmatlar 503 beradi: ko'rish to'sig'idan o'tib, o'z holatiga yetdi */
-        jarvis.status === 503 && gapir.status === 503 && ovoz.status === 503 &&
-        !/"korish":true/.test(jarvis.matn + gapir.matn + ovoz.matn) &&
+        jonli.status === 503 && gapir.status === 503 && ovoz.status === 503 &&
+        !/"korish":true/.test(jonli.matn + gapir.matn + ovoz.matn) &&
         korishRad(tasdiq) && korishRad(rahbarTasdiq) && korishRad(reyestr) &&
         ruxsat(yozish) && !(yozishJson.amallar ?? []).some((a) => a.tur === 'tasdiq') &&
         yet.status === 403 && !/"korish":true/.test(yet.matn) &&

@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mic, Send, Square, Trash2, Volume2, VolumeX, X, ExternalLink, Check, FileDown, Headphones } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
+import { ovozTasdiqQarori } from '@/lib/agent/ovoz-tasdiq';
+import { jonliBoshla, jonliMumkinmi } from './jonli-suhbat';
+import { hisobotniIjroQil } from './hisobot-ijrosi';
 import { suhbatIfodasi } from '@/lib/agent/robot-ifoda';
 import { salomMatni } from '@/lib/agent/matnlar';
 import type { Amal, Manba } from '@/lib/agent/turlar';
@@ -38,8 +41,7 @@ interface Xabar {
   manbalar?: Manba[];
   amallar?: Amal[];
   izoh?: string;
-  rejim?: 'ai' | 'qoida' | 'jarvis';
-  kanal?: 'koala' | 'jarvis';
+  rejim?: 'ai' | 'qoida';
   xato?: boolean;
 }
 
@@ -53,7 +55,7 @@ interface HolatMalumoti {
   ovozUlanishi?: 'tayyor' | 'kalit_yoq' | 'ochirilgan';
   ovozServer: boolean;
   ovozChiqish?: boolean;
-  jarvis?: boolean;
+  jonli?: boolean;
   limit: number;
   qolgan: number;
 }
@@ -94,7 +96,12 @@ export default function AgentOynasi({
   const { t, alifbo } = useAlifbo();
   const router = useRouter();
 
-  const [suhbatTuri, setSuhbatTuri] = useState<'koala' | 'jarvis'>('koala');
+  const [jonliFaol, setJonliFaol] = useState(false);
+  const jonli = useRef<ReturnType<typeof jonliBoshla> | null>(null);
+  const jonliMatnRef = useRef<(id: string, r: 'f' | 'a', m: string) => void>(() => {});
+  const jonliAmalRef = useRef<(a: Amal[], m: Manba[], s: AbortSignal) => Promise<Record<string, unknown>>>(async () => ({}));
+  const jonliIdlar = useRef(new Map<string, number>());
+  const ovozTasdiqlari = useRef(new Set<string>());
   const [xabarlar, setXabarlar] = useState<Xabar[]>([]);
   const [tasdiq, setTasdiq] = useState<TasdiqHolati>({});
   const [matn, setMatn] = useState('');
@@ -133,6 +140,9 @@ export default function AgentOynasi({
   const mikrofonRef = useRef<() => void>(() => {});
 
   const toxtat = useCallback(() => {
+    jonli.current?.bekor();
+    jonli.current = null;
+    setJonliFaol(false);
     suhbatRef.current = false;
     setSuhbatRejimi(false);
     if (davomTaymeri.current) clearTimeout(davomTaymeri.current);
@@ -167,7 +177,7 @@ export default function AgentOynasi({
       if (s) {
         const d: unknown = JSON.parse(s);
         if (Array.isArray(d)) tiklandi = d.filter((x): x is Xabar =>
-          x && typeof x.id === 'number' && (x.r === 'f' || x.r === 'a') && typeof x.matn === 'string'
+          x && typeof x.id === 'number' && (x.r === 'f' || x.r === 'a') && typeof x.matn === 'string' && (!x.kanal || x.kanal === 'koala')
         ).slice(-ENG_KOP_SAQLASH);
       }
       xotiraRef.current = sessionStorage.getItem(`${saqlashKaliti}:xotira`) ?? undefined;
@@ -258,8 +268,8 @@ export default function AgentOynasi({
   }, [ochiq, yopish]);
 
   const qosh = useCallback((x: Omit<Xabar, 'id'>) => {
-    setXabarlar((o) => [...o, { ...x, kanal: suhbatTuri, id: idSanagich.current++ }]);
-  }, [suhbatTuri]);
+    setXabarlar((o) => [...o, { ...x, id: idSanagich.current++ }]);
+  }, []);
 
   const gapirish = useCallback((javob: string, tugadi?: () => void) => {
     javobniGapir(t(javob), {
@@ -282,29 +292,27 @@ export default function AgentOynasi({
     });
   }, [malumot?.ovozChiqish, t, davomEt]);
 
-  /*
-   * Hisobot: tugmalar turgan sahifani ochamiz (kerak bo'lsa), tugmalar paydo
-   * bo'lishini kutamiz va sahifaga "hudhud:hisobot" voqeasini yuboramiz —
-   * hisobot xuddi tugma bosilgandek (bir xil kod yo'li va huquq) tayyorlanadi.
-   */
   const hisobotniBoshla = useCallback(
-    async (a: Extract<Amal, { tur: 'hisobot' }>) => {
-      const hozirgi = () => window.location.pathname + window.location.search;
-      if (hozirgi() !== a.url) router.push(a.url);
-      for (let i = 0; i < 60; i++) {
-        if (hozirgi() === a.url && document.querySelector('[data-hisobot-tugmalari]')) break;
-        await new Promise((r) => setTimeout(r, 200));
+    async (a: Extract<Amal, { tur: 'hisobot' }>, signal?: AbortSignal) => {
+      const n = await hisobotniIjroQil(a, (url) => router.push(url), signal);
+      if (!signal?.aborted && ochiqRef.current && !jonli.current) {
+        qosh({ r: 'a', matn: t(n.xabar), xato: !n.ok });
+        setKayfiyat(n.ok ? 'xursand' : 'xavotir');
+        if (ovozliJavob) gapirish(n.xabar);
       }
-      await new Promise((r) => setTimeout(r, 300));
-      window.dispatchEvent(new CustomEvent('hudhud:hisobot', { detail: { turi: a.format } }));
-    },
-    [router]
+      return n;
+    }, [router, qosh, t, ovozliJavob, gapirish]
   );
 
   const yubor = useCallback(
     async (xom: string) => {
       const savol = xom.trim();
       if (!savol || bandRef.current) return;
+      if (jonli.current) {
+        if (jonli.current.yubor(savol)) { qosh({ r: 'f', matn: savol }); setMatn(''); }
+        else setBildirish(t('Jonli suhbat hali ulanmoqda. Bir oz kuting.'));
+        return;
+      }
       if (davomTaymeri.current) clearTimeout(davomTaymeri.current);
       tanish.current?.bekor();
       nutqniToxtat();
@@ -335,15 +343,15 @@ export default function AgentOynasi({
 
       /* Server tarixi: faqat oddiy matn (xato va salom xabarlari tushmaydi) */
       const tarix = xabarlar
-        .filter((x) => !x.xato && (x.kanal ?? 'koala') === suhbatTuri && !(x.r === 'a' && /^(Хайрли|Xayrli)/.test(x.matn)))
-        .slice(suhbatTuri === 'jarvis' ? -8 : -ENG_KOP_TARIX)
-        .map((x) => ({ r: x.r, m: x.matn.slice(0, suhbatTuri === 'jarvis' ? 800 : ENG_UZUN_TARIX_XABARI) }));
+        .filter((x) => !x.xato && !(x.r === 'a' && /^(Хайрли|Xayrli)/.test(x.matn)))
+        .slice(-ENG_KOP_TARIX)
+        .map((x) => ({ r: x.r, m: x.matn.slice(0, ENG_UZUN_TARIX_XABARI) }));
 
       try {
-        const r = await fetch(suhbatTuri === 'jarvis' ? '/api/agent/jarvis' : '/api/agent/suhbat', {
+        const r = await fetch('/api/agent/suhbat', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ xabar: savol, tarix, ...(suhbatTuri === 'koala' ? { xotira: xotiraRef.current } : {}) }),
+          body: JSON.stringify({ xabar: savol, tarix, xotira: xotiraRef.current }),
           signal: ctrl.signal,
         });
         if (r.status === 401) {
@@ -356,7 +364,7 @@ export default function AgentOynasi({
           amallar?: Amal[];
           manbalar?: Manba[];
           izoh?: string;
-          rejim?: 'ai' | 'qoida' | 'jarvis';
+          rejim?: 'ai' | 'qoida';
           qolgan?: number;
           xotira?: string;
         };
@@ -371,11 +379,11 @@ export default function AgentOynasi({
         }
 
         qosh({ r: 'a', matn: d.javob, manbalar: d.manbalar, amallar: d.amallar, izoh: d.izoh, rejim: d.rejim });
-        if (suhbatTuri === 'koala' && d.xotira) {
+        if (d.xotira) {
           xotiraRef.current = d.xotira;
           try { sessionStorage.setItem(`${saqlashKaliti}:xotira`, d.xotira); } catch { /* Joy yetmadi. */ }
         }
-        if (suhbatTuri === 'koala' && typeof d.qolgan === 'number') setMalumot((m) => (m ? { ...m, qolgan: d.qolgan as number } : m));
+        if (typeof d.qolgan === 'number') setMalumot((m) => (m ? { ...m, qolgan: d.qolgan as number } : m));
 
         /* Ovozli buyruq BAJARILADI: hisobot yuklanadi */
         const hisobot = d.amallar?.find((a): a is Extract<Amal, { tur: 'hisobot' }> => a.tur === 'hisobot');
@@ -407,7 +415,7 @@ export default function AgentOynasi({
         }
       }
     },
-    [malumot?.vazifa?.kayfiyat, xabarlar, qosh, router, yopish, t, ovozliJavob, hisobotniBoshla, gapirish, davomEt, saqlashKaliti, suhbatTuri, uzbekOvozBor, malumot?.ovozChiqish]
+    [malumot?.vazifa?.kayfiyat, xabarlar, qosh, router, yopish, t, ovozliJavob, hisobotniBoshla, gapirish, davomEt, saqlashKaliti, uzbekOvozBor, malumot?.ovozChiqish]
   );
 
   /** Mikrofon kuchi → tugma atrofidagi halqa (gapirayotganingiz eshitilayotganini ko'rsatadi) */
@@ -417,6 +425,7 @@ export default function AgentOynasi({
   };
 
   const mikrofon = () => {
+    if (jonli.current) { toxtat(); return; }
     if (holat === 'eshitmoqda') {
       tanish.current?.toxtat();
       return;
@@ -483,6 +492,11 @@ export default function AgentOynasi({
         setTasdiq((o) => ({ ...o, [id]: { holat: bajarildi ? 'bajarildi' : 'rad', matn: d.natija } }));
         setMuvaffaqiyat(bajarildi);
         setKayfiyat(bajarildi ? 'xursand' : malumot?.vazifa?.kayfiyat ?? 'vazmin');
+        if (d.natija) {
+          qosh({ r: 'a', matn: d.natija });
+          if (jonli.current) jonli.current.eslat(d.natija);
+          else if (ovozliJavob) gapirish(d.natija);
+        }
       } else {
         setKayfiyat('xavotir');
         setTasdiq((o) => ({ ...o, [id]: { holat: 'xato', matn: d.xabar } }));
@@ -493,20 +507,69 @@ export default function AgentOynasi({
     }
   };
 
+  jonliMatnRef.current = (id, r, m) => {
+    let mahalliy = jonliIdlar.current.get(id);
+    if (mahalliy === undefined) { mahalliy = idSanagich.current++; jonliIdlar.current.set(id, mahalliy); }
+    const xabarId = mahalliy;
+    setXabarlar((old) => {
+      const mavjud = old.find((x) => x.id === xabarId);
+      return mavjud ? old.map((x) => x.id === xabarId ? { ...x, matn: m } : x) : [...old, { id: xabarId, r, matn: m }];
+    });
+    const ifoda = suhbatIfodasi(m);
+    if (ifoda) setKayfiyat(ifoda.kayfiyat);
+    const qaror = r === 'f' ? ovozTasdiqQarori(m) : null;
+    if (!qaror || korish || ovozTasdiqlari.current.has(id)) return;
+    ovozTasdiqlari.current.add(id);
+    const kutilgan = [...new Map(xabarlar.flatMap((x) => (x.amallar ?? []).filter(
+      (a): a is Extract<Amal, { tur: 'tasdiq' }> => a.tur === 'tasdiq' && !tasdiq[a.id] && Date.parse(a.muddat) > Date.now()
+    )).map((a) => [a.id, a])).values()];
+    if (kutilgan.length === 1) void tasdiqla(kutilgan[0].id, qaror);
+    else if (kutilgan.length > 1) setBildirish(t('Bir nechta amal kutmoqda. Kerakli kartadagi tasdiqlash tugmasini bosing.'));
+  };
+
+  jonliAmalRef.current = async (amallar, manbalar, signal) => {
+    if (signal.aborted || !ochiqRef.current) return { bekor: true };
+    if (amallar.length || manbalar.length) qosh({ r: 'a', matn: t(amallar.some((a) => a.tur === 'tasdiq') ? 'Amal taklif qilindi. Tasdiqlash uchun “tasdiqlayman” deng yoki tugmani bosing.' : 'Platforma buyruqi qabul qilindi.'), amallar, manbalar });
+    const natija: Record<string, unknown> = {};
+    for (const a of amallar) {
+      if (signal.aborted) return { bekor: true };
+      if (a.tur === 'ochish') { router.push(a.url); natija.ochildi = a.nomi; }
+      if (a.tur === 'hisobot') {
+        const n = await hisobotniBoshla(a, signal);
+        natija.hisobot = n;
+        if (!signal.aborted) setKayfiyat(n.ok ? 'xursand' : 'xavotir');
+      }
+      if (a.tur === 'tasdiq') natija.tasdiq = 'kutilmoqda';
+    }
+    return natija;
+  };
+
+  const jonliniBoshla = () => {
+    if (jonli.current) { toxtat(); return; }
+    if (!jonliMumkinmi()) { setBildirish(t('Bu brauzerda jonli ovoz ishlamaydi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.')); return; }
+    toxtat(); setBildirish(''); setJonliFaol(true); setMimikaSinovi(false);
+    jonli.current = jonliBoshla({
+      onHolat: setHolat, onDaraja: setOgizDarajasi,
+      onMatn: (id, r, m) => jonliMatnRef.current(id, r, m),
+      onAmallar: (a, m, s) => jonliAmalRef.current(a, m, s),
+      onXato: (m) => { setBildirish(t(m)); setKayfiyat('xavotir'); },
+      onTugadi: () => { jonli.current = null; setJonliFaol(false); },
+    });
+  };
+
   const tozala = () => {
     toxtat();
-    if (suhbatTuri === 'koala') xotiraRef.current = undefined;
+    xotiraRef.current = undefined;
     try {
-      if (suhbatTuri === 'koala') sessionStorage.removeItem(`${saqlashKaliti}:xotira`);
+      sessionStorage.removeItem(`${saqlashKaliti}:xotira`);
     } catch {
       /* ruxsat yo'q */
     }
     setMimikaSinovi(false);
     setMuvaffaqiyat(false);
     setKayfiyat(malumot?.vazifa?.kayfiyat ?? 'vazmin');
-    if (suhbatTuri === 'koala') setTasdiq({});
-    const salom: Xabar = { id: idSanagich.current++, r: 'a', kanal: suhbatTuri, matn: suhbatTuri === 'koala' ? salomMatni(ism, new Date(), alifbo) : t('JARVIS суҳбати. Нимани билишни хоҳлайсиз?') };
-    setXabarlar((old) => [...old.filter((x) => (x.kanal ?? 'koala') !== suhbatTuri), salom]);
+    setTasdiq({});
+    setXabarlar([{ id: idSanagich.current++, r: 'a', matn: salomMatni(ism, new Date(), alifbo) }]);
   };
 
   if (!ochiq) return null;
@@ -523,8 +586,8 @@ export default function AgentOynasi({
         : holat === 'gapirmoqda'
           ? 'Гапиряпман…'
           : '';
-  const korinadiganlar = xabarlar.filter((x) => (x.kanal ?? 'koala') === suhbatTuri);
-  const takliflar = suhbatTuri === 'jarvis' ? ['Сунъий интеллект нима?', 'Ўзбек тилида суҳбатлашайлик', 'Инглиз тилини ўрганиш режасини туз'] : TAKLIFLAR[rol] ?? [];
+  const korinadiganlar = xabarlar;
+  const takliflar = TAKLIFLAR[rol] ?? [];
 
   return (
     <section
@@ -537,7 +600,7 @@ export default function AgentOynasi({
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-bold text-ink">{t('Ҳамроҳ')}</h2>
           <p className="truncate text-[11px] text-ink-faint">
-            {malumot
+            {jonliFaol ? t('Жонли овозли суҳбат') : malumot
               ? malumot.ai
                 ? t(`Сунъий интеллект · ${malumot.qolgan} та қолди`)
                 : t('Оддий режим')
@@ -546,18 +609,19 @@ export default function AgentOynasi({
         </div>
         <button
           type="button"
-          disabled={!mikrofonMumkin || !malumotTayyor || !nutqMumkin || band}
+          disabled={!malumotTayyor || band || (!malumot?.jonli && (!mikrofonMumkin || !nutqMumkin))}
           onClick={() => {
-            if (suhbatRef.current) { toxtat(); return; }
+            if (jonli.current || suhbatRef.current) { toxtat(); return; }
+            if (malumot?.jonli) { jonliniBoshla(); return; }
             suhbatRef.current = true;
             setSuhbatRejimi(true);
             setOvozliJavob(true);
             mikrofon();
           }}
-          title={t('Кетма-кет овозли суҳбат')}
-          aria-label={t('Кетма-кет овозли суҳбат')}
-          aria-pressed={suhbatRejimi}
-          className={`flex h-9 w-9 items-center justify-center rounded-md disabled:opacity-40 ${suhbatRejimi ? 'bg-accent text-accent-contrast' : 'text-ink-muted hover:bg-surface-muted'}`}
+          title={t(malumot?.jonli ? 'Жонли овозли суҳбат' : 'Кетма-кет овозли суҳбат')}
+          aria-label={t(malumot?.jonli ? 'Жонли овозли суҳбат' : 'Кетма-кет овозли суҳбат')}
+          aria-pressed={suhbatRejimi || jonliFaol}
+          className={`flex h-9 w-9 items-center justify-center rounded-md disabled:opacity-40 ${suhbatRejimi || jonliFaol ? 'bg-accent text-accent-contrast' : 'text-ink-muted hover:bg-surface-muted'}`}
         >
           <Headphones className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -594,8 +658,17 @@ export default function AgentOynasi({
         <Maskot holat={holat} kayfiyat={kayfiyat} daraja={ogizDarajasi} olcham={112} sarlavha={t(holatMatni || 'Ҳамроҳ — ' + ({ vazmin: 'вазмин', xursand: 'хурсанд', jiddiy: 'жиддий', xavotir: 'хавотирда' }[kayfiyat]))} />
         <div className="min-w-0 flex-1 text-xs">
           <p className="font-medium text-ink">{t(holatMatni || 'Сизни тинглаяпман')}</p>
+          <button type="button" className="mt-2 w-full rounded-md bg-accent px-3 py-2 font-medium text-accent-contrast disabled:opacity-40"
+            disabled={!malumotTayyor || !malumot?.jonli || band}
+            aria-pressed={jonliFaol} onClick={jonliniBoshla}>
+            {t(jonliFaol ? 'Жонли суҳбатни тўхтатиш' : 'Жонли суҳбат')}
+          </button>
+          {rol === 'ADMIN' && malumotTayyor && !malumot?.jonli && <details className="mt-1 text-ink-muted">
+            <summary className="cursor-pointer">{t('Жонли суҳбатни ёқиш')}</summary>
+            <p className="mt-1">{t('Vercel махфий созламаларида OPENAI_API_KEY ва AGENT_REALTIME=1 ни ўрнатиб, қайта жойланг. Калитни суҳбатга ёзманг.')}</p>
+          </details>}
           <button type="button" className="mt-2 rounded-md border border-line px-3 py-2 text-ink hover:bg-surface-muted disabled:opacity-40"
-            disabled={band || holat === 'eshitmoqda' || !malumotTayyor}
+            disabled={band || jonliFaol || holat === 'eshitmoqda' || !malumotTayyor}
             onClick={() => { nutqniTayyorla(); setBildirish(''); gapirish('Ассалому алайкум! Мен Ҳамроҳман. Сизга қандай ёрдам берай?'); }}>
             {t('Овозни синаш')}
           </button>
@@ -610,7 +683,7 @@ export default function AgentOynasi({
           </details>
         </div>
       </div>
-      {malumotTayyor && (holatXatosi || !nutqMumkin) && <div className="shrink-0 border-b border-line px-4 py-2 text-xs text-warn" role="status">
+      {malumotTayyor && (holatXatosi || (!nutqMumkin && !malumot?.jonli)) && <div className="shrink-0 border-b border-line px-4 py-2 text-xs text-warn" role="status">
         {t(holatXatosi ? 'Овоз ҳолатини текшириб бўлмади. Ойнани қайта очиб кўринг.' : 'Ўзбекча овоз уланмаган. Ҳозир жавоблар ёзма кўринади.')}
         {rol === 'ADMIN' && !holatXatosi && <details className="mt-1">
           <summary className="cursor-pointer">{t('Овозни қандай ёқиш мумкин?')}</summary>
@@ -621,19 +694,7 @@ export default function AgentOynasi({
         {t(mimikaSinovi ? 'Мимика намойиши' : muvaffaqiyat ? 'Аъло, амал бажарилди!' : malumot?.vazifa?.kechikkan ? `Муддати ўтган вазифалар: ${malumot.vazifa.kechikkan}. Келинг, уларни ҳал қиламиз.` : kayfiyat === 'xavotir' ? 'Эътибор талаб қиладиган ҳолат бор. Бирга текширамиз.' : 'Сизни тинглашга ва ёрдам беришга тайёрман.')}
       </div>
 
-      <div className="flex gap-2 border-b border-line px-3 py-2" role="group" aria-label={t('Ёрдамчи режими')}>
-        {(['koala', 'jarvis'] as const).map((tur) => (
-          <button key={tur} type="button" aria-pressed={suhbatTuri === tur}
-            disabled={band || ishlov || holat === 'eshitmoqda' || (tur === 'jarvis' && !malumot?.jarvis)}
-            title={tur === 'jarvis' && !malumot?.jarvis ? t('JARVIS сервери ҳали уланмаган') : undefined}
-            className={`rounded-full border px-3 py-1 text-xs disabled:opacity-40 ${suhbatTuri === tur ? 'border-accent text-accent' : 'border-line text-ink-muted'}`}
-            onClick={() => { toxtat(); setBildirish(''); setMatn(''); setSuhbatTuri(tur); }}>
-            {tur === 'koala' ? t('Ҳамроҳ · платформа ва суҳбат') : malumotTayyor && !malumot?.jarvis ? t('JARVIS · уланмаган') : 'JARVIS'}
-          </button>
-        ))}
-      </div>
       {korish && <p className="px-3 py-2 text-xs text-warn" data-korish-eslatma="ha">{t('Кўриш режими: Ҳамроҳ фақат ўқийди ва ёзиш амалларини таклиф қилмайди. Ўзгартириш учун ўз ҳисобингизга қайтинг.')}</p>}
-      {suhbatTuri === 'jarvis' && <p className="px-3 py-2 text-xs text-warn">{t('Бу суҳбат JARVIS серверига юборилади. Фуқароларнинг шахсий маълумотларини киритманг. Платформа амаллари учун Ҳамроҳни танланг.')}</p>}
       <p className="px-3 py-1 text-[11px] text-ink-faint">{t('Ҳамроҳ — сунъий интеллект. Овозли жавоб ташқи хизматда тайёрланиши мумкин.')}</p>
       <div ref={royxat} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3" aria-live="polite" aria-relevant="additions">
         {korinadiganlar.map((x) => (
@@ -645,7 +706,7 @@ export default function AgentOynasi({
             >
               <p className="whitespace-pre-wrap">{x.r === 'f' ? x.matn : t(x.matn)}</p>
               {x.r === 'a' && !x.xato && nutqMumkin && (
-                <button type="button" disabled={band || holat === 'eshitmoqda'}
+                <button type="button" disabled={band || jonliFaol || holat === 'eshitmoqda'}
                   onClick={() => { nutqniTayyorla(); setBildirish(''); gapirish(x.matn); }}
                   aria-label={t('Жавобни қайта эшитиш')}
                   className="mt-1 inline-flex items-center gap-1 text-[11px] text-ink-faint hover:text-accent disabled:opacity-40">
@@ -756,7 +817,7 @@ export default function AgentOynasi({
             ref={mikRef}
             type="button"
             onClick={mikrofon}
-            disabled={!mikrofonMumkin || !malumotTayyor || holat === 'oylamoqda'}
+            disabled={!jonliFaol && (!mikrofonMumkin || !malumotTayyor || holat === 'oylamoqda')}
             aria-pressed={holat === 'eshitmoqda'}
             aria-label={holat === 'eshitmoqda' ? t('Тўхтатиш') : t('Овоз билан айтиш')}
             title={mikrofonMumkin ? (holat === 'eshitmoqda' ? t('Тўхтатиш') : t('Овоз билан айтиш')) : t('Бу қурилмада овоз ишламайди')}
@@ -785,18 +846,19 @@ export default function AgentOynasi({
             className="max-h-24 min-h-[2.75rem] flex-1 resize-none rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
           />
           <button
-            type={band || holat === 'gapirmoqda' ? 'button' : 'submit'}
-            onClick={band || holat === 'gapirmoqda' ? toxtat : undefined}
-            disabled={!band && holat !== 'gapirmoqda' && matn.trim().length === 0}
-            aria-label={band || holat === 'gapirmoqda' ? t('Жавобни тўхтатиш') : t('Юбориш')}
+            type={!jonliFaol && (band || holat === 'gapirmoqda') ? 'button' : 'submit'}
+            onClick={!jonliFaol && (band || holat === 'gapirmoqda') ? toxtat : undefined}
+            disabled={(jonliFaol || (!band && holat !== 'gapirmoqda')) && matn.trim().length === 0}
+            aria-label={!jonliFaol && (band || holat === 'gapirmoqda') ? t('Жавобни тўхтатиш') : t('Юбориш')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-accent-contrast transition-opacity disabled:opacity-40"
           >
-            {band || holat === 'gapirmoqda' ? <Square className="h-4 w-4" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+            {!jonliFaol && (band || holat === 'gapirmoqda') ? <Square className="h-4 w-4" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
           </button>
         </form>
         {suhbatRejimi && <p className="mt-1 text-[11px] text-accent" role="status">{t('Овозли суҳбат ёқилган. Жавобдан сўнг яна эшитаман.')}</p>}
+        {jonliFaol && <p className="mt-1 text-[11px] text-accent" role="status">{t('Жонли суҳбат ёқилган. Гапимни бўлиб савол беришингиз мумкин.')}</p>}
         <p className="mt-1.5 text-[10px] leading-snug text-ink-faint">
-          {t('Овоз ташқи хизматда матнга айланади. Фуқаро исми ва телефонини айтманг.')}
+          {t(jonliFaol ? 'Овоз OpenAI хизматида ишланади. Фуқаро исми ва телефонини айтманг.' : 'Овоз ташқи хизматда матнга айланади. Фуқаро исми ва телефонини айтманг.')}
         </p>
       </div>
     </section>
