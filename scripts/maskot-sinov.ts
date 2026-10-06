@@ -1,244 +1,43 @@
-/**
- * ============================================================
- *  MASKOT (KOALA) — SINOV
- *
- *  Ishga tushirish:  npx tsx scripts/maskot-sinov.ts
- *
- *  Foydalanuvchi tanlagan koala rasmlari ovozli yordamchining maskoti:
- *  HAR BIR HOLAT (tayyor, eshitmoqda, oylamoqda, gapirmoqda) UCHUN ALOHIDA POZA.
- *  Bu sinov quyidagilarni qo'riqlaydi:
- *   · har bir holatning rasm fayllari bor, o'lchami va hajmi to'g'ri (zaif
- *     telefonda sahifa og'irlashmasin), shaffof fonli (RGBA);
- *   · pozalar bir-biridan FARQ QILADI (bir rasm to'rt holatga nusxalanmagan);
- *   · komponent har bir holat uchun aynan o'sha fayllarni ishlatadi, tugma
- *     faqat bitta poza yuklaydi, oyna to'rttasini oldindan yuklaydi;
- *   · holat RANGDAN va HARAKATDAN tashqari ham belgi bilan ko'rinadi (GPT §16);
- *   · harakat FAQAT `prefers-reduced-motion: no-preference` va zaif qurilma
- *     bo'lmaganda ishlaydi;
- *   · foydalanuvchiga ko'rinadigan nom — Koala; eski qush maskotidan qoldiq yo'q;
- *   · rasm uzoq muddat keshlanadi (nomda versiya bor).
- *
- *  Brauzerda ko'rinishi alohida: `scripts/brauzer/hudhud-brauzer.mjs`.
- * ============================================================
- */
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { Maskot, MASKOT_HOLATLARI } from '../src/components/agent/maskot';
+import { robotVazifaHolati } from '../src/lib/agent/robot-kayfiyati';
 
-/** Izohsiz kod - izohdagi so'z tekshiruvni aldamasin */
-const kodiOl = (m: string) => m.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const oqi = (y: string) => readFileSync(y, 'utf8');
-
-type Sinov = { nomi: string; tekshir: () => boolean };
-
-const PAPKA = 'public/maskot';
-const HOLATLAR = ['tayyor', 'eshitmoqda', 'oylamoqda', 'gapirmoqda'] as const;
-/** Har bir holat uchun fayllar: koala-v2-<holat>-128.webp / -256.webp / -128.png */
-const FAYLLAR = HOLATLAR.map((h) => ({
-  holat: h,
-  webp128: `${PAPKA}/koala-v2-${h}-128.webp`,
-  webp256: `${PAPKA}/koala-v2-${h}-256.webp`,
-  png128: `${PAPKA}/koala-v2-${h}-128.png`,
-}));
-const HAMMA_FAYL = FAYLLAR.flatMap((f) => [f.webp128, f.webp256, f.png128]);
-
-/** PNG: kenglik, balandlik, rang turi (6 = RGBA) */
-function pngOlcham(yol: string) {
-  const b = readFileSync(yol);
-  const imzo = b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  return { imzo, w: b.readUInt32BE(16), h: b.readUInt32BE(20), rangTuri: b[25] };
+Object.assign(globalThis, { React });
+let soni = 0;
+function sinov(nom: string, tekshir: () => void) {
+  tekshir(); soni++; console.log('OK', nom);
 }
-
-/** WebP (VP8X): kenglik, balandlik, shaffoflik bayrog'i */
-function webpOlcham(yol: string) {
-  const b = readFileSync(yol);
-  const riff = b.subarray(0, 4).toString() === 'RIFF' && b.subarray(8, 12).toString() === 'WEBP';
-  const vp8x = b.subarray(12, 16).toString() === 'VP8X';
-  const w = vp8x ? 1 + (b[24] | (b[25] << 8) | (b[26] << 16)) : 0;
-  const h = vp8x ? 1 + (b[27] | (b[28] << 8) | (b[29] << 16)) : 0;
-  const alfa = vp8x ? (b[20] & 0x10) !== 0 : false;
-  return { riff, vp8x, w, h, alfa };
-}
-
-const KOMPONENT = kodiOl(oqi('src/components/agent/maskot.tsx'));
-const TUGMA = kodiOl(oqi('src/components/agent/agent-tugmasi.tsx'));
-const OYNA = kodiOl(oqi('src/components/agent/agent-oynasi.tsx'));
-const MATNLAR = kodiOl(oqi('src/lib/agent/matnlar.ts'));
-const KURSATMA = kodiOl(oqi('src/lib/agent/kursatma.ts'));
-const CSS = oqi('src/app/globals.css');
-const KONFIG = kodiOl(oqi('next.config.mjs'));
-
-const SINOVLAR: Sinov[] = [
-  {
-    nomi: 'Har bir holat (tayyor, eshitmoqda, oylamoqda, gapirmoqda) uchun rasm fayllari bor: WebP 128 va 256, PNG zaxira 128; nomda versiya (v2) — rasm almashsa nom ham o‘zgaradi; eski bitta-rasm (v1) fayllari qolmagan',
-    tekshir: () =>
-      HAMMA_FAYL.length === 12 &&
-      HAMMA_FAYL.every((f) => existsSync(f) && /koala-v\d+-[a-z]+-\d+\./.test(f)) &&
-      !existsSync(`${PAPKA}/koala-v1-128.webp`) &&
-      !existsSync(`${PAPKA}/koala-v1-256.webp`) &&
-      !existsSync(`${PAPKA}/koala-v1-128.png`),
-  },
-  {
-    nomi: 'O‘lchamlari to‘g‘ri va kvadrat har bir pozada: 128x128 va 256x256; PNG haqiqiy PNG va RGBA (shaffof fon); WebP shaffoflik bayrog‘i bor',
-    tekshir: () =>
-      FAYLLAR.every((f) => {
-        const p = pngOlcham(f.png128);
-        const w1 = webpOlcham(f.webp128);
-        const w2 = webpOlcham(f.webp256);
-        return (
-          p.imzo && p.w === 128 && p.h === 128 && p.rangTuri === 6 &&
-          w1.riff && w1.vp8x && w1.w === 128 && w1.h === 128 && w1.alfa &&
-          w2.riff && w2.vp8x && w2.w === 256 && w2.h === 256 && w2.alfa
-        );
-      }),
-  },
-  {
-    nomi: 'Hajm byudjeti har bir pozada: WebP 128 ≤ 12 KB, WebP 256 ≤ 30 KB, PNG zaxira ≤ 40 KB; tugma yuklaydigan bitta poza (WebP 128 + 256) ≤ 40 KB',
-    tekshir: () =>
-      FAYLLAR.every(
-        (f) =>
-          statSync(f.webp128).size <= 12 * 1024 &&
-          statSync(f.webp256).size <= 30 * 1024 &&
-          statSync(f.png128).size <= 40 * 1024
-      ) &&
-      statSync(FAYLLAR[0].webp128).size + statSync(FAYLLAR[0].webp256).size <= 40 * 1024,
-  },
-  {
-    nomi: 'Pozalar bir-biridan FARQ QILADI: to‘rtta rasmning mazmuni (bayt) har xil — bitta rasm to‘rt holatga nusxalanmagan',
-    tekshir: () => {
-      const imzolar = FAYLLAR.map((f) => readFileSync(f.png128).toString('base64'));
-      const imzolar2 = FAYLLAR.map((f) => readFileSync(f.webp256).toString('base64'));
-      return new Set(imzolar).size === 4 && new Set(imzolar2).size === 4;
-    },
-  },
-  {
-    nomi: 'Komponent har bir holat uchun aynan o‘sha fayllarni ishlatadi (WebP 1x/2x + PNG zaxira, <picture> ichida); yo‘llar diskda mavjud; holat → poza xaritasi to‘liq',
-    tekshir: () =>
-      FAYLLAR.every((f) => {
-        const y = (x: string) => x.replace('public', '');
-        const blok = new RegExp(`${f.holat}:\\s*\\{[^}]*\\}`).exec(KOMPONENT)?.[0] ?? '';
-        return blok.includes(y(f.webp128)) && blok.includes(y(f.webp256)) && blok.includes(y(f.png128));
-      }) &&
-      KOMPONENT.includes('Record<MaskotHolati') &&
-      KOMPONENT.includes('<picture') &&
-      KOMPONENT.includes('type="image/webp"') &&
-      KOMPONENT.includes('1x') && KOMPONENT.includes('2x') &&
-      KOMPONENT.includes('MASKOT_RASMI[h].png') &&
-      KOMPONENT.includes('MASKOT_RASMI[h].webp1x') &&
-      KOMPONENT.includes('MASKOT_RASMI[h].webp2x'),
-  },
-  {
-    nomi: 'Yuklash: tugma (har sahifada) faqat joriy bitta pozani yuklaydi; suhbat oynasi `hammasi` bilan to‘rttasini oldindan yuklaydi; faqat joriy poza ko‘rinadi (maskot-poza-faol)',
-    tekshir: () =>
-      /const pozalar = hammasi \? MASKOT_HOLATLARI : \[holat\]/.test(KOMPONENT) &&
-      /hammasi = false/.test(KOMPONENT) &&
-      /<Maskot holat=\{holat\} olcham=\{\d+\} hammasi \/>/.test(OYNA) &&
-      !/hammasi/.test(TUGMA) &&
-      KOMPONENT.includes("h === holat ? ' maskot-poza-faol'") &&
-      /\.maskot-poza\s*\{[^}]*opacity:\s*0/.test(CSS) &&
-      /\.maskot-poza-faol\s*\{[^}]*opacity:\s*1/.test(CSS) &&
-      !/display:\s*none/.test(/\.maskot-poza\s*\{[^}]*\}/.exec(CSS)?.[0] ?? ''),
-  },
-  {
-    nomi: 'Ekran o‘quvchi: rasm bezak (alt="" va aria-hidden) — nom berilsa role="img" va aria-label; tugma o‘zi nomli (aria-label)',
-    tekshir: () =>
-      KOMPONENT.includes('alt=""') &&
-      KOMPONENT.includes('aria-hidden={sarlavha ? undefined : true}') &&
-      KOMPONENT.includes("role={sarlavha ? 'img' : undefined}") &&
-      TUGMA.includes('aria-label={t(') &&
-      TUGMA.includes('Коала — ёрдамчини очиш'),
-  },
-  {
-    nomi: 'Holat belgisi RANGDAN va HARAKATDAN tashqari: eshitmoqda — ovoz yoylari, oylamoqda — uch nuqta, gapirmoqda — tovush ustunlari, tayyor — belgisiz',
-    tekshir: () =>
-      KOMPONENT.includes("holat !== 'tayyor'") &&
-      /holat === 'eshitmoqda' &&[\s\S]{0,400}maskot-tovush/.test(KOMPONENT) &&
-      /holat === 'oylamoqda' &&[\s\S]{0,500}maskot-nuqta-3/.test(KOMPONENT) &&
-      /holat === 'gapirmoqda' &&[\s\S]{0,500}maskot-ustun-3/.test(KOMPONENT) &&
-      OYNA.includes('<Maskot holat={holat}'),
-  },
-  {
-    nomi: 'Harakat FAQAT prefers-reduced-motion: no-preference va zaif qurilma (data-fx=lite) bo‘lmaganda: barcha maskot animatsiyalari shu bloklar ichida',
-    tekshir: () => {
-      const bosh = CSS.indexOf('KOALA (AI agent maskoti)');
-      if (bosh < 0) return false;
-      let qism = CSS.slice(bosh);
-      /* Barcha `@media (prefers-reduced-motion: no-preference) { ... }` bloklarini qavs bo'yicha ajratib olamiz */
-      const BELGI = '@media (prefers-reduced-motion: no-preference)';
-      const bloklar: string[] = [];
-      for (let i = qism.indexOf(BELGI); i >= 0; i = qism.indexOf(BELGI)) {
-        const ochiq = qism.indexOf('{', i);
-        let chuqurlik = 0;
-        let j = ochiq;
-        for (; j < qism.length; j++) {
-          if (qism[j] === '{') chuqurlik++;
-          else if (qism[j] === '}' && --chuqurlik === 0) break;
-        }
-        bloklar.push(qism.slice(ochiq, j + 1));
-        qism = qism.slice(0, i) + qism.slice(j + 1);
-      }
-      if (bloklar.length === 0) return false;
-      /* Qoida ichidagi animatsiyalar: har biri zaif qurilmani istisno qiladi; `animation: none` istisno emas */
-      const qoidalar = bloklar.join('\n').match(/[^{}]+\{[^}]*animation:[^}]*\}/g) ?? [];
-      const harakatli = qoidalar.filter((q) => !/animation:\s*none/.test(q));
-      /* Bloklardan TASHQARIDA `animation:` yo'q (keyframes ichida u uchramaydi) */
-      return (
-        harakatli.length >= 8 &&
-        harakatli.every((q) => q.includes("html:not([data-fx='lite'])")) &&
-        !/\banimation:/.test(qism)
-      );
-    },
-  },
-  {
-    nomi: 'Qush maskotidan qoldiq YO‘Q: eski hudhud.tsx fayli, `hudhud-` CSS sinflari va "Hudhud" komponenti qolmagan; kod nomlari (hudhud:hisobot, hudhud:ovozli) esa saqlangan',
-    tekshir: () =>
-      !existsSync('src/components/agent/hudhud.tsx') &&
-      !/hudhud-/.test(CSS) &&
-      !/\bHudhud\b/.test(TUGMA + OYNA + KOMPONENT) &&
-      OYNA.includes("'hudhud:hisobot'") &&
-      OYNA.includes("'hudhud:ovozli'"),
-  },
-  {
-    nomi: 'Foydalanuvchiga ko‘rinadigan nom — Koala/Коала: salom, tugma, oyna sarlavhasi, rad matnlari; "Ҳудҳуд" qolmagan; tizim ko‘rsatmasi modelga koala maskot ekanini aytadi (qush emas)',
-    tekshir: () =>
-      MATNLAR.includes('Мен Коаламан') &&
-      OYNA.includes("{t('Коала')}") &&
-      OYNA.includes('Коалага савол ёки буйруқ') &&
-      !/Ҳудҳуд/.test(MATNLAR + OYNA + TUGMA) &&
-      KURSATMA.includes('Sen — Koala (Коала)') &&
-      KURSATMA.includes('koala maskot') &&
-      !/Lison ut-tayr|qushdan olingan/.test(KURSATMA),
-  },
-  {
-    nomi: 'Tugma: kamida 44x44 piksel (CSS: 88x100), klaviatura fokusi ko‘rinadi, bosilganda oyna ochiladi, ustiga kelganda kod oldindan yuklanadi',
-    tekshir: () => {
-      const olcham = /\.koala-pet\s*\{[^}]*width:\s*(\d+)px;[^}]*height:\s*(\d+)px/.exec(CSS);
-      return (
-        !!olcham &&
-        Number(olcham[1]) >= 44 &&
-        Number(olcham[2]) >= 44 &&
-        TUGMA.includes('focus-visible:outline') &&
-        /onMouseEnter=\{\(\) => \{[^}]*isit\(\)/.test(TUGMA) &&
-        /onFocus=\{\(\) => \{[^}]*isit\(\)/.test(TUGMA) &&
-        TUGMA.includes('setOchiq(true)') &&
-        TUGMA.includes('<Maskot olcham={80} />')
-      );
-    },
-  },
-  {
-    nomi: 'Rasm uzoq muddat keshlanadi: /maskot/ uchun `public, max-age=31536000, immutable` (nomda versiya bor, shuning uchun xavfsiz)',
-    tekshir: () => /source:\s*'\/maskot\/:fayl\*'/.test(KONFIG) && KONFIG.includes('public, max-age=31536000, immutable'),
-  },
-];
-
-let xato = 0;
-for (const s of SINOVLAR) {
-  let ok = false;
-  try {
-    ok = s.tekshir();
-  } catch (e) {
-    console.log(`     xatolik: ${(e as Error).message}`);
+sinov('All activity states render a vector robot with an accessible name', () => {
+  for (const holat of MASKOT_HOLATLARI) {
+    const html = renderToStaticMarkup(React.createElement(Maskot, { holat, sarlavha: 'Hamroh' }));
+    assert.match(html, /<svg/); assert.match(html, /aria-label="Hamroh"/);
+    assert.match(html, new RegExp(`maskot-${holat}`)); assert.doesNotMatch(html, /<img/);
   }
-  if (!ok) xato++;
-  console.log(`${ok ? 'OK  ' : 'XATO'} ${s.nomi}`);
-}
-console.log(`\n${SINOVLAR.length - xato}/${SINOVLAR.length} o'tdi`);
-process.exit(xato ? 1 : 0);
+});
+sinov('Mouth opens with audio and invalid levels cannot break the face', () => {
+  const render = (daraja: number) => renderToStaticMarkup(React.createElement(Maskot, { holat: 'gapirmoqda', daraja }));
+  assert.match(render(0), /--robot-ogiz:1/);
+  assert.match(render(1), /--robot-ogiz:11/);
+  assert.match(render(Infinity), /--robot-ogiz:1/);
+  assert.match(render(-4), /--robot-ogiz:1/);
+  assert.match(render(10), /--robot-ogiz:11/);
+});
+sinov('Happy and serious faces remain distinct even without animation', () => {
+  const happy = renderToStaticMarkup(React.createElement(Maskot, { kayfiyat: 'xursand' }));
+  const serious = renderToStaticMarkup(React.createElement(Maskot, { kayfiyat: 'jiddiy' }));
+  assert.notEqual(happy, serious); assert.match(happy, /M50 67Q60 78 70 67/); assert.match(serious, /M51 72Q60 65 69 72/);
+});
+sinov('Overdue tasks cause a serious mood; ordinary pending tasks do not', () => {
+  assert.equal(robotVazifaHolati([{ kalit: 'kechikkan', soni: 2, ogohlik: 'shoshilinch' }]).kayfiyat, 'jiddiy');
+  assert.equal(robotVazifaHolati([{ kalit: 'bugun', soni: 2, ogohlik: 'diqqat' }]).kayfiyat, 'vazmin');
+});
+sinov('Missing measurements never fabricate overdue tasks or success', () => {
+  assert.deepEqual(robotVazifaHolati([{ kalit: 'kechikkan', soni: 20, ogohlik: 'shoshilinch', yetishmayotgan: 'Baza mavjud emas' }]), { kayfiyat: 'vazmin', kechikkan: 0, shoshilinch: 0 });
+  assert.equal(robotVazifaHolati([]).kayfiyat, 'vazmin');
+});
+sinov('Other urgent issues show concern, not invented overdue task counts', () => {
+  assert.deepEqual(robotVazifaHolati([{ kalit: 'uzilish', soni: 3, ogohlik: 'shoshilinch' }]), { kayfiyat: 'xavotir', kechikkan: 0, shoshilinch: 1 });
+});
+console.log(`${soni}/${soni} o'tdi`);

@@ -1,132 +1,49 @@
-/**
- * ============================================================
- *  KOALA — ovozli yordamchining maskoti
- *
- *  Maskot — foydalanuvchi tanlagan koala rasmlari (`public/maskot/`):
- *  HAR BIR HOLAT UCHUN ALOHIDA POZA (tayyor, eshitmoqda, oylamoqda,
- *  gapirmoqda). Hammasi bir xil kesimda: poza almashganda koala o'lchami
- *  va o'rni sakramaydi. 128 va 256 piksel, WebP (shaffof fon) va PNG zaxira.
- *  Rasm shaffof, shuning uchun orqasida och rangli "disk" turadi:
- *  qorong'i temada ham kulrang tanasi aniq ko'rinadi.
- *
- *  Ichki nomlar (`agent`, `hudhud:*` voqea va kalit nomlari) oldingi
- *  nomdan qolgan: ularni o'zgartirish saqlangan suhbatlarni va hisobot
- *  tugmalari bilan aloqani buzardi. Foydalanuvchiga ko'rinadigan nom — Koala.
- *
- *  ── Holatlar RANGDAN va HARAKATDAN tashqari ham ko'rinadi ──
- *  GPT §16: holat matn va belgi orqali tushuntirilsin. Poza o'zi ham
- *  holatni aytadi (qulog'iga qo'l — eshitmoqda, iyagiga qo'l — oylamoqda,
- *  ochiq og'iz — gapirmoqda), lekin poza kichik o'lchamda (40 px) ajralmay
- *  qolishi mumkin, shuning uchun burchakdagi BELGI ham saqlangan:
- *    · eshitmoqda  — ovoz yoylari;
- *    · oylamoqda   — uch nuqta;
- *    · gapirmoqda  — uch ustunli tovush chizig'i;
- *    · tayyor      — belgisiz.
- *  Harakat (nafas olish va hokazo) faqat `prefers-reduced-motion` va
- *  `data-fx="lite"` (zaif qurilma) bo'lmaganda ishlaydi; poza va belgilar
- *  esa doim joyida turadi.
- *
- *  Yuklash: tugma (har sahifada) faqat "tayyor" pozani yuklaydi. Suhbat
- *  oynasi `hammasi` bilan to'rttasini birdan yuklaydi — poza almashganda
- *  rasm kutib turmaydi va miltillamaydi.
- * ============================================================
- */
+import type { CSSProperties } from 'react';
 
 export type MaskotHolati = 'tayyor' | 'eshitmoqda' | 'oylamoqda' | 'gapirmoqda';
-
+export type RobotKayfiyati = 'vazmin' | 'xursand' | 'jiddiy' | 'xavotir';
 export const MASKOT_HOLATLARI: readonly MaskotHolati[] = ['tayyor', 'eshitmoqda', 'oylamoqda', 'gapirmoqda'];
 
-/** Rasm manzillari (nomda versiya: rasm almashsa nom ham o'zgaradi, kesh eskirmaydi) */
-export const MASKOT_RASMI: Record<MaskotHolati, { webp1x: string; webp2x: string; png: string }> = {
-  tayyor: {
-    webp1x: '/maskot/koala-v2-tayyor-128.webp',
-    webp2x: '/maskot/koala-v2-tayyor-256.webp',
-    png: '/maskot/koala-v2-tayyor-128.png',
-  },
-  eshitmoqda: {
-    webp1x: '/maskot/koala-v2-eshitmoqda-128.webp',
-    webp2x: '/maskot/koala-v2-eshitmoqda-256.webp',
-    png: '/maskot/koala-v2-eshitmoqda-128.png',
-  },
-  oylamoqda: {
-    webp1x: '/maskot/koala-v2-oylamoqda-128.webp',
-    webp2x: '/maskot/koala-v2-oylamoqda-256.webp',
-    png: '/maskot/koala-v2-oylamoqda-128.png',
-  },
-  gapirmoqda: {
-    webp1x: '/maskot/koala-v2-gapirmoqda-128.webp',
-    webp2x: '/maskot/koala-v2-gapirmoqda-256.webp',
-    png: '/maskot/koala-v2-gapirmoqda-128.png',
-  },
-};
-
-export function Maskot({
-  holat = 'tayyor',
-  olcham = 40,
-  sarlavha,
-  hammasi = false,
-  className = '',
-}: {
+/** Vector face: mouth follows playback amplitude; expressions remain visible without motion. */
+export function Maskot({ holat = 'tayyor', kayfiyat = 'vazmin', daraja = 0, olcham = 40, sarlavha, className = '' }: {
   holat?: MaskotHolati;
+  kayfiyat?: RobotKayfiyati;
+  daraja?: number;
   olcham?: number;
-  /** Ekran o'quvchi uchun nom; berilmasa bezak sifatida yashiriladi */
   sarlavha?: string;
-  /** To'rtta pozani ham oldindan yuklaydi (suhbat oynasi); aks holda faqat joriy poza */
   hammasi?: boolean;
   className?: string;
 }) {
-  const pozalar = hammasi ? MASKOT_HOLATLARI : [holat];
+  const kuch = Number.isFinite(daraja) ? Math.min(1, Math.max(0, daraja)) : 0;
   return (
-    <span
-      className={`maskot maskot-${holat} ${className}`}
-      style={{ width: olcham, height: olcham }}
-      role={sarlavha ? 'img' : undefined}
-      aria-label={sarlavha}
-      aria-hidden={sarlavha ? undefined : true}
-    >
-      <span className="maskot-disk" />
-      {pozalar.map((h) => (
-        <picture key={h} className={`maskot-poza${h === holat ? ' maskot-poza-faol' : ''}`}>
-          <source type="image/webp" srcSet={`${MASKOT_RASMI[h].webp1x} 1x, ${MASKOT_RASMI[h].webp2x} 2x`} />
-          {/* Oldindan optimallashtirilgan statik rasm: `next/image` qayta ishlashi shart emas */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={MASKOT_RASMI[h].png}
-            alt=""
-            width={olcham}
-            height={olcham}
-            decoding="async"
-            draggable={false}
-            className="maskot-rasm"
-          />
-        </picture>
-      ))}
-
-      {holat !== 'tayyor' && (
-        <svg className="maskot-belgi" viewBox="0 0 40 40" focusable="false" aria-hidden="true">
-          <circle cx="20" cy="20" r="18.5" fill="#FFFFFF" stroke="var(--accent)" strokeWidth="2.5" />
-          {holat === 'eshitmoqda' && (
-            <g className="maskot-tovush" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round">
-              <path d="M15 14 C19 18 19 22 15 26" />
-              <path d="M22 10 C29 17 29 23 22 30" />
-            </g>
-          )}
-          {holat === 'oylamoqda' && (
-            <g fill="var(--accent)">
-              <circle className="maskot-nuqta maskot-nuqta-1" cx="10.5" cy="20" r="3" />
-              <circle className="maskot-nuqta maskot-nuqta-2" cx="20" cy="20" r="3" />
-              <circle className="maskot-nuqta maskot-nuqta-3" cx="29.5" cy="20" r="3" />
-            </g>
-          )}
-          {holat === 'gapirmoqda' && (
-            <g fill="var(--accent)">
-              <rect className="maskot-ustun maskot-ustun-1" x="10.5" y="14" width="4.5" height="12" rx="2.2" />
-              <rect className="maskot-ustun maskot-ustun-2" x="17.8" y="10" width="4.5" height="20" rx="2.2" />
-              <rect className="maskot-ustun maskot-ustun-3" x="25" y="14" width="4.5" height="12" rx="2.2" />
-            </g>
-          )}
-        </svg>
-      )}
+    <span className={`maskot robot robot-${kayfiyat} maskot-${holat} ${className}`}
+      style={{ width: olcham, height: olcham, '--robot-ogiz': 1 + kuch * 10 } as CSSProperties}
+      role={sarlavha ? 'img' : undefined} aria-label={sarlavha} aria-hidden={sarlavha ? undefined : true}>
+      <svg className="robot-tana" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+        <ellipse cx="60" cy="111" rx="33" ry="4" fill="currentColor" opacity=".1" />
+        <path d="M60 9V19" stroke="#94a3b8" strokeWidth="4" strokeLinecap="round" />
+        <circle className="robot-signal" cx="60" cy="8" r="5" fill="var(--robot-rang)" />
+        <rect x="12" y="42" width="12" height="27" rx="6" fill="#64748b" />
+        <rect x="96" y="42" width="12" height="27" rx="6" fill="#64748b" />
+        <path d="M37 91Q60 82 83 91L91 106H29Z" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="2" />
+        <path d="M52 90L60 98L68 90" fill="#64748b" />
+        <rect x="21" y="19" width="78" height="73" rx="26" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="2" />
+        <path d="M34 27Q60 18 86 27" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" />
+        <rect x="28" y="32" width="64" height="49" rx="18" fill="#0f172a" />
+        <g className="robot-qosh" fill="none" stroke="var(--robot-rang)" strokeWidth="2.5" strokeLinecap="round">
+          <path className="robot-qosh-chap" d="M38 43L48 43" />
+          <path className="robot-qosh-ong" d="M72 43L82 43" />
+        </g>
+        <g className="robot-koz" fill="var(--robot-rang)">
+          {kayfiyat === 'xursand' ? <g fill="none" stroke="var(--robot-rang)" strokeWidth="4" strokeLinecap="round"><path d="M38 54Q43 46 48 54" /><path d="M72 54Q77 46 82 54" /></g>
+            : <><rect x="39" y="49" width="8" height="11" rx="4" /><rect x="73" y="49" width="8" height="11" rx="4" /></>}
+        </g>
+        <g fill="var(--robot-rang)" opacity=".18"><ellipse cx="37" cy="64" rx="5" ry="2" /><ellipse cx="83" cy="64" rx="5" ry="2" /></g>
+        {holat === 'gapirmoqda' ? <ellipse className="robot-ogiz" cx="60" cy="68" rx="9" ry="1" fill="var(--robot-rang)" />
+          : <path d={kayfiyat === 'xursand' ? 'M50 67Q60 78 70 67' : kayfiyat === 'jiddiy' || kayfiyat === 'xavotir' ? 'M51 72Q60 65 69 72' : 'M53 69Q60 73 67 69'}
+            fill="none" stroke="var(--robot-rang)" strokeWidth="3" strokeLinecap="round" />}
+        <circle cx="60" cy="104" r="3" fill="var(--robot-rang)" />
+      </svg>
     </span>
   );
 }

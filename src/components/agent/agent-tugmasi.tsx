@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
-import { Maskot } from './maskot';
+import { Maskot, type RobotKayfiyati } from './maskot';
 import { petChegarasi, type PetJoy } from './pet-joy';
 
 const Oyna = dynamic(() => import('./agent-oynasi'), { ssr: false, loading: () => null });
@@ -11,6 +11,7 @@ const JOY = 'koala:joy:v1';
 
 export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: string; korish?: boolean }) {
   const { t } = useAlifbo();
+  const [vazifa, setVazifa] = useState<{ kayfiyat: RobotKayfiyati; kechikkan: number } | null>(null);
   const [ochiq, setOchiq] = useState(false);
   const [yuklangan, setYuklangan] = useState(false);
   const [joy, setJoy] = useState<PetJoy | null>(null);
@@ -41,6 +42,20 @@ export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: s
     uygot();
     return () => { window.removeEventListener('resize', resize); if (uyqu.current) clearTimeout(uyqu.current); };
   }, []);
+  useEffect(() => {
+    if (ochiq) return;
+    const ctrl = new AbortController();
+    const yangila = () => {
+      if (document.hidden) return;
+      void fetch('/api/agent/holat', { cache: 'no-store', signal: ctrl.signal })
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (!ctrl.signal.aborted) setVazifa(d?.vazifa ?? null); })
+        .catch(() => { if (!ctrl.signal.aborted) setVazifa(null); });
+    };
+    yangila();
+    const taymer = setInterval(yangila, 120_000);
+    return () => { ctrl.abort(); clearInterval(taymer); };
+  }, [ochiq]);
   const isit = () => void import('./agent-oynasi');
   return (
     <>
@@ -88,10 +103,10 @@ export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: s
             uygot(); setYuklangan(true); setOchiq(true);
           }}
           onMouseEnter={() => { uygot(); isit(); }} onFocus={() => { uygot(); isit(); }}
-          aria-label={t('Коала — ёрдамчини очиш. Жойини суриш ёки йўналиш тугмалари билан ўзгартириш мумкин.')}
-          title={t('Коала: босинг — суҳбат; суринг — жойини ўзгартириш; Home — жойига қайтариш')}>
-          <span className="koala-pet-tana"><Maskot olcham={80} /></span>
-          <span className="koala-pet-yozuv" aria-hidden="true">{uxlayapti ? 'z z z' : t('Коала')}</span>
+          aria-label={t('Ҳамроҳ — ёрдамчини очиш. Жойини суриш ёки йўналиш тугмалари билан ўзгартириш мумкин.')}
+          title={t('Ҳамроҳ: босинг — суҳбат; суринг — жойини ўзгартириш; Home — жойига қайтариш')}>
+          <span className="koala-pet-tana"><Maskot olcham={80} kayfiyat={vazifa?.kayfiyat} /></span>
+          <span className="koala-pet-yozuv" aria-hidden="true">{vazifa?.kechikkan ? t(`${vazifa.kechikkan} та кечиккан`) : uxlayapti ? 'z z z' : t('Ҳамроҳ')}</span>
         </button>
       )}
       {yuklangan && <Oyna ochiq={ochiq} yopish={() => {

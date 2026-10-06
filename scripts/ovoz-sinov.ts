@@ -348,7 +348,7 @@ const SINOVLAR: Sinov[] = [
     tekshir: () =>
       /if \(!ochiq\) toxtat\(\)/.test(OYNA) && /const toxtat = useCallback\([\s\S]*?tanish\.current\?\.bekor\(\)/.test(OYNA) && /visibilitychange/.test(OYNA) && /document\.hidden/.test(OYNA) &&
       /disabled=\{!mikrofonMumkin \|\| !malumotTayyor \|\| holat === 'oylamoqda'\}/.test(OYNA) &&
-      /setHolat\(\(h\) => \(h === 'gapirmoqda' \? 'tayyor' : h\)\)/.test(OYNA),
+      /setHolat\(\(h\) => \(!bandRef\.current && h !== 'eshitmoqda' \? 'tayyor' : h\)\)/.test(OYNA),
   },
   {
     nomi: 'Oyna: mikrofon tugagach holat har doim tiklanadi (eshitmoqda → tayyor; savol ketmagan bo‘lsa o‘ylamoqda → tayyor), yozuv serverda matnga aylanayotganda "o‘ylamoqda" va qayta bosish yopiq',
@@ -373,10 +373,10 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: 'Salom QISQA: ismi bilan, "Мен Коаламан", ≤ 80 belgi (lotinda); namunaviy savollar salom ichida EMAS (ular tugmalarda bor)',
+    nomi: 'Salom QISQA: ismi bilan, "Мен Ҳамроҳман", ≤ 80 belgi (lotinda); namunaviy savollar salom ichida EMAS (ular tugmalarda bor)',
     tekshir: () => {
       const lot = salomMatni('Umidjon Zoxiddinovich', new Date('2026-10-02T17:00:00Z'), 'lot');
-      return lot === 'Xayrli oqshom, hurmatli Umidjon Zoxiddinovich! Men Koalaman — yordamchingiz.' && lot.length <= 80 && !/masalan|xatlov qanday/i.test(lot);
+      return lot === 'Xayrli oqshom, hurmatli Umidjon Zoxiddinovich! Men Hamrohman — yordamchingiz.' && lot.length <= 80 && !/masalan|xatlov qanday/i.test(lot);
     },
   },
   {

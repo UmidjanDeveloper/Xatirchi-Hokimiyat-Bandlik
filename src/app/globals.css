@@ -1044,130 +1044,8 @@
   }
 }
 
-/* ============================================================
-   KOALA (AI agent maskoti)
-   Rasm — `public/maskot/`: har bir holat uchun alohida poza. Orqasida och
-   disk: shaffof rasm qorong'i temada ham aniq ko'rinsin. Holat burchakdagi
-   BELGI bilan ham ko'rsatiladi (rang va harakatsiz ham tushunarli).
-   Harakat faqat zaif qurilma va "harakatni kamaytirish" YOQILMAGANDA.
-   ============================================================ */
-.maskot {
-  position: relative;
-  display: inline-block;
-  flex-shrink: 0;
-}
-.maskot-disk {
-  position: absolute;
-  inset: 10%;
-  border-radius: 9999px;
-  background: #e4f3f2;
-  border: 2px solid var(--accent);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22);
-}
-/* Pozalar bir joyda ustma-ust turadi; faqat joriy poza ko'rinadi (qolganlari oldindan yuklangan) */
-.maskot-poza {
-  position: absolute;
-  inset: 0;
-  display: block;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease-out;
-}
-.maskot-poza-faol {
-  opacity: 1;
-}
-.maskot-rasm {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  transform-origin: 50% 88%;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-.maskot-belgi {
-  position: absolute;
-  right: -4%;
-  top: -4%;
-  width: 40%;
-  height: 40%;
-  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.3));
-}
-.maskot-ustun {
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-}
-@media (prefers-reduced-motion: no-preference) {
-  html:not([data-fx='lite']) .maskot-tayyor .maskot-poza-faol .maskot-rasm {
-    animation: maskot-nafas 5s ease-in-out infinite;
-  }
-  html:not([data-fx='lite']) .maskot-eshitmoqda .maskot-poza-faol .maskot-rasm {
-    animation: maskot-quloq 0.9s ease-in-out infinite;
-  }
-  html:not([data-fx='lite']) .maskot-eshitmoqda .maskot-disk {
-    animation: maskot-halqa 1.3s ease-out infinite;
-  }
-  html:not([data-fx='lite']) .maskot-eshitmoqda .maskot-tovush {
-    animation: maskot-tovush 1.2s ease-out infinite;
-  }
-  html:not([data-fx='lite']) .maskot-oylamoqda .maskot-poza-faol .maskot-rasm {
-    animation: maskot-bosh 2.2s ease-in-out infinite;
-  }
-  html:not([data-fx='lite']) .maskot-oylamoqda .maskot-nuqta {
-    animation: maskot-sakrash 1s ease-in-out infinite;
-  }
-  html:not([data-fx='lite']) .maskot-oylamoqda .maskot-nuqta-2 {
-    animation-delay: 0.15s;
-  }
-  html:not([data-fx='lite']) .maskot-oylamoqda .maskot-nuqta-3 {
-    animation-delay: 0.3s;
-  }
-  html:not([data-fx='lite']) .maskot-gapirmoqda .maskot-poza-faol .maskot-rasm {
-    animation: maskot-gap 0.5s ease-in-out infinite alternate;
-  }
-  html:not([data-fx='lite']) .maskot-gapirmoqda .maskot-ustun {
-    animation: maskot-ustun 0.5s ease-in-out infinite alternate;
-  }
-  html:not([data-fx='lite']) .maskot-gapirmoqda .maskot-ustun-2 {
-    animation-delay: 0.12s;
-  }
-  html:not([data-fx='lite']) .maskot-gapirmoqda .maskot-ustun-3 {
-    animation-delay: 0.24s;
-  }
-}
-@keyframes maskot-nafas {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.035) translateY(-1px); }
-}
-@keyframes maskot-quloq {
-  0%, 100% { transform: rotate(-1.5deg) scale(1.02); }
-  50% { transform: rotate(1.5deg) scale(1.04); }
-}
-@keyframes maskot-halqa {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
-  100% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent); }
-}
-@keyframes maskot-tovush {
-  0% { opacity: 0.25; }
-  50% { opacity: 1; }
-  100% { opacity: 0.25; }
-}
-@keyframes maskot-bosh {
-  0%, 100% { transform: rotate(-2deg); }
-  50% { transform: rotate(2deg); }
-}
-@keyframes maskot-sakrash {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-@keyframes maskot-gap {
-  from { transform: translateY(0) scale(1); }
-  to { transform: translateY(-3%) scale(1.04); }
-}
-@keyframes maskot-ustun {
-  from { transform: scaleY(0.45); }
-  to { transform: scaleY(1.1); }
-}
+/* Vector assistant stays aligned across all expressions. */
+.maskot { position: relative; display: inline-block; flex-shrink: 0; }
 
 /* ============================================================
    MIKROFON DARAJASI
@@ -1198,3 +1076,25 @@
 @keyframes koala-hamroh { 0%, 65%, 100% { transform: translateY(0) rotate(0); } 72% { transform: translateY(-4px) rotate(-5deg); } 82% { transform: translateY(-2px) rotate(5deg); } }
 @keyframes koala-salom { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-10deg) translateY(-5px); } 65% { transform: rotate(9deg) translateY(-3px); } }
 @keyframes koala-dam { 0%, 100% { transform: rotate(9deg) scale(.95); } 50% { transform: rotate(9deg) scale(.98); } }
+
+/* Professional robot companion. Audio amplitude updates only the mouth. */
+.robot { --robot-rang: #5eead4; color: var(--text); }
+.robot-tana { width: 100%; height: 100%; overflow: visible; }
+.robot-xursand { --robot-rang: #86efac; }
+.robot-jiddiy { --robot-rang: #fb923c; }
+.robot-xavotir { --robot-rang: #fcd34d; }
+.robot-qosh-chap, .robot-qosh-ong { transform-box: fill-box; transform-origin: center; }
+.robot-jiddiy .robot-qosh-chap { transform: rotate(22deg) translateY(2px); }
+.robot-jiddiy .robot-qosh-ong { transform: rotate(-22deg) translateY(2px); }
+.robot-xavotir .robot-qosh-chap { transform: rotate(-16deg); }
+.robot-xavotir .robot-qosh-ong { transform: rotate(16deg); }
+.robot-ogiz { transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-fx='lite']) .robot-koz { transform-box: fill-box; transform-origin: center; animation: robot-kiprik 6s infinite; }
+  html:not([data-fx='lite']) .robot-ogiz { transform: scaleY(var(--robot-ogiz)); transition: transform 70ms linear; }
+  html:not([data-fx='lite']) .maskot-oylamoqda .robot-signal { animation: robot-kutish 1s ease-in-out infinite; }
+  html:not([data-fx='lite']) .maskot-eshitmoqda .robot-tana { animation: robot-tinglash 2s ease-in-out infinite; }
+}
+@keyframes robot-kiprik { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.1); } }
+@keyframes robot-kutish { 50% { opacity: .3; } }
+@keyframes robot-tinglash { 50% { transform: rotate(-3deg); } }

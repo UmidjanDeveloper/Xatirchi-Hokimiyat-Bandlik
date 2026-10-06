@@ -33,6 +33,7 @@ export function nutqMuhitiniYop(): void {
 /** Bir vaqtda bitta javob. Bekor qilingach kechikkan ovoz va hodisalar chiqarilmaydi. */
 export function javobniGapir(matn: string, h: {
   serverMumkin: boolean;
+  onDaraja?(daraja: number): void;
   onYuklash(): void;
   onBoshlandi(): void;
   onTugadi(): void;
@@ -43,7 +44,14 @@ export function javobniGapir(matn: string, h: {
   let manba: AudioBufferSourceNode | null = null;
   let taymer: ReturnType<typeof setTimeout> | null = null;
   let tugadi = false;
+  let kadr: number | null = null;
+  let analizator: AnalyserNode | null = null;
   const bosha = () => {
+    if (kadr !== null) cancelAnimationFrame(kadr);
+    kadr = null;
+    analizator?.disconnect();
+    analizator = null;
+    h.onDaraja?.(0);
     if (taymer) clearTimeout(taymer);
     if (manba) {
       manba.onended = null;
@@ -61,10 +69,19 @@ export function javobniGapir(matn: string, h: {
   };
   bekorQil = () => { tugadi = true; ctrl.abort(); bosha(); };
 
-  if (uzbekOvozi()) {
+  if (!h.serverMumkin && uzbekOvozi()) {
     // Brauzer ba'zan onend bermaydi: maskot uzoq vaqt gapirmoqda holatida qolmasin.
     taymer = setTimeout(() => { gapirishniToxtat(); yakunla(); }, 180_000);
-    if (gapir(matn, () => yakunla(), () => { if (!tugadi) h.onBoshlandi(); })) return;
+    if (gapir(matn, () => yakunla(), () => {
+      if (tugadi) return;
+      h.onBoshlandi();
+      const jonlantir = () => {
+        if (tugadi) return;
+        h.onDaraja?.(.2 + Math.abs(Math.sin(performance.now() / 110)) * .45);
+        kadr = requestAnimationFrame(jonlantir);
+      };
+      jonlantir();
+    })) return;
   }
   if (!h.serverMumkin) { yakunla(); return; }
   if (taymer) clearTimeout(taymer);
@@ -91,7 +108,20 @@ export function javobniGapir(matn: string, h: {
       if (taymer) clearTimeout(taymer);
       manba = a.createBufferSource();
       manba.buffer = bufer;
-      manba.connect(a.destination);
+      analizator = a.createAnalyser();
+      analizator.fftSize = 256;
+      manba.connect(analizator);
+      analizator.connect(a.destination);
+      const namuna = new Uint8Array(analizator.fftSize);
+      const jonlantir = () => {
+        if (tugadi || !analizator) return;
+        analizator.getByteTimeDomainData(namuna);
+        let kvadrat = 0;
+        for (const n of namuna) kvadrat += ((n - 128) / 128) ** 2;
+        h.onDaraja?.(Math.min(1, Math.sqrt(kvadrat / namuna.length) * 5));
+        kadr = requestAnimationFrame(jonlantir);
+      };
+      jonlantir();
       manba.onended = () => yakunla();
       h.onBoshlandi();
       manba.start();
