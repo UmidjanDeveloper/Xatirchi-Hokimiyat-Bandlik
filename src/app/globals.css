@@ -366,6 +366,15 @@
     box-shadow: var(--shadow-sm);
   }
 
+  /*
+   * Havola (<a>) kartochka sifatida ishlatilsa, u standart `inline`: ichidagi bloklar
+   * (div, p) tufayli fon/chegara faqat burchaklarda chiziladi. `:where` ustuvorlikni
+   * oshirmaydi, shuning uchun `flex`, `grid`, `inline-flex` kabi klasslar yana ustun.
+   */
+  :where(a).karta {
+    display: block;
+  }
+
   .karta-koter {
     box-shadow: var(--shadow-lg);
   }

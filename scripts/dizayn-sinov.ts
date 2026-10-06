@@ -352,6 +352,27 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Klaviatura fokusi ko‘rinadi',
     tekshir: () => CSS.includes(':focus-visible'),
   },
+
+  /* ── 7. KARTOCHKA HAVOLASI BLOK BO‘LISHI SHART ── */
+  /*
+   * `<a>` standart `inline`. Ichida blok elementlar (div, p) bor inline havolaning fon va
+   * chegarasi faqat birinchi va oxirgi qator bo‘laklarida chiziladi: karta "yo‘qolib", faqat
+   * burchak yoylari qoladi (Operatsion paneldagi "12 oydan oshib ishsiz", "Mustahkamlash
+   * tekshiruvi", "Taklifdan bosh tortgan" kartalari, 2-oktabrdan beri). Karta grid'ning
+   * bevosita elementi bo‘lganda grid uni blok qilardi; "Qanday hisoblangan" uchun <div>
+   * ichiga o‘ralgach bu to‘xtagan edi.
+   */
+  {
+    nomi: 'Havola-kartochka (`a.karta`) blok: CSS `:where(a).karta { display: block }` bor, ustuvorligi oshmaydi (flex/grid klasslari ustun)',
+    tekshir: () => /:where\(a\)\.karta\s*\{[^}]*display:\s*block/.test(CSS),
+  },
+  {
+    nomi: 'Operatsion panel KPI havolasi `block` klassi bilan yozilgan va sababi izohlangan',
+    tekshir: () => {
+      const b = oqi('src/app/(ilova)/bandlik/page.tsx');
+      return /karta-bosiladigan block p-4/.test(kodiOl(b)) && /`block` SHART/.test(b);
+    },
+  },
 ];
 
 let xato = 0;
