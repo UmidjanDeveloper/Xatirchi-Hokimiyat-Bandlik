@@ -15,7 +15,18 @@ const XLSX = require('xlsx');
 const prisma = new PrismaClient();
 const baza = process.env.ROBOT_BAZA || 'http://127.0.0.1:3100';
 const dir = '/tmp/hamroh-live-browser';
+const elevenlabs = process.env.JONLI_ELEVENLABS_SINOV === '1';
 if (!['localhost', '127.0.0.1'].includes(new URL(baza).hostname) || !['localhost', '127.0.0.1'].includes(new URL(process.env.DATABASE_URL || '').hostname)) throw new Error('Local app and DB only');
+
+function wav() {
+  const hz = 16000, n = hz * 3, b = Buffer.alloc(44 + n * 2);
+  b.write('RIFF'); b.writeUInt32LE(b.length - 8, 4); b.write('WAVEfmt ', 8);
+  b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(hz, 24); b.writeUInt32LE(hz * 2, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34);
+  b.write('data', 36); b.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) b.writeInt16LE(Math.round(Math.sin(i / hz * 440 * Math.PI * 2) * (1000 + 6500 * Math.abs(Math.sin(i / hz * 9)))), 44 + i * 2);
+  return b;
+}
 
 async function main() {
   mkdirSync(dir, { recursive: true });
@@ -49,23 +60,39 @@ async function main() {
         Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { value: async () => new MediaStream() });
       });
       const login = await context.request.post(`${baza}/api/auth/kirish`, { data: { username: user.username, parol } }); assert.equal(login.status(), 200);
-      const page = await context.newPage(); const errors: string[] = []; const exports: Array<string | null> = [];
+      const page = await context.newPage(); const errors: string[] = []; const exports: Array<string | null> = []; const spoken: string[] = [];
       page.on('pageerror', (e: Error) => errors.push(e.message));
       page.on('request', (r: any) => { if (r.url().endsWith('/api/hisobot') && r.method() === 'POST') exports.push(r.postDataJSON().mahallaId ?? null); });
       await page.route('**/api/agent/holat', async (route: any) => {
-        const r = await route.fetch(); const d = await r.json(); await route.fulfill({ json: { ...d, jonli: true } });
+        const r = await route.fetch(); const d = await r.json(); await route.fulfill({ json: { ...d, jonli: true,
+          ...(elevenlabs ? { ovozChiqish: true, ovozUlanishi: 'tayyor', ovozXizmati: 'elevenlabs' } : {}) } });
       });
       await page.route('**/api/agent/jonli', async (route: any) => {
         const d = route.request().postDataJSON();
-        if (d.tur === 'ulanish') return route.fulfill({ json: { sdp: 'v=0 mock-answer', ruxsat: 'browser-test-only', muddatMs: 300000 } });
+        if (d.tur === 'ulanish') return route.fulfill({ json: { sdp: 'v=0 mock-answer', ruxsat: 'browser-test-only', muddatMs: 300000, tashqiOvoz: elevenlabs } });
         if (d.tur === 'yopish') return route.fulfill({ json: { yopildi: true } });
         const n = await asbobniBajar({ ...ctx, hozir: new Date() }, d.nomi, d.args);
         return route.fulfill({ json: n });
+      });
+      if (elevenlabs) await page.route('**/api/agent/gapir', async (route: any) => {
+        spoken.push(route.request().postDataJSON().matn); await route.fulfill({ contentType: 'audio/wav', body: wav() });
       });
       await page.goto(`${baza}/vazifalar`, { waitUntil: 'domcontentloaded' });
       await page.locator('[data-agent-tugmasi]').click(); const dialog = page.getByRole('dialog'); await dialog.waitFor();
       const live = dialog.getByRole('button', { name: 'Jonli suhbat', exact: true }); await live.click();
       await page.waitForFunction(() => (window as any).__live?.peer.channel.readyState === 'open').catch(async (e: Error) => { await page.screenshot({ path: `${dir}/failure.png` }); console.log('Live init errors:', errors); console.log(await dialog.innerText()); throw e; });
+      if (elevenlabs) {
+        assert.ok(await dialog.getByText('Ovoz: ElevenLabs', { exact: true }).isVisible()); ok(`${rol}: selected ElevenLabs voice is shown in the actual dialog`);
+        await page.evaluate(() => {
+          const e = { type: 'response.done', response: { id: 'speech_fixture', status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Assalomu alaykum! Men Hamrohman.' }] }] } };
+          const c = (window as any).__live.peer.channel; c.onmessage({ data: JSON.stringify(e) }); c.onmessage({ data: JSON.stringify(e) });
+        });
+        await page.waitForFunction(() => Number(document.querySelector('[data-robot-sahna] .robot-ogiz')?.getAttribute('ry')) > 2);
+        assert.equal(spoken.length, 1); assert.match(spoken[0], /Hamrohman/); ok(`${rol}: live text uses the local TTS player once and real WebAudio moves the mouth`);
+        await page.evaluate(() => (window as any).__live.peer.channel.onmessage({ data: JSON.stringify({ type: 'input_audio_buffer.speech_started' }) }));
+        await page.waitForFunction(() => document.querySelector('[data-robot-sahna] [data-holat]')?.getAttribute('data-holat') !== 'gapirmoqda');
+        assert.ok(await dialog.getByRole('button', { name: /Jonli suhbatni to.xtatish/ }).isVisible()); ok(`${rol}: spoken interruption stops ElevenLabs playback and keeps live listening connected`);
+      }
       const emitTool = async (name: string, args: Record<string, unknown>, call: string) => page.evaluate(({ name, args, call }: any) => {
         const c = (window as any).__live.peer.channel;
         c.onmessage({ data: JSON.stringify({ type: 'response.done', response: { status: 'completed', output: [{ type: 'function_call', call_id: call, name, arguments: JSON.stringify(args) }] } }) });

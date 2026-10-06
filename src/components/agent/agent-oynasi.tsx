@@ -52,7 +52,8 @@ interface TasdiqHolati {
 interface HolatMalumoti {
   ai: boolean;
   vazifa?: { kayfiyat: RobotKayfiyati; kechikkan: number; shoshilinch: number } | null;
-  ovozUlanishi?: 'tayyor' | 'kalit_yoq' | 'ochirilgan';
+  ovozUlanishi?: 'tayyor' | 'kalit_yoq' | 'ochirilgan' | 'ovoz_id_yoq' | 'sozlama_xato';
+  ovozXizmati?: 'openai' | 'elevenlabs' | 'noma_lum';
   ovozServer: boolean;
   ovozChiqish?: boolean;
   jonli?: boolean;
@@ -101,6 +102,7 @@ export default function AgentOynasi({
   const jonliMatnRef = useRef<(id: string, r: 'f' | 'a', m: string) => void>(() => {});
   const jonliAmalRef = useRef<(a: Amal[], m: Manba[], s: AbortSignal) => Promise<Record<string, unknown>>>(async () => ({}));
   const jonliIdlar = useRef(new Map<string, number>());
+  const jonliOvozRef = useRef<(m: string, s: AbortSignal) => Promise<void>>(async () => {});
   const ovozTasdiqlari = useRef(new Set<string>());
   const [xabarlar, setXabarlar] = useState<Xabar[]>([]);
   const [tasdiq, setTasdiq] = useState<TasdiqHolati>({});
@@ -544,14 +546,22 @@ export default function AgentOynasi({
     return natija;
   };
 
+  jonliOvozRef.current = (m, signal) => new Promise<void>((resolve) => {
+    if (signal.aborted || !ochiqRef.current) { resolve(); return; }
+    const bekor = () => { nutqniToxtat(); setNutqYuklanmoqda(false); signal.removeEventListener('abort', bekor); resolve(); };
+    signal.addEventListener('abort', bekor, { once: true });
+    gapirish(m, () => { signal.removeEventListener('abort', bekor); resolve(); });
+  });
+
   const jonliniBoshla = () => {
     if (jonli.current) { toxtat(); return; }
     if (!jonliMumkinmi()) { setBildirish(t('Bu brauzerda jonli ovoz ishlamaydi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.')); return; }
-    toxtat(); setBildirish(''); setJonliFaol(true); setMimikaSinovi(false);
+    toxtat(); nutqniTayyorla(); setBildirish(''); setJonliFaol(true); setMimikaSinovi(false);
     jonli.current = jonliBoshla({
       onHolat: setHolat, onDaraja: setOgizDarajasi,
       onMatn: (id, r, m) => jonliMatnRef.current(id, r, m),
       onAmallar: (a, m, s) => jonliAmalRef.current(a, m, s),
+      onOvoz: (m, s) => jonliOvozRef.current(m, s),
       onXato: (m) => { setBildirish(t(m)); setKayfiyat('xavotir'); },
       onTugadi: () => { jonli.current = null; setJonliFaol(false); },
     });
@@ -658,6 +668,7 @@ export default function AgentOynasi({
         <Maskot holat={holat} kayfiyat={kayfiyat} daraja={ogizDarajasi} olcham={112} sarlavha={t(holatMatni || 'Ҳамроҳ — ' + ({ vazmin: 'вазмин', xursand: 'хурсанд', jiddiy: 'жиддий', xavotir: 'хавотирда' }[kayfiyat]))} />
         <div className="min-w-0 flex-1 text-xs">
           <p className="font-medium text-ink">{t(holatMatni || 'Сизни тинглаяпман')}</p>
+          {malumot?.ovozChiqish && <p className="mt-1 text-ink-muted">{t(malumot.ovozXizmati === 'elevenlabs' ? 'Овоз: ElevenLabs' : 'Овоз: OpenAI')}</p>}
           <button type="button" className="mt-2 w-full rounded-md bg-accent px-3 py-2 font-medium text-accent-contrast disabled:opacity-40"
             disabled={!malumotTayyor || !malumot?.jonli || band}
             aria-pressed={jonliFaol} onClick={jonliniBoshla}>
@@ -687,7 +698,10 @@ export default function AgentOynasi({
         {t(holatXatosi ? 'Овоз ҳолатини текшириб бўлмади. Ойнани қайта очиб кўринг.' : 'Ўзбекча овоз уланмаган. Ҳозир жавоблар ёзма кўринади.')}
         {rol === 'ADMIN' && !holatXatosi && <details className="mt-1">
           <summary className="cursor-pointer">{t('Овозни қандай ёқиш мумкин?')}</summary>
-          <p className="mt-1">{t(malumot?.ovozUlanishi === 'ochirilgan' ? 'Серверда AGENT_TTS=1 ни ўрнатиб, иловани қайта жойланг.' : 'Сервернинг махфий созламаларида OPENAI_API_KEY ва AGENT_TTS=1 ни ўрнатиб, иловани қайта жойланг. Калитни суҳбатга ёзманг.')}</p>
+          <p className="mt-1">{t(malumot?.ovozUlanishi === 'ochirilgan' ? 'Серверда AGENT_TTS=1 ни ўрнатиб, иловани қайта жойланг.'
+            : malumot?.ovozUlanishi === 'ovoz_id_yoq' ? 'Vercel созламасида ELEVENLABS_VOICE_ID ни киритиб, қайта жойланг.'
+            : malumot?.ovozXizmati === 'elevenlabs' ? 'Vercel махфий созламаларида ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID ва AGENT_TTS=1 ни ўрнатинг. Калитни суҳбатга ёзманг.'
+            : 'Сервернинг махфий созламаларида OPENAI_API_KEY ва AGENT_TTS=1 ни ўрнатиб, иловани қайта жойланг. Калитни суҳбатга ёзманг.')}</p>
         </details>}
       </div>}
       <div className="border-b border-line bg-surface-muted px-4 py-2 text-xs text-ink-muted" role="status" aria-live="polite">
@@ -858,7 +872,8 @@ export default function AgentOynasi({
         {suhbatRejimi && <p className="mt-1 text-[11px] text-accent" role="status">{t('Овозли суҳбат ёқилган. Жавобдан сўнг яна эшитаман.')}</p>}
         {jonliFaol && <p className="mt-1 text-[11px] text-accent" role="status">{t('Жонли суҳбат ёқилган. Гапимни бўлиб савол беришингиз мумкин.')}</p>}
         <p className="mt-1.5 text-[10px] leading-snug text-ink-faint">
-          {t(jonliFaol ? 'Овоз OpenAI хизматида ишланади. Фуқаро исми ва телефонини айтманг.' : 'Овоз ташқи хизматда матнга айланади. Фуқаро исми ва телефонини айтманг.')}
+          {t(jonliFaol && malumot?.ovozXizmati === 'elevenlabs' ? 'OpenAI тинглайди, ElevenLabs гапиради. Фуқаро исми ва телефонини айтманг.'
+            : jonliFaol ? 'Овоз OpenAI хизматида ишланади. Фуқаро исми ва телефонини айтманг.' : 'Овоз ташқи хизматда матнга айланади. Фуқаро исми ва телефонини айтманг.')}
         </p>
       </div>
     </section>

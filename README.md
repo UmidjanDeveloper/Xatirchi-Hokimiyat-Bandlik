@@ -606,8 +606,14 @@ o'zgaruvchilarida ochiq turadi.
 
 Hamroh oynasida **Ovozni sinash** tugmasi bor. Ovoz ulanmagan bo'lsa,
 endi sabab yashirilmaydi; administrator uchun sozlash ko'rsatmasi chiqadi.
-Server ovozi uchun hostingning **maxfiy muhit sozlamalarida** `OPENAI_API_KEY`
-va `AGENT_TTS=1` kerak. Sozlamani o'zgartirgach ilovani qayta joylang.
+Server ovozi uchun `AGENT_TTS=1` va tanlangan xizmat kaliti kerak.
+ElevenLabs: `AGENT_TTS_PROVIDER=elevenlabs`, `ELEVENLABS_API_KEY`,
+`ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL_ID=eleven_v3`.
+O'zbek tili qo'llanishi provider model katalogidan tekshiriladi; qo'llamaydigan
+modelga nutq so'rovi yuborilmaydi. ElevenLabs kaliti mavjud bo'lsa, xizmat
+avtomatik tanlanadi; aniq `AGENT_TTS_PROVIDER=openai` bu tanlovni almashtiradi.
+OpenAI TTS uchun `OPENAI_API_KEY` ishlatiladi. Sozlamani o'zgartirgach ilovani qayta joylang.
+[ElevenLabs va Vercel uchun bosqichma-bosqich yo'riqnoma](hujjatlar/ELEVENLABS-VERCEL.md).
 Kalitni suhbatga, GitHub'ga yoki brauzer kodiga yozmang. Suhbat modeli
 (Groq/OpenAI va boshqalar) ulangan bo'lishi nutq xizmati ham ulanganini anglatmaydi.
 O'zbekcha qurilma ovozi mavjud bo'lsa, server ovozisiz undan foydalaniladi.
@@ -618,7 +624,11 @@ gapni bo'lib yangi savol berish mumkin. `OPENAI_API_KEY` va mavjud
 `AGENT_TTS=1` bilan tugma ochiladi; uni mustaqil yoqish uchun
 `AGENT_REALTIME=1`, o'chirish uchun `AGENT_REALTIME=0` ishlatiladi.
 OpenAI loyihangiz Realtime modeliga ruxsat va API balansiga ega bo'lishi kerak.
-Standart model `gpt-realtime`, ovoz `cedar`; `AGENT_REALTIME_MODEL` va
+ElevenLabs tanlanganida Realtime mikrofon, suhbat va asboblarni boshqaradi,
+faqat matn javobi qaytaradi; uni ElevenLabs o'qiydi. Ovoz tayyorlash uchun
+qo'shimcha kutish bor. Gapni bo'lish audio so'rovi/ijrosini ham bekor qiladi.
+ElevenLabs sozlanmagan bo'lsa, uning o'rniga indamay OpenAI ovozi qo'yilmaydi.
+Native OpenAI rejimida standart model `gpt-realtime`, ovoz `cedar`; `AGENT_REALTIME_MODEL` va
 `AGENT_REALTIME_VOICE` bilan almashtiriladi. Oddiy ovozning standarti ham
 `cedar`; oldindan o'rnatilgan `AGENT_TTS_VOICE` o'z kuchida qoladi.
 Bu ChatGPT xizmatining aynan o'zi emas; o'zbekcha talaffuz va hazil sifati
@@ -638,7 +648,9 @@ yozish takliflari va ovoz bilan tasdiqlash ishlamaydi.
 
 API kaliti brauzerga berilmaydi: SDP kelishuvi server orqali o'tadi.
 Mikrofon va javob audiosi foydalanuvchi Jonli suhbat tugmasini bosgach
-OpenAI bilan WebRTC orqali almashinadi. Suhbat bizning bazaga yozilmaydi,
+OpenAI bilan WebRTC orqali almashinadi. ElevenLabs rejimida mikrofon OpenAI'ga,
+javob matni server orqali ElevenLabs'ga boradi va audio shu xizmatdan keladi.
+Suhbat bizning bazaga yozilmaydi,
 brauzer varag'idagi mavjud tarixda turadi. Ilova fonga o'tsa yoki oyna
 yopilsa, mikrofon va ulanish bo'shatiladi, server hangup so'rovi yuboriladi.
 Interfeys besh daqiqada sessiyani yopadi; server asbob ruxsati ham besh

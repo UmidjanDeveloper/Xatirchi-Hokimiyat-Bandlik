@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     ctx.fullName = xodim?.fullName ?? '';
     const u = await jonliUlanish(d.sdp, jonliSessiya(ctx, sozlama, nomlar.map((m) => m.nomi)), sozlama.kalit, { signal: request.signal });
     if (request.signal.aborted) { await jonliYop(u.call, sozlama.kalit).catch(() => {}); return xato('Ulanish bekor qilindi.', 408); }
-    return json({ sdp: u.sdp, ruxsat: jonliRuxsatYarat(ctx, u.call), muddatMs: JONLI_MUDDAT_MS });
+    return json({ sdp: u.sdp, ruxsat: jonliRuxsatYarat(ctx, u.call), muddatMs: JONLI_MUDDAT_MS, tashqiOvoz: sozlama.tashqiOvoz });
   } catch {
     // Provider javobi, SDP, foydalanuvchi matni va kalitlar jurnalga yozilmaydi.
     return xato('Jonli ovoz xizmatiga ulanib bo‘lmadi. OpenAI hisobidagi xizmat ruxsati va balansni tekshiring yoki oddiy suhbatdan foydalaning.', 502);

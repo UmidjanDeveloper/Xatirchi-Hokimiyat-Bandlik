@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { modelAsboblari } from './asboblar';
 import { tizimKursatmasi } from './kursatma';
 import type { AgentKontekst } from './turlar';
+import { nutqProvayderi, nutqXizmati } from './nutq';
 
 export const JONLI_MUDDAT_MS = 5 * 60_000;
 export const JONLI_ASBOB_LIMIT = 30;
@@ -11,19 +12,24 @@ export function jonliSozlama(env: NodeJS.ProcessEnv = process.env) {
   const kalit = env.OPENAI_API_KEY?.trim();
   // Existing voice users can start Live explicitly via its button. A dedicated override can disable it.
   if (!kalit || env.AGENT_REALTIME === '0' || (env.AGENT_REALTIME !== '1' && env.AGENT_TTS !== '1')) return null;
+  const xizmat = nutqXizmati(env);
+  if (xizmat === 'noma_lum') return null;
+  const tashqiOvoz = xizmat === 'elevenlabs';
+  if (tashqiOvoz && !nutqProvayderi(env)) return null;
   const voice = env.AGENT_REALTIME_VOICE?.trim();
   return {
-    kalit, model: env.AGENT_REALTIME_MODEL?.trim() || 'gpt-realtime',
+    kalit, tashqiOvoz, model: env.AGENT_REALTIME_MODEL?.trim() || 'gpt-realtime',
     voice: ['cedar', 'marin', 'ash', 'echo', 'sage', 'verse', 'alloy', 'ballad', 'coral', 'shimmer'].includes(voice ?? '') ? voice! : 'cedar',
   };
 }
 
 export function jonliSessiya(ctx: AgentKontekst, sozlama: NonNullable<ReturnType<typeof jonliSozlama>>, nomlar: string[]) {
   return {
-    type: 'realtime', model: sozlama.model, output_modalities: ['audio'], max_output_tokens: 1000, tracing: null,
+    type: 'realtime', model: sozlama.model, output_modalities: [sozlama.tashqiOvoz ? 'text' : 'audio'], max_output_tokens: 1000, tracing: null,
     instructions: `${tizimKursatmasi(ctx)}
 
 JONLI OVOZLI SUHBAT
+${sozlama.tashqiOvoz ? '- Javob matni ElevenLabs orqali o‘qiladi. Har javobni odatda 2–4 qisqa jumlada yoz, maxsus audio teglar yoki sahna ko‘rsatmalarini yozma. Kerakli buyruq asboblarini odatdagidek chaqir.' : ''}
 - Ovozning o'zini eshitasan; yozma transkript yordamchi, u xato bo'lishi mumkin. Faqat ravon adabiy o'zbekchada so'zla. O'zbek o‘, g‘, q, x va h tovushlarini aniq ayt, ruscha yoki inglizcha urg'u ishlatma. O'rtacha tezlikda, iliq va ishonchli ohangda gapir.
 - Qisqa tabiiy gaplar ishlat. Vaziyatga mos yengil hazil qilish mumkin; fuqarolar yoki qiyinchiliklar ustidan kulma. Gapni bo'lishsa to'xta va yangi so'rovni tingla.
 - Rasmiy mahalla nomlari: ${nomlar.join(', ')}. Bu faqat nomlar katalogi, raqamlar emas. Noaniq eshitilgan nomni taxminan almashtirma: mahallani_top asbobidan foydalan. mahalla_noaniq qaytsa "${nomlar[0] ?? 'shu mahalla'}ni nazarda tutdingizmi?" kabi haqiqiy variant bilan aniqlashtir; javobni kut. mahalla_topilmadi bo'lsa "Ro'yxatda bunday mahalla yo'q, nomini yana aytasizmi?" de.

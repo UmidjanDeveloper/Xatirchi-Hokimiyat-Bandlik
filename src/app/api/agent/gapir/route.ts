@@ -7,6 +7,7 @@ import { A } from '@/lib/alifbo';
 import { alifboServer } from '@/lib/alifbo-server';
 import { ENG_UZUN_NUTQ } from '@/lib/agent/chegaralar';
 import { matnniOvozga, ttsSozlama } from '@/lib/agent/tts';
+import { NutqXatosi, nutqUlanishi, nutqXizmati } from '@/lib/agent/nutq';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 25;
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   );
   if (!agentOchiqmi(q.sessiya.rol)) return xato('Рухсат йўқ.', 403);
   const sozlama = ttsSozlama();
-  if (!sozlama) return xato('Овозли жавоб созланмаган. Матнни ўқишингиз мумкин.', 503);
+  if (!sozlama) return xato(nutqUlanishi() === 'ovoz_id_yoq' ? 'ElevenLabs ovozi tanlanmagan. Vercel sozlamasida ELEVENLABS_VOICE_ID ni kiriting.' : 'Овозли жавоб созланмаган. Матнни ўқишингиз мумкин.', 503);
   if (Number(request.headers.get('content-length')) > 16_000) return xato('Матн жуда узун.', 413);
   // Bound chunked bodies too; never buffer an unbounded request.
   const reader = request.body?.getReader();
@@ -51,8 +52,8 @@ export async function POST(request: Request) {
   try {
     const audio = await matnniOvozga(A(parsed.data.matn, 'lot'), sozlama, request.signal);
     return new Response(audio, { headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, no-store' } });
-  } catch {
+  } catch (e) {
     // Do not log user text or provider credentials.
-    return xato('Овозни тайёрлаб бўлмади. Жавоб матни экранда.', 502);
+    return xato(nutqXizmati() === 'elevenlabs' && e instanceof NutqXatosi ? e.message : 'Овозни тайёрлаб бўлмади. Жавоб матни экранда.', 502);
   }
 }

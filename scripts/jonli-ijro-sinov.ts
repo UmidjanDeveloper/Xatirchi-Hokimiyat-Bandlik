@@ -113,6 +113,30 @@ async function main() {
     s.peer.channel.emit({ type: 'response.done', response: { status: 'completed', output: Array.from({ length: 31 }, (_, i) => ({ type: 'function_call', call_id: `call${i}`, name: 'sahifani_och', arguments: '{}' })) } });
     await tick(); assert.equal(s.toolCalls, 30); assert.equal(s.effects, 30); assert.equal(s.ended, 1); assert.ok(s.errors.length); c.bekor();
   });
+  await test('ElevenLabs mode speaks completed text once and cancels playback on user interruption/close', async () => {
+    const s = setup(); s.setStart(async () => Response.json({ sdp: 'v=0 mock', ruxsat: 'fixture', tashqiOvoz: true }));
+    const voices: Array<{ text: string; signal: AbortSignal }> = [];
+    s.cb.onOvoz = async (text, signal) => { voices.push({ text, signal }); };
+    const c = jonliBoshla(s.cb); await tick();
+    const e = { type: 'response.done', response: { id: 'r1', status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Assalomu alaykum!' }] }] } };
+    s.peer.channel.emit(e); s.peer.channel.emit(e); await tick(); assert.equal(voices.length, 1); assert.equal(voices[0].text, 'Assalomu alaykum!');
+    s.cb.onOvoz = (text, signal) => { voices.push({ text, signal }); return new Promise<void>((r) => signal.addEventListener('abort', () => r(), { once: true })); };
+    s.peer.channel.emit({ ...e, response: { ...e.response, id: 'r2' } });
+    s.peer.channel.emit({ type: 'input_audio_buffer.speech_started' }); assert.equal(voices[1].signal.aborted, true);
+    s.peer.channel.emit({ ...e, response: { ...e.response, id: 'r3' } });
+    c.bekor(); assert.equal(voices[2].signal.aborted, true); await tick(); assert.equal(s.ended, 1);
+  });
+  await test('ElevenLabs mode skips cancelled/intermediate tool text and does not replace local mouth animation with remote silence', async () => {
+    const s = setup(); s.setStart(async () => Response.json({ sdp: 'v=0 mock', ruxsat: 'fixture', tashqiOvoz: true }));
+    let spoken = 0; s.cb.onOvoz = async () => { spoken++; };
+    const c = jonliBoshla(s.cb); await tick();
+    const message = { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Hisobot so‘raldi.' }] };
+    s.peer.channel.emit({ type: 'response.done', response: { id: 'cancelled', status: 'cancelled', output: [message] } });
+    s.peer.channel.emit({ type: 'response.done', response: { id: 'intermediate', status: 'completed', output: [message, { type: 'function_call', call_id: 'excel', name: 'hisobotni_yukla', arguments: '{}' }] } });
+    await tick(); assert.equal(spoken, 0); assert.equal(s.toolCalls, 1); assert.equal(s.amplitudes.length, 0);
+    s.peer.channel.emit({ type: 'response.output_text.done', item_id: 'text1', text: 'Javob matni.' }); assert.equal(s.transcripts.at(-1), 'a:Javob matni.');
+    c.bekor();
+  });
   console.log(`${checks}/${checks} WebRTC owner checks passed with fake media/provider.`);
 }
 main().catch((e) => { console.error(e); process.exitCode = 1; });

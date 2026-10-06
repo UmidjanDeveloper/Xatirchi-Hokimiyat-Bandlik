@@ -8,6 +8,7 @@ export interface JonliHodisalar {
   onAmallar(amallar: Amal[], manbalar: Manba[], signal: AbortSignal): Promise<Record<string, unknown>>;
   onXato(matn: string): void;
   onTugadi(): void;
+  onOvoz?(matn: string, signal: AbortSignal): Promise<void>;
 }
 
 export function jonliMumkinmi(): boolean {
@@ -31,6 +32,9 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
   let javobFaol = false;
   let navbat = 0;
   let asbobCtrl: AbortController | null = null;
+  let ovozCtrl: AbortController | null = null;
+  let tashqiOvoz = false;
+  const oqilgan = new Set<string>();
   const matnlar = new Map<string, string>();
   const chaqiruvlar = new Set<string>();
   const Ctx = typeof window !== 'undefined' ? window.AudioContext : undefined;
@@ -47,7 +51,7 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
   };
   const bekor = () => {
     if (tugadi) return;
-    tugadi = true; ctrl.abort(); asbobCtrl?.abort();
+    tugadi = true; ctrl.abort(); asbobCtrl?.abort(); ovozCtrl?.abort();
     clearTimeout(vaqt); clearTimeout(ulanishVaqti); cancelAnimationFrame(frame);
     mikrofon?.getTracks().forEach((t) => t.stop()); masofa?.getTracks().forEach((t) => t.stop());
     if (audio) { audio.pause(); audio.srcObject = null; audio.remove(); }
@@ -108,7 +112,7 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
     if (!e || typeof e !== 'object') return;
     switch (e.type) {
       case 'input_audio_buffer.speech_started':
-        navbat++; asbobCtrl?.abort(); speaking = false; cb.onDaraja(0); cb.onHolat('eshitmoqda'); break;
+        navbat++; asbobCtrl?.abort(); ovozCtrl?.abort(); speaking = false; cb.onDaraja(0); cb.onHolat('eshitmoqda'); break;
       case 'input_audio_buffer.speech_stopped': cb.onHolat('oylamoqda'); break;
       case 'conversation.item.input_audio_transcription.completed':
         if (typeof e.item_id === 'string' && typeof e.transcript === 'string') yangila(e.item_id, 'f', e.transcript); break;
@@ -119,6 +123,8 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
         if (typeof e.item_id === 'string' && typeof e.delta === 'string') yangila(e.item_id, 'a', e.delta, true); break;
       case 'response.output_audio_transcript.done':
         if (typeof e.item_id === 'string' && typeof e.transcript === 'string') yangila(e.item_id, 'a', e.transcript); break;
+      case 'response.output_text.done':
+        if (typeof e.item_id === 'string' && typeof e.text === 'string') yangila(e.item_id, 'a', e.text); break;
       case 'response.created': javobFaol = true; cb.onHolat('oylamoqda'); break;
       case 'output_audio_buffer.started': speaking = true; cb.onHolat('gapirmoqda'); break;
       case 'output_audio_buffer.stopped':
@@ -126,7 +132,23 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
       case 'response.done':
         javobFaol = false;
         if (e.response?.status === 'failed') { xato('Jonli javob olinmadi. Oddiy suhbatdan foydalaning.'); break; }
-        if (e.response?.status === 'completed' && Array.isArray(e.response.output)) void asboblarniBajar(e.response.output);
+        if (e.response?.status === 'completed' && Array.isArray(e.response.output)) {
+          void asboblarniBajar(e.response.output);
+          if (tashqiOvoz && typeof e.response.id === 'string' && !oqilgan.has(e.response.id)) {
+            oqilgan.add(e.response.id);
+            const m = e.response.output.filter((o: any) => o?.type === 'message' && o.role === 'assistant')
+              .flatMap((o: any) => Array.isArray(o.content) ? o.content : [])
+              .filter((c: any) => c?.type === 'output_text' && typeof c.text === 'string')
+              .map((c: any) => c.text).join(' ').trim();
+            // An intermediate tool response must not interrupt the exporter or claim completion.
+            if (m && !e.response.output.some((o: any) => o?.type === 'function_call')) {
+              ovozCtrl?.abort(); const turn = new AbortController(); ovozCtrl = turn;
+              if (cb.onOvoz) void cb.onOvoz(m, turn.signal).catch(() => cb.onXato('Ovoz olinmadi. Javob matni ekranda.')).finally(() => {
+                if (ovozCtrl === turn) { ovozCtrl = null; if (!tugadi && !turn.signal.aborted) cb.onHolat('eshitmoqda'); }
+              });
+            }
+          }
+        }
         break;
       case 'error':
         if (!['response_cancel_not_active', 'conversation_already_has_active_response'].includes(e.error?.code)) xato('Jonli suhbatda xato yuz berdi. Qayta ulang yoki yozma suhbatdan foydalaning.');
@@ -149,6 +171,7 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
       pc.ontrack = (e) => {
         if (tugadi) return;
         masofa = e.streams[0] ?? new MediaStream([e.track]);
+        if (tashqiOvoz) return; // The local ElevenLabs player owns audio and mouth amplitude.
         audio!.srcObject = masofa;
         void audio!.play().catch(() => xato('Ovozni eshitish uchun jonli suhbat tugmasini yana bosing.'));
         if (!context) return;
@@ -179,11 +202,12 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
       await pc.setLocalDescription(offer);
       const r = await fetch('/api/agent/jonli', { method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ tur: 'ulanish', sdp: offer.sdp }), signal: ctrl.signal });
-      const d = await r.json() as { sdp?: string; ruxsat?: string; muddatMs?: number; xabar?: string };
+      const d = await r.json() as { sdp?: string; ruxsat?: string; muddatMs?: number; tashqiOvoz?: boolean; xabar?: string };
       // A late answer after cancel still needs a provider hangup.
       if (tugadi) { if (d.ruxsat) atrofniYop(d.ruxsat); return; }
       if (!r.ok || !d.sdp || !d.ruxsat) { xato(d.xabar ?? 'Jonli xizmatga ulanib bo‘lmadi.'); return; }
       ruxsat = d.ruxsat;
+      tashqiOvoz = d.tashqiOvoz === true;
       await pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
       vaqt = setTimeout(() => { cb.onXato('Besh daqiqalik suhbat tugadi. Davom etish uchun qayta ulang.'); bekor(); }, Math.min(d.muddatMs ?? 300_000, 300_000));
     } catch (e) {
@@ -196,13 +220,14 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
     bekor,
     yubor(matn) {
       if (tugadi || dc?.readyState !== 'open' || !matn.trim()) return false;
-      navbat++; asbobCtrl?.abort();
+      navbat++; asbobCtrl?.abort(); ovozCtrl?.abort();
       if (javobFaol) send({ type: 'response.cancel' });
       if (speaking) send({ type: 'output_audio_buffer.clear' });
       send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: matn }] } });
       send({ type: 'response.create' }); return true;
     },
     eslat(matn) {
+      ovozCtrl?.abort();
       if (javobFaol) send({ type: 'response.cancel' });
       if (speaking) send({ type: 'output_audio_buffer.clear' });
       send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: `Interfeys natijasi: ${matn}. Natijani qisqa o'zbekcha ayt.` }] } });
