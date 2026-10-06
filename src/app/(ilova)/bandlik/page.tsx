@@ -751,10 +751,17 @@ function Kpi({
    * қила олади? Илгари рақам чиқарди-ю, ортидан ҳеч нарса
    * йўқ эди.
    */
+  /*
+   * `block` SHART: `<a>` odatda `inline`, ichida blok elementlar (div, p) bor inline
+   * havolaning fon va chegarasi faqat birinchi/oxirgi qator bo'laklarida chiziladi
+   * (kartalar "yo'qolib", faqat burchak yoylari qoladi). Karta grid'ning bevosita
+   * elementi bo'lganda grid uni o'zi blok qilardi; "Qanday hisoblangan" uchun
+   * <div> ichiga o'ralgach bu to'xtadi.
+   */
   const karta = yol ? (
     <Link
       href={yol}
-      className={`metric-card karta karta-bosiladigan p-4 ${xavfli ? 'border-warn' : ''}`}
+      className={`metric-card karta karta-bosiladigan block p-4 ${xavfli ? 'border-warn' : ''}`}
     >
       {ichi}
     </Link>
