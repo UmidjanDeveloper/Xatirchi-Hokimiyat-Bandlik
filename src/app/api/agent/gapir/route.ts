@@ -8,10 +8,14 @@ import { alifboServer } from '@/lib/alifbo-server';
 import { ENG_UZUN_NUTQ } from '@/lib/agent/chegaralar';
 import { matnniOvozga, ttsSozlama } from '@/lib/agent/tts';
 import { NutqXatosi, nutqUlanishi, nutqXizmati } from '@/lib/agent/nutq';
+import { jonliRuxsatOqi } from '@/lib/agent/jonli';
+import { korishdami } from '@/lib/korish-rejimi';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 25;
-const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ) });
+// `jonli`: yaroqli jonli suhbat ruxsatnomasi (faqat shu server imzolaydi). Jonli suhbatda javob
+// gap-gap o'qiladi, shuning uchun oddiy "tinglash" tugmasidan ko'ra ko'proq so'rov kerak bo'ladi.
+const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ), jonli: z.string().max(2000).optional() });
 
 export async function POST(request: Request) {
   const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
@@ -45,9 +49,21 @@ export async function POST(request: Request) {
   try { raw = JSON.parse(new TextDecoder().decode(bytes)); } catch { return xato('Матн нотўғри.', 400); }
   const parsed = Tana.safeParse(raw);
   if (!parsed.success) return xato('Матн нотўғри ёки жуда узун.', 400);
-  const minute = await bazaChegarasi(`agent-tts:${q.sessiya.userId}`, 6, 60_000);
+  const jonliRuxsat = parsed.data.jonli
+    ? jonliRuxsatOqi({
+      userId: q.sessiya.userId, rol: q.sessiya.rol, fullName: '', mahallaId: q.sessiya.mahallaId, alifbo: 'lot',
+      hozir: new Date(), oqishFaqat: Boolean(q.korish) || korishdami(q.sessiya),
+    }, parsed.data.jonli)
+    : null;
+  if (parsed.data.jonli && !jonliRuxsat) return xato('Жонли суҳбат тугаган. Қайта уланг.', 403);
+  // Jonli suhbat: alohida (kengroq, lekin chegaralangan) hisob; oddiy tugma hisobiga tegmaydi.
+  const minute = jonliRuxsat
+    ? await bazaChegarasi(`agent-tts-jonli:${q.sessiya.userId}`, 30, 60_000)
+    : await bazaChegarasi(`agent-tts:${q.sessiya.userId}`, 6, 60_000);
   if (!minute.allowed) return xato('Бир оз кутинг. Матн экранда сақланган.', 429);
-  const daily = await bazaChegarasi(`agent-tts-kun:${q.sessiya.userId}`, 80, 86_400_000);
+  const daily = jonliRuxsat
+    ? await bazaChegarasi(`agent-tts-jonli-kun:${q.sessiya.userId}`, 400, 86_400_000)
+    : await bazaChegarasi(`agent-tts-kun:${q.sessiya.userId}`, 80, 86_400_000);
   if (!daily.allowed) return xato('Бугунги овозли жавоб чегараси тугади.', 429);
   try {
     const audio = await matnniOvozga(A(parsed.data.matn, 'lot'), sozlama, request.signal);

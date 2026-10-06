@@ -26,7 +26,8 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
-      "connect-src 'self'",
+      // Gemini Live: brauzer faqat shu manzilga WebSocket ochadi (yakka foydalanishli token bilan)
+      "connect-src 'self' wss://generativelanguage.googleapis.com",
       "manifest-src 'self'",
       "worker-src 'self'",
       "base-uri 'self'",
