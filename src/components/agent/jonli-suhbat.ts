@@ -9,6 +9,14 @@ export interface JonliHodisalar {
   onXato(matn: string): void;
   onTugadi(): void;
   onOvoz?(matn: string, signal: AbortSignal): Promise<void>;
+  /**
+   * Gemini yo'li ishlamadi (ulanish, javob bermaslik...): OpenAI zaxirasiga o'tish kerak. `qoplash` — ishlamagan
+   * urinishning ruxsatnomasi (kunlik hisob ikki marta yemaydi), `mikrofon` — allaqachon ruxsat berilgan oqim.
+   * Berilmasa xato ko'rsatiladi va suhbat tugaydi.
+   */
+  onZaxira?(qoplash: string | undefined, sabab: string, mikrofon: MediaStream | null): void;
+  /** Xato emas, ogohlantirish (masalan "ElevenLabs ishlamadi, OpenAI ovozi o'qiyapti") */
+  onOgoh?(matn: string): void;
 }
 
 export function jonliMumkinmi(): boolean {
@@ -16,7 +24,11 @@ export function jonliMumkinmi(): boolean {
 }
 
 /** Native WebRTC audio, not a text -> TTS loop. The API key never reaches this module. */
-export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: string): boolean; eslat(matn: string): void } {
+export function jonliBoshla(
+  cb: JonliHodisalar,
+  // `zaxira`: Gemini ishlamadi, OpenAI o'z ovozi bilan davom etadi; `qoplash`: ishlamagan urinishning ruxsatnomasi (kunlik hisob ikki marta yemaydi)
+  opt: { zaxira?: boolean; qoplash?: string; mikrofon?: MediaStream | null } = {},
+): { bekor(): void; yubor(matn: string): boolean; eslat(matn: string): void } {
   const ctrl = new AbortController();
   let tugadi = false;
   let pc: RTCPeerConnection | null = null;
@@ -161,7 +173,9 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
       if (!jonliMumkinmi()) throw new Error('qurilma');
       cb.onHolat('oylamoqda');
       ulanishVaqti = setTimeout(() => xato('Jonli ulanish kechikdi. Qayta urinib ko‘ring.'), 35_000);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      // Zaxirada Gemini allaqachon ruxsat olgan oqim beriladi: ikkinchi marta so'ramaydi (iPhone'da qayta so'rov chiqmasin)
+      const stream = opt.mikrofon?.getAudioTracks().some((t) => t.readyState === 'live') ? opt.mikrofon
+        : await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       if (tugadi) { stream.getTracks().forEach((t) => t.stop()); return; }
       mikrofon = stream;
       pc = new RTCPeerConnection();
@@ -201,7 +215,7 @@ export function jonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: st
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       const r = await fetch('/api/agent/jonli', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tur: 'ulanish', sdp: offer.sdp }), signal: ctrl.signal });
+        body: JSON.stringify({ tur: 'ulanish', sdp: offer.sdp, ...(opt.zaxira ? { zaxira: true } : {}), ...(opt.zaxira && opt.qoplash ? { qoplash: opt.qoplash } : {}) }), signal: ctrl.signal });
       const d = await r.json() as { sdp?: string; ruxsat?: string; muddatMs?: number; tashqiOvoz?: boolean; xabar?: string };
       // A late answer after cancel still needs a provider hangup.
       if (tugadi) { if (d.ruxsat) atrofniYop(d.ruxsat); return; }

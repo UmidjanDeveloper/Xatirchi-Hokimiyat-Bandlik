@@ -37,7 +37,10 @@ const BOLISH_KADR = 4;
 const SONISH_MS = 350;
 const HALQA_KADR = 8;
 const MAKS_MUDDAT_MS = 5 * 60_000;
-const ULANISH_MS = 35_000;
+/** Mikrofon ruxsatidan keyin token + WebSocket + sozlash shu vaqtda tugamasa Gemini ishlamagan hisoblanadi */
+const ULANISH_MS = 15_000;
+/** Salomlashuvga Gemini'dan birinchi matn shu vaqtda kelmasa (model jim/rad etdi) Gemini ishlamagan hisoblanadi */
+const BIRINCHI_JAVOB_MS = 12_000;
 const MAKS_BUFER = 256_000;
 /** Transkripsiya bo'laklari orasidagi shu vaqtdan keyin kelgani yangi foydalanuvchi gapi hisoblanadi */
 const YANGI_GAP_MS = 2_500;
@@ -55,6 +58,8 @@ const guvoh = <T,>(p: Promise<T>): Promise<Natija<T>> => p.then((v) => ({ ok: tr
 interface UlanishJavobi {
   provayder?: string; wsUrl?: string; setup?: unknown; ruxsat?: string; muddatMs?: number; xabar?: string;
   chiqish?: 'matn' | 'transkript';
+  /** Xato javobida: ishlamagan urinishning imzolangan ruxsatnomasi (OpenAI zaxirasiga o'tishda kunlik hisob ikki marta yemaydi) */
+  zaxira?: string;
 }
 
 export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: string): boolean; eslat(matn: string): void } {
@@ -70,6 +75,10 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
   let jim: GainNode | null = null;
   let vaqt: ReturnType<typeof setTimeout> | undefined;
   let ulanishVaqti: ReturnType<typeof setTimeout> | undefined;
+  let birinchiVaqt: ReturnType<typeof setTimeout> | undefined;
+  /** Gemini haqiqatan javob bera boshladi: shundan keyin xato bo'lsa zaxiraga o'tilmaydi (ishlayotgan narsa ishlayveradi) */
+  let ishladi = false;
+  let qoplash: string | undefined;
   let sonishGacha = 0;
   let yuqoriKadr = 0;
   let halqa: Float32Array[] = [];
@@ -99,17 +108,33 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
     return true;
   };
 
-  const bekor = () => {
-    if (tugadi) return;
+  const tozala = (mikrofonniSaqla = false) => {
     tugadi = true; ctrl.abort(); asbobCtrl?.abort();
-    clearTimeout(vaqt); clearTimeout(ulanishVaqti);
+    clearTimeout(vaqt); clearTimeout(ulanishVaqti); clearTimeout(birinchiVaqt);
     nutq?.toxtat();
     try { tugun?.port.close(); tugun?.disconnect(); manbaTugun?.disconnect(); jim?.disconnect(); } catch { /* yopilgan */ }
-    mikrofon?.getTracks().forEach((t) => t.stop());
+    if (!mikrofonniSaqla) mikrofon?.getTracks().forEach((t) => t.stop());
     try { ws?.close(1000, 'yopildi'); } catch { /* yopilgan */ }
     void context?.close().catch(() => {});
+  };
+  const bekor = () => {
+    if (tugadi) return;
+    tozala();
     cb.onDaraja(0); cb.onHolat('tayyor'); cb.onTugadi();
   };
+  /**
+   * Gemini ishlamadi: suhbatni tugatmasdan OpenAI zaxirasiga o'tkazadi (`onTugadi` chaqirilmaydi: oyna "jonli" holatda
+   * qoladi). Mikrofon oqimi OpenAI'ga beriladi. Gemini allaqachon javob bergan bo'lsa yoki zaxira so'ralmagan bo'lsa
+   * `false`: odatdagi xato ko'rsatiladi.
+   */
+  const zaxiragaOt = (sabab: string): boolean => {
+    if (tugadi || ishladi || !cb.onZaxira) return false;
+    tozala(true);
+    cb.onDaraja(0);
+    cb.onZaxira(qoplash, sabab, mikrofon);
+    return true;
+  };
+  const ulanishXatosi = (m: string, sabab: string) => { if (!zaxiragaOt(sabab)) xato(m); };
   const xato = (m: string) => { if (!tugadi) { cb.onXato(m); bekor(); } };
 
   const yangila = (id: string, r: 'f' | 'a', m: string, qoshish = true) => {
@@ -193,12 +218,14 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
         break;
       }
       case 'matn': {
+        ishladi = true; clearTimeout(birinchiVaqt);
         if (!modelId) { modelId = `a${idSoni++}`; cb.onHolat('oylamoqda'); }
         yangila(modelId, 'a', h.matn);
         for (const g of bolgich.push(h.matn)) nutq?.qosh(g);
         break;
       }
       case 'yakun': {
+        ishladi = true; clearTimeout(birinchiVaqt);
         for (const g of bolgich.flush()) nutq?.qosh(g);
         modelId = null;
         foydalanuvchiYopiq = true;
@@ -221,7 +248,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
       if (h.t === 'asbob') asboblar.push(h);
       else hodisa(h);
     }
-    if (asboblar.length) void asboblarniBajar(asboblar);
+    if (asboblar.length) { ishladi = true; clearTimeout(birinchiVaqt); void asboblarniBajar(asboblar); }
   };
 
   /* ───────────── mikrofon -> Gemini ───────────── */
@@ -266,7 +293,6 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
     try {
       if (!geminiJonliMumkinmi() || !context) throw new Error('qurilma');
       cb.onHolat('oylamoqda');
-      ulanishVaqti = setTimeout(() => xato('Жонли уланиш кечикди. Қайта уриниб кўринг.'), ULANISH_MS);
 
       // Uchalasi parallel: modul, mikrofon ruxsati, server tokeni
       const modul = guvoh(context.audioWorklet.addModule('/gemini-pcm-worklet.js'));
@@ -283,14 +309,23 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
       if (!m.ok) throw m.e;
       if (tugadi) { m.v.getTracks().forEach((t) => t.stop()); return; }
       mikrofon = m.v;
+      // Mikrofon ruxsati (odam bosadi) vaqtga kirmaydi: kechikish faqat bundan keyingi qadamlar uchun
+      ulanishVaqti = setTimeout(() => ulanishXatosi('Жонли уланиш кечикди. Қайта уриниб кўринг.', 'kechikdi'), ULANISH_MS);
       const sv = await server;
       if (!sv.ok) throw sv.e;
       if (tugadi) return;
       const { r, d } = sv.v;
-      if (!r.ok || !d.wsUrl || !d.ruxsat || !d.setup) { xato(d.xabar ?? 'Жонли хизматга уланиб бўлмади.'); return; }
-      if (d.provayder !== 'gemini' || !geminiWsManziliTogrimi(d.wsUrl)) { xato('Жонли хизмат манзили нотўғри. Саҳифани янгиланг.'); return; }
+      qoplash = d.zaxira ?? d.ruxsat;
+      if (!r.ok || !d.wsUrl || !d.ruxsat || !d.setup) {
+        // Provayder xatosi (502/504) yoki server zaxira ruxsatnomasi bergan: OpenAI'ga o'tamiz; chegara/ruxsat xatolarida emas
+        if (d.zaxira || r.status === 502 || r.status === 504) ulanishXatosi(d.xabar ?? 'Жонли хизматга уланиб бўлмади.', `token_${r.status}`);
+        else xato(d.xabar ?? 'Жонли хизматга уланиб бўлмади.');
+        return;
+      }
+      if (d.provayder !== 'gemini' || !geminiWsManziliTogrimi(d.wsUrl)) { ulanishXatosi('Жонли хизмат манзили нотўғри. Саҳифани янгиланг.', 'manzil'); return; }
       const mod = await modul;
       if (!mod.ok) throw mod.e;
+      if (tugadi) return;
       ruxsat = d.ruxsat;
       chiqish = d.chiqish === 'transkript' ? 'transkript' : 'matn';
       nutq = nutqNavbatiYarat(context, () => ruxsat, {
@@ -298,6 +333,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
         onTugadi: () => { if (!tugadi) { sonishGacha = performance.now() + SONISH_MS; cb.onDaraja(0); cb.onHolat('eshitmoqda'); } },
         onDaraja: (x) => { if (!tugadi) cb.onDaraja(x); },
         onXato: (t) => { if (!tugadi) cb.onXato(t); },
+        onZaxiraOvozi: () => { if (!tugadi) cb.onOgoh?.('ElevenLabs овози ишламади: жавоб OpenAI овози билан ўқилмоқда.'); },
       });
 
       const soket = new WebSocket(d.wsUrl);
@@ -315,7 +351,9 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
             if (tugadi) return;
             cb.onHolat('eshitmoqda');
             yubor(geminiMatnXabari('Интерфейс: жонли суҳбат бошланди. Қисқа саломлаш ва фойдаланувчини тинглашга тайёрлигингни айт. Асбоб чақирма.'));
-          }).catch(() => xato('Микрофонни ишга тушириб бўлмади. Қайта уриниб кўринг.'));
+            // Model javob bermasa (matn rejimini rad etdi, kvota...) uzoq kutib o'tirmaymiz
+            birinchiVaqt = setTimeout(() => ulanishXatosi('Жонли хизмат жавоб бермади. Қайта уриниб кўринг.', 'javob_yoq'), BIRINCHI_JAVOB_MS);
+          }).catch(() => ulanishXatosi('Микрофонни ишга тушириб бўлмади. Қайта уриниб кўринг.', 'mikrofon_worklet'));
           vaqt = setTimeout(() => { cb.onXato('Беш дақиқалик суҳбат тугади. Давом этиш учун қайта уланинг.'); bekor(); }, Math.min(d.muddatMs ?? MAKS_MUDDAT_MS, MAKS_MUDDAT_MS));
           return;
         }
@@ -323,14 +361,17 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
       };
       soket.onclose = (e) => {
         if (tugadi) return;
+        // Hali birorta javob bermagan Gemini yopildi: OpenAI'ga o'tamiz; ishlagan suhbat esa oddiy tugaydi
+        if (zaxiragaOt(sozlandi ? 'yopildi_javobsiz' : `ws_rad_${e.code}`)) return;
         xato(sozlandi ? 'Жонли суҳбат якунланди.' : `Жонли хизмат уланишни рад этди (код ${e.code}). Администратор «Уланишни текшириш»ни босиши керак.`);
       };
     } catch (e) {
       if (tugadi) return;
       const nom = (e as Error)?.name;
-      xato(nom === 'NotAllowedError' ? 'Микрофонга рухсат беринг ва қайта уланинг.'
-        : nom === 'NotFoundError' ? 'Микрофон топилмади.'
-          : 'Жонли овозга уланиб бўлмади. Оддий микрофон ёки ёзма суҳбатдан фойдаланинг.');
+      // Mikrofon bo'lmasa OpenAI ham ishlamaydi: zaxiraga o'tilmaydi. Qolgan istisnolar (worklet, audio...) Gemini yo'liga xos.
+      if (nom === 'NotAllowedError') xato('Микрофонга рухсат беринг ва қайта уланинг.');
+      else if (nom === 'NotFoundError') xato('Микрофон топилмади.');
+      else ulanishXatosi('Жонли овозга уланиб бўлмади. Оддий микрофон ёки ёзма суҳбатдан фойдаланинг.', `istisno_${nom ?? 'xato'}`);
     }
   };
   void ulan();

@@ -373,6 +373,29 @@ const SINOVLAR: Sinov[] = [
       return /karta-bosiladigan block p-4/.test(kodiOl(b)) && /`block` SHART/.test(b);
     },
   },
+
+  /* ── 8. TELEFONDA SAHIFA GORIZONTAL SILJIMASIN (pet "ko'rinmay qoldi") ── */
+  /*
+   * Operatsion panelda "Suhbat navbati"/"Taklif navbati" `grid lg:grid-cols-2` ichida edi: telefonda
+   * yagona ustun `auto` bo'lib, ichidagi `truncate` (nowrap) qatorlar uni 390 -> 417 px ga kengaytirardi.
+   * Butun sahifa o'ngga siljib, `fixed` Hamroh tugmasi ekran chetidan chiqib ketardi. `grid-cols-1`
+   * `minmax(0, 1fr)` beradi. Brauzerdagi to'liq audit: `npm run sinov:brauzer-pet`.
+   */
+  {
+    nomi: 'Operatsion panel: navbat kartalari gridi `grid-cols-1` bilan (telefonda sahifa kengaymaydi), kartada `min-w-0`',
+    tekshir: () => {
+      const b = oqi('src/app/(ilova)/bandlik/page.tsx'); const k = kodiOl(b);
+      return /className="grid grid-cols-1 gap-4 lg:grid-cols-2"[^]{0,40}<Navbat/.test(k) && /<section className="karta min-w-0 p-4 sm:p-5">\s*<div className="flex items-baseline justify-between gap-2">/.test(k);
+    },
+  },
+  {
+    nomi: 'Hamroh tugmasi: oyna yiqilsa tugma qaytadi (xato chegarasi), joy ekranning haqiqiy o‘lchamidan hisoblanadi',
+    tekshir: () => {
+      const b = oqi('src/components/agent/agent-tugmasi.tsx');
+      return /class OynaChegarasi extends Component/.test(b) && /getDerivedStateFromError/.test(b) && /<OynaChegarasi key=\{yiqilgan\}/.test(b) &&
+        /visualViewport/.test(b) && !/petChegarasi\([^)]*window\.innerWidth/.test(b);
+    },
+  },
 ];
 
 let xato = 0;

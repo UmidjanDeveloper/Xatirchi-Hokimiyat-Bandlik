@@ -26,6 +26,8 @@ export interface NutqNavbatiHodisalari {
   /** Og'iz harakati uchun 0..1 */
   onDaraja(d: number): void;
   onXato(matn: string): void;
+  /** Server ElevenLabs o'rniga OpenAI zaxira ovozidan foydalandi (suhbatda bir marta xabar beriladi) */
+  onZaxiraOvozi?(): void;
 }
 
 const BIR_VAQTDA = 2;
@@ -51,6 +53,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   let avlod = 0;
   let xatoBerildi = false;
   let yuklanmoqda = 0;
+  let zaxiraBildirildi = false;
 
   const xato = (m: string) => { if (!xatoBerildi) { xatoBerildi = true; h.onXato(m); } };
 
@@ -70,6 +73,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
           if (mening === avlod) xato(d.xabar ?? 'Овозли жавоб олинмади. Жавоб матни экранда.');
           return null;
         }
+        if (r.headers.get('x-nutq-zaxira') === '1' && !zaxiraBildirildi && mening === avlod) { zaxiraBildirildi = true; h.onZaxiraOvozi?.(); }
         const bayt = await r.arrayBuffer();
         if (mening !== avlod) return null;
         return await ctx.decodeAudioData(bayt);

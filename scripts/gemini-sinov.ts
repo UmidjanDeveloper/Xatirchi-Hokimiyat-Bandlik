@@ -4,13 +4,16 @@
  */
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { GEMINI_ODATIY_MODEL, GeminiXatosi, geminiSetup, geminiSozlama, geminiSxema, geminiToken, jonliProvayderi } from '../src/lib/agent/gemini';
+import { GEMINI_ODATIY_MODEL, GeminiXatosi, geminiSetup, geminiSozlama, geminiSxema, geminiToken, jonliProvayderi, jonliZaxiraBormi } from '../src/lib/agent/gemini';
 import { geminiSoketniTekshir } from '../src/lib/agent/gemini-tekshir';
 import {
   GapBolgich, GEMINI_AUDIO_TURI, asbobIdsiniTozala, geminiAsbobJavobi, geminiAudioXabari, geminiMatnXabari,
   geminiWsManziliTogrimi, geminiXabarOqi, pcm16Base64,
 } from '../src/lib/agent/gemini-protokol';
-import { jonliRuxsatOqi, jonliRuxsatYarat, JONLI_MUDDAT_MS } from '../src/lib/agent/jonli';
+import { jonliRuxsatOqi, jonliRuxsatYarat, jonliSessiya, jonliSozlama, JONLI_MUDDAT_MS } from '../src/lib/agent/jonli';
+import { NutqXatosi, nutqZaxirasi } from '../src/lib/agent/nutq';
+import { elevenlabsHolatiniTozala, ovozMavjud, ovozZanjiri } from '../src/lib/agent/tts';
+import { openaiZaxiraniTekshir } from '../src/lib/agent/openai-tekshir';
 import { modelAsboblari } from '../src/lib/agent/asboblar';
 import type { AgentKontekst } from '../src/lib/agent/turlar';
 
@@ -295,6 +298,116 @@ test('Tekshiruv: setupComplete kelmasa vaqt tugaydi; javob bo‘sh bo‘lsa xato
   assert.equal((await tekshir({ wsUrl: 'wss://evil.example/x' }))[0].ok, false);
   const yoq = await geminiSoketniTekshir({ wsUrl: WS, setup: {}, chiqish: 'matn', Soket: undefined, kutishMs: 50 });
   assert.equal(yoq.length, 1);
+});
+
+/* ───────────── ZAXIRA: Gemini / ElevenLabs ishlamasa OpenAI ───────────── */
+const OPENAI_KALIT = 'sk-test-only-openai-private-key-0123456789';
+const OPENAI_ENV = { ...ENV, OPENAI_API_KEY: OPENAI_KALIT } as unknown as NodeJS.ProcessEnv;
+const mp3 = () => new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { 'content-type': 'audio/mpeg' } });
+const bosh = () => elevenlabsHolatiniTozala();
+const modellar = () => Response.json([{ model_id: 'eleven_v3', can_do_text_to_speech: true, languages: [{ language_id: 'uz' }] }]);
+const elModel = (u: unknown) => String(u).includes('elevenlabs.io') && String(u).endsWith('/models');
+
+test('Zaxira sozlamasi: OpenAI faqat kalit + AGENT_TTS=1 bo‘lsa; ElevenLabs asosiy bo‘lsa zaxira, OpenAI asosiy bo‘lsa yo‘q', () => {
+  assert.equal(nutqZaxirasi(ENV), null, 'OpenAI kaliti yo‘q');
+  assert.equal(nutqZaxirasi({ ...OPENAI_ENV, AGENT_TTS: '0' } as NodeJS.ProcessEnv), null);
+  assert.equal(nutqZaxirasi(OPENAI_ENV)?.provayder, 'openai');
+  assert.equal(nutqZaxirasi({ ...OPENAI_ENV, AGENT_TTS_PROVIDER: 'openai' } as NodeJS.ProcessEnv), null, 'asosiy o‘zi OpenAI: zaxira o‘zi bilan bir xil bo‘lardi');
+  assert.equal(nutqZaxirasi({ ...OPENAI_ENV, AGENT_TTS_PROVIDER: 'elevenlabs', ELEVENLABS_VOICE_ID: undefined } as NodeJS.ProcessEnv)?.provayder, 'openai', 'ElevenLabs to‘liq emas: zaxira ishlaydi');
+  assert.equal(ovozMavjud(ENV), true); assert.equal(ovozMavjud({ NODE_ENV: 'test' } as NodeJS.ProcessEnv), false);
+  assert.equal(ovozMavjud({ ...OPENAI_ENV, ELEVENLABS_VOICE_ID: undefined } as NodeJS.ProcessEnv), true, 'faqat zaxira bor');
+});
+test('Jonli zaxira: Gemini asosiy va OpenAI sozlangan bo‘lsa mavjud; OpenAI jonli suhbati o‘z ovozida (ElevenLabs bo‘lsa ham)', () => {
+  assert.equal(jonliZaxiraBormi(ENV), false, 'OpenAI yo‘q');
+  assert.equal(jonliZaxiraBormi(OPENAI_ENV), true);
+  assert.equal(jonliZaxiraBormi({ ...OPENAI_ENV, AGENT_JONLI_PROVAYDER: 'openai' } as NodeJS.ProcessEnv), false, 'Gemini asosiy emas');
+  assert.equal(jonliZaxiraBormi({ ...OPENAI_ENV, AGENT_REALTIME: '0' } as NodeJS.ProcessEnv), false);
+  assert.equal(jonliSozlama(OPENAI_ENV)?.tashqiOvoz, true, 'oddiy OpenAI yo‘li: matn + ElevenLabs ovozi');
+  const z = jonliSozlama(OPENAI_ENV, { mahalliyOvoz: true })!;
+  assert.equal(z.tashqiOvoz, false);
+  assert.deepEqual(jonliSessiya(ctx, z, ['Uyshun']).output_modalities, ['audio']);
+  assert.ok(!JSON.stringify(jonliSessiya(ctx, z, ['Uyshun'])).includes(OPENAI_KALIT));
+  assert.equal(jonliProvayderi(OPENAI_ENV), 'gemini', 'Gemini ishlasa Gemini');
+});
+test('Jonli: ElevenLabs sozlanmagan bo‘lsa Gemini yoqilmaydi, OpenAI o‘z ovozida ishlaydi (jonli suhbat o‘chib qolmaydi)', () => {
+  const elsiz = { NODE_ENV: 'test', GEMINI_API_KEY: KALIT, OPENAI_API_KEY: OPENAI_KALIT, AGENT_TTS: '1', AGENT_TTS_PROVIDER: 'elevenlabs' } as unknown as NodeJS.ProcessEnv;
+  assert.equal(geminiSozlama(elsiz), null);
+  assert.equal(jonliProvayderi(elsiz), 'openai');
+  assert.equal(jonliSozlama(elsiz)?.tashqiOvoz, false);
+  assert.equal(jonliProvayderi({ ...elsiz, AGENT_TTS_PROVIDER: 'nomalum' } as NodeJS.ProcessEnv), 'openai');
+});
+test('Ovoz zanjiri: ElevenLabs ishlasa zaxira KERAK emas va OpenAI’ga so‘rov ketmaydi', async () => {
+  bosh(); const chaqiruv: string[] = [];
+  const f = (async (u: string) => { chaqiruv.push(String(u)); return elModel(u) ? modellar() : mp3(); }) as unknown as typeof fetch;
+  const n = await ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f });
+  assert.equal(n.provayder, 'elevenlabs'); assert.equal(n.zaxira, false);
+  assert.ok(chaqiruv.every((u) => u.includes('elevenlabs.io')), chaqiruv.join());
+});
+test('Ovoz zanjiri: ElevenLabs yiqilsa OpenAI o‘qiydi; xom javob, kalit va ElevenLabs matni chiqmaydi', async () => {
+  bosh(); const chaqiruv: string[] = [];
+  const f = (async (u: string) => {
+    chaqiruv.push(String(u));
+    if (elModel(u)) return modellar();
+    return String(u).includes('elevenlabs.io') ? new Response(JSON.stringify({ detail: { status: 'quota_exceeded', message: 'You have run out of credits' } }), { status: 401 }) : mp3();
+  }) as unknown as typeof fetch;
+  const n = await ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f });
+  assert.equal(n.provayder, 'openai'); assert.equal(n.zaxira, true); assert.equal(n.audio.byteLength, 4);
+  assert.match(n.sabab ?? '', /401|quota/i); assert.ok(!(n.sabab ?? '').includes(EL_KALIT));
+  assert.ok(chaqiruv.some((u) => u.includes('api.openai.com/v1/audio/speech')));
+});
+test('Ovoz zanjiri: ikkalasi ham yiqilsa xabarda ikkalasining sababi bor, lekin OpenAI xom matni va kalitlar yo‘q', async () => {
+  bosh();
+  const f = (async (u: string) => elModel(u) ? modellar() : String(u).includes('elevenlabs.io')
+    ? new Response('{"detail":{"status":"voice_not_found","message":"voice missing"}}', { status: 404 })
+    : new Response(`{"error":{"message":"Incorrect API key provided: ${OPENAI_KALIT}"}}`, { status: 401 })) as unknown as typeof fetch;
+  const e = await ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f }).then(() => null, (x) => x) as NutqXatosi;
+  assert.ok(e instanceof NutqXatosi); assert.match(e.message, /voice_not_found|404/); assert.match(e.message, /OpenAI zaxira/); assert.match(e.message, /HTTP 401/);
+  for (const g of [OPENAI_KALIT, EL_KALIT, 'Incorrect API key']) assert.ok(!e.message.includes(g), g);
+});
+test('Ovoz zanjiri: foydalanuvchi bekor qilsa zaxiraga o‘tilmaydi; zaxirasiz ElevenLabs xatosi o‘zgarmaydi', async () => {
+  bosh(); let n = 0;
+  const f = (async () => { n++; return new Response('x', { status: 500 }); }) as unknown as typeof fetch;
+  const c = new AbortController(); c.abort();
+  await assert.rejects(ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f, signal: c.signal }));
+  assert.equal(n, 0);
+  const e = await ovozZanjiri('Salom.', { env: ENV, fetchFn: f }).then(() => null, (x) => x);
+  assert.ok(e instanceof NutqXatosi); assert.ok(!/zaxira/i.test(e.message)); assert.ok(n >= 1);
+});
+test('Ovoz zanjiri: ElevenLabs ketma-ket yiqilsa 60 soniya unga so‘rov yuborilmaydi, keyin yana sinaladi', async () => {
+  bosh(); let hozir = 1_000_000; const eleven: number[] = [];
+  const f = (async (u: string) => {
+    if (elModel(u)) return modellar();
+    if (String(u).includes('elevenlabs.io')) { eleven.push(hozir); return new Response('{}', { status: 503 }); }
+    return mp3();
+  }) as unknown as typeof fetch;
+  const t = () => hozir;
+  for (let i = 0; i < 2; i++) assert.equal((await ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f, hozir: t })).zaxira, true);
+  const sinovlar2 = eleven.length;
+  const o = await ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f, hozir: t });
+  assert.equal(o.zaxira, true); assert.equal(eleven.length, sinovlar2, 'tanaffusda ElevenLabs’ga so‘rov yo‘q'); assert.match(o.sabab ?? '', /o‘tkazib/);
+  hozir += 61_000;
+  await ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f, hozir: t });
+  assert.ok(eleven.length > sinovlar2, 'tanaffusdan keyin yana sinaladi');
+  bosh();
+});
+test('Ovoz zanjiri: ElevenLabs sozlanmagan bo‘lsa to‘g‘ridan-to‘g‘ri OpenAI; hech narsa yo‘q bo‘lsa xato', async () => {
+  bosh();
+  const f = (async (u: string) => { assert.ok(String(u).includes('api.openai.com')); return mp3(); }) as unknown as typeof fetch;
+  const n = await ovozZanjiri('Salom.', { env: { ...OPENAI_ENV, ELEVENLABS_VOICE_ID: undefined } as NodeJS.ProcessEnv, fetchFn: f });
+  assert.equal(n.provayder, 'openai'); assert.equal(n.zaxira, true);
+  await assert.rejects(ovozZanjiri('Salom.', { env: { NODE_ENV: 'test' } as NodeJS.ProcessEnv, fetchFn: f }), NutqXatosi);
+});
+test('OpenAI zaxira tekshiruvi: sozlanmagan / ishlaydi / 401 / 404 / 429 / tarmoq xatosi — kalitsiz, aniq izoh bilan', async () => {
+  const yoq = await openaiZaxiraniTekshir({ NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+  assert.equal(yoq.ok, false); assert.match(yoq.izoh, /OPENAI_API_KEY/);
+  const javob = (st: number) => (async () => new Response('{}', { status: st })) as unknown as typeof fetch;
+  const ok = await openaiZaxiraniTekshir(OPENAI_ENV, javob(200)); assert.equal(ok.ok, true); assert.match(ok.izoh, /gpt-realtime/);
+  assert.match((await openaiZaxiraniTekshir(OPENAI_ENV, javob(401))).izoh, /401/);
+  assert.match((await openaiZaxiraniTekshir(OPENAI_ENV, javob(404))).izoh, /ruxsat yo‘q/);
+  assert.match((await openaiZaxiraniTekshir(OPENAI_ENV, javob(429))).izoh, /kvota|balans/);
+  const tarmoq = await openaiZaxiraniTekshir(OPENAI_ENV, (async () => { throw new Error(`socket ${OPENAI_KALIT}`); }) as unknown as typeof fetch);
+  assert.equal(tarmoq.ok, false); assert.ok(!tarmoq.izoh.includes(OPENAI_KALIT));
+  for (const q of [ok, yoq]) assert.ok(!JSON.stringify(q).includes(OPENAI_KALIT));
 });
 
 async function main() {
