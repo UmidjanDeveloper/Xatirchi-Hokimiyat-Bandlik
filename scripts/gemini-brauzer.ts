@@ -6,12 +6,13 @@
  *  mijozi, sahifa, server yo'llari, imzolangan ruxsatnoma, baza va asboblar.
  *  Soxta: Gemini (WebSocket brauzer ichida, Playwright `routeWebSocket`),
  *  Google token manzili (mahalliy HTTP) va ElevenLabs ovozi (WAV).
- *  Haqiqiy Gemini/ElevenLabs bilan end-to-end sinov EMAS.
+ *  OpenAI zaxirasi (C bo'limi): brauzerning OpenAI'ga ketadigan so'rovi ushlanadi, haqiqiy OpenAI'ga chiqilmaydi.
+ *  Haqiqiy Gemini/ElevenLabs/OpenAI bilan end-to-end sinov EMAS.
  *
  *  Ishga tushirish (ishlab chiqarish rejimida token manzili o'zgarmaydi,
  *  shuning uchun `next dev`):
  *    GEMINI_API_KEY=AIza-sinov GEMINI_API_BAZA_SINOV=http://127.0.0.1:8966 \
- *    AGENT_TTS=1 ELEVENLABS_API_KEY=el-sinov ELEVENLABS_VOICE_ID=voice_1 \
+ *    AGENT_TTS=1 ELEVENLABS_API_KEY=el-sinov ELEVENLABS_VOICE_ID=voice_1 OPENAI_API_KEY=sk-sinov \
  *    npx next dev -p 3197 &
  *    BAZA=http://127.0.0.1:3197 npx tsx scripts/gemini-brauzer.ts
  *
@@ -90,9 +91,10 @@ async function xodimYarat(nom: string) {
   return u;
 }
 
-async function sahifaOch(brauzer: S, username: string) {
+async function sahifaOch(brauzer: S, username: string, initSkript?: string) {
   const ctx = await brauzer.newContext({ viewport: { width: 1280, height: 900 }, permissions: ['microphone'] });
   await ctx.addCookies([{ name: 'bandlik_alifbo', value: 'kir', url: BAZA }]);
+  if (initSkript) await ctx.addInitScript(initSkript);
   const page = await ctx.newPage();
   const xatolar: string[] = [];
   page.on('pageerror', (e: Error) => xatolar.push(String(e).slice(0, 200)));
@@ -130,6 +132,8 @@ async function main() {
   const holat = await fetch(`${BAZA}/kirish`).then((r) => r.status).catch(() => 0);
   if (holat !== 200) throw new Error(`server ${BAZA} javob bermayapti`);
 
+  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABC'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
+  if (bolim.includes('A')) {
   /* ═══ A. To'liq oqim: salom, transkripsiya, asbob, gaplab o'qish, yozma matn, to'xtatish (jim mikrofon) ═══ */
   const A = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
   try {
@@ -195,6 +199,12 @@ async function main() {
       });
     });
 
+    // A bo'limi Gemini'ning O'ZINI sinaydi: zaxira (OpenAI) o'chirilgan deb ko'rsatamiz. Zaxira C bo'limida.
+    await page.route('**/api/agent/holat', async (route: S) => {
+      const r = await route.fetch(); const j = await r.json().catch(() => null);
+      if (j) j.jonliZaxira = false;
+      await route.fulfill({ response: r, json: j ?? {} });
+    });
     await oynaOch(page);
     const hm = await page.evaluate(async () => (await fetch('/api/agent/holat')).json());
     tekshir('A1. /holat: jonli yoqilgan va provayder Gemini (kalit + ElevenLabs sozlangan)', hm.jonli === true && hm.jonliProvayder === 'gemini', JSON.stringify({ jonli: hm.jonli, p: hm.jonliProvayder }));
@@ -281,8 +291,8 @@ async function main() {
     await page.getByRole('button', { name: 'Уланишни текшириш' }).click();
     const natija = await kut(async () => (await page.locator('[data-tekshiruv-natijasi]').count()) > 0, 70_000, 500);
     const natMatni = natija ? await page.locator('[data-tekshiruv-natijasi]').innerText() : '';
-    tekshir('A18. “Уланишни текшириш”: qadamlar ko‘rinadi (sozlama ✓, token ✓), tashqi xizmatlar yetib bo‘lmasa sababi aytiladi, kalit ko‘rinmaydi',
-      natija && /✓\s*Sozlama/.test(natMatni) && /✓\s*Gemini token/.test(natMatni) && /(✗|✓)\s*ElevenLabs/.test(natMatni) && !natMatni.includes(process.env.GEMINI_API_KEY ?? 'x!'), natMatni.replace(/\n/g, ' | ').slice(0, 260));
+    tekshir('A18. “Уланишни текшириш”: qadamlar ko‘rinadi (sozlama ✓, token ✓, OpenAI zaxirasi qatori), tashqi xizmatlar yetib bo‘lmasa sababi aytiladi, kalit ko‘rinmaydi',
+      natija && /✓\s*Sozlama/.test(natMatni) && /✓\s*Gemini token/.test(natMatni) && /(✗|✓)\s*ElevenLabs/.test(natMatni) && /(✗|✓)\s*OpenAI zaxirasi/.test(natMatni) && !natMatni.includes(process.env.GEMINI_API_KEY ?? 'x!'), natMatni.replace(/\n/g, ' | ').slice(0, 260));
     await page.screenshot({ path: `${SKRIN}/a18-tekshiruv.png` });
     tekshir('A19. Sahifada kutilmagan xato yo‘q (pageerror)', xatolar.length === 0, xatolar.join(' | '));
   } catch (e) {
@@ -293,6 +303,9 @@ async function main() {
     throw e;
   } finally { await A.close(); }
 
+  }
+
+  if (bolim.includes('B')) {
   /* ═══ B. Gapni bo'lish (barge-in): ovoz o'ynayotganda foydalanuvchi baland ovoz bilan gapirsa ═══ */
   const B = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-ovoz.wav') });
   try {
@@ -337,6 +350,147 @@ async function main() {
     tekshir('B5. Sahifada kutilmagan xato yo‘q', xatolar.length === 0, xatolar.join(' | '));
     await page.screenshot({ path: `${SKRIN}/b-bolish.png` });
   } finally { await B.close(); }
+
+  }
+
+  if (bolim.includes('C')) {
+  /* ═══ C. ZAXIRA: Gemini (yoki uning ElevenLabs ovozi) ishlamasa OpenAI'ga o'tish ═══
+     OpenAI'ga ketadigan brauzer so'rovi (`tur: ulanish`) ushlanadi: haqiqiy OpenAI'ga chiqilmaydi,
+     lekin so'rovning ichidagi `zaxira` va `qoplash` maydonlari tekshiriladi. */
+  const Cb = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
+  type Sorov = { tur: string; body: S };
+  type Reja = { ws: 'rad' | 'jim' | 'javob_keyin_yopiladi'; token?: { status: number; json: S }; gapirZaxira?: boolean; openaiKechikishi?: number };
+  async function zaxiraSahifasi(nom: string, reja: Reja) {
+    const u = await xodimYarat(`c_${nom}`);
+    const gum = 'window.__name = (t) => t; (() => { const md = navigator.mediaDevices; const orig = md.getUserMedia.bind(md); window.__gum = 0; md.getUserMedia = (c) => { window.__gum++; return orig(c); }; })();';
+    const { ctx, page, xatolar } = await sahifaOch(Cb, u.username, gum);
+    const sorovlar: Sorov[] = [];
+    const bosh: { geminiRuxsat?: string } = {};
+    await page.route('**/api/agent/jonli', async (route: S) => {
+      const body = JSON.parse(route.request().postData() ?? '{}');
+      if (body.tur === 'ulanish') {
+        sorovlar.push({ tur: 'ulanish', body });
+        if (reja.openaiKechikishi) await uyqu(reja.openaiKechikishi);
+        await route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ xabar: 'Jonli ovoz xizmatiga ulanib bo‘lmadi (sinov: haqiqiy OpenAI’ga chiqilmaydi).' }) });
+      } else if (body.tur === 'gemini_ulanish') {
+        sorovlar.push({ tur: 'gemini_ulanish', body });
+        if (reja.token) { await route.fulfill({ status: reja.token.status, contentType: 'application/json', body: JSON.stringify(reja.token.json) }); return; }
+        const r = await route.fetch(); const j = await r.json().catch(() => ({})); bosh.geminiRuxsat = j.ruxsat;
+        await route.fulfill({ response: r });
+      } else await route.continue();
+    });
+    const gapirSorov: number[] = [];
+    await page.route('**/api/agent/gapir', async (route: S) => {
+      gapirSorov.push(Date.now());
+      await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: ttsAudio, headers: reja.gapirZaxira ? { 'x-nutq-zaxira': '1', 'x-nutq-provayder': 'openai' } : {} });
+    });
+    let wsOchildi = 0;
+    await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
+      wsOchildi++;
+      ws.onMessage((xom: string | Buffer) => {
+        const d = JSON.parse(String(xom));
+        if (d.setup) {
+          if (reja.ws === 'rad') { ws.close({ code: 1007, reason: 'models/xyz is not found for API version v1alpha' }); return; }
+          ws.send(JSON.stringify({ setupComplete: {} })); return;
+        }
+        if (d.realtimeInput?.text && /жонли суҳбат бошланди/.test(d.realtimeInput.text) && reja.ws === 'javob_keyin_yopiladi') {
+          ws.send(JSON.stringify({ serverContent: { modelTurn: { parts: [{ text: 'Ассалому алайкум. Сизни тинглаяпман.' }] } } }));
+          ws.send(JSON.stringify({ serverContent: { turnComplete: true } }));
+          setTimeout(() => ws.close({ code: 1011, reason: 'server xatosi' }), 1500);
+        }
+      });
+    });
+    await oynaOch(page);
+    const bosish = () => page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
+    const gumSoni = (): Promise<number> => page.evaluate(() => (window as unknown as { __gum: number }).__gum);
+    const matn = (): Promise<string> => page.locator('body').innerText();
+    const kapat = async () => { await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {}); await ctx.close().catch(() => {}); };
+    return { ctx, page, xatolar, sorovlar, bosh, bosish, gumSoni, matn, gapirSorov, wsSoni: () => wsOchildi, kapat };
+  }
+
+  try {
+    /* C1: Gemini WebSocket'ni rad etdi (1007) -> OpenAI zaxirasi; qoplash = Gemini urinishining ruxsatnomasi; mikrofon qayta so'ralmaydi */
+    const c1 = await zaxiraSahifasi('rad', { ws: 'rad', openaiKechikishi: 3000 });
+    const hm = await c1.page.evaluate(async () => (await fetch('/api/agent/holat')).json());
+    tekshir('C0. /holat: Gemini asosiy va OpenAI zaxirasi tayyor (jonliZaxira)', hm.jonliProvayder === 'gemini' && hm.jonliZaxira === true, JSON.stringify({ p: hm.jonliProvayder, z: hm.jonliZaxira }));
+    await c1.bosish();
+    const z1 = await kut(() => c1.sorovlar.some((x) => x.tur === 'ulanish'), 25_000);
+    const ul1 = c1.sorovlar.find((x) => x.tur === 'ulanish')?.body;
+    tekshir('C1. Gemini rad etdi (1007): brauzer o‘zi OpenAI zaxirasiga o‘tdi — so‘rov {zaxira:true, qoplash=Gemini urinishining ruxsatnomasi}',
+      z1 && ul1?.zaxira === true && typeof ul1?.qoplash === 'string' && ul1.qoplash === c1.bosh.geminiRuxsat && typeof ul1?.sdp === 'string' && ul1.sdp.startsWith('v=0'), JSON.stringify({ zaxira: ul1?.zaxira, qoplash: typeof ul1?.qoplash, tenglik: ul1?.qoplash === c1.bosh.geminiRuxsat }));
+    tekshir('C2. Mikrofon ruxsati ikkinchi marta so‘ralmadi: Gemini oqimi OpenAI’ga berildi (getUserMedia 1 marta)', (await c1.gumSoni()) === 1, `getUserMedia=${await c1.gumSoni()}`);
+    const xabar1 = await kut(async () => /Gemini ишламади/.test(await c1.matn()), 6000, 100);
+    tekshir('C3. Foydalanuvchiga aytildi: “Gemini ишламади: OpenAI билан давом этилмоқда”', xabar1);
+    const bosFl = await c1.page.evaluate(() => sessionStorage.getItem('hamroh:gemini-yiqildi'));
+    tekshir('C4. Gemini yiqilgani 3 daqiqaga eslab qolinadi (sessionStorage)', Boolean(bosFl) && Date.now() - Number(bosFl) < 30_000);
+    const xatoKorindi = await kut(async () => /sinov: haqiqiy OpenAI/.test(await c1.matn()), 10_000);
+    tekshir('C5. OpenAI ham javob bermasa uning xatosi ko‘rsatiladi va tugma qaytadi', xatoKorindi && (await c1.page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1);
+    await c1.page.screenshot({ path: `${SKRIN}/c1-zaxira.png` });
+
+    /* C6: keyingi bosish — Gemini'ga qayta urinmaydi, to'g'ridan-to'g'ri OpenAI (kunlik hisob va vaqt tejaladi) */
+    const geminiOldin = c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length, wsOldin = c1.wsSoni();
+    await c1.bosish();
+    const z6 = await kut(() => c1.sorovlar.filter((x) => x.tur === 'ulanish').length >= 2, 15_000);
+    const ul6 = c1.sorovlar.filter((x) => x.tur === 'ulanish')[1]?.body;
+    tekshir('C6. Gemini yaqinda yiqilgan: keyingi bosishda Gemini’ga urinilmaydi, to‘g‘ridan-to‘g‘ri OpenAI ({zaxira:true}, qoplashsiz)',
+      z6 && ul6?.zaxira === true && ul6?.qoplash === undefined && c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length === geminiOldin && c1.wsSoni() === wsOldin, JSON.stringify({ zaxira: ul6?.zaxira, qoplash: ul6?.qoplash, gemini: c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length - geminiOldin }));
+    // muddat o'tgach Gemini yana sinaladi ("ishlasa ishlayveradi")
+    await c1.page.evaluate(() => sessionStorage.setItem('hamroh:gemini-yiqildi', String(Date.now() - 4 * 60_000)));
+    await kut(async () => (await c1.page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1, 10_000);
+    await c1.bosish();
+    const qayta = await kut(() => c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length > geminiOldin, 15_000);
+    tekshir('C7. 3 daqiqadan keyin Gemini yana sinab ko‘riladi', qayta);
+    tekshir('C8. Sahifada kutilmagan xato yo‘q (pageerror)', c1.xatolar.length === 0, c1.xatolar.join(' | '));
+    await c1.kapat();
+
+    /* C9: token bosqichida provayder xatosi (502) + server bergan qoplash ruxsatnomasi */
+    const c2 = await zaxiraSahifasi('token502', { ws: 'rad', token: { status: 502, json: { xabar: 'Gemini ulanmadi', zaxira: 'server.qoplash-ruxsatnomasi' } } });
+    await c2.bosish();
+    const z2 = await kut(() => c2.sorovlar.some((x) => x.tur === 'ulanish'), 20_000);
+    const ul2 = c2.sorovlar.find((x) => x.tur === 'ulanish')?.body;
+    tekshir('C9. Gemini tokeni 502 + server qoplash bergan: OpenAI zaxirasi shu qoplash bilan boshlanadi, Gemini WebSocket ochilmaydi',
+      z2 && ul2?.zaxira === true && ul2?.qoplash === 'server.qoplash-ruxsatnomasi' && c2.wsSoni() === 0 && (await c2.gumSoni()) === 1, JSON.stringify({ qoplash: ul2?.qoplash, ws: c2.wsSoni(), gum: await c2.gumSoni() }));
+    await c2.kapat();
+
+    /* C10: chegara/ruxsat xatolari (429) zaxiraga O'TKAZMAYDI: OpenAI ham shu chegaraga uriladi */
+    const c3 = await zaxiraSahifasi('token429', { ws: 'rad', token: { status: 429, json: { xabar: 'Бугунги жонли суҳбатлар чегараси тугади.' } } });
+    await c3.bosish();
+    const xabar3 = await kut(async () => /чегараси тугади/.test(await c3.matn()), 10_000);
+    await uyqu(1500);
+    tekshir('C10. Kunlik chegara (429): zaxiraga o‘tilmaydi, xabar ko‘rsatiladi, OpenAI’ga so‘rov ketmaydi', xabar3 && !c3.sorovlar.some((x) => x.tur === 'ulanish'), c3.sorovlar.map((x) => x.tur).join());
+    await c3.kapat();
+
+    /* C11: Gemini ulanadi, lekin hech qachon javob bermaydi (model matnni rad etdi, kvota...) -> ~12 soniyadan keyin zaxira */
+    const c4 = await zaxiraSahifasi('jim', { ws: 'jim' });
+    const t0 = Date.now();
+    await c4.bosish();
+    const z4 = await kut(() => c4.sorovlar.some((x) => x.tur === 'ulanish'), 25_000, 200);
+    const ul4 = c4.sorovlar.find((x) => x.tur === 'ulanish')?.body; const sekund = (Date.now() - t0) / 1000;
+    tekshir('C11. Gemini ulandi, lekin javob bermadi: ~12 soniyada OpenAI zaxirasi (qoplash = Gemini ruxsatnomasi)', z4 && sekund >= 10 && sekund <= 22 && ul4?.qoplash === c4.bosh.geminiRuxsat, `${sekund.toFixed(1)} s`);
+    await c4.kapat();
+
+    /* C12: Gemini ISHLADI (javob berdi), keyin server uzdi -> zaxiraga O'TILMAYDI (ishlagan suhbat tugaydi) */
+    const c5 = await zaxiraSahifasi('keyin_yopildi', { ws: 'javob_keyin_yopiladi' });
+    await c5.bosish();
+    const salom = await kut(() => c5.gapirSorov.length >= 1, 15_000);
+    const tugadi = await kut(async () => /Жонли суҳбат якунланди/.test(await c5.matn()), 12_000);
+    await uyqu(1500);
+    tekshir('C12. Gemini javob bergach uzilsa zaxiraga O‘TILMAYDI: “суҳбат якунланди” ko‘rsatiladi, OpenAI’ga so‘rov ketmaydi', salom && tugadi && !c5.sorovlar.some((x) => x.tur === 'ulanish'), c5.sorovlar.map((x) => x.tur).join());
+    await c5.kapat();
+
+    /* C13: ElevenLabs ovozi o'rniga server OpenAI ovozini ishlatgan (x-nutq-zaxira) -> bir marta ogohlantiriladi */
+    const c6 = await zaxiraSahifasi('ovoz', { ws: 'javob_keyin_yopiladi', gapirZaxira: true });
+    await c6.bosish();
+    const ogoh = await kut(async () => /ElevenLabs овози ишламади/.test(await c6.matn()), 15_000);
+    tekshir('C13. Server ElevenLabs o‘rniga OpenAI ovozini ishlatsa foydalanuvchi bir marta ogohlantiriladi', ogoh);
+    await c6.kapat();
+  } catch (e) {
+    for (const p of Cb.contexts().flatMap((c: S) => c.pages())) {
+      await p.screenshot({ path: `${SKRIN}/xato-c.png` }).catch(() => {});
+      console.error('--- Sahifa matni (xato paytida):\n' + (await p.locator('body').innerText().catch(() => '')).slice(0, 1500));
+    }
+    throw e;
+  } finally { await Cb.close(); }  }
 }
 
 main().catch((e) => { xato++; console.error('XATO (kutilmagan):', e); }).finally(async () => {

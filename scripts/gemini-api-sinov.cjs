@@ -16,7 +16,7 @@ mock('src/lib/tizim-kuzatuvi.ts', { serverXatosi: async () => { logged++; return
 mock('src/lib/kirish-chegarasi.ts', { bazaChegarasi: async (key) => {
   keys.push(key);
   if (key.includes(denied || '!never!')) return { allowed: false };
-  if (key.startsWith('jonli-call:')) { if (seen.has(key)) return { allowed: false }; seen.add(key); }
+  if (key.startsWith('jonli-call:') || key.startsWith('jonli-qoplash:')) { if (seen.has(key)) return { allowed: false }; seen.add(key); }
   return { allowed: true };
 } });
 mock('src/lib/agent/asboblar.ts', {
@@ -25,9 +25,12 @@ mock('src/lib/agent/asboblar.ts', {
   asbobniBajar: async (_, name) => { operations++; return { malumot: { qabul: name }, manbalar: [], amallar: [] }; },
 });
 mock('src/lib/agent/mahalla.ts', { mahallaRoyxati: async () => [{ nomi: 'Uyshun' }] });
+let zaxiraOvoz = false, zanjirXato = null;
 mock('src/lib/agent/tts.ts', {
   ttsSozlama: () => ({ provayder: 'elevenlabs', kalit: 'x', model: 'm', voice: 'v' }),
   matnniOvozga: async () => { speech++; return new Uint8Array([1, 2, 3]).buffer; },
+  ovozMavjud: () => true,
+  ovozZanjiri: async () => { if (zanjirXato) throw zanjirXato; speech++; return { audio: new Uint8Array([1, 2, 3]).buffer, provayder: zaxiraOvoz ? 'openai' : 'elevenlabs', zaxira: zaxiraOvoz }; },
 });
 const originalFetch = global.fetch;
 global.fetch = async (url, init) => {
@@ -129,6 +132,75 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
     auth = { sessiya: { ...admin.sessiya, userId: 'other' } }; assert.equal((await gapir.POST(gapirSorov({ matn: 'Salom.', jonli: token }))).status, 403); auth = admin;
     assert.equal(speech, speechBefore);
     denied = 'agent-tts-jonli:'; assert.equal((await gapir.POST(gapirSorov({ matn: 'Salom.', jonli: token }))).status, 429); denied = '';
+  });
+  await test('Speech route reports the OpenAI backup voice in a header (no provider text)', async () => {
+    zaxiraOvoz = true;
+    const r = await gapir.POST(gapirSorov({ matn: 'Salom.' }));
+    assert.equal(r.status, 200); assert.equal(r.headers.get('x-nutq-zaxira'), '1'); assert.equal(r.headers.get('x-nutq-provayder'), 'openai');
+    zaxiraOvoz = false;
+    const n = await gapir.POST(gapirSorov({ matn: 'Salom.' }));
+    assert.equal(n.headers.get('x-nutq-zaxira'), null); assert.equal(n.headers.get('x-nutq-provayder'), 'elevenlabs');
+  });
+  await test('Speech errors: raw OpenAI provider text is never shown; the ElevenLabs/combined safe message is', async () => {
+    const { NutqXatosi } = require(path.join(root, 'src/lib/agent/nutq.ts'));
+    zanjirXato = new NutqXatosi('provayder', 'openai 401: {"error":{"message":"Incorrect API key sk-live-raw-secret"}}');
+    let d = JSON.stringify(await (await gapir.POST(gapirSorov({ matn: 'Salom.' }))).json());
+    assert.ok(!d.includes('sk-live') && !d.includes('Incorrect') && !/openai 401/i.test(d));
+    zanjirXato = new NutqXatosi('provayder', 'ElevenLabs kaliti qabul qilinmadi (401: invalid_api_key). OpenAI zaxira ovozi ham ishlamadi (HTTP 401).');
+    const r = await gapir.POST(gapirSorov({ matn: 'Salom.' })); d = JSON.stringify(await r.json());
+    assert.equal(r.status, 502); assert.match(d, /invalid_api_key/); assert.match(d, /HTTP 401/);
+    zanjirXato = null;
+  });
+  const OPENAI = 'sk-test-only-private-openai-key-000000';
+  const kimlik = () => ({ ...admin.sessiya, fullName: '', alifbo: 'lot', hozir: new Date() });
+  let qoplash;
+  await test('Gemini failure + OpenAI configured: 502 carries a signed one-time backup voucher; without OpenAI no voucher', async () => {
+    setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI });
+    providerJavob = () => new Response('{"error":{"message":"quota"}}', { status: 429 });
+    const r = await POST(request(start)); assert.equal(r.status, 502); const d = await r.json();
+    assert.ok(d.zaxira && jonliRuxsatOqi(kimlik(), d.zaxira)?.prov === 'gemini'); qoplash = d.zaxira;
+    const s = JSON.stringify(d); for (const gizli of [GEMINI, OPENAI, 'el-test-key', process.env.SESSION_SECRET]) assert.ok(!s.includes(gizli));
+    setEnv(geminiEnv);
+    const yoq = await (await POST(request(start))).json(); assert.equal(yoq.zaxira, undefined);
+    providerJavob = null;
+  });
+  await test('Backup start needs the OpenAI key; a plain OpenAI start stays refused while Gemini is the provider', async () => {
+    setEnv(geminiEnv); const before = provider;
+    assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: true }))).status, 409);
+    setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI });
+    assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer' }))).status, 409);
+    assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: 'ha' }))).status, 400);
+    assert.equal(provider, before);
+  });
+  await test('Backup start: OpenAI native voice, voucher is single-use and skips the day/total budget the failed try already spent', async () => {
+    setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI }); keys.length = 0; denied = 'jonli-kunlik';
+    const r = await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: true, qoplash })); assert.equal(r.status, 200);
+    const d = await r.json(); assert.equal(d.tashqiOvoz, false); assert.equal(d.zaxira, true);
+    assert.equal(jonliRuxsatOqi(kimlik(), d.ruxsat)?.prov, 'openai');
+    assert.ok(!keys.some((k) => k.startsWith('jonli-kunlik:') || k === 'jonli-umumiy') && keys.some((k) => k.startsWith('jonli-ulanish:')));
+    assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: true, qoplash }))).status, 409, 'voucher reuse');
+    const yop = await POST(request({ tur: 'yopish', ruxsat: d.ruxsat })); assert.equal(yop.status, 200);
+    denied = '';
+  });
+  await test('Backup start without a valid voucher is an ordinary start: it spends and respects the day budget', async () => {
+    setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI });
+    for (const q of [undefined, 'yaroqsiz.imzo', qoplash + 'x']) {
+      keys.length = 0; denied = 'jonli-kunlik';
+      assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: true, ...(q ? { qoplash: q } : {}) }))).status, 429);
+      assert.ok(keys.some((k) => k.startsWith('jonli-kunlik:')));
+    }
+    denied = ''; keys.length = 0;
+    assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: true }))).status, 200);
+    assert.ok(keys.some((k) => k.startsWith('jonli-kunlik:')));
+    // boshqa foydalanuvchining ruxsatnomasi qoplash bo'lolmaydi
+    const boshqa = jonliRuxsatYarat({ ...kimlik(), userId: 'other' }, 'zaxira_x', undefined, 'gemini');
+    keys.length = 0; denied = 'jonli-kunlik';
+    assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: true, qoplash: boshqa }))).status, 429); denied = '';
+  });
+  await test('Live ElevenLabs->OpenAI voice backup does not change who may speak: ticket still required for the wide budget', async () => {
+    zaxiraOvoz = true; keys.length = 0;
+    assert.equal((await gapir.POST(gapirSorov({ matn: 'Salom.', jonli: 'x.y' }))).status, 403);
+    zaxiraOvoz = false;
   });
   await test('OpenAI regression: without Gemini key the old SDP path works; Gemini start is refused; nothing configured = 503', async () => {
     setEnv({ OPENAI_API_KEY: 'test-only-private-key', AGENT_REALTIME: '1' });

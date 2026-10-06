@@ -8,7 +8,7 @@ let auth, allowed = true, configured = true, calls = 0;
 mock('src/lib/api-auth.ts', { talabQil: async () => auth });
 mock('src/lib/alifbo-server.ts', { alifboServer: () => 'lot' });
 mock('src/lib/kirish-chegarasi.ts', { bazaChegarasi: async () => ({ allowed }) });
-mock('src/lib/agent/tts.ts', { ttsSozlama: () => configured ? {} : null, matnniOvozga: async () => { calls++; return new Uint8Array([1, 2]).buffer; } });
+mock('src/lib/agent/tts.ts', { ttsSozlama: () => configured ? {} : null, ovozMavjud: () => configured, ovozZanjiri: async () => { calls++; return { audio: new Uint8Array([1, 2]).buffer, provayder: 'openai', zaxira: false }; }, matnniOvozga: async () => { calls++; return new Uint8Array([1, 2]).buffer; } });
 const { POST } = require(path.join(root, 'src/app/api/agent/gapir/route.ts'));
 const request = (matn) => new Request('https://mock.invalid/api/agent/gapir', { method: 'POST', body: JSON.stringify({ matn }), headers: { 'content-type': 'application/json' } });
 (async () => {

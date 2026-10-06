@@ -113,7 +113,10 @@ async function main() {
     assert.equal(soz.tashqiOvoz, true); assert.deepEqual(s.output_modalities, ['text']);
     assert.equal(s.audio.input.turn_detection.interrupt_response, true); assert.ok(s.tools.some((t) => t.name === 'hisobotni_yukla'));
     assert.ok(!JSON.stringify(s).includes('private-fixture')); assert.ok(!JSON.stringify(s).includes('openai-fixture'));
-    assert.equal(jonliSozlama({ ...env, OPENAI_API_KEY: 'openai-fixture', ELEVENLABS_VOICE_ID: '' }), null);
+    // ElevenLabs to'liq sozlanmagan bo'lsa jonli suhbat o'chmaydi: OpenAI o'z ovozi bilan gapiradi (zaxira)
+    const ovozsiz = jonliSozlama({ ...env, OPENAI_API_KEY: 'openai-fixture', ELEVENLABS_VOICE_ID: '' })!;
+    assert.ok(ovozsiz); assert.equal(ovozsiz.tashqiOvoz, false); assert.deepEqual(jonliSessiya(ctx, ovozsiz, ['Uyshun']).output_modalities, ['audio']);
+    assert.equal(jonliSozlama({ ...env, OPENAI_API_KEY: 'openai-fixture' }, { mahalliyOvoz: true })!.tashqiOvoz, false);
   });
   console.log(`${tests}/${tests} ElevenLabs checks passed with fake HTTP; pronunciation is not evaluated.`);
 }

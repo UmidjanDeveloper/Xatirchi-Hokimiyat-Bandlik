@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { Maskot, type RobotKayfiyati } from './maskot';
@@ -8,6 +8,31 @@ import { petChegarasi, type PetJoy } from './pet-joy';
 
 const Oyna = dynamic(() => import('./agent-oynasi'), { ssr: false, loading: () => null });
 const JOY = 'koala:joy:v1';
+
+/**
+ * Hamroh oynasi yiqilsa (yangi deploydan keyin eski JS bo'lagi topilmasa, brauzer API yetishmasa...)
+ * tugma YO'QOLIB QOLMASIN: `ochiq` rost ekan tugma yashirin turadi, oyna esa bo'sh qoladi, ya'ni
+ * foydalanuvchi uchun "pet umuman ko'rinmay qoldi". Chegara xatoni ushlaydi, oynani yopadi va
+ * tugmani qaytaradi.
+ */
+class OynaChegarasi extends Component<{ children: ReactNode; yiqildi: () => void }, { xato: boolean }> {
+  state = { xato: false };
+  static getDerivedStateFromError() { return { xato: true }; }
+  componentDidCatch(e: unknown) {
+    console.error('Hamroh oynasi ochilmadi', e);
+    this.props.yiqildi();
+  }
+  render() { return this.state.xato ? null : this.props.children; }
+}
+
+/** Tugma har doim ko'rinadigan joyda tursin: ekranning haqiqiy (siljimaydigan) o'lchamidan */
+function ekranOlchami(): { w: number; h: number } {
+  const v = window.visualViewport;
+  return {
+    w: Math.min(window.innerWidth, document.documentElement.clientWidth || window.innerWidth, v?.width ?? Infinity),
+    h: Math.min(window.innerHeight, v?.height ?? Infinity),
+  };
+}
 
 export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: string; korish?: boolean }) {
   const { t } = useAlifbo();
@@ -17,6 +42,8 @@ export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: s
   const [joy, setJoy] = useState<PetJoy | null>(null);
   const [sudralmoqda, setSudralmoqda] = useState(false);
   const [uxlayapti, setUxlayapti] = useState(false);
+  const [yiqilgan, setYiqilgan] = useState(0);
+  const [nosoz, setNosoz] = useState(false);
   const tugma = useRef<HTMLButtonElement>(null);
   const sudrash = useRef<{ id: number; x: number; y: number; joy: PetJoy; siljidi: boolean } | null>(null);
   const bosishniYut = useRef(false);
@@ -34,13 +61,14 @@ export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: s
     try {
       const raw = JSON.parse(localStorage.getItem(JOY) ?? 'null');
       if (raw && typeof raw.x === 'number' && typeof raw.y === 'number') {
-        setJoy(petChegarasi(raw, window.innerWidth, window.innerHeight));
+        { const o = ekranOlchami(); setJoy(petChegarasi(raw, o.w, o.h)); }
       }
     } catch { /* use default corner */ }
-    const resize = () => setJoy((p) => p ? petChegarasi(p, window.innerWidth, window.innerHeight) : p);
+    const resize = () => { const o = ekranOlchami(); setJoy((p) => p ? petChegarasi(p, o.w, o.h) : p); };
     window.addEventListener('resize', resize);
+    window.visualViewport?.addEventListener('resize', resize);
     uygot();
-    return () => { window.removeEventListener('resize', resize); if (uyqu.current) clearTimeout(uyqu.current); };
+    return () => { window.removeEventListener('resize', resize); window.visualViewport?.removeEventListener('resize', resize); if (uyqu.current) clearTimeout(uyqu.current); };
   }, []);
   useEffect(() => {
     if (ochiq) return;
@@ -77,13 +105,13 @@ export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: s
             if (Math.hypot(dx, dy) > 7) d.siljidi = true;
             if (d.siljidi) {
               bosishniYut.current = true; setSudralmoqda(true);
-              setJoy(petChegarasi({ x: d.joy.x + dx, y: d.joy.y + dy }, window.innerWidth, window.innerHeight));
+              { const o = ekranOlchami(); setJoy(petChegarasi({ x: d.joy.x + dx, y: d.joy.y + dy }, o.w, o.h)); }
             }
           }}
           onPointerUp={(e) => {
             const d = sudrash.current;
             if (!d || d.id !== e.pointerId) return;
-            if (d.siljidi) saqla(petChegarasi({ x: d.joy.x + e.clientX - d.x, y: d.joy.y + e.clientY - d.y }, window.innerWidth, window.innerHeight));
+            if (d.siljidi) { const o = ekranOlchami(); saqla(petChegarasi({ x: d.joy.x + e.clientX - d.x, y: d.joy.y + e.clientY - d.y }, o.w, o.h)); }
             sudrash.current = null; setSudralmoqda(false);
             if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
           }}
@@ -96,22 +124,26 @@ export function AgentTugmasi({ ism, rol, korish = false }: { ism: string; rol: s
             if (!d) return;
             e.preventDefault(); uygot();
             const r = e.currentTarget.getBoundingClientRect();
-            saqla(petChegarasi({ x: r.left + d.x, y: r.top + d.y }, window.innerWidth, window.innerHeight));
+            { const o = ekranOlchami(); saqla(petChegarasi({ x: r.left + d.x, y: r.top + d.y }, o.w, o.h)); }
           }}
           onClick={(e) => {
             if (e.detail !== 0 && bosishniYut.current) { bosishniYut.current = false; return; }
-            uygot(); setYuklangan(true); setOchiq(true);
+            uygot(); setNosoz(false); setYuklangan(true); setOchiq(true);
           }}
           onMouseEnter={() => { uygot(); isit(); }} onFocus={() => { uygot(); isit(); }}
           aria-label={t('Ҳамроҳ — ёрдамчини очиш. Жойини суриш ёки йўналиш тугмалари билан ўзгартириш мумкин.')}
           title={t('Ҳамроҳ: босинг — суҳбат; суринг — жойини ўзгартириш; Home — жойига қайтариш')}>
           <span className="koala-pet-tana"><Maskot olcham={80} kayfiyat={vazifa?.kayfiyat} /></span>
-          <span className="koala-pet-yozuv" aria-hidden="true">{vazifa?.kechikkan ? t(`${vazifa.kechikkan} та кечиккан`) : uxlayapti ? 'z z z' : t('Ҳамроҳ')}</span>
+          <span className="koala-pet-yozuv" aria-hidden="true">{nosoz ? t('Қайта босинг') : vazifa?.kechikkan ? t(`${vazifa.kechikkan} та кечиккан`) : uxlayapti ? 'z z z' : t('Ҳамроҳ')}</span>
         </button>
       )}
-      {yuklangan && <Oyna ochiq={ochiq} yopish={() => {
-        setOchiq(false); uygot(); setTimeout(() => tugma.current?.focus(), 0);
-      }} ism={ism} rol={rol} korish={korish} />}
+      {yuklangan && (
+        <OynaChegarasi key={yiqilgan} yiqildi={() => { setOchiq(false); setYuklangan(false); setNosoz(true); setYiqilgan((n) => n + 1); }}>
+          <Oyna ochiq={ochiq} yopish={() => {
+            setOchiq(false); uygot(); setTimeout(() => tugma.current?.focus(), 0);
+          }} ism={ism} rol={rol} korish={korish} />
+        </OynaChegarasi>
+      )}
     </>
   );
 }

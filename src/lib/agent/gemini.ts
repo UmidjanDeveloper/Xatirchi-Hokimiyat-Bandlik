@@ -64,6 +64,14 @@ export function geminiSozlama(env: NodeJS.ProcessEnv = process.env): GeminiSozla
   };
 }
 
+/**
+ * Gemini yo'li ishlamay qolsa (token, WebSocket, javob bermaslik, ElevenLabs...) brauzer OpenAI Realtime'ga
+ * o'zi o'tadi: OpenAI eshitadi, o'ylaydi va o'z ovozi bilan gapiradi. Buning uchun OpenAI sozlangan bo'lishi kerak.
+ */
+export function jonliZaxiraBormi(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(geminiSozlama(env)) && jonliSozlama(env, { mahalliyOvoz: true }) !== null;
+}
+
 /** Jonli suhbatni qaysi xizmat yuritadi: Gemini (agar to'liq sozlangan) -> OpenAI -> yo'q. */
 export function jonliProvayderi(env: NodeJS.ProcessEnv = process.env): 'gemini' | 'openai' | null {
   if (geminiSozlama(env)) return 'gemini';

@@ -515,8 +515,8 @@ const SINOVLAR: Sinov[] = [
       const j = await sorov('/api/agent/jonli', { cookie: c.cookie, method: 'POST', body: { tur: 'ulanish', sdp: 'v=0 test-offer' } });
       return (
         h.status === 200 &&
-        Object.keys(d).sort().join() === 'ai,jonli,jonliProvayder,limit,ovozChiqish,ovozServer,ovozUlanishi,ovozXizmati,qolgan,vazifa' &&
-        d.jonliProvayder === null &&
+        Object.keys(d).sort().join() === 'ai,jonli,jonliProvayder,jonliZaxira,limit,ovozChiqish,ovozServer,ovozUlanishi,ovozXizmati,qolgan,vazifa' &&
+        d.jonliProvayder === null && d.jonliZaxira === false &&
         d.ovozUlanishi === 'kalit_yoq' &&
         d.ovozXizmati === 'openai' &&
         (d.vazifa === null || (typeof d.vazifa === 'object' && d.vazifa !== null &&

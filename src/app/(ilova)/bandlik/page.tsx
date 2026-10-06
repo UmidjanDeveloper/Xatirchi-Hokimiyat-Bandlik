@@ -651,8 +651,13 @@ export default async function BandlikSahifasi({
         )}
       </section>
 
-      {/* ── Navbatlar ── */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/*
+        ── Navbatlar ──
+        `grid-cols-1` SHART: u `minmax(0, 1fr)` beradi. Usiz yagona ustun `auto` bo'lib, ichidagi
+        `truncate` qatorlar (nowrap) ustunni telefon kengligidan (390 -> 417 px) kengaytirib yuborardi:
+        butun sahifa gorizontal siljib, `fixed` Hamroh tugmasi ekran chetidan chiqib ketardi.
+      */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Navbat
           sarlavha={tr("Суҳбат навбати")}
           izoh={tr("Хатловда аниқланган, ҳали суҳбат бўлмаган фуқаролар")}
@@ -805,7 +810,7 @@ function Navbat({
   const tr = matnchi();
 
   return (
-    <section className="karta p-4 sm:p-5">
+    <section className="karta min-w-0 p-4 sm:p-5">
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-sm font-bold text-ink">{sarlavha}</h2>
         <span className="raqam shrink-0 text-sm font-bold text-ink">{jami}</span>

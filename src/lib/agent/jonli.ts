@@ -8,14 +8,17 @@ import { nutqProvayderi, nutqXizmati } from './nutq';
 export const JONLI_MUDDAT_MS = 5 * 60_000;
 export const JONLI_ASBOB_LIMIT = 30;
 
-export function jonliSozlama(env: NodeJS.ProcessEnv = process.env) {
+/**
+ * OpenAI Realtime sozlamasi. Ovoz:
+ *  - ElevenLabs TAYYOR bo'lsa: OpenAI faqat matn yozadi, ElevenLabs o'qiydi (`tashqiOvoz`);
+ *  - ElevenLabs sozlanmagan/xato sozlangan bo'lsa YOKI `mahalliyOvoz` so'ralsa (zaxira): OpenAI
+ *    o'zi gapiradi. Shunda ElevenLabs/Gemini ishlamasa ham jonli suhbat OpenAI'da to'liq ishlaydi.
+ */
+export function jonliSozlama(env: NodeJS.ProcessEnv = process.env, opt: { mahalliyOvoz?: boolean } = {}) {
   const kalit = env.OPENAI_API_KEY?.trim();
   // Existing voice users can start Live explicitly via its button. A dedicated override can disable it.
   if (!kalit || env.AGENT_REALTIME === '0' || (env.AGENT_REALTIME !== '1' && env.AGENT_TTS !== '1')) return null;
-  const xizmat = nutqXizmati(env);
-  if (xizmat === 'noma_lum') return null;
-  const tashqiOvoz = xizmat === 'elevenlabs';
-  if (tashqiOvoz && !nutqProvayderi(env)) return null;
+  const tashqiOvoz = !opt.mahalliyOvoz && nutqXizmati(env) === 'elevenlabs' && nutqProvayderi(env) !== null;
   const voice = env.AGENT_REALTIME_VOICE?.trim();
   return {
     kalit, tashqiOvoz, model: env.AGENT_REALTIME_MODEL?.trim() || 'gpt-realtime',

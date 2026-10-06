@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Mic, Send, Square, Trash2, Volume2, VolumeX, X, ExternalLink, Check, FileDown, Headphones } from 'lucide-react';
 import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { ovozTasdiqQarori } from '@/lib/agent/ovoz-tasdiq';
-import { jonliBoshla, jonliMumkinmi } from './jonli-suhbat';
+import { jonliBoshla, jonliMumkinmi, type JonliHodisalar } from './jonli-suhbat';
+import { geminiYaqindaYiqildi, geminiYiqildiniBelgila } from './jonli-zaxira';
 import { geminiJonliBoshla, geminiJonliMumkinmi } from './jonli-gemini';
 import { hisobotniIjroQil } from './hisobot-ijrosi';
 import { suhbatIfodasi } from '@/lib/agent/robot-ifoda';
@@ -59,6 +60,8 @@ interface HolatMalumoti {
   ovozChiqish?: boolean;
   jonli?: boolean;
   jonliProvayder?: 'gemini' | 'openai' | null;
+  /** Gemini ishlamasa OpenAI'ga o'tish mumkinmi (OpenAI sozlangan) */
+  jonliZaxira?: boolean;
   limit: number;
   qolgan: number;
 }
@@ -100,6 +103,8 @@ export default function AgentOynasi({
   const router = useRouter();
 
   const [jonliFaol, setJonliFaol] = useState(false);
+  /** Jonli suhbat Gemini o'rniga OpenAI zaxirasida ishlayapti */
+  const [zaxirada, setZaxirada] = useState(false);
   const [tekshirilmoqda, setTekshirilmoqda] = useState(false);
   const [tekshiruv, setTekshiruv] = useState<{ ok: boolean; qadamlar: { nom: string; ok: boolean; ms?: number; izoh: string }[] } | null>(null);
   const jonli = useRef<ReturnType<typeof jonliBoshla> | null>(null);
@@ -149,6 +154,7 @@ export default function AgentOynasi({
     jonli.current?.bekor();
     jonli.current = null;
     setJonliFaol(false);
+    setZaxirada(false);
     suhbatRef.current = false;
     setSuhbatRejimi(false);
     if (davomTaymeri.current) clearTimeout(davomTaymeri.current);
@@ -559,16 +565,31 @@ export default function AgentOynasi({
 
   const jonliniBoshla = () => {
     if (jonli.current) { toxtat(); return; }
-    const gemini = malumot?.jonliProvayder === 'gemini';
+    const asosiyGemini = malumot?.jonliProvayder === 'gemini';
+    const zaxiraBor = asosiyGemini && malumot?.jonliZaxira === true;
+    // Gemini yaqinda ishlamagan bo'lsa avval OpenAI zaxirasi: buzuq xizmatga har bosishda urinib kutmaymiz
+    const zaxiradanBoshla = zaxiraBor && geminiYaqindaYiqildi();
+    const gemini = asosiyGemini && !zaxiradanBoshla;
     if (!(gemini ? geminiJonliMumkinmi() : jonliMumkinmi())) { setBildirish(t('Bu brauzerda jonli ovoz ishlamaydi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.')); return; }
-    toxtat(); nutqniTayyorla(); setBildirish(''); setJonliFaol(true); setMimikaSinovi(false);
-    jonli.current = (gemini ? geminiJonliBoshla : jonliBoshla)({
+    toxtat(); nutqniTayyorla(); setBildirish(''); setJonliFaol(true); setMimikaSinovi(false); setZaxirada(zaxiradanBoshla);
+    const hodisalar: JonliHodisalar = {
       onHolat: setHolat, onDaraja: setOgizDarajasi,
       onMatn: (id, r, m) => jonliMatnRef.current(id, r, m),
       onAmallar: (a, m, s) => jonliAmalRef.current(a, m, s),
       onOvoz: (m, s) => jonliOvozRef.current(m, s),
       onXato: (m) => { setBildirish(t(m)); setKayfiyat('xavotir'); },
-      onTugadi: () => { jonli.current = null; setJonliFaol(false); },
+      onOgoh: (m) => setBildirish(t(m)),
+      onTugadi: () => { jonli.current = null; setJonliFaol(false); setZaxirada(false); },
+    };
+    if (!gemini) { jonli.current = jonliBoshla(hodisalar, asosiyGemini ? { zaxira: true } : {}); return; }
+    jonli.current = geminiJonliBoshla({
+      ...hodisalar,
+      // Gemini (yoki ElevenLabs ovozi) ishlamadi: OpenAI eshitadi, o'ylaydi va o'z ovozi bilan gapiradi
+      ...(zaxiraBor ? { onZaxira: (qoplash, _sabab, mikrofon) => {
+        geminiYiqildiniBelgila(); setZaxirada(true);
+        setBildirish(t('Gemini ишламади: OpenAI билан давом этилмоқда.'));
+        jonli.current = jonliBoshla(hodisalar, { zaxira: true, qoplash, mikrofon });
+      } } : {}),
     });
   };
 
@@ -693,7 +714,7 @@ export default function AgentOynasi({
           {rol === 'ADMIN' && malumotTayyor && <details className="mt-1 text-ink-muted" data-jonli-tekshiruv="ha">
             <summary className="cursor-pointer">{t(malumot?.jonli ? 'Жонли уланишни текшириш' : 'Жонли суҳбатни ёқиш')}</summary>
             {!malumot?.jonli && <p className="mt-1">{t('Vercel махфий созламаларида GEMINI_API_KEY ва ElevenLabs созламаларини (ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, AGENT_TTS=1) ўрнатиб, қайта жойланг. Калитни суҳбатга ёзманг.')}</p>}
-            {malumot?.jonli && <p className="mt-1">{t(malumot.jonliProvayder === 'gemini' ? 'Суҳбат: Gemini Live · овоз: ElevenLabs' : 'Суҳбат: OpenAI Realtime')}</p>}
+            {malumot?.jonli && <p className="mt-1">{t(malumot.jonliProvayder === 'gemini' ? `Суҳбат: Gemini Live · овоз: ElevenLabs${malumot.jonliZaxira ? ' · захира: OpenAI' : ''}` : 'Суҳбат: OpenAI Realtime')}</p>}
             <button type="button" className="mt-1 rounded border border-line px-2 py-2 text-ink hover:bg-surface-muted disabled:opacity-40"
               disabled={tekshirilmoqda || jonliFaol} onClick={jonliniTekshir}>
               {t(tekshirilmoqda ? 'Текширилмоқда…' : 'Уланишни текшириш')}
@@ -898,7 +919,8 @@ export default function AgentOynasi({
         {suhbatRejimi && <p className="mt-1 text-[11px] text-accent" role="status">{t('Овозли суҳбат ёқилган. Жавобдан сўнг яна эшитаман.')}</p>}
         {jonliFaol && <p className="mt-1 text-[11px] text-accent" role="status">{t('Жонли суҳбат ёқилган. Гапимни бўлиб савол беришингиз мумкин.')}</p>}
         <p className="mt-1.5 text-[10px] leading-snug text-ink-faint">
-          {t(jonliFaol && malumot?.ovozXizmati === 'elevenlabs' ? `${malumot.jonliProvayder === 'gemini' ? 'Gemini' : 'OpenAI'} тинглайди, ElevenLabs гапиради. Фуқаро исми ва телефонини айтманг.`
+          {t(jonliFaol && zaxirada ? 'Захира: OpenAI тинглайди ва ўз овози билан гапиради. Фуқаро исми ва телефонини айтманг.'
+            : jonliFaol && malumot?.ovozXizmati === 'elevenlabs' ? `${malumot.jonliProvayder === 'gemini' ? 'Gemini' : 'OpenAI'} тинглайди, ElevenLabs гапиради. Фуқаро исми ва телефонини айтманг.`
             : jonliFaol ? 'Овоз OpenAI хизматида ишланади. Фуқаро исми ва телефонини айтманг.' : 'Овоз ташқи хизматда матнга айланади. Фуқаро исми ва телефонини айтманг.')}
         </p>
       </div>

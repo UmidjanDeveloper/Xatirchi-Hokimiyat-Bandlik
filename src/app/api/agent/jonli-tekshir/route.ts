@@ -7,6 +7,7 @@ import { mahallaRoyxati } from '@/lib/agent/mahalla';
 import { GeminiXatosi, geminiSetup, geminiSozlama, geminiToken } from '@/lib/agent/gemini';
 import { geminiSoketniTekshir, type TekshiruvQadami } from '@/lib/agent/gemini-tekshir';
 import { NutqXatosi, nutqProvayderi, nutqUlanishi, nutqXizmati, nutqYarat } from '@/lib/agent/nutq';
+import { openaiZaxiraniTekshir } from '@/lib/agent/openai-tekshir';
 import type { AgentKontekst } from '@/lib/agent/turlar';
 
 export const dynamic = 'force-dynamic';
@@ -73,5 +74,9 @@ export async function POST() {
     }
   }
 
-  return json({ ok: qadamlar.every((x) => x.ok), qadamlar });
+  /* 6. OpenAI zaxirasi (Gemini yoki ElevenLabs yiqilsa avtomatik o'tiladi). Ixtiyoriy: umumiy "ok" ga ta'sir qilmaydi. */
+  const zaxira = await openaiZaxiraniTekshir();
+  qadamlar.push(zaxira);
+
+  return json({ ok: qadamlar.filter((x) => x !== zaxira).every((x) => x.ok), zaxiraTayyor: zaxira.ok, qadamlar });
 }

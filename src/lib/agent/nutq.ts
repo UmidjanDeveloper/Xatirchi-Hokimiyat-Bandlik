@@ -36,6 +36,10 @@ export function nutqProvayderi(env: NodeJS.ProcessEnv = process.env): NutqProvay
     provayder: 'elevenlabs', kalit: env.ELEVENLABS_API_KEY!.trim(),
     model: env.ELEVENLABS_MODEL_ID?.trim() || 'eleven_v3', ovoz: env.ELEVENLABS_VOICE_ID!.trim(),
   };
+  return openaiNutq(env);
+}
+
+function openaiNutq(env: NodeJS.ProcessEnv): NutqProvayderi | null {
   const kalit = env.OPENAI_API_KEY?.trim();
   if (!kalit || env.AGENT_TTS !== '1') return null;
   const ovoz = env.AGENT_TTS_VOICE?.trim() ?? '';
@@ -45,6 +49,14 @@ export function nutqProvayderi(env: NodeJS.ProcessEnv = process.env): NutqProvay
     model: env.AGENT_TTS_MODEL?.trim() || 'gpt-4o-mini-tts',
     ovoz: (OVOZLAR as readonly string[]).includes(ovoz) ? ovoz : 'cedar',
   };
+}
+
+/**
+ * ZAXIRA ovoz: asosiy xizmat ElevenLabs bo'lib, u ishlamasa (sozlanmagan yoki so'rov yiqilsa)
+ * OpenAI ovozi o'qiydi. Asosiy xizmat o'zi OpenAI bo'lsa zaxira yo'q: u o'zi bilan bir xil bo'lardi.
+ */
+export function nutqZaxirasi(env: NodeJS.ProcessEnv = process.env): NutqProvayderi | null {
+  return nutqXizmati(env) === 'openai' ? null : openaiNutq(env);
 }
 
 /** Kirilldan lotinga o'tish va yozma belgilarning ovozda ravon o'qilishi. */
