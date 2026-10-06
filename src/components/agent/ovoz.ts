@@ -546,7 +546,7 @@ export function ovozliJavobMumkinmi(): boolean {
 }
 
 /** O'zbekcha ovoz bo'lsa o'qiydi va `true` qaytaradi; bo'lmasa — hech narsa qilmaydi */
-export function gapir(matn: string, tugadi: () => void, boshlandi?: () => void): boolean {
+export function gapir(matn: string, tugadi: () => void, boshlandi?: () => void, xato?: () => void): boolean {
   const ovoz = uzbekOvozi();
   if (!ovoz) return false;
   const s = window.speechSynthesis;
@@ -557,7 +557,7 @@ export function gapir(matn: string, tugadi: () => void, boshlandi?: () => void):
   u.rate = 0.95;
   u.onstart = () => boshlandi?.();
   u.onend = tugadi;
-  u.onerror = tugadi;
+  u.onerror = () => { if (xato) xato(); else tugadi(); };
   s.speak(u);
   return true;
 }

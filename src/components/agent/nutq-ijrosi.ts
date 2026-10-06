@@ -81,9 +81,9 @@ export function javobniGapir(matn: string, h: {
         kadr = requestAnimationFrame(jonlantir);
       };
       jonlantir();
-    })) return;
+    }, () => yakunla('Қурилма овозни чиқара олмади. Овозни синаш тугмасини қайта босинг.'))) return;
   }
-  if (!h.serverMumkin) { yakunla(); return; }
+  if (!h.serverMumkin) { yakunla('Ўзбекча овоз уланмаган. Администратор овоз хизматини ёқиши керак.'); return; }
   if (taymer) clearTimeout(taymer);
   h.onYuklash();
   taymer = setTimeout(() => { ctrl.abort(); yakunla('Овоз кечикди. Жавобни ўқинг ёки қайта урининг.'); }, 25_000);
@@ -102,6 +102,8 @@ export function javobniGapir(matn: string, h: {
       const bayt = await r.arrayBuffer();
       if (tugadi) return;
       const a = audio;
+      if (a?.state === 'suspended') await a.resume();
+      if (tugadi) return;
       if (!a || a.state !== 'running') { yakunla('Овозни эшитиш учун жавоб ёнидаги овоз тугмасини босинг.'); return; }
       const bufer = await a.decodeAudioData(bayt);
       if (tugadi) return;

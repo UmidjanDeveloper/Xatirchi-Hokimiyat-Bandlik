@@ -28,6 +28,7 @@
     "sinov:brauzer-koala": "tsx scripts/koala-brauzer.ts",
     "sinov:brauzer-jarvis": "tsx scripts/jarvis-brauzer.ts",
     "sinov:brauzer-panellar": "tsx scripts/koala-panellar.ts",
+    "sinov:robot-brauzer": "tsx scripts/robot-brauzer.ts",
     "sinov:menyu": "tsx scripts/menyu-sinov.ts",
     "sinov:brauzer-menyu": "tsx scripts/menyu-brauzer.ts"
   },

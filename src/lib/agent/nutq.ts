@@ -8,6 +8,12 @@ const OVOZLAR = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer', 'coral', '
 
 export interface NutqProvayderi { kalit: string; model: string; ovoz: string }
 
+/** Configuration status only; never expose keys or placeholders. */
+export function nutqUlanishi(env: NodeJS.ProcessEnv = process.env): 'tayyor' | 'kalit_yoq' | 'ochirilgan' {
+  if (!env.OPENAI_API_KEY?.trim()) return 'kalit_yoq';
+  return env.AGENT_TTS === '1' ? 'tayyor' : 'ochirilgan';
+}
+
 /** Ovoz chiqishi suhbat provayderidan mustaqil: Groq suhbat + OpenAI nutq ham mumkin. */
 export function nutqProvayderi(env: NodeJS.ProcessEnv = process.env): NutqProvayderi | null {
   const kalit = env.OPENAI_API_KEY?.trim();

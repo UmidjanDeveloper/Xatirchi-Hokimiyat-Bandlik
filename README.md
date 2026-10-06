@@ -602,6 +602,27 @@ npm run dev        # http://localhost:3000
 almashtirish majburiy** — boshlang'ich parol serverning muhit
 o'zgaruvchilarida ochiq turadi.
 
+### Hamroh: mimika va ovozni tekshirish
+
+Hamroh oynasida **Ovozni sinash** tugmasi bor. Ovoz ulanmagan bo'lsa,
+endi sabab yashirilmaydi; administrator uchun sozlash ko'rsatmasi chiqadi.
+Server ovozi uchun hostingning **maxfiy muhit sozlamalarida** `OPENAI_API_KEY`
+va `AGENT_TTS=1` kerak. Sozlamani o'zgartirgach ilovani qayta joylang.
+Kalitni suhbatga, GitHub'ga yoki brauzer kodiga yozmang. Suhbat modeli
+(Groq/JARVIS va boshqalar) ulangan bo'lishi nutq xizmati ham ulanganini anglatmaydi.
+O'zbekcha qurilma ovozi mavjud bo'lsa, server ovozisiz undan foydalaniladi.
+
+`Tabassum qil` va `Jahlingni ko'rsat` buyruqlari mimikani darhol ko'rsatadi;
+bular topshiriq bajarilganligi haqidagi xabar emas. Muddati o'tgan topshiriq
+bazadan aniqlanadi. Og'iz server audiosining balandligiga mos harakatlanadi,
+yengil rejimdagi telefonda ham ishlaydi. Talaffuz sifati tanlangan ovoz
+xizmatiga bog'liq va haqiqiy audio bilan alohida baholanadi.
+
+Mahalliy bazada brauzer sinovi: `npm run sinov:robot-brauzer`.
+`ROBOT_BAZA` bilan mahalliy server manzilini, `PW_CHROME` bilan Chromium
+manzilini berish mumkin. Sinov haqiqiy ilova va bazani ishlatadi, ovoz yo'lini
+esa sinov WAV fayli bilan tekshiradi; bu provayder talaffuzini tasdiqlamaydi.
+
 ### 5. Xodimlarni qo'shish
 
 Administrator sifatida kiring → **Bошқарув** → **Ходим қўшиш**.

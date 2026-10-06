@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Maskot, MASKOT_HOLATLARI } from '../src/components/agent/maskot';
+import { suhbatIfodasi } from '../src/lib/agent/robot-ifoda';
+import { nutqUlanishi } from '../src/lib/agent/nutq';
 import { robotVazifaHolati } from '../src/lib/agent/robot-kayfiyati';
 
 Object.assign(globalThis, { React });
@@ -18,11 +20,11 @@ sinov('All activity states render a vector robot with an accessible name', () =>
 });
 sinov('Mouth opens with audio and invalid levels cannot break the face', () => {
   const render = (daraja: number) => renderToStaticMarkup(React.createElement(Maskot, { holat: 'gapirmoqda', daraja }));
-  assert.match(render(0), /--robot-ogiz:1/);
-  assert.match(render(1), /--robot-ogiz:11/);
-  assert.match(render(Infinity), /--robot-ogiz:1/);
-  assert.match(render(-4), /--robot-ogiz:1/);
-  assert.match(render(10), /--robot-ogiz:11/);
+  assert.match(render(0), /ry="1"/);
+  assert.match(render(1), /ry="9"/);
+  assert.match(render(Infinity), /ry="1"/);
+  assert.match(render(-4), /ry="1"/);
+  assert.match(render(10), /ry="9"/);
 });
 sinov('Happy and serious faces remain distinct even without animation', () => {
   const happy = renderToStaticMarkup(React.createElement(Maskot, { kayfiyat: 'xursand' }));
@@ -39,5 +41,18 @@ sinov('Missing measurements never fabricate overdue tasks or success', () => {
 });
 sinov('Other urgent issues show concern, not invented overdue task counts', () => {
   assert.deepEqual(robotVazifaHolati([{ kalit: 'uzilish', soni: 3, ogohlik: 'shoshilinch' }]), { kayfiyat: 'xavotir', kechikkan: 0, shoshilinch: 1 });
+});
+sinov('Uzbek expression commands work in both alphabets without manufacturing task outcomes', () => {
+  assert.equal(suhbatIfodasi("jahlingni ko'rsat")?.kayfiyat, 'jiddiy');
+  assert.equal(suhbatIfodasi('Жаҳлингни кўрсат')?.kayfiyat, 'jiddiy');
+  assert.equal(suhbatIfodasi('tabassum qil')?.kayfiyat, 'xursand');
+  assert.equal(suhbatIfodasi('Катта раҳмат')?.kayfiyat, 'xursand');
+  assert.equal(suhbatIfodasi('vazifa bajarildi'), null);
+  assert.equal(suhbatIfodasi('kechikkan vazifa bor'), null);
+});
+sinov('Voice diagnostics distinguish a missing key from disabled output', () => {
+  assert.equal(nutqUlanishi({ NODE_ENV: 'test' }), 'kalit_yoq');
+  assert.equal(nutqUlanishi({ NODE_ENV: 'test', OPENAI_API_KEY: 'test' }), 'ochirilgan');
+  assert.equal(nutqUlanishi({ NODE_ENV: 'test', OPENAI_API_KEY: 'test', AGENT_TTS: '1' }), 'tayyor');
 });
 console.log(`${soni}/${soni} o'tdi`);
