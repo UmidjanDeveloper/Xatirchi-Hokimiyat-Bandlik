@@ -1,5 +1,7 @@
 'use client';
 
+import { audioKontekstiToxtagan, audioKontekstiniUygot } from './audio-seans';
+
 /** PCM16 24 kHz oqimini fayl tugashini kutmasdan, bitta audio vaqt chizig'ida ijro etadi. */
 export async function pcmNutqniIjroEt(ctx: AudioContext, r: Response, signal: AbortSignal, h: {
   onBoshlandi(): void; onDaraja(d: number): void;
@@ -43,7 +45,7 @@ export async function pcmNutqniIjroEt(ctx: AudioContext, r: Response, signal: Ab
   };
   try {
     signal.throwIfAborted();
-    if (ctx.state === 'suspended') await ctx.resume();
+    await audioKontekstiniUygot(ctx, signal);
     signal.throwIfAborted();
     if (ctx.state !== 'running') throw new Error('Audio ochilmadi.');
     for (;;) {
@@ -53,10 +55,12 @@ export async function pcmNutqniIjroEt(ctx: AudioContext, r: Response, signal: Ab
       size += value.byteLength;
       if (size > 9_600_000 || sources.size > 1000) throw new Error('Ovoz oqimi juda katta.');
       const a = new Uint8Array(pending.length + value.length); a.set(pending); a.set(value, pending.length); pending = a;
+      if (audioKontekstiToxtagan(ctx)) await audioKontekstiniUygot(ctx, signal);
       play();
     }
     clearTimeout(timer);
     if (!size || size % 2) throw new Error('Ovoz oqimi uzilgan.');
+    if (audioKontekstiToxtagan(ctx)) await audioKontekstiniUygot(ctx, signal);
     play(true); eof = true;
     if (!sources.size) resolve();
     endTimer = setTimeout(abort, Math.max(2000, (next - ctx.currentTime) * 1000 + 2000));

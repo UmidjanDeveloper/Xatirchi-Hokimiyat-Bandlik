@@ -30,7 +30,7 @@
     "sinov:menyu": "tsx scripts/menyu-sinov.ts",
     "sinov:brauzer-menyu": "tsx scripts/menyu-brauzer.ts",
     "sinov:jonli-brauzer": "tsx scripts/jonli-brauzer.ts",
-    "sinov:elevenlabs": "tsx scripts/elevenlabs-sinov.ts && node --import tsx scripts/elevenlabs-api-sinov.cjs && tsx scripts/nutq-oqim-sinov.ts && tsx scripts/nutq-tiklash-sinov.ts",
+    "sinov:elevenlabs": "tsx scripts/elevenlabs-sinov.ts && node --import tsx scripts/elevenlabs-api-sinov.cjs && tsx scripts/nutq-oqim-sinov.ts && tsx scripts/nutq-tiklash-sinov.ts && tsx scripts/audio-seans-sinov.ts",
     "sinov:jonli": "tsx scripts/jonli-sinov.ts && node --import tsx scripts/jonli-api-sinov.cjs && tsx scripts/jonli-ijro-sinov.ts && tsx scripts/jonli-boshqaruv-sinov.ts && tsx scripts/jonli-hisob-sinov.ts",
     "sinov:gemini": "tsx scripts/gemini-sinov.ts && node --import tsx scripts/gemini-api-sinov.cjs",
     "sinov:gemini-brauzer": "tsx scripts/gemini-brauzer.ts",

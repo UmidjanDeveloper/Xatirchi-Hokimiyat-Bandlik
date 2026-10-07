@@ -141,7 +141,7 @@ async function main() {
   const holat = await fetch(`${BAZA}/kirish`).then((r) => r.status).catch(() => 0);
   if (holat !== 200) throw new Error(`server ${BAZA} javob bermayapti`);
 
-  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDEFG'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
+  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDEFGH'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
   if (bolim.includes('A')) {
   /* ═══ A. To'liq oqim: salom, transkripsiya, asbob, gaplab o'qish, yozma matn, to'xtatish (jim mikrofon) ═══ */
   const A = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
@@ -660,6 +660,44 @@ async function main() {
         await ctx.close();
       }
     } finally { await gb.close(); }
+  }
+  if (bolim.includes('H')) {
+    const hb = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
+    try {
+      const u = await xodimYarat('phone_session');
+      const { ctx, page, xatolar } = await sahifaOch(hb, u.username, `
+        window.__name = (t) => t;
+        window.__audioModes = []; window.__audioResumes = 0;
+        let type = 'auto';
+        Object.defineProperty(navigator, 'audioSession', { value: { get type() { return type; }, set type(t) { type = t; window.__audioModes.push(t); } } });
+        const AC = window.AudioContext, state = Object.getOwnPropertyDescriptor(BaseAudioContext.prototype, 'state').get;
+        window.AudioContext = class extends AC {
+          constructor() { super(); let interrupted = true; Object.defineProperty(this, 'state', { get: () => interrupted ? 'interrupted' : state.call(this) });
+            this.resume = () => { interrupted = false; window.__audioResumes++; return AC.prototype.resume.call(this); }; }
+        };
+      `);
+      await page.route('**/api/agent/gapir', async (r: S) => {
+        await r.fulfill({ status: 200, contentType: 'audio/mpeg', body: wav(24000, 3, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)), headers: { 'x-nutq-zaxira': '1', 'x-nutq-provayder': 'openai' } });
+      });
+      await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
+        ws.onMessage((raw: string) => { const b = JSON.parse(String(raw));
+          if (b.setup) ws.send(JSON.stringify({ setupComplete: {} }));
+          if (b.realtimeInput?.text) ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: 'Salom, sizni tinglayapman.' }, turnComplete: true } }));
+        });
+      });
+      await oynaOch(page); await page.getByRole('button', { name: 'Овозни синаш', exact: true }).click();
+      const ordinary = await kut(async () => (await holatOl(page)) === 'gapirmoqda', 10_000, 20);
+      const mode = await page.evaluate(() => (navigator as S).audioSession.type);
+      const copy = await page.locator('body').innerText();
+      tekshir('H1. Telefon audio sessiyasi ordinary javobda playback; interrupted kontekst tiklanadi', ordinary && mode === 'playback' && await page.evaluate(() => (window as S).__audioResumes > 0));
+      tekshir('H2. OpenAI zaxirasi ovoz yorlig‘ida to‘g‘ri, ijrodan oldingi yolg‘on xabar yo‘q', /Овоз: OpenAI/.test(copy) && /OpenAI овози танланди/.test(copy) && !/OpenAI овози билан ўқилмоқда/.test(copy));
+      await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
+      const live = await kut(async () => (await holatOl(page)) === 'gapirmoqda', 15_000, 20);
+      tekshir('H3. Jonli mikrofon play-and-record rejimida; oddiy playback uni bosmaydi', live && await page.evaluate(() => (navigator as S).audioSession.type === 'play-and-record'));
+      await page.getByRole('button', { name: 'Жонли суҳбатни тўхтатиш' }).click(); await uyqu(100);
+      tekshir('H4. Yopilgach audio sessiyasi auto holatiga qaytadi, kutilmagan JS xatosi yo‘q', await page.evaluate(() => (navigator as S).audioSession.type === 'auto') && xatolar.length === 0, xatolar.join(' | '));
+      await ctx.close();
+    } finally { await hb.close(); }
   }
 }
 

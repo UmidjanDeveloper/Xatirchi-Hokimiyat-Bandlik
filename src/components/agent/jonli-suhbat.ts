@@ -3,6 +3,7 @@
 import type { Amal, Manba } from '@/lib/agent/turlar';
 import type { MaskotHolati } from './maskot';
 import { jonliRuxsatniYangilabTur } from './jonli-ruxsat';
+import { audioSeansiniOl } from './audio-seans';
 
 export interface JonliHodisalar {
   onHolat(h: MaskotHolati): void;
@@ -56,6 +57,7 @@ export function jonliBoshla(
   const chaqiruvlar = new Set<string>();
   const Ctx = typeof window !== 'undefined' ? window.AudioContext : undefined;
   const context = Ctx ? new Ctx() : null;
+  const seansniYop = audioSeansiniOl('play-and-record');
   // iOS/Chrome audio permission is unlocked in the initiating click.
   void context?.resume().catch(() => {});
 
@@ -74,6 +76,7 @@ export function jonliBoshla(
     masofa?.getTracks().forEach((t) => t.stop());
     if (audio) { audio.pause(); audio.srcObject = null; audio.remove(); }
     dc?.close(); pc?.close(); void context?.close().catch(() => {});
+    seansniYop();
     if (ruxsat) atrofniYop(ruxsat);
   };
   const bekor = () => { if (!tugadi) { tozala(); cb.onDaraja(0); cb.onHolat('tayyor'); cb.onTugadi(); } };

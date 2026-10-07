@@ -107,6 +107,7 @@ export default function AgentOynasi({
   /** Jonli suhbat Gemini o'rniga OpenAI zaxirasida ishlayapti */
   const [zaxirada, setZaxirada] = useState(false);
   const [jonliOvoz, setJonliOvoz] = useState<'gemini' | 'openai' | 'elevenlabs'>('openai');
+  const [oddiyZaxiraOvoz, setOddiyZaxiraOvoz] = useState(false);
   const [jonliProvayder, setJonliProvayder] = useState<'gemini' | 'openai'>('openai');
   const [tekshirilmoqda, setTekshirilmoqda] = useState(false);
   const [tekshiruv, setTekshiruv] = useState<{ ok: boolean; qadamlar: { nom: string; ok: boolean; ms?: number; izoh: string }[] } | null>(null);
@@ -246,7 +247,7 @@ export default function AgentOynasi({
 
   /* Oyna yopilsa yoki ilova fonga o'tsa: yozuv yuborilmasdan bekor qilinadi, mikrofon bo'shaydi */
   useEffect(() => {
-    if (!ochiq) { toxtat(); nutqMuhitiniYop(); }
+    if (!ochiq) { toxtat(); nutqMuhitiniYop(); setOddiyZaxiraOvoz(false); }
   }, [ochiq, toxtat]);
 
   useEffect(() => {
@@ -292,7 +293,7 @@ export default function AgentOynasi({
       onDaraja: setOgizDarajasi,
       onYuklash: () => { setNutqYuklanmoqda(true); setHolat('oylamoqda'); },
       onBoshlandi: () => { setNutqYuklanmoqda(false); setHolat('gapirmoqda'); },
-      onZaxiraOvozi: () => { setJonliOvoz('openai'); setBildirish(t('ElevenLabs овози ишламади: бу жавоб OpenAI овози билан ўқилмоқда.')); },
+      onZaxiraOvozi: () => { setJonliOvoz('openai'); setOddiyZaxiraOvoz(true); setBildirish(t('ElevenLabs овози олинмади. OpenAI овози танланди.')); },
       onXato: (xabar) => {
         suhbatRef.current = false;
         setSuhbatRejimi(false);
@@ -714,7 +715,7 @@ export default function AgentOynasi({
         <Maskot holat={holat} kayfiyat={kayfiyat} daraja={ogizDarajasi} olcham={112} sarlavha={t(holatMatni || 'Ҳамроҳ — ' + ({ vazmin: 'вазмин', xursand: 'хурсанд', jiddiy: 'жиддий', xavotir: 'хавотирда' }[kayfiyat]))} />
         <div className="min-w-0 flex-1 text-xs">
           <p className="font-medium text-ink">{t(holatMatni || 'Сизни тинглаяпман')}</p>
-          {(jonliFaol || malumot?.ovozChiqish) && <p className="mt-1 text-ink-muted">{t(jonliFaol ? `Овоз: ${jonliOvoz === 'elevenlabs' ? 'ElevenLabs' : jonliOvoz === 'gemini' ? 'Gemini' : 'OpenAI'}` : malumot?.ovozXizmati === 'elevenlabs' ? 'Овоз: ElevenLabs' : 'Овоз: OpenAI')}</p>}
+          {(jonliFaol || malumot?.ovozChiqish) && <p className="mt-1 text-ink-muted">{t(jonliFaol ? `Овоз: ${jonliOvoz === 'elevenlabs' ? 'ElevenLabs' : jonliOvoz === 'gemini' ? 'Gemini' : 'OpenAI'}` : !oddiyZaxiraOvoz && malumot?.ovozXizmati === 'elevenlabs' ? 'Овоз: ElevenLabs' : 'Овоз: OpenAI')}</p>}
           <button type="button" className="mt-2 w-full rounded-md bg-accent px-3 py-2 font-medium text-accent-contrast disabled:opacity-40"
             disabled={!malumotTayyor || !malumot?.jonli || band}
             aria-pressed={jonliFaol} onClick={jonliniBoshla}>

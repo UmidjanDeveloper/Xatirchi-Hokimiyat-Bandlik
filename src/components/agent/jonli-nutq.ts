@@ -1,6 +1,7 @@
 'use client';
 
 import { pcmNutqniIjroEt } from './pcm-nutq';
+import { audioKontekstiniUygot } from './audio-seans';
 import { nutqParchasi } from '@/lib/agent/matnlar';
 
 /**
@@ -55,9 +56,14 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   let xatoBerildi = false;
   let yuklanmoqda = 0;
   let zaxiraBildirildi = false;
+  let zaxiraTanlandi = false;
   let oqimMumkin = true;
 
   const xato = (m: string) => { if (!xatoBerildi) { xatoBerildi = true; h.onXato(m); } };
+  const ijroBoshlandi = () => {
+    if (zaxiraTanlandi && !zaxiraBildirildi) { zaxiraBildirildi = true; h.onZaxiraOvozi?.(); }
+    if (!boshlandi) { boshlandi = true; h.onBoshlandi(); }
+  };
 
   const yukla = (b: Bolak, mening: number, oqim = oqimMumkin): Promise<AudioBuffer | Response | null> => {
     b.holat = 'yuklanmoqda';
@@ -68,7 +74,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
         for (let n = 0; n < 2; n++) {
           const r = await fetch('/api/agent/gapir', {
             method: 'POST', signal: b.ctrl.signal, headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ matn: nutqParchasi(b.matn), oqim, jonli: ruxsat(), ...(zaxiraBildirildi ? { zaxira: true } : {}) }),
+            body: JSON.stringify({ matn: nutqParchasi(b.matn), oqim, jonli: ruxsat(), ...(zaxiraTanlandi ? { zaxira: true } : {}) }),
           });
           if (mening !== avlod || b.ctrl.signal.aborted) { await r.body?.cancel(); return null; }
           if (r.status === 502 && oqim) {
@@ -81,7 +87,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
             if (mening === avlod) xato(d.xabar ?? 'Овозли жавоб олинмади. Жавоб матни экранда.');
             return null;
           }
-          if (r.headers.get('x-nutq-zaxira') === '1' && !zaxiraBildirildi && mening === avlod) { zaxiraBildirildi = true; h.onZaxiraOvozi?.(); }
+          if (r.headers.get('x-nutq-zaxira') === '1' && mening === avlod) zaxiraTanlandi = true;
           if (/^audio\/pcm;rate=24000$/i.test(r.headers.get('content-type') ?? '')) return r;
           const bayt = await r.arrayBuffer();
           if (mening !== avlod) return null;
@@ -135,21 +141,26 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
     y?.();
   };
 
-  const ijroEt = (buf: AudioBuffer, mening: number) => new Promise<void>((tugadi) => {
-    if (mening !== avlod) { tugadi(); return; }
-    const s = ctx.createBufferSource();
-    s.buffer = buf;
-    const a = ctx.createAnalyser();
-    a.fftSize = 256;
-    s.connect(a);
-    a.connect(ctx.destination);
-    manba = s; analizator = a;
-    ijroYakuni = tugadi;
-    s.onended = () => { if (manba === s) tozala(); else tugadi(); };
-    if (!boshlandi) { boshlandi = true; h.onBoshlandi(); }
-    s.start();
-    kadr = requestAnimationFrame(daraja);
-  });
+  const ijroEt = async (buf: AudioBuffer, mening: number, signal: AbortSignal) => {
+    try { await audioKontekstiniUygot(ctx, signal); }
+    catch { if (mening === avlod && !signal.aborted) xato('Овозни эшитиш учун жонли суҳбат тугмасини қайта босинг.'); return; }
+    if (mening !== avlod || signal.aborted) return;
+    return new Promise<void>((tugadi) => {
+      if (mening !== avlod) { tugadi(); return; }
+      const s = ctx.createBufferSource();
+      s.buffer = buf;
+      const a = ctx.createAnalyser();
+      a.fftSize = 256;
+      s.connect(a);
+      a.connect(ctx.destination);
+      manba = s; analizator = a;
+      ijroYakuni = tugadi;
+      s.onended = () => { if (manba === s) tozala(); else tugadi(); };
+      s.start();
+      ijroBoshlandi();
+      kadr = requestAnimationFrame(daraja);
+    });
+  };
 
   const yakunla = (mening: number) => {
     if (mening !== avlod || !yakun || navbat.length || manba) return;
@@ -162,8 +173,9 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
     bandAvlod = avlod;
     const mening = avlod;
     try {
-      if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
       while (navbat.length && mening === avlod) {
+        await audioKontekstiniUygot(ctx, navbat[0].ctrl.signal).catch(() => {});
+        if (mening !== avlod) return;
         if (ctx.state !== 'running') { xato('Овозни эшитиш учун жонли суҳбат тугмасини қайта босинг.'); navbat = []; break; }
         const b = navbat[0];
         boshla(mening);
@@ -175,21 +187,24 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
           let started = false;
           try {
             await pcmNutqniIjroEt(ctx, buf, b.ctrl.signal, {
-              onBoshlandi: () => { started = true; if (mening === avlod && !boshlandi) { boshlandi = true; h.onBoshlandi(); } },
+              onBoshlandi: () => { started = true; if (mening === avlod) ijroBoshlandi(); },
               onDaraja: (d) => { if (mening === avlod) h.onDaraja(d); },
             });
-          } catch {
-            oqimMumkin = false;
+          } catch (e) {
             if (mening === avlod && !b.ctrl.signal.aborted) {
-              if (started) xato('Ovoz oqimi uzildi. Javob matni ekranda.');
+              if ((e as Error)?.name === 'NotAllowedError') { xato('Овозни эшитиш учун жонли суҳбат тугмасини қайта босинг.'); }
               else {
-                const mp3 = await yukla(b, mening, false);
-                if (mening === avlod && mp3 && !(mp3 instanceof Response)) await ijroEt(mp3, mening);
+                oqimMumkin = false;
+                if (started) xato('Ovoz oqimi uzildi. Javob matni ekranda.');
+                else {
+                  const mp3 = await yukla(b, mening, false);
+                  if (mening === avlod && mp3 && !(mp3 instanceof Response)) await ijroEt(mp3, mening, b.ctrl.signal);
+                }
               }
             }
           }
           finally { if (pcmCtrl === b.ctrl) pcmCtrl = null; }
-        } else if (buf) await ijroEt(buf, mening);
+        } else if (buf) await ijroEt(buf, mening, b.ctrl.signal);
       }
     } finally {
       if (bandAvlod === mening) bandAvlod = -1;

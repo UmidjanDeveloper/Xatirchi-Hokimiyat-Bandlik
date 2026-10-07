@@ -8,6 +8,7 @@ import {
 import type { JonliHodisalar } from './jonli-suhbat';
 import { nutqNavbatiYarat, type NutqNavbati } from './jonli-nutq';
 import { jonliRuxsatniYangilabTur } from './jonli-ruxsat';
+import { audioSeansiniOl } from './audio-seans';
 
 /**
  * ============================================================
@@ -104,6 +105,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar, opt: { mahalliyOvoz?: bool
     ? (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
     : undefined;
   const context = AC ? new AC() : null;
+  const seansniYop = audioSeansiniOl('play-and-record');
   // iOS/Chrome ovoz ruxsati bosish paytida ochiladi
   void context?.resume().catch(() => {});
 
@@ -121,6 +123,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar, opt: { mahalliyOvoz?: bool
     if (!mikrofonniSaqla) mikrofon?.getTracks().forEach((t) => t.stop());
     try { ws?.close(1000, 'yopildi'); } catch { /* yopilgan */ }
     void context?.close().catch(() => {});
+    seansniYop();
   };
   const bekor = () => {
     if (tugadi) return;
@@ -357,7 +360,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar, opt: { mahalliyOvoz?: bool
           if (!tugadi && tashqiOvoz && cb.onQaytaUlanish) { tozala(true); cb.onQaytaUlanish('ovoz', ruxsat, mikrofon); }
           else if (!tugadi) cb.onXato(t);
         },
-        onZaxiraOvozi: () => { if (!tugadi) cb.onOgoh?.('ElevenLabs овози ишламади: жавоб OpenAI овози билан ўқилмоқда.'); },
+        onZaxiraOvozi: () => { if (!tugadi) cb.onOgoh?.('ElevenLabs овози олинмади. OpenAI овози танланди.'); },
       });
 
       const soket = new WebSocket(d.wsUrl);

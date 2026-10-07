@@ -66,6 +66,12 @@ async function main() {
       s.q.qosh('Salom.'); s.q.tugatish(); await flush(); assert.equal(s.started, 1); c.error(new Error('provider error')); await flush();
       assert.equal(s.requests.length, 1); assert.equal(s.errors.length, 1); s.q.toxtat();
     });
+    await test('Manual interruption does not disable streaming on the next answer', async () => {
+      const s = setup([() => new Response(new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new Uint8Array(4800)); } }), { headers: { 'content-type': 'audio/pcm;rate=24000' } }), mp3]);
+      s.q.qosh('Birinchi javob.'); s.q.tugatish(); await flush(); assert.equal(s.started, 1);
+      s.q.toxtat(); await flush(); s.q.qosh('Keyingi javob.'); s.q.tugatish(); await flush();
+      assert.deepEqual(s.requests.map((r) => r.oqim), [true, true]); assert.equal(s.errors.length, 0); s.ctx.end(); await flush(); s.q.toxtat();
+    });
     await test('Ordinary voice button recovers pre-audio PCM failure without a second voice or duplicate callbacks', async () => {
       const requests: boolean[] = []; let started = 0, ended = 0; const errors: string[] = [];
       global.fetch = (async (_, init) => { const d = JSON.parse(String(init?.body)); requests.push(d.oqim); return d.oqim ? emptyPcm() : mp3(); }) as typeof fetch;

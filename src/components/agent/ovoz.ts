@@ -37,6 +37,7 @@
  */
 
 import { JIMLIK_RMS, NutqKuzatuvchisi } from './nutq-kuzatuv';
+import { audioSeansiniOl } from './audio-seans';
 import { YUBORISH_CHASTOTASI, birlashtir, namunalash, nutqOraligi, wavYoz } from './ovoz-yozuv';
 
 export type OvozXatosi = 'ruxsat' | 'mikrofonYoq' | 'mikrofonBand' | 'eshitilmadi' | 'qollanmaydi' | 'tarmoq' | 'server';
@@ -139,24 +140,27 @@ interface Seans {
   bekor(): void;
 }
 
-function seansYarat(h: OvozHodisalari): Seans {
+function seansYarat(h: OvozHodisalari, bosha: () => void): Seans {
   let tugadi = false;
   return {
     yakuniy(matn) {
       if (tugadi) return;
       tugadi = true;
+      bosha();
       h.onYakuniy(matn);
       h.onTugadi();
     },
     xato(kod, xabar) {
       if (tugadi) return;
       tugadi = true;
+      bosha();
       h.onXato(kod, xabar);
       h.onTugadi();
     },
     bekor() {
       if (tugadi) return;
       tugadi = true;
+      bosha();
       h.onTugadi();
     },
   };
@@ -502,7 +506,8 @@ function yozuvniBoshla(h: OvozHodisalari, s: Seans): OvozBoshqaruvi {
  * tugmani qayta bosdi; `bekor()` — oyna yopildi.
  */
 export function ovozniBoshla(h: OvozHodisalari, serverMumkin: boolean): OvozBoshqaruvi {
-  const s = seansYarat(h);
+  const seansniYop = audioSeansiniOl('play-and-record');
+  const s = seansYarat(h, seansniYop);
   const zaxiraBor = serverMumkin && yozuvMumkinmi();
   let joriy: OvozBoshqaruvi | null = null;
   const yozuvgaOt = () => {

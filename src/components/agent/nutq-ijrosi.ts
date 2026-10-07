@@ -1,6 +1,7 @@
 'use client';
 
 import { pcmNutqniIjroEt } from './pcm-nutq';
+import { audioKontekstiniUygot, audioSeansiniOl } from './audio-seans';
 import { nutqParchasi } from '@/lib/agent/matnlar';
 import { gapir, gapirishniToxtat, uzbekOvozi } from './ovoz';
 
@@ -16,7 +17,7 @@ export function nutqniTayyorla(): void {
     const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
     const AC = w.AudioContext ?? w.webkitAudioContext;
     if (AC && (!audio || audio.state === 'closed')) audio = new AC();
-    if (audio?.state === 'suspended') void audio.resume().catch(() => {});
+    if (audio) void audioKontekstiniUygot(audio).catch(() => {});
   } catch { /* Yozma javob ishlashda davom etadi. */ }
 }
 
@@ -45,13 +46,17 @@ export function javobniGapir(matn: string, h: {
   onZaxiraOvozi?(): void;
 }): void {
   nutqniToxtat();
+  const seansniYop = audioSeansiniOl('playback');
   const ctrl = new AbortController();
   let manba: AudioBufferSourceNode | null = null;
   let taymer: ReturnType<typeof setTimeout> | null = null;
   let tugadi = false;
   let kadr: number | null = null;
   let analizator: AnalyserNode | null = null;
+  let zaxiraJavob = false;
+  const boshlandi = () => { if (zaxiraJavob) h.onZaxiraOvozi?.(); h.onBoshlandi(); };
   const bosha = () => {
+    seansniYop();
     if (kadr !== null) cancelAnimationFrame(kadr);
     kadr = null;
     analizator?.disconnect();
@@ -112,7 +117,7 @@ export function javobniGapir(matn: string, h: {
           yakunla(d.xabar ?? 'Овозли жавоб олинмади. Жавобни ўқинг.');
           return null;
         }
-        if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; h.onZaxiraOvozi?.(); }
+        if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; zaxiraJavob = true; }
         return r;
       };
       let r = await ol(oqimMumkin);
@@ -120,29 +125,31 @@ export function javobniGapir(matn: string, h: {
       if (/^audio\/pcm;rate=24000$/i.test(r.headers.get('content-type') ?? '')) {
         const a = audio;
         if (!a) throw new Error('Audio ochilmadi.');
-        let boshlandi = false;
+        let ijroBoshlandi = false;
         try {
           await pcmNutqniIjroEt(a, r, ctrl.signal, {
-            onBoshlandi: () => { if (!tugadi) { boshlandi = true; if (taymer) clearTimeout(taymer); h.onBoshlandi(); } },
+            onBoshlandi: () => { if (!tugadi) { ijroBoshlandi = true; if (taymer) clearTimeout(taymer); boshlandi(); } },
             onDaraja: (d) => { if (!tugadi) h.onDaraja?.(d); },
           });
           if (!tugadi) yakunla();
           return;
         } catch (e) {
-          oqimMumkin = false;
           // Eshitilgan javob qayta o'qilmaydi; bekor qilish yangi so'rov boshlamaydi.
-          if (boshlandi || tugadi || ctrl.signal.aborted) throw e;
+          if (tugadi || ctrl.signal.aborted || (e as Error)?.name === 'NotAllowedError') throw e;
+          oqimMumkin = false;
+          if (ijroBoshlandi) throw e;
           kutish(); r = await ol(false); if (!r) return;
         }
       }
       const bayt = await r.arrayBuffer();
       if (tugadi) return;
       const a = audio;
-      if (a?.state === 'suspended') await a.resume();
-      if (tugadi) return;
-      if (!a || a.state !== 'running') { yakunla('Овозни эшитиш учун жавоб ёнидаги овоз тугмасини босинг.'); return; }
+      if (!a) { yakunla('Овозни эшитиш учун жавоб ёнидаги овоз тугмасини босинг.'); return; }
       const bufer = await a.decodeAudioData(bayt);
       if (tugadi) return;
+      await audioKontekstiniUygot(a, ctrl.signal);
+      if (tugadi) return;
+      if (a.state !== 'running') { yakunla('Овозни эшитиш учун жавоб ёнидаги овоз тугмасини босинг.'); return; }
       if (taymer) clearTimeout(taymer);
       manba = a.createBufferSource();
       manba.buffer = bufer;
@@ -161,11 +168,13 @@ export function javobniGapir(matn: string, h: {
       };
       jonlantir();
       manba.onended = () => yakunla();
-      h.onBoshlandi();
       manba.start();
+      boshlandi();
       taymer = setTimeout(() => yakunla(), Math.min(180_000, bufer.duration * 1000 + 2000));
-    } catch {
-      if (!tugadi) yakunla('Овозли жавоб олинмади. Жавобни ўқинг ёки қайта урининг.');
+    } catch (e) {
+      if (!tugadi) yakunla((e as Error)?.name === 'NotAllowedError'
+        ? 'Телефон овозга рухсат бермади. Медиа овозини кўтариб, Овозни синаш тугмасини қайта босинг.'
+        : 'Овозли жавоб олинмади. Жавобни ўқинг ёки қайта урининг.');
     }
   })();
 }
