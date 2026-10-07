@@ -3,6 +3,7 @@
 import { nutqParchasi } from '@/lib/agent/matnlar';
 import { gapir, gapirishniToxtat, uzbekOvozi } from './ovoz';
 
+let zaxiraOvozi = false; // Shu oyna ichida keyingi javoblar boshqa ovozga qaytmasin.
 let audio: AudioContext | null = null;
 let bekorQil: (() => void) | null = null;
 
@@ -24,6 +25,7 @@ export function nutqniToxtat(): void {
 }
 
 export function nutqMuhitiniYop(): void {
+  zaxiraOvozi = false;
   nutqniToxtat();
   const a = audio;
   audio = null;
@@ -92,7 +94,7 @@ export function javobniGapir(matn: string, h: {
     try {
       const r = await fetch('/api/agent/gapir', {
         method: 'POST', signal: ctrl.signal, headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ matn: nutqParchasi(matn) }),
+        body: JSON.stringify({ matn: nutqParchasi(matn), ...(zaxiraOvozi ? { zaxira: true } : {}) }),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({})) as { xabar?: string };
@@ -102,7 +104,7 @@ export function javobniGapir(matn: string, h: {
       }
       const bayt = await r.arrayBuffer();
       if (tugadi) return;
-      if (r.headers.get('x-nutq-zaxira') === '1') h.onZaxiraOvozi?.();
+      if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; h.onZaxiraOvozi?.(); }
       const a = audio;
       if (a?.state === 'suspended') await a.resume();
       if (tugadi) return;

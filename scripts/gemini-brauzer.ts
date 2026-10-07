@@ -132,7 +132,7 @@ async function main() {
   const holat = await fetch(`${BAZA}/kirish`).then((r) => r.status).catch(() => 0);
   if (holat !== 200) throw new Error(`server ${BAZA} javob bermayapti`);
 
-  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABC'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
+  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDE'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
   if (bolim.includes('A')) {
   /* ═══ A. To'liq oqim: salom, transkripsiya, asbob, gaplab o'qish, yozma matn, to'xtatish (jim mikrofon) ═══ */
   const A = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
@@ -286,11 +286,11 @@ async function main() {
       yopildi && h.yopildi!.code === 1000 && h.audio.length - kadrOldin <= 3 && ['tayyor', 'eshitmoqda'].includes(String(await holatOl(page))), `kod=${h.yopildi?.code}, qo'shimcha kadr=${h.audio.length - kadrOldin}`);
 
     // Gemini ulanishni rad etsa: tushunarli xabar, sessiya yopiladi
-    rejim = 'rad'; h.setup = null; h.yopildi = null;
+    rejim = 'rad'; h.setup = null; h.yopildi = null; const oldRad = h.ochildi;
     await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
-    const rad = await kut(async () => /код 1007/.test(await page.locator('body').innerText()), 20_000);
-    tekshir('A17. Gemini ulanishni rad etsa (1007): xabarda kod va “Уланишни текшириш” ko‘rsatmasi; sessiya yopiladi',
-      rad && (await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1);
+    const rad = await kut(async () => /Jonli xizmatlar javob bermadi|Жонли хизматлар жавоб бермади/.test(await page.locator('body').innerText()), 20_000);
+    tekshir('A17. Provider rad etsa ikki marta qayta sinaladi va sessiya yakunlanadi',
+      rad && h.ochildi - oldRad === 3 && (await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1);
 
     // Administrator uchun diagnostika (haqiqiy server so'rovlari; sandbox'da Google WS va ElevenLabs yetib bo'lmaydi: xatolar tushunarli ko'rsatilishi kerak)
     await page.locator('[data-jonli-tekshiruv] summary').click();
@@ -426,29 +426,30 @@ async function main() {
     await c1.bosish();
     const z1 = await kut(() => c1.sorovlar.some((x) => x.tur === 'ulanish'), 25_000);
     const ul1 = c1.sorovlar.find((x) => x.tur === 'ulanish')?.body;
-    tekshir('C1. Gemini rad etdi (1007): brauzer o‘zi OpenAI zaxirasiga o‘tdi — so‘rov {zaxira:true, qoplash=Gemini urinishining ruxsatnomasi}',
-      z1 && ul1?.zaxira === true && typeof ul1?.qoplash === 'string' && ul1.qoplash === c1.bosh.geminiRuxsat && typeof ul1?.sdp === 'string' && ul1.sdp.startsWith('v=0'), JSON.stringify({ zaxira: ul1?.zaxira, qoplash: typeof ul1?.qoplash, tenglik: ul1?.qoplash === c1.bosh.geminiRuxsat }));
+    tekshir('C1. Ishlagan Gemini tokeni davom sifatida OpenAI’ga o‘tadi, mikrofon qayta ishlatiladi',
+      z1 && ul1?.zaxira === true && typeof ul1?.davom === 'string' && ul1.davom === c1.bosh.geminiRuxsat && typeof ul1?.sdp === 'string' && ul1.sdp.startsWith('v=0'), JSON.stringify({ zaxira: ul1?.zaxira, qoplash: typeof ul1?.davom, tenglik: ul1?.davom === c1.bosh.geminiRuxsat }));
     tekshir('C2. Mikrofon ruxsati ikkinchi marta so‘ralmadi: Gemini oqimi OpenAI’ga berildi (getUserMedia 1 marta)', (await c1.gumSoni()) === 1, `getUserMedia=${await c1.gumSoni()}`);
-    const xabar1 = await kut(async () => /Gemini ишламади/.test(await c1.matn()), 6000, 100);
-    tekshir('C3. Foydalanuvchiga aytildi: “Gemini ишламади: OpenAI билан давом этилмоқда”', xabar1);
+    const xabar1 = await kut(async () => /OpenAI билан қайта уланмоқда/.test(await c1.matn()), 6000, 100);
+    tekshir('C3. Qayta ulanish holati foydalanuvchiga ko‘rsatiladi', xabar1);
     const bosFl = await c1.page.evaluate(() => sessionStorage.getItem('hamroh:gemini-yiqildi'));
     tekshir('C4. Gemini yiqilgani 3 daqiqaga eslab qolinadi (sessionStorage)', Boolean(bosFl) && Date.now() - Number(bosFl) < 30_000);
-    const xatoKorindi = await kut(async () => /sinov: haqiqiy OpenAI/.test(await c1.matn()), 10_000);
-    tekshir('C5. OpenAI ham javob bermasa uning xatosi ko‘rsatiladi va tugma qaytadi', xatoKorindi && (await c1.page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1);
+    const xatoKorindi = await kut(async () => /Jonli xizmatlar javob bermadi|Жонли хизматлар жавоб бермади/.test(await c1.matn()), 10_000);
+    tekshir('C5. Ikkala provider ishlamasa cheklangan qayta urinish tugaydi va tugma qaytadi', xatoKorindi && (await c1.page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1);
     await c1.page.screenshot({ path: `${SKRIN}/c1-zaxira.png` });
 
     /* C6: keyingi bosish — Gemini'ga qayta urinmaydi, to'g'ridan-to'g'ri OpenAI (kunlik hisob va vaqt tejaladi) */
-    const geminiOldin = c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length, wsOldin = c1.wsSoni();
+    const geminiOldin = c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length; const oldCalls = c1.sorovlar.length;
     await c1.bosish();
-    const z6 = await kut(() => c1.sorovlar.filter((x) => x.tur === 'ulanish').length >= 2, 15_000);
-    const ul6 = c1.sorovlar.filter((x) => x.tur === 'ulanish')[1]?.body;
+    const z6 = await kut(() => c1.sorovlar.length > oldCalls, 15_000);
+    const first6 = c1.sorovlar[oldCalls]; const ul6 = first6?.body;
     tekshir('C6. Gemini yaqinda yiqilgan: keyingi bosishda Gemini’ga urinilmaydi, to‘g‘ridan-to‘g‘ri OpenAI ({zaxira:true}, qoplashsiz)',
-      z6 && ul6?.zaxira === true && ul6?.qoplash === undefined && c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length === geminiOldin && c1.wsSoni() === wsOldin, JSON.stringify({ zaxira: ul6?.zaxira, qoplash: ul6?.qoplash, gemini: c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length - geminiOldin }));
+      z6 && ul6?.zaxira === true && ul6?.qoplash === undefined && first6?.tur === 'ulanish', JSON.stringify({ zaxira: ul6?.zaxira, qoplash: ul6?.qoplash, gemini: c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length - geminiOldin }));
     // muddat o'tgach Gemini yana sinaladi ("ishlasa ishlayveradi")
     await c1.page.evaluate(() => sessionStorage.setItem('hamroh:gemini-yiqildi', String(Date.now() - 4 * 60_000)));
     await kut(async () => (await c1.page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1, 10_000);
+    const before7 = c1.sorovlar.length;
     await c1.bosish();
-    const qayta = await kut(() => c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length > geminiOldin, 15_000);
+    const qayta = await kut(() => c1.sorovlar.slice(before7).some((x) => x.tur === 'gemini_ulanish'), 15_000);
     tekshir('C7. 3 daqiqadan keyin Gemini yana sinab ko‘riladi', qayta);
     tekshir('C8. Sahifada kutilmagan xato yo‘q (pageerror)', c1.xatolar.length === 0, c1.xatolar.join(' | '));
     await c1.kapat();
@@ -476,7 +477,7 @@ async function main() {
     await c4.bosish();
     const z4 = await kut(() => c4.sorovlar.some((x) => x.tur === 'ulanish'), 25_000, 200);
     const ul4 = c4.sorovlar.find((x) => x.tur === 'ulanish')?.body; const sekund = (Date.now() - t0) / 1000;
-    tekshir('C11. Gemini ulandi, lekin javob bermadi: ~12 soniyada OpenAI zaxirasi (qoplash = Gemini ruxsatnomasi)', z4 && sekund >= 10 && sekund <= 22 && ul4?.qoplash === c4.bosh.geminiRuxsat, `${sekund.toFixed(1)} s`);
+    tekshir('C11. Gemini ulandi, lekin javob bermadi: ~12 soniyada OpenAI zaxirasi (davom = Gemini ruxsatnomasi)', z4 && sekund >= 10 && sekund <= 22 && ul4?.davom === c4.bosh.geminiRuxsat, `${sekund.toFixed(1)} s`);
     await c4.kapat();
 
     /* C12: Gemini javob berganidan keyin ham uzilsa OpenAI davom ettiradi. */
@@ -507,6 +508,89 @@ async function main() {
     }
     throw e;
   } finally { await Cb.close(); }  }
+  if (bolim.includes('D')) {
+    const db = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
+    try {
+      const u = await xodimYarat('native');
+      const { ctx, page, xatolar } = await sahifaOch(db, u.username, 'window.__name = (t) => t;');
+      let starts = 0, renews = 0, sockets = 0, tts = 0;
+      let first = '', renewed = '';
+      await page.route('**/api/agent/holat', async (r: S) => { const res = await r.fetch(), j = await res.json(); j.jonliZaxira = false; await r.fulfill({ response: res, json: j }); });
+      await page.route('**/api/agent/jonli', async (r: S) => {
+        const b = JSON.parse(r.request().postData() ?? '{}');
+        if (b.tur === 'gemini_ulanish') {
+          starts++; const res = await r.fetch({ postData: JSON.stringify({ ...b, mahalliyOvoz: true }) }); const j = await res.json();
+          first = j.ruxsat; await r.fulfill({ response: res, json: { ...j, muddatMs: 21_000 } });
+        } else if (b.tur === 'yangilash') {
+          renews++; const res = await r.fetch(); const j = await res.json(); renewed = j.ruxsat; await r.fulfill({ response: res });
+        } else await r.continue();
+      });
+      await page.route('**/api/agent/gapir', async (r: S) => { tts++; await r.fulfill({ status: 502, json: { xabar: 'Native audio must not call TTS' } }); });
+      await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
+        sockets++;
+        ws.onMessage((raw: string) => {
+          const b = JSON.parse(String(raw));
+          if (b.setup) ws.send(JSON.stringify({ setupComplete: {} }));
+          if (b.realtimeInput?.text && /жонли суҳбат бошланди/.test(b.realtimeInput.text)) {
+            ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: 'Salom, sizni tinglayapman.' }, modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: wav(24000, 3, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)).subarray(44).toString('base64') } }] }, turnComplete: true } }));
+          }
+        });
+      });
+      await oynaOch(page); await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
+      const speaking = await kut(async () => (await holatOl(page)) === 'gapirmoqda', 15_000);
+      tekshir('D1. Gemini native PCM haqiqiy AudioContext’da gapiradi, tashqi TTS chaqirilmaydi', speaking && tts === 0);
+      const refreshed = await kut(() => renews === 1 && Boolean(renewed), 10_000);
+      const id = (t: string) => JSON.parse(Buffer.from(t.split('.')[0], 'base64url').toString()).id;
+      tekshir('D2. Ruxsat yangilanadi; suhbat va WebSocket qayta ochilmaydi, buyruq IDlari saqlanadi', refreshed && starts === 1 && sockets === 1 && id(first) === id(renewed));
+      await page.getByRole('button', { name: 'Жонли суҳбатни тўхтатиш' }).click(); await uyqu(500);
+      tekshir('D3. Native audio qo‘lda yopiladi, kechikkan ovoz/takroriy ulanish yo‘q', tts === 0 && sockets === 1 && xatolar.length === 0 && (await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1);
+      await ctx.close();
+    } finally { await db.close(); }
+  }
+
+  if (bolim.includes('E')) {
+    const eb = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
+    try {
+      for (const fail of [false, true]) {
+        const u = await xodimYarat(fail ? 'native_fallback' : 'voice_pinned');
+        const { ctx, page, xatolar } = await sahifaOch(eb, u.username, 'window.__name = (t) => t;');
+        const voices: S[] = [], starts: S[] = []; let native = false;
+        await page.route('**/api/agent/holat', async (r: S) => { const res = await r.fetch(), j = await res.json(); j.jonliZaxira = false; await r.fulfill({ response: res, json: j }); });
+        await page.route('**/api/agent/jonli', async (r: S) => {
+          const b = JSON.parse(r.request().postData() ?? '{}');
+          if (b.tur === 'gemini_ulanish') { starts.push(b); native = b.mahalliyOvoz === true; }
+          await r.continue();
+        });
+        await page.route('**/api/agent/gapir', async (r: S) => {
+          voices.push(JSON.parse(r.request().postData() ?? '{}'));
+          await r.fulfill(fail ? { status: 502, json: { xabar: 'Ikkala tashqi ovoz ishlamadi' } } : { status: 200, contentType: 'audio/mpeg', body: wav(16000, .5, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)), headers: { 'x-nutq-zaxira': '1', 'x-nutq-provayder': 'openai' } });
+        });
+        await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
+          ws.onMessage((raw: string) => {
+            const b = JSON.parse(String(raw));
+            if (b.setup) ws.send(JSON.stringify({ setupComplete: {} }));
+            if (b.realtimeInput?.text) {
+              ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: 'Salom, sizni tinglayapman.' }, ...(native ? { modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: wav(24000, 2, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)).subarray(44).toString('base64') } }] } } : {}), turnComplete: true } }));
+            }
+          });
+        });
+        await oynaOch(page); await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
+        if (fail) {
+          const switched = await kut(async () => starts.length === 2 && (await holatOl(page)) === 'gapirmoqda', 15_000);
+          tekshir('E2. Ikkala tashqi ovoz rad etilsa shu Gemini native ovozida davom etadi, kunlik davom ruxsati ishlatiladi', switched && /Овоз: Gemini/.test(await page.locator('body').innerText()) && starts[1].mahalliyOvoz === true && typeof starts[1].davom === 'string' && voices.length === 1 && xatolar.length === 0);
+          const mouth = await kut(async () => Number(await page.locator('[data-holat]').first().evaluate((el: HTMLElement) => el.style.getPropertyValue('--robot-nutq'))) > .1, 2000, 25);
+          tekshir('E3. Native ovozning haqiqiy amplitudasi robot og‘zini harakatlantiradi', mouth);
+        } else {
+          await kut(() => voices.length === 1, 15_000); await kut(async () => (await holatOl(page)) === 'eshitmoqda', 5000);
+          await page.getByLabel('Ҳамроҳга савол ёки буйруқ').fill('Yana salom'); await page.getByLabel('Ҳамроҳга савол ёки буйруқ').press('Enter');
+          const second = await kut(() => voices.length === 2, 8000);
+          tekshir('E1. Keyingi javob zaxira ovozga qulflanadi: gaplar orasida ElevenLabs’ga qaytmaydi', second && /Овоз: OpenAI/.test(await page.locator('body').innerText()) && voices[0].zaxira !== true && voices[1].zaxira === true && starts.length === 1 && xatolar.length === 0);
+        }
+        await ctx.close();
+      }
+    } finally { await eb.close(); }
+  }
+
 }
 
 main().catch((e) => { xato++; console.error('XATO (kutilmagan):', e); }).finally(async () => {

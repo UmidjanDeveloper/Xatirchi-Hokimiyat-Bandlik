@@ -14,8 +14,8 @@ import { korishdami } from '@/lib/korish-rejimi';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 25;
 // `jonli`: yaroqli jonli suhbat ruxsatnomasi (faqat shu server imzolaydi). Jonli suhbatda javob
-// gap-gap o'qiladi, shuning uchun oddiy "tinglash" tugmasidan ko'ra ko'proq so'rov kerak bo'ladi.
-const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ), jonli: z.string().max(2000).optional() });
+// bitta javob bitta ovoz so'rovida o'qiladi; faol suhbatda oddiy "tinglash" tugmasidan ko'ra ko'proq so'rov kerak bo'ladi.
+const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ), jonli: z.string().max(2000).optional(), zaxira: z.boolean().optional() });
 
 export async function POST(request: Request) {
   const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   if (!daily.allowed) return xato('Бугунги овозли жавоб чегараси тугади.', 429);
   try {
     // ElevenLabs ishlamasa OpenAI ovozi o'qiydi (zaxira); ikkalasi ham yiqilsa sabab ikkalasidan.
-    const n = await ovozZanjiri(A(parsed.data.matn, 'lot'), { signal: request.signal });
+    const n = await ovozZanjiri(A(parsed.data.matn, 'lot'), { signal: request.signal, zaxira: parsed.data.zaxira });
     return new Response(n.audio, { headers: {
       'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, no-store',
       // Brauzer "zaxira ovoz ishlatilmoqda" deb bir marta ogohlantiradi; sabab matni sarlavhaga chiqmaydi.

@@ -78,14 +78,14 @@ async function yurgiz(javoblar: Parameters<typeof soxta>[0], model?: string) {
 
 const SINOVLAR: Sinov[] = [
   {
-    nomi: 'Muvaffaqiyat (1 urinish): matn bo‘shliqlari tozalanadi; so‘rov to‘g‘ri tuzilgan — OpenAI manzili, Bearer, fayl ovoz.wav, model whisper-1, til uz, harorat 0, izoh bor',
+    nomi: 'Muvaffaqiyat (1 urinish): matn bo‘shliqlari tozalanadi; so‘rov to‘g‘ri tuzilgan — OpenAI manzili, Bearer, fayl ovoz.wav, model gpt-4o-transcribe, til uz, harorat 0, izoh bor',
     tekshir: async () => {
       const { n, ch } = await yurgiz([yaxshi('  xatlov   qanday ketyapti \n')]);
       return (
         n.ok && n.matn === 'xatlov qanday ketyapti' && n.urinish === 1 && ch.length === 1 &&
         ch[0].url === 'https://api.openai.test/v1/audio/transcriptions' && ch[0].auth === `Bearer ${SOXTA_KALIT}` &&
         ch[0].faylNomi === 'ovoz.wav' && ch[0].faylBayt === 1000 &&
-        ch[0].maydonlar.model === 'whisper-1' && ch[0].maydonlar.language === 'uz' && ch[0].maydonlar.temperature === '0' && /xatlov/.test(ch[0].maydonlar.prompt)
+        ch[0].maydonlar.model === 'gpt-4o-transcribe' && ch[0].maydonlar.language === 'uz' && ch[0].maydonlar.temperature === '0' && /xatlov/.test(ch[0].maydonlar.prompt)
       );
     },
   },
@@ -100,10 +100,10 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: 'Provayder TILni rad etsa ("language ... invalid"): til OLIB TASHLANIB qayta uriladi va natija beradi (2 urinish); izoh saqlanadi',
+    nomi: 'Provayder TILni rad etsa ("language ... invalid"): Uzbek tili saqlanib zaxira modelga o‘tiladi va natija beradi (2 urinish); izoh saqlanadi',
     tekshir: async () => {
       const { n, ch } = await yurgiz([xato(400, "Invalid language 'uz'. Language parameter must be specified in ISO-639-1 format.", 'invalid_language_format'), yaxshi('salom')]);
-      return n.ok && n.matn === 'salom' && n.urinish === 2 && ch.length === 2 && 'language' in ch[0].maydonlar && !('language' in ch[1].maydonlar) && 'prompt' in ch[1].maydonlar;
+      return n.ok && n.matn === 'salom' && n.urinish === 2 && ch.length === 2 && 'language' in ch[0].maydonlar && ch[1].maydonlar.language === 'uz' && ch[1].maydonlar.model === 'whisper-1' && 'prompt' in ch[1].maydonlar;
     },
   },
   {
@@ -134,7 +134,7 @@ const SINOVLAR: Sinov[] = [
     nomi: 'Maxsus model topilmasa (404/"does not exist"): ZAXIRA modeli whisper-1 bilan qayta uriladi; whisper-1 o‘zi topilmasa — qayta urinilmaydi, sabab "model"',
     tekshir: async () => {
       const a = await yurgiz([xato(404, 'The model `gpt-4o-transcribe` does not exist or you do not have access to it.', 'model_not_found'), yaxshi('ok')], 'gpt-4o-transcribe');
-      const b = await yurgiz([xato(404, 'The model `whisper-1` does not exist.', 'model_not_found')]);
+      const b = await yurgiz([xato(404, 'The model `whisper-1` does not exist.', 'model_not_found')], 'whisper-1');
       return a.n.ok && a.ch.length === 2 && a.ch[1].maydonlar.model === ZAXIRA_MODELI && !b.n.ok && b.n.sabab === 'model' && b.ch.length === 1;
     },
   },

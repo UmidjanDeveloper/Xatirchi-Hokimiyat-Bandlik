@@ -34,16 +34,15 @@ test('Provider rad javobi jim qolmaydi; qisman transkript tasdiq deb olinmaydi',
 });
 
 /* ───────────── sozlama ───────────── */
-test('Sozlama: kalit + ElevenLabs bo‘lsagina yoqiladi; odatiy native audio model, v1alpha, transkript rejimi', () => {
+test('Sozlama: Gemini mustaqil ishlaydi, tashqi ovoz ixtiyoriy; odatiy native audio model, v1alpha, transkript rejimi', () => {
   const s = geminiSozlama(ENV)!;
   assert.ok(s); assert.equal(s.model, GEMINI_ODATIY_MODEL); assert.equal(s.surum, 'v1alpha'); assert.equal(s.chiqish, 'transkript');
   assert.equal(s.baza, 'https://generativelanguage.googleapis.com');
   assert.equal(geminiSozlama({ NODE_ENV: 'test' } as NodeJS.ProcessEnv), null);
   assert.equal(geminiSozlama({ ...ENV, GEMINI_API_KEY: '  ' }), null);
-  // Ovoz doim ElevenLabs: usiz Gemini yoqilmaydi (jim suhbat bo'lmasin)
-  assert.equal(geminiSozlama({ ...ENV, ELEVENLABS_API_KEY: undefined, OPENAI_API_KEY: 'x' }), null);
-  assert.equal(geminiSozlama({ ...ENV, ELEVENLABS_VOICE_ID: undefined }), null);
-  assert.equal(geminiSozlama({ ...ENV, AGENT_TTS: '0' }), null);
+  assert.equal(geminiSozlama({ ...ENV, ELEVENLABS_API_KEY: undefined, OPENAI_API_KEY: 'x' })?.tashqiOvoz, true);
+  assert.equal(geminiSozlama({ ...ENV, ELEVENLABS_VOICE_ID: undefined })?.tashqiOvoz, false);
+  assert.equal(geminiSozlama({ ...ENV, AGENT_TTS: '0' })?.tashqiOvoz, false);
 });
 test('Sozlama: o‘chirish tugmalari, model/versiya/rejim qiymatlari, noto‘g‘ri model rad etiladi', () => {
   assert.equal(geminiSozlama({ ...ENV, AGENT_REALTIME: '0' }), null);
@@ -106,7 +105,7 @@ test('Setup: model nomi, AUDIO, ko‘rsatma (Hamroh + mahalla nomlari + Gemini q
   assert.ok(nomlar.includes('hisobotni_yukla') && nomlar.includes('mahallani_top') && nomlar.includes('tizim_holati'));
   assert.ok(!geminiSetup({ ...ctx, rol: 'BANDLIK' }, soz, []).tools![0].functionDeclarations.some((f) => f.name === 'tizim_holati'));
   assert.ok(!geminiSetup({ ...ctx, oqishFaqat: true }, soz, []).tools![0].functionDeclarations.some((f) => f.name === 'amalni_taklif_qil'));
-  assert.deepEqual(s.inputAudioTranscription, {}); assert.deepEqual(s.outputAudioTranscription, {});
+  assert.deepEqual(s.inputAudioTranscription.languageCodes, ['uz-UZ']); assert.ok(s.inputAudioTranscription.customVocabulary.includes('Qorabuloq')); assert.deepEqual(s.contextWindowCompression, { slidingWindow: {} }); assert.deepEqual(s.outputAudioTranscription, {});
   assert.ok(!JSON.stringify(s).includes(KALIT) && !JSON.stringify(s).includes(EL_KALIT));
   const t = geminiSetup(ctx, { ...soz, chiqish: 'transkript' }, []);
   assert.deepEqual(t.generationConfig.responseModalities, ['AUDIO']); assert.deepEqual(t.outputAudioTranscription, {});
@@ -323,10 +322,16 @@ test('Zaxira sozlamasi: OpenAI faqat kalit + AGENT_TTS=1 bo‘lsa; ElevenLabs as
   assert.equal(ovozMavjud(ENV), true); assert.equal(ovozMavjud({ NODE_ENV: 'test' } as NodeJS.ProcessEnv), false);
   assert.equal(ovozMavjud({ ...OPENAI_ENV, ELEVENLABS_VOICE_ID: undefined } as NodeJS.ProcessEnv), true, 'faqat zaxira bor');
 });
+test('After one fallback the conversation can pin OpenAI voice without another ElevenLabs request', async () => {
+  bosh(); const urls: string[] = [];
+  const f = (async (url: unknown) => { urls.push(String(url)); return mp3(); }) as typeof fetch;
+  const n = await ovozZanjiri('Keyingi javob.', { env: OPENAI_ENV, fetchFn: f, zaxira: true });
+  assert.equal(n.provayder, 'openai'); assert.equal(n.zaxira, true); assert.equal(urls.length, 1); assert.ok(urls[0].includes('api.openai.com'));
+});
 test('Jonli zaxira: Gemini asosiy va OpenAI sozlangan bo‘lsa mavjud; OpenAI jonli suhbati o‘z ovozida (ElevenLabs bo‘lsa ham)', () => {
   assert.equal(jonliZaxiraBormi(ENV), false, 'OpenAI yo‘q');
   assert.equal(jonliZaxiraBormi(OPENAI_ENV), true);
-  assert.equal(jonliZaxiraBormi({ ...OPENAI_ENV, AGENT_JONLI_PROVAYDER: 'openai' } as NodeJS.ProcessEnv), false, 'Gemini asosiy emas');
+  assert.equal(jonliZaxiraBormi({ ...OPENAI_ENV, AGENT_JONLI_PROVAYDER: 'openai' } as NodeJS.ProcessEnv), true, 'OpenAI asosiy bo‘lsa Gemini zaxirasi bor');
   assert.equal(jonliZaxiraBormi({ ...OPENAI_ENV, AGENT_REALTIME: '0' } as NodeJS.ProcessEnv), false);
   assert.equal(jonliSozlama(OPENAI_ENV)?.tashqiOvoz, true, 'oddiy OpenAI yo‘li: matn + ElevenLabs ovozi');
   const z = jonliSozlama(OPENAI_ENV, { mahalliyOvoz: true })!;
@@ -335,12 +340,12 @@ test('Jonli zaxira: Gemini asosiy va OpenAI sozlangan bo‘lsa mavjud; OpenAI jo
   assert.ok(!JSON.stringify(jonliSessiya(ctx, z, ['Uyshun'])).includes(OPENAI_KALIT));
   assert.equal(jonliProvayderi(OPENAI_ENV), 'gemini', 'Gemini ishlasa Gemini');
 });
-test('Jonli: ElevenLabs sozlanmagan bo‘lsa Gemini yoqilmaydi, OpenAI o‘z ovozida ishlaydi (jonli suhbat o‘chib qolmaydi)', () => {
+test('Jonli: ElevenLabs sozlanmagan bo‘lsa Gemini o‘z ovozida ishlaydi (jonli suhbat o‘chib qolmaydi)', () => {
   const elsiz = { NODE_ENV: 'test', GEMINI_API_KEY: KALIT, OPENAI_API_KEY: OPENAI_KALIT, AGENT_TTS: '1', AGENT_TTS_PROVIDER: 'elevenlabs' } as unknown as NodeJS.ProcessEnv;
-  assert.equal(geminiSozlama(elsiz), null);
-  assert.equal(jonliProvayderi(elsiz), 'openai');
+  assert.ok(geminiSozlama(elsiz));
+  assert.equal(jonliProvayderi(elsiz), 'gemini');
   assert.equal(jonliSozlama(elsiz)?.tashqiOvoz, false);
-  assert.equal(jonliProvayderi({ ...elsiz, AGENT_TTS_PROVIDER: 'nomalum' } as NodeJS.ProcessEnv), 'openai');
+  assert.equal(jonliProvayderi({ ...elsiz, AGENT_TTS_PROVIDER: 'nomalum' } as NodeJS.ProcessEnv), 'gemini');
 });
 test('Ovoz zanjiri: ElevenLabs ishlasa zaxira KERAK emas va OpenAI’ga so‘rov ketmaydi', async () => {
   bosh(); const chaqiruv: string[] = [];

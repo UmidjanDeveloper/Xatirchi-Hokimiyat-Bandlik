@@ -2,7 +2,7 @@ import { maxfiyniTozala } from '@/lib/maxfiy';
 import { modelAsboblari } from './asboblar';
 import { JONLI_MUDDAT_MS, jonliKursatma, jonliSozlama } from './jonli';
 import { GEMINI_WS_HOST } from './gemini-protokol';
-import { nutqProvayderi, nutqXizmati } from './nutq';
+import { ovozMavjud } from './tts';
 import type { AgentKontekst } from './turlar';
 
 /**
@@ -18,8 +18,8 @@ import type { AgentKontekst } from './turlar';
  *       qulflanadi (`lockAdditionalFields` yo'q = hammasi qulf): brauzer
  *       ko'rsatmani o'zgartira olmaydi.
  *    3. Brauzer Gemini bilan WebSocket orqali to'g'ridan-to'g'ri gaplashadi
- *       (mikrofon -> 16 kHz PCM). Gemini MATN bilan javob beradi.
- *    4. Matn gap-gap ElevenLabs'ga yuboriladi va ovozda o'qiladi.
+ *       (mikrofon -> 16 kHz PCM). Gemini transkript va native audio bilan javob beradi.
+ *    4. Tashqi TTS bo'lsa tayyor javob bitta so'rovda o'qiladi; aks holda native audio ijro etiladi.
  *    5. Asbob chaqiruvlari (Excel, mahalla ko'rsatkichlari...) brauzer
  *       orqali mavjud `/api/agent/jonli` ga boradi: u yerda rol, ko'rish
  *       rejimi va tezlik tekshiriladi (OpenAI yo'li bilan bir xil).
@@ -38,21 +38,17 @@ export interface GeminiSozlama {
   kalit: string;
   model: string;
   surum: 'v1alpha' | 'v1beta';
-  /** 'matn' — model matn yozadi (tavsiya); 'transkript' — model gapiradi, ovozi tashlab yuboriladi, matni olinadi */
+  /** 'matn' — TEXT model; 'transkript' — native AUDIO model va transkripsiya. */
   chiqish: 'matn' | 'transkript';
   /** Faqat sinovda (mahalliy soxta server) o'zgaradi */
   baza: string;
+  tashqiOvoz: boolean;
 }
 
-/**
- * Sozlama to'liq bo'lsagina `null` emas. Ovoz DOIM ElevenLabs: u tayyor
- * bo'lmasa jonli rejim Gemini bilan yoqilmaydi (yarim holatda "jim" suhbat
- * bo'lmasin).
- */
-export function geminiSozlama(env: NodeJS.ProcessEnv = process.env): GeminiSozlama | null {
+/** Gemini kaliti bo'lsa ishlaydi; tashqi TTS ixtiyoriy, aks holda native audio. */
+export function geminiSozlama(env: NodeJS.ProcessEnv = process.env, opt: { zaxira?: boolean } = {}): GeminiSozlama | null {
   const kalit = env.GEMINI_API_KEY?.trim();
-  if (!kalit || env.AGENT_REALTIME === '0' || env.AGENT_JONLI_PROVAYDER?.trim() === 'openai') return null;
-  if (nutqXizmati(env) !== 'elevenlabs' || !nutqProvayderi(env)) return null;
+  if (!kalit || env.AGENT_REALTIME === '0' || (!opt.zaxira && env.AGENT_JONLI_PROVAYDER?.trim() === 'openai')) return null;
   const model = env.GEMINI_LIVE_MODEL?.trim() || GEMINI_ODATIY_MODEL;
   if (!MODEL_ID.test(model)) return null;
   const sinovBazasi = env.NODE_ENV !== 'production' && /^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(env.GEMINI_API_BAZA_SINOV ?? '') ? env.GEMINI_API_BAZA_SINOV! : '';
@@ -60,8 +56,9 @@ export function geminiSozlama(env: NodeJS.ProcessEnv = process.env): GeminiSozla
     kalit, model,
     surum: env.GEMINI_API_SURUM?.trim() === 'v1beta' ? 'v1beta' : 'v1alpha',
     // Native Live modellar audio javob beradi; TEXT talab qilish ulanishni rad ettiradi.
-    chiqish: env.GEMINI_LIVE_CHIQISH?.trim() === 'matn' ? 'matn' : 'transkript',
+    chiqish: ovozMavjud(env) && env.GEMINI_LIVE_CHIQISH?.trim() === 'matn' ? 'matn' : 'transkript',
     baza: sinovBazasi || BAZA,
+    tashqiOvoz: ovozMavjud(env),
   };
 }
 
@@ -70,7 +67,7 @@ export function geminiSozlama(env: NodeJS.ProcessEnv = process.env): GeminiSozla
  * o'zi o'tadi: OpenAI eshitadi, o'ylaydi va o'z ovozi bilan gapiradi. Buning uchun OpenAI sozlangan bo'lishi kerak.
  */
 export function jonliZaxiraBormi(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean(geminiSozlama(env)) && jonliSozlama(env, { mahalliyOvoz: true }) !== null;
+  return Boolean(geminiSozlama(env, { zaxira: true })) && jonliSozlama(env, { mahalliyOvoz: true }) !== null;
 }
 
 /** Jonli suhbatni qaysi xizmat yuritadi: Gemini (agar to'liq sozlangan) -> OpenAI -> yo'q. */
@@ -117,8 +114,9 @@ export interface GeminiSetup {
   generationConfig: { responseModalities: string[]; temperature: number };
   systemInstruction: { parts: { text: string }[] };
   tools?: { functionDeclarations: { name: string; description: string; parameters: GeminiSxema }[] }[];
-  inputAudioTranscription: Record<string, never>;
+  inputAudioTranscription: { languageCodes: string[]; customVocabulary: string[] };
   outputAudioTranscription?: Record<string, never>;
+  contextWindowCompression: { slidingWindow: Record<string, never> };
 }
 
 /** Brauzer Gemini'ga aynan shu `setup` ni yuboradi; token ham shu qiymatga qulflanadi. */
@@ -129,9 +127,10 @@ export function geminiSetup(ctx: AgentKontekst, soz: GeminiSozlama, nomlar: stri
   return {
     model: `models/${soz.model}`,
     generationConfig: { responseModalities: [soz.chiqish === 'matn' ? 'TEXT' : 'AUDIO'], temperature: 0.3 },
-    systemInstruction: { parts: [{ text: jonliKursatma(ctx, nomlar, true) + GEMINI_QOSHIMCHA }] },
+    systemInstruction: { parts: [{ text: jonliKursatma(ctx, nomlar, soz.tashqiOvoz) + (soz.tashqiOvoz ? GEMINI_QOSHIMCHA : '\nGEMINI JONLI REJIMI: javobni o‘zbekcha ovozda ayt. Qisqa va ravon gapir.') }] },
     ...(asboblar.length ? { tools: [{ functionDeclarations: asboblar }] } : {}),
-    inputAudioTranscription: {},
+    inputAudioTranscription: { languageCodes: ['uz-UZ'], customVocabulary: [...nomlar, 'Xatirchi', 'Navoiy', 'mahalla', 'xatlov', 'bandlik', 'Excel hisobot'] },
+    contextWindowCompression: { slidingWindow: {} },
     ...(soz.chiqish === 'transkript' ? { outputAudioTranscription: {} } : {}),
   };
 }

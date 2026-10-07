@@ -346,7 +346,7 @@ const SINOVLAR: Sinov[] = [
   {
     nomi: 'Oyna: yopilsa/fonga o‘tsa yozuv bekor qilinadi (yuborilmaydi); tugma holat kelguncha yopiq (server yo‘li ma’lum bo‘lsin); TTS tugashi mikrofon holatini buzmaydi',
     tekshir: () =>
-      /if \(!ochiq\) toxtat\(\)/.test(OYNA) && /const toxtat = useCallback\([\s\S]*?tanish\.current\?\.bekor\(\)/.test(OYNA) && /visibilitychange/.test(OYNA) && /document\.hidden/.test(OYNA) &&
+      /if \(!ochiq\)\s*(?:\{\s*)?toxtat\(\)/.test(OYNA) && /const toxtat = useCallback\([\s\S]*?tanish\.current\?\.bekor\(\)/.test(OYNA) && /visibilitychange/.test(OYNA) && /document\.hidden/.test(OYNA) &&
       /disabled=\{!jonliFaol && \(!mikrofonMumkin \|\| !malumotTayyor \|\| holat === 'oylamoqda'\)\}/.test(OYNA) &&
       /setHolat\(\(h\) => \(!bandRef\.current && h !== 'eshitmoqda' \? 'tayyor' : h\)\)/.test(OYNA),
   },

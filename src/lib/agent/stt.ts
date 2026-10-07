@@ -1,5 +1,7 @@
 import { maxfiyniTozala } from '@/lib/maxfiy';
 import type { AgentProvayderi } from './model';
+import { MAHALLALAR_BAZASI } from '@/lib/mahallalar';
+import { uzbekNutqKonteksti } from './nutq-tili';
 
 /**
  * ============================================================
@@ -13,7 +15,7 @@ import type { AgentProvayderi } from './model';
  *  Endi:
  *    · provayder javobi aniq SABABGA ajratiladi (`SttSababi`) va har sababga
  *      qisqa, tushunarli matn beriladi;
- *    · provayder parametrni rad etsa (til, harorat, izoh, model) — shu
+ *    · provayder parametrni rad etsa (harorat, izoh, model) — shu
  *      parametrsiz yoki zaxira modeli bilan QAYTA uriniladi (chat so'rovidagi
  *      `haqiqiyModel` bilan bir xil yondashuv), eng ko'pi 4 urinish;
  *    · 5xx xatoda bir marta qayta uriniladi; kalit, hisob va ruxsat
@@ -62,7 +64,7 @@ export const ZAXIRA_MODELI = 'whisper-1';
 const ENG_KOP_URINISH = 4;
 const PROVAYDER_KUTISH_MS = 20_000;
 /** Soha so'zlari: ismlar va atamalar to'g'ri yozilishiga yordam beradi (qisqa) */
-const IZOH = 'Xatirchi tumani, mahalla, xatlov, ishsiz, bandlik, murojaat, hokim, xonadon, hisobot, tahlil paneli';
+const IZOH = uzbekNutqKonteksti(MAHALLALAR_BAZASI.map((m) => m.nomi));
 
 /** Provayder xato javobi (OpenAI/Groq: `{error:{message,type,code,param}}`) */
 interface ProvayderXatosi {
@@ -117,7 +119,7 @@ export async function ovozniMatnga(
   const fetchFn = opt.fetchFn ?? fetch;
   const zaxiraModeli = prov.provayder === 'groq' ? 'whisper-large-v3-turbo' : ZAXIRA_MODELI;
   const p: Parametrlar = {
-    model: opt.model?.trim() || (prov.provayder === 'groq' ? 'whisper-large-v3-turbo' : ZAXIRA_MODELI),
+    model: opt.model?.trim() || (prov.provayder === 'groq' ? 'whisper-large-v3-turbo' : 'gpt-4o-transcribe'),
     til: true,
     harorat: true,
     izoh: true,
@@ -169,10 +171,11 @@ export async function ovozniMatnga(
     const m = `${x.xabar} ${x.kod}`.toLowerCase();
     const rad = r.status === 400 || r.status === 422;
 
-    /* Parametr rad etildi: shuni olib tashlab qayta uramiz */
+    /* Model/qo‘shimcha parametr mosligi: o‘zbek tili hech qachon olib tashlanmaydi. */
     if (rad && p.til && /language/.test(m)) {
-      p.til = false;
-      continue;
+      // Avtomatik til aniqlashga o'tish qisqa sheva gaplarini boshqa tilga buradi.
+      if (p.model !== zaxiraModeli) { p.model = zaxiraModeli; continue; }
+      break;
     }
     if (rad && p.harorat && /temperature/.test(m)) {
       p.harorat = false;

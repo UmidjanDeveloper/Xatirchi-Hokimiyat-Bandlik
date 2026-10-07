@@ -4,9 +4,22 @@ import { modelAsboblari } from './asboblar';
 import { tizimKursatmasi } from './kursatma';
 import type { AgentKontekst } from './turlar';
 import { nutqProvayderi, nutqXizmati } from './nutq';
+import { uzbekNutqKonteksti } from './nutq-tili';
 
 export const JONLI_MUDDAT_MS = 5 * 60_000;
 export const JONLI_ASBOB_LIMIT = 30;
+
+export function jonliChegaralari(env: NodeJS.ProcessEnv = process.env) {
+  const son = (s: string | undefined, odatiy: number, eng: number) => {
+    const n = Number(s); return Number.isInteger(n) && n >= 1 && n <= eng ? n : odatiy;
+  };
+  return { kunlik: son(env.AGENT_REALTIME_DAILY_LIMIT, 120, 1000),
+    umumiyKunlik: son(env.AGENT_REALTIME_GLOBAL_DAILY_LIMIT, 2400, 10_000) };
+}
+
+export function jonliKunKaliti(hozir: Date): string {
+  return new Date(hozir.getTime() + 5 * 3600_000).toISOString().slice(0, 10); // Asia/Tashkent
+}
 
 /**
  * OpenAI Realtime sozlamasi. Ovoz:
@@ -34,6 +47,7 @@ JONLI OVOZLI SUHBAT
 ${tashqiOvoz ? '- Javob matni ElevenLabs orqali o‘qiladi. Har javobni odatda 2–4 qisqa jumlada yoz, maxsus audio teglar yoki sahna ko‘rsatmalarini yozma. Kerakli buyruq asboblarini odatdagidek chaqir.' : ''}
 - Ovozning o'zini eshitasan; yozma transkript yordamchi, u xato bo'lishi mumkin. Faqat ravon adabiy o'zbekchada so'zla. O'zbek o‘, g‘, q, x va h tovushlarini aniq ayt, ruscha yoki inglizcha urg'u ishlatma. O'rtacha tezlikda, iliq va ishonchli ohangda gapir.
 - Qisqa tabiiy gaplar ishlat. Vaziyatga mos yengil hazil qilish mumkin; fuqarolar yoki qiyinchiliklar ustidan kulma. Gapni bo'lishsa to'xta va yangi so'rovni tingla.
+- Kirish tili o'zbekcha, jumladan Xatirchi/Navoiy/Samarqand shevalari. "qivor", "bo'votti", "opkel", "mahallamizdan" kabi og'zaki shakllarning ma'nosini tushun. Qisqa yoki shevadagi gapni ruscha, turkcha, qozoqcha yoki inglizcha deb talqin qilma, transkriptni boshqa tilga tarjima qilma. Noaniq audio bo'lsa "Shu so'zni aniq eshitmadim, yana aytasizmi?" deb o'zbekcha aniqlashtir. Transkriptdagi tasodifiy boshqa tilga javob tilini almashtirma. Noma'lum mahallani o'zing yaratma.
 - Rasmiy mahalla nomlari: ${nomlar.join(', ')}. Bu faqat nomlar katalogi, raqamlar emas. Noaniq eshitilgan nomni taxminan almashtirma: mahallani_top asbobidan foydalan. mahalla_noaniq qaytsa "${nomlar[0] ?? 'shu mahalla'}ni nazarda tutdingizmi?" kabi haqiqiy variant bilan aniqlashtir; javobni kut. mahalla_topilmadi bo'lsa "Ro'yxatda bunday mahalla yo'q, nomini yana aytasizmi?" de.
 - Excel so'ralsa hisobotni_yukla asbobini ishlat. Asbobdagi brauzerNatijasi fayl yaratilgani va yuklash boshlanganini tasdiqlaydi, fayl diskka saqlanganini bila olmaysan. Xato bo'lsa tayyor deb aytma.
 - Yozish takliflari ekranda ko'rinadi. Foydalanuvchi tugmani bosishi yoki aynan "tasdiqlayman" deyishi mumkin. Oddiy "ha" yozish amali uchun yetmaydi. Tasdiq interfeys tomonidan bajariladi, tasdiqlovchi asbobni o'zing o'ylab topma. Server natijasi kelmaguncha bajarildi dema. Amalni taklif qilgan javobingda o'zing "tasdiqlayman" so'zini ovozda aytma: qanday tasdiqlash ekranda yozilgan, faqat tasdiqni kutayotganingni ayt.
@@ -47,8 +61,8 @@ export function jonliSessiya(ctx: AgentKontekst, sozlama: NonNullable<ReturnType
     audio: {
       input: {
         noise_reduction: { type: 'near_field' },
-        transcription: { model: 'gpt-4o-transcribe', language: 'uz', prompt: `O'zbek tilidagi suhbat. Xatirchi mahallalari: ${nomlar.join(', ')}. Excel, hisobot, bandlik, xatlov.` },
-        turn_detection: { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true },
+        transcription: { model: 'gpt-4o-transcribe', language: 'uz', prompt: uzbekNutqKonteksti(nomlar) },
+        turn_detection: { type: 'semantic_vad', eagerness: 'low', create_response: true, interrupt_response: true },
       },
       ...(!sozlama.tashqiOvoz ? { output: { voice: sozlama.voice, speed: 1 } } : {}),
     },
@@ -62,6 +76,7 @@ const Ruxsat = z.object({
   userId: z.string(), rol: z.string(), mahallaId: z.string().nullable(), oqishFaqat: z.boolean(), muddat: z.number().int(),
   // Eski tokenlarda yo'q: ular OpenAI hisoblanadi. Token faqat shu server tomonidan imzolanadi.
   prov: z.enum(['openai', 'gemini']).default('openai'),
+  hisoblangan: z.boolean().default(true),
 }).strict();
 export type JonliRuxsat = z.infer<typeof Ruxsat>;
 
@@ -69,10 +84,10 @@ function imzo(yuk: string, kalit: string): string {
   return createHmac('sha256', kalit).update(`hamroh-jonli-v1:${yuk}`).digest('base64url');
 }
 
-export function jonliRuxsatYarat(ctx: AgentKontekst, call: string, kalit = process.env.SESSION_SECRET, prov: 'openai' | 'gemini' = 'openai'): string {
+export function jonliRuxsatYarat(ctx: AgentKontekst, call: string, kalit = process.env.SESSION_SECRET, prov: 'openai' | 'gemini' = 'openai', hisoblangan = true): string {
   if (!kalit || kalit.length < 32) throw new Error('Sessiya sozlanmagan');
   const q = Ruxsat.parse({ v: 1, id: randomUUID(), call, userId: ctx.userId, rol: ctx.rol, mahallaId: ctx.mahallaId,
-    oqishFaqat: Boolean(ctx.oqishFaqat), muddat: ctx.hozir.getTime() + JONLI_MUDDAT_MS, prov });
+    oqishFaqat: Boolean(ctx.oqishFaqat), muddat: ctx.hozir.getTime() + JONLI_MUDDAT_MS, prov, hisoblangan });
   const yuk = Buffer.from(JSON.stringify(q)).toString('base64url');
   return `${yuk}.${imzo(yuk, kalit)}`;
 }
@@ -90,6 +105,14 @@ export function jonliRuxsatOqi(ctx: AgentKontekst, token: string, yopish = false
       q.muddat + (yopish ? 60_000 : 0) <= hozir || q.muddat > hozir + JONLI_MUDDAT_MS) return null;
     return q;
   } catch { return null; }
+}
+
+/** Faqat ruxsat muddati uzayadi; suhbat, buyruq IDlari va hisob saqlanadi. */
+export function jonliRuxsatYangila(ctx: AgentKontekst, token: string, kalit = process.env.SESSION_SECRET): string | null {
+  const q = jonliRuxsatOqi(ctx, token, true, kalit);
+  if (!q?.hisoblangan || !kalit) return null;
+  const yuk = Buffer.from(JSON.stringify({ ...q, muddat: ctx.hozir.getTime() + JONLI_MUDDAT_MS })).toString('base64url');
+  return `${yuk}.${imzo(yuk, kalit)}`;
 }
 
 export async function jonliUlanish(

@@ -39,7 +39,7 @@ export const ENG_PAST_BALL = 55;
 export const BAHS_ORALIGI = 8;
 
 /** Nom bilan birga aytiladigan, nomga kirmaydigan so'zlar */
-const QOSHIMCHA_SOZLAR = /\b(mahalla(si|da|ga|ning|dagi)?|mfy|fuqarolar|yig['‘’ʻʼ`]?ini)\b/giu;
+const QOSHIMCHA_SOZLAR = /\b(mahalla(si|da|ga|ning|dagi|dan|miz|mizdan|m|mdan|sidan)?|mfy|fuqarolar|yig['‘’ʻʼ`]?ini)\b/giu;
 
 export function nomniTozala(matn: string): string {
   return lotinga(matn).replace(QOSHIMCHA_SOZLAR, ' ').replace(/\s+/g, ' ').trim();

@@ -7,6 +7,7 @@ import {
 } from '@/lib/agent/gemini-protokol';
 import type { JonliHodisalar } from './jonli-suhbat';
 import { nutqNavbatiYarat, type NutqNavbati } from './jonli-nutq';
+import { jonliRuxsatniYangilabTur } from './jonli-ruxsat';
 
 /**
  * ============================================================
@@ -60,17 +61,19 @@ const guvoh = <T,>(p: Promise<T>): Promise<Natija<T>> => p.then((v) => ({ ok: tr
 interface UlanishJavobi {
   provayder?: string; wsUrl?: string; setup?: unknown; ruxsat?: string; muddatMs?: number; xabar?: string;
   chiqish?: 'matn' | 'transkript';
+  tashqiOvoz?: boolean;
   /** Xato javobida: ishlamagan urinishning imzolangan ruxsatnomasi (OpenAI zaxirasiga o'tishda kunlik hisob ikki marta yemaydi) */
   zaxira?: string;
 }
 
-export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(matn: string): boolean; eslat(matn: string): void } {
+export function geminiJonliBoshla(cb: JonliHodisalar, opt: { mahalliyOvoz?: boolean; mikrofon?: MediaStream | null; davom?: string; zaxira?: boolean } = {}): { bekor(): void; yubor(matn: string): boolean; eslat(matn: string): void } {
   const ctrl = new AbortController();
   let tugadi = false;
   let ws: WebSocket | null = null;
   let tayyor = false;
   let ruxsat = '';
   let chiqish: 'matn' | 'transkript' = 'matn';
+  let tashqiOvoz = true;
   let mikrofon: MediaStream | null = null;
   let tugun: AudioWorkletNode | null = null;
   let manbaTugun: MediaStreamAudioSourceNode | null = null;
@@ -130,6 +133,11 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
    * tugagan yoki zaxirasiz sessiyada `false` qaytadi.
    */
   const zaxiragaOt = (sabab: string): boolean => {
+    if (!tugadi && cb.onQaytaUlanish) {
+      tozala(true); cb.onDaraja(0);
+      cb.onQaytaUlanish('provayder', ruxsat || opt.davom, mikrofon, ruxsat ? undefined : qoplash);
+      return true;
+    }
     if (tugadi || !cb.onZaxira) return false;
     tozala(true);
     cb.onDaraja(0);
@@ -169,7 +177,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
       const callId = asbobIdsiniTozala(c.id);
       if (chaqiruvlar.has(callId)) continue;
       chaqiruvlar.add(callId);
-      if (chaqiruvlar.size > 30) { xato('Жонли буйруқлар чегараси тугади. Қайта суҳбат очинг.'); return; }
+      if (chaqiruvlar.size > 1000) { if (cb.onQaytaUlanish) { tozala(true); cb.onQaytaUlanish('muddat', ruxsat, mikrofon); } else xato('Suhbatni yangilang.'); return; }
       let natija: Record<string, unknown>;
       try {
         if (ctrl.signal.aborted || tCtrl.signal.aborted) throw new Error('bekor');
@@ -220,15 +228,19 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
       }
       case 'matn': {
         ishladi = true; clearTimeout(birinchiVaqt);
-        if (!modelId) { modelId = `${sessiyaId}:a${idSoni++}`; cb.onHolat('oylamoqda'); }
+        if (!modelId) { modelId = `${sessiyaId}:a${idSoni++}`; if (!nutq?.faol()) cb.onHolat('oylamoqda'); }
         yangila(modelId, 'a', h.matn);
+        break;
+      }
+      case 'ovoz': {
+        if (!tashqiOvoz) { ishladi = true; clearTimeout(birinchiVaqt); nutq?.qoshPcm(h.data, h.hz); }
         break;
       }
       case 'yakun': {
         if (modelId || nutq?.faol()) { ishladi = true; clearTimeout(birinchiVaqt); }
         // Alohida gaplarda zaxira provayderi turlicha bo'lishi mumkin. To'liq javob
         // bitta so'rovda o'qiladi; zaxira kerak bo'lsa butun javob OpenAI ovozida.
-        if (modelId) nutq?.qosh(matnlar.get(modelId) ?? '');
+        if (tashqiOvoz && modelId) nutq?.qosh(matnlar.get(modelId) ?? '');
         modelId = null;
         foydalanuvchiYopiq = true;
         nutq?.tugatish();
@@ -237,7 +249,11 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
       }
       case 'toxtadi': bolish(); break;
       case 'asbob_bekor': for (const id of h.idlar) bekorIdlar.add(id); asbobCtrl?.abort(); break;
-      case 'ketadi': cb.onXato('Жонли суҳбат тез орада ёпилади. Давом этиш учун қайта уланинг.'); break;
+      case 'ketadi': {
+        if (cb.onQaytaUlanish) { tozala(true); cb.onQaytaUlanish('muddat', ruxsat, mikrofon); }
+        else cb.onXato('Жонли суҳбат тез орада ёпилади. Давом этиш учун қайта уланинг.');
+        break;
+      }
       case 'xato': ulanishXatosi('Gemini сўровни қабул қилмади. Калит, модел ва квотани текширинг.', 'provider_rad'); break;
       default: break;
     }
@@ -245,7 +261,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
 
   const xabarQabul = (xom: unknown) => {
     if (tugadi) return;
-    const hodisalar = geminiXabarOqi(xom, chiqish);
+    const hodisalar = geminiXabarOqi(xom, chiqish, !tashqiOvoz);
     const asboblar: Extract<GeminiHodisa, { t: 'asbob' }>[] = [];
     for (const h of hodisalar) {
       if (h.t === 'asbob') asboblar.push(h);
@@ -300,11 +316,11 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
 
       // Uchalasi parallel: modul, mikrofon ruxsati, server tokeni
       const modul = guvoh(context.audioWorklet.addModule('/gemini-pcm-worklet.js'));
-      const mik = guvoh(navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }));
+      const mik = guvoh(opt.mikrofon?.getAudioTracks().some((t) => t.readyState === 'live') ? Promise.resolve(opt.mikrofon) : navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }));
       const server = guvoh((async () => {
         const r = await fetch('/api/agent/jonli', {
           method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ tur: 'gemini_ulanish' }), signal: ctrl.signal,
+        body: JSON.stringify({ tur: 'gemini_ulanish', ...(opt.mahalliyOvoz ? { mahalliyOvoz: true } : {}), ...(opt.davom ? { davom: opt.davom } : {}), ...(opt.zaxira ? { zaxira: true } : {}) }), signal: ctrl.signal,
         });
         return { r, d: await r.json().catch(() => ({})) as UlanishJavobi };
       })());
@@ -332,11 +348,15 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
       if (tugadi) return;
       ruxsat = d.ruxsat;
       chiqish = d.chiqish === 'transkript' ? 'transkript' : 'matn';
+      tashqiOvoz = d.tashqiOvoz !== false;
       nutq = nutqNavbatiYarat(context, () => ruxsat, {
         onBoshlandi: () => { if (!tugadi) cb.onHolat('gapirmoqda'); },
         onTugadi: () => { if (!tugadi) { sonishGacha = performance.now() + SONISH_MS; cb.onDaraja(0); cb.onHolat('eshitmoqda'); } },
         onDaraja: (x) => { if (!tugadi) cb.onDaraja(x); },
-        onXato: (t) => { if (!tugadi) cb.onXato(t); },
+        onXato: (t) => {
+          if (!tugadi && tashqiOvoz && cb.onQaytaUlanish) { tozala(true); cb.onQaytaUlanish('ovoz', ruxsat, mikrofon); }
+          else if (!tugadi) cb.onXato(t);
+        },
         onZaxiraOvozi: () => { if (!tugadi) cb.onOgoh?.('ElevenLabs овози ишламади: жавоб OpenAI овози билан ўқилмоқда.'); },
       });
 
@@ -355,12 +375,15 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
           clearTimeout(ulanishVaqti);
           void mikrofonniBoshla(mikrofon!).then(() => {
             if (tugadi) return;
+            cb.onOgoh?.('Жонли суҳбат уланди. Сизни тинглаяпман.');
             cb.onHolat('eshitmoqda');
             yubor(geminiMatnXabari('Интерфейс: жонли суҳбат бошланди. Қисқа саломлаш ва фойдаланувчини тинглашга тайёрлигингни айт. Асбоб чақирма.'));
             // Model javob bermasa (matn rejimini rad etdi, kvota...) uzoq kutib o'tirmaymiz
             birinchiVaqt = setTimeout(() => ulanishXatosi('Жонли хизмат жавоб бермади. Қайта уриниб кўринг.', 'javob_yoq'), BIRINCHI_JAVOB_MS);
           }).catch(() => ulanishXatosi('Микрофонни ишга тушириб бўлмади. Қайта уриниб кўринг.', 'mikrofon_worklet'));
-          vaqt = setTimeout(() => { cb.onXato('Беш дақиқалик суҳбат тугади. Давом этиш учун қайта уланинг.'); bekor(); }, Math.min(d.muddatMs ?? MAKS_MUDDAT_MS, MAKS_MUDDAT_MS));
+          jonliRuxsatniYangilabTur({ ruxsat: () => ruxsat, yangilandi: (v) => { ruxsat = v; }, muddatMs: d.muddatMs ?? MAKS_MUDDAT_MS, signal: ctrl.signal,
+            xato: (s) => { if ([401, 403, 429].includes(s) || !zaxiragaOt('ruxsat_yangilash')) xato('Жонли суҳбат рухсатини янгилаб бўлмади. Қайта уланинг.'); },
+          });
           return;
         }
         xabarQabul(xom);

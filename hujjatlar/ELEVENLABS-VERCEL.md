@@ -130,3 +130,9 @@ Ular soxta provider bilan API sharti va bekor qilishni tekshiradi;
 haqiqiy talaffuz sifati ElevenLabs ovozingizda alohida eshitib baholanadi.
 
 API shartining manbasi: [ElevenLabs rasmiy TypeScript SDK](https://github.com/elevenlabs/elevenlabs-js).
+
+## Ovoz almashishi va yangi jonli zaxira
+
+ElevenLabs xato bersa OpenAI TTS bitta to‘liq javobni o‘qiydi. Endi shu ochiq suhbatdagi keyingi javoblar ham zaxira ovozda qoladi: har gapda ElevenLabs’ga qaytilmaydi. Hamroh oynasi yopilib qayta ochilganda asosiy ovoz yana sinab ko‘riladi.
+
+Gemini uchun ElevenLabs shart emas: tashqi TTS sozlanmagan bo‘lsa Gemini o‘z native ovozida gapiradi. Ikkala tashqi TTS ishlamasa jonli suhbat native ovoz bilan tiklanadi; oxirgi savolni qayta ayting. Besh daqiqalik server ruxsati suhbatni uzmasdan avtomatik yangilanadi. Asosiy/zaxira provayder va kunlik limitlar uchun [GEMINI-JONLI.md](GEMINI-JONLI.md)ga qarang.

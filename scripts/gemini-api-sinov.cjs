@@ -13,12 +13,22 @@ mock('src/lib/alifbo-server.ts', { alifboServer: () => 'lot' });
 mock('src/lib/korish-rejimi.ts', { korishdami: () => false });
 mock('src/lib/prisma.ts', { prisma: { user: { findUnique: async () => ({ fullName: 'Sinov' }) } } });
 mock('src/lib/tizim-kuzatuvi.ts', { serverXatosi: async () => { logged++; return { izId: 'x' }; } });
-mock('src/lib/kirish-chegarasi.ts', { bazaChegarasi: async (key) => {
+const chegara = async (key) => {
   keys.push(key);
   if (key.includes(denied || '!never!')) return { allowed: false };
-  if (key.startsWith('jonli-call:') || key.startsWith('jonli-qoplash:')) { if (seen.has(key)) return { allowed: false }; seen.add(key); }
+  if ((key.startsWith('jonli-call:') || key.startsWith('jonli-davom:')) || key.startsWith('jonli-qoplash:')) { if (seen.has(key)) return { allowed: false }; seen.add(key); }
   return { allowed: true };
-} });
+};
+const bandlar = new Map(); let bandSoni = 0;
+mock('src/lib/kirish-chegarasi.ts', {
+  bazaChegarasi: chegara,
+  bazaChegarasiBandQil: async (key, limit) => {
+    const n = await chegara(key); if (!n.allowed) return n;
+    const bandId = `band_${++bandSoni}`; bandlar.set(bandId, { key, limit });
+    return { ...n, bandId };
+  },
+  bazaBandiniQaytar: async (key, id) => { assert.equal(bandlar.get(id)?.key, key); bandlar.delete(id); },
+});
 mock('src/lib/agent/asboblar.ts', {
   modelAsboblari: () => [{ type: 'function', function: { name: 'hisobotni_yukla', description: 'x', parameters: { type: 'object', additionalProperties: false, properties: { format: { type: 'string' } } } } }],
   asbobniTop: (rol, name, view) => name === 'hisobotni_yukla' || (name === 'amalni_taklif_qil' && rol === 'ADMIN' && !view) ? {} : undefined,
@@ -29,7 +39,7 @@ let zaxiraOvoz = false, zanjirXato = null;
 mock('src/lib/agent/tts.ts', {
   ttsSozlama: () => ({ provayder: 'elevenlabs', kalit: 'x', model: 'm', voice: 'v' }),
   matnniOvozga: async () => { speech++; return new Uint8Array([1, 2, 3]).buffer; },
-  ovozMavjud: () => true,
+  ovozMavjud: () => { const n = require(path.join(root, 'src/lib/agent/nutq.ts')); return Boolean(n.nutqProvayderi() || n.nutqZaxirasi()); },
   ovozZanjiri: async () => { if (zanjirXato) throw zanjirXato; speech++; return { audio: new Uint8Array([1, 2, 3]).buffer, provayder: zaxiraOvoz ? 'openai' : 'elevenlabs', zaxira: zaxiraOvoz }; },
 });
 const originalFetch = global.fetch;
@@ -85,7 +95,7 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
     for (const gizli of [GEMINI, 'el-test-key', process.env.SESSION_SECRET]) assert.ok(!s.includes(gizli));
     assert.equal(r.headers.get('cache-control'), 'no-store');
     assert.equal(jonliRuxsatOqi({ ...admin.sessiya, fullName: '', alifbo: 'lot', hozir: new Date() }, token)?.prov, 'gemini');
-    assert.ok(keys.includes('jonli-ulanish:admin-test') && keys.includes('jonli-kunlik:admin-test'));
+    assert.ok(keys.includes('jonli-ulanish:admin-test') && keys.some((k) => k.startsWith('jonli-kunlik:admin-test:')));
   });
   const tool = { tur: 'asbob', ruxsat: null, callId: 'function-call-1', nomi: 'hisobotni_yukla', args: { format: 'excel', qamrov: 'tuman' } };
   await test('Known authorized tool executes once; repeated call ID rejected (Gemini ticket)', async () => {
@@ -156,9 +166,12 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
   let qoplash;
   await test('Gemini failure + OpenAI configured: 502 carries a signed one-time backup voucher; without OpenAI no voucher', async () => {
     setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI });
+    const oldBands = bandlar.size;
     providerJavob = () => new Response('{"error":{"message":"quota"}}', { status: 429 });
     const r = await POST(request(start)); assert.equal(r.status, 502); const d = await r.json();
     assert.ok(d.zaxira && jonliRuxsatOqi(kimlik(), d.zaxira)?.prov === 'gemini'); qoplash = d.zaxira;
+    assert.equal(jonliRuxsatOqi(kimlik(), qoplash).hisoblangan, false);
+    assert.equal(bandlar.size, oldBands, 'failed Gemini start refunds both reservations');
     const s = JSON.stringify(d); for (const gizli of [GEMINI, OPENAI, 'el-test-key', process.env.SESSION_SECRET]) assert.ok(!s.includes(gizli));
     setEnv(geminiEnv);
     const yoq = await (await POST(request(start))).json(); assert.equal(yoq.zaxira, undefined);
@@ -172,15 +185,34 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
     assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: 'ha' }))).status, 400);
     assert.equal(provider, before);
   });
-  await test('Backup start: OpenAI native voice, voucher is single-use and skips the day/total budget the failed try already spent', async () => {
-    setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI }); keys.length = 0; denied = 'jonli-kunlik';
+  await test('Backup start after refunded failure charges exactly one successful start; voucher is single-use', async () => {
+    setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI }); keys.length = 0; denied = '';
     const r = await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: true, qoplash })); assert.equal(r.status, 200);
     const d = await r.json(); assert.equal(d.tashqiOvoz, false); assert.equal(d.zaxira, true);
     assert.equal(jonliRuxsatOqi(kimlik(), d.ruxsat)?.prov, 'openai');
-    assert.ok(!keys.some((k) => k.startsWith('jonli-kunlik:') || k === 'jonli-umumiy') && keys.some((k) => k.startsWith('jonli-ulanish:')));
+    assert.ok(keys.some((k) => k.startsWith('jonli-kunlik:')) && keys.some((k) => k.startsWith('jonli-umumiy-kun:')));
     assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nmock-offer', zaxira: true, qoplash }))).status, 409, 'voucher reuse');
     const yop = await POST(request({ tur: 'yopish', ruxsat: d.ruxsat })); assert.equal(yop.status, 200);
     denied = '';
+  });
+  await test('Working session renewal is user-bound, single-use and does not consume another day slot', async () => {
+    setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI });
+    const working = jonliRuxsatYarat(kimlik(), 'gemini_working', undefined, 'gemini');
+    denied = 'jonli-kunlik'; keys.length = 0;
+    const r = await POST(request({ tur: 'gemini_ulanish', davom: working })); assert.equal(r.status, 200);
+    assert.ok(!keys.some((k) => k.startsWith('jonli-kunlik:')));
+    assert.equal((await POST(request({ tur: 'gemini_ulanish', davom: working }))).status, 409);
+    assert.equal((await POST(request({ tur: 'gemini_ulanish', davom: 'forged.ticket' }))).status, 403);
+    denied = '';
+  });
+  await test('OpenAI primary can fail over to Gemini; Gemini-only setup returns native audio without external TTS', async () => {
+    setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI, AGENT_JONLI_PROVAYDER: 'openai' });
+    assert.equal((await POST(request({ tur: 'gemini_ulanish' }))).status, 409);
+    assert.equal((await POST(request({ tur: 'gemini_ulanish', zaxira: true }))).status, 200);
+    setEnv({ GEMINI_API_KEY: GEMINI });
+    const r = await POST(request(start)); assert.equal(r.status, 200);
+    const d = await r.json(); assert.equal(d.tashqiOvoz, false); assert.equal(d.chiqish, 'transkript');
+    assert.deepEqual(d.setup.inputAudioTranscription.languageCodes, ['uz-UZ']);
   });
   await test('Backup start without a valid voucher is an ordinary start: it spends and respects the day budget', async () => {
     setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI });
@@ -211,6 +243,17 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
     const yop = await POST(request({ tur: 'yopish', ruxsat: d.ruxsat })); assert.equal(yop.status, 200);
     assert.ok(urls.slice(before).some((u) => u.endsWith('/hangup')));
     setEnv({}); assert.equal((await POST(request(start))).status, 503); assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nx' }))).status, 503);
+  });
+  await test('OpenAI primary diagnostics still checks ElevenLabs; native voice does not require Gemini key', async () => {
+    mock('src/lib/agent/openai-tekshir.ts', { openaiZaxiraniTekshir: async () => ({ nom: 'OpenAI zaxirasi', ok: true, izoh: 'fixture' }) });
+    const nutq = require(path.join(root, 'src/lib/agent/nutq.ts')); let ttsChecks = 0;
+    mock('src/lib/agent/nutq.ts', { ...nutq, nutqYarat: async () => { ttsChecks++; throw new nutq.NutqXatosi('provayder', 'ElevenLabs API kaliti qabul qilinmadi'); } });
+    const probe = require(path.join(root, 'src/app/api/agent/jonli-tekshir/route.ts'));
+    setEnv({ ...geminiEnv, GEMINI_API_KEY: '', OPENAI_API_KEY: OPENAI, AGENT_JONLI_PROVAYDER: 'openai' });
+    const d = await (await probe.POST()).json(); assert.equal(d.ok, false); assert.equal(ttsChecks, 1);
+    assert.equal(d.qadamlar[0].nom, 'OpenAI jonli suhbat'); assert.ok(d.qadamlar.some((x) => x.nom === 'ElevenLabs ovozi' && !x.ok)); assert.ok(!d.qadamlar.some((x) => /Gemini/.test(x.nom)));
+    setEnv({ OPENAI_API_KEY: OPENAI, AGENT_REALTIME: '1' });
+    const native = await (await probe.POST()).json(); assert.equal(native.ok, true); assert.equal(ttsChecks, 1); assert.ok(native.qadamlar.some((x) => x.nom === 'OpenAI ovozi'));
   });
   console.log(`${checks}/${checks} Gemini API checks passed with mocked provider/DB.`);
 })().catch((e) => { console.error(e); process.exitCode = 1; }).finally(() => { global.fetch = originalFetch; });

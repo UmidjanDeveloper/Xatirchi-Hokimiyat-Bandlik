@@ -1,5 +1,8 @@
+'use client';
+
 import type { Amal, Manba } from '@/lib/agent/turlar';
 import type { MaskotHolati } from './maskot';
+import { jonliRuxsatniYangilabTur } from './jonli-ruxsat';
 
 export interface JonliHodisalar {
   onHolat(h: MaskotHolati): void;
@@ -17,6 +20,7 @@ export interface JonliHodisalar {
   onZaxira?(qoplash: string | undefined, sabab: string, mikrofon: MediaStream | null): void;
   /** Xato emas, ogohlantirish (masalan "ElevenLabs ishlamadi, OpenAI ovozi o'qiyapti") */
   onOgoh?(matn: string): void;
+  onQaytaUlanish?(sabab: 'muddat' | 'aloqa' | 'provayder' | 'ovoz', ruxsat: string | undefined, mikrofon: MediaStream | null, qoplash?: string): void;
 }
 
 export function jonliMumkinmi(): boolean {
@@ -27,7 +31,7 @@ export function jonliMumkinmi(): boolean {
 export function jonliBoshla(
   cb: JonliHodisalar,
   // `zaxira`: Gemini ishlamadi, OpenAI o'z ovozi bilan davom etadi; `qoplash`: ishlamagan urinishning ruxsatnomasi (kunlik hisob ikki marta yemaydi)
-  opt: { zaxira?: boolean; qoplash?: string; mikrofon?: MediaStream | null } = {},
+  opt: { mahalliyOvoz?: boolean; zaxira?: boolean; qoplash?: string; davom?: string; mikrofon?: MediaStream | null } = {},
 ): { bekor(): void; yubor(matn: string): boolean; eslat(matn: string): void } {
   const ctrl = new AbortController();
   let tugadi = false;
@@ -39,6 +43,7 @@ export function jonliBoshla(
   let ruxsat = '';
   let frame = 0;
   let vaqt: ReturnType<typeof setTimeout> | undefined;
+  let uzilishVaqti: ReturnType<typeof setTimeout> | undefined;
   let ulanishVaqti: ReturnType<typeof setTimeout> | undefined;
   let speaking = false;
   let javobFaol = false;
@@ -61,15 +66,22 @@ export function jonliBoshla(
     void fetch('/api/agent/jonli', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ tur: 'yopish', ruxsat: token }), keepalive: true }).catch(() => {});
   };
-  const bekor = () => {
+  const tozala = (mikrofonniSaqla = false) => {
     if (tugadi) return;
     tugadi = true; ctrl.abort(); asbobCtrl?.abort(); ovozCtrl?.abort();
-    clearTimeout(vaqt); clearTimeout(ulanishVaqti); cancelAnimationFrame(frame);
-    mikrofon?.getTracks().forEach((t) => t.stop()); masofa?.getTracks().forEach((t) => t.stop());
+    clearTimeout(vaqt); clearTimeout(ulanishVaqti); clearTimeout(uzilishVaqti); cancelAnimationFrame(frame);
+    if (!mikrofonniSaqla) mikrofon?.getTracks().forEach((t) => t.stop());
+    masofa?.getTracks().forEach((t) => t.stop());
     if (audio) { audio.pause(); audio.srcObject = null; audio.remove(); }
     dc?.close(); pc?.close(); void context?.close().catch(() => {});
     if (ruxsat) atrofniYop(ruxsat);
-    cb.onDaraja(0); cb.onHolat('tayyor'); cb.onTugadi();
+  };
+  const bekor = () => { if (!tugadi) { tozala(); cb.onDaraja(0); cb.onHolat('tayyor'); cb.onTugadi(); } };
+  const qaytaUlan = (sabab: 'muddat' | 'aloqa' | 'provayder' | 'ovoz') => {
+    if (tugadi || !cb.onQaytaUlanish) return false;
+    tozala(true); cb.onDaraja(0);
+    cb.onQaytaUlanish(sabab, ruxsat || opt.davom, mikrofon);
+    return true;
   };
   const xato = (m: string) => { if (!tugadi) { cb.onXato(m); bekor(); } };
   const yangila = (id: string, r: 'f' | 'a', m: string, delta = false) => {
@@ -87,7 +99,7 @@ export function jonliBoshla(
     for (const o of chaqiruv) {
       const callId = o.call_id as string;
       chaqiruvlar.add(callId);
-      if (chaqiruvlar.size > 30) { xato('Jonli buyruqlar chegarasi tugadi. Qayta suhbat oching.'); return; }
+      if (chaqiruvlar.size > 1000) { if (!qaytaUlan('muddat')) xato('Suhbatni yangilang.'); return; }
       let result: Record<string, unknown>;
       try {
         if (ctrl.signal.aborted || turnCtrl.signal.aborted) throw new Error('bekor');
@@ -143,7 +155,7 @@ export function jonliBoshla(
       case 'output_audio_buffer.cleared': speaking = false; cb.onDaraja(0); cb.onHolat('eshitmoqda'); break;
       case 'response.done':
         javobFaol = false;
-        if (e.response?.status === 'failed') { xato('Jonli javob olinmadi. Oddiy suhbatdan foydalaning.'); break; }
+        if (e.response?.status === 'failed') { if (!qaytaUlan('provayder')) xato('Jonli javob olinmadi. Oddiy suhbatdan foydalaning.'); break; }
         if (e.response?.status === 'completed' && Array.isArray(e.response.output)) {
           void asboblarniBajar(e.response.output);
           if (tashqiOvoz && typeof e.response.id === 'string' && !oqilgan.has(e.response.id)) {
@@ -155,7 +167,7 @@ export function jonliBoshla(
             // An intermediate tool response must not interrupt the exporter or claim completion.
             if (m && !e.response.output.some((o: any) => o?.type === 'function_call')) {
               ovozCtrl?.abort(); const turn = new AbortController(); ovozCtrl = turn;
-              if (cb.onOvoz) void cb.onOvoz(m, turn.signal).catch(() => cb.onXato('Ovoz olinmadi. Javob matni ekranda.')).finally(() => {
+              if (cb.onOvoz) void cb.onOvoz(m, turn.signal).catch(() => { if (!tugadi && !turn.signal.aborted && !qaytaUlan('ovoz')) cb.onXato('Ovoz olinmadi. Javob matni ekranda.'); }).finally(() => {
                 if (ovozCtrl === turn) { ovozCtrl = null; if (!tugadi && !turn.signal.aborted) cb.onHolat('eshitmoqda'); }
               });
             }
@@ -163,7 +175,7 @@ export function jonliBoshla(
         }
         break;
       case 'error':
-        if (!['response_cancel_not_active', 'conversation_already_has_active_response'].includes(e.error?.code)) xato('Jonli suhbatda xato yuz berdi. Qayta ulang yoki yozma suhbatdan foydalaning.');
+        if (!['response_cancel_not_active', 'conversation_already_has_active_response'].includes(e.error?.code) && !qaytaUlan('provayder')) xato('Jonli suhbatda xato yuz berdi. Qayta ulang yoki yozma suhbatdan foydalaning.');
         break;
     }
   };
@@ -172,10 +184,10 @@ export function jonliBoshla(
     try {
       if (!jonliMumkinmi()) throw new Error('qurilma');
       cb.onHolat('oylamoqda');
-      ulanishVaqti = setTimeout(() => xato('Jonli ulanish kechikdi. Qayta urinib ko‘ring.'), 35_000);
+      ulanishVaqti = setTimeout(() => { if (!qaytaUlan('aloqa')) xato('Jonli ulanish kechikdi. Qayta urinib ko‘ring.'); }, 35_000);
       // Zaxirada Gemini allaqachon ruxsat olgan oqim beriladi: ikkinchi marta so'ramaydi (iPhone'da qayta so'rov chiqmasin)
       const stream = opt.mikrofon?.getAudioTracks().some((t) => t.readyState === 'live') ? opt.mikrofon
-        : await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        : await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
       if (tugadi) { stream.getTracks().forEach((t) => t.stop()); return; }
       mikrofon = stream;
       pc = new RTCPeerConnection();
@@ -202,30 +214,38 @@ export function jonliBoshla(
         cancelAnimationFrame(frame); kuzat();
       };
       pc.onconnectionstatechange = () => {
-        if (['failed', 'disconnected', 'closed'].includes(pc?.connectionState ?? '') && !tugadi) xato('Jonli ovoz aloqasi uzildi. Qayta ulang.');
+        clearTimeout(uzilishVaqti);
+        if (pc?.connectionState === 'disconnected') uzilishVaqti = setTimeout(() => {
+          if (!tugadi && pc?.connectionState === 'disconnected' && !qaytaUlan('aloqa')) xato('Jonli ovoz aloqasi uzildi. Qayta ulang.');
+        }, 5000);
+        if (['failed', 'closed'].includes(pc?.connectionState ?? '') && !tugadi && !qaytaUlan('aloqa')) xato('Jonli ovoz aloqasi uzildi. Qayta ulang.');
       };
       dc = pc.createDataChannel('oai-events');
       dc.onmessage = (e) => { if (typeof e.data === 'string') hodisa(e.data); };
-      dc.onclose = () => { if (!tugadi) xato('Jonli suhbat yakunlandi.'); };
+      dc.onclose = () => { if (!tugadi && !qaytaUlan('aloqa')) xato('Jonli suhbat yakunlandi.'); };
       dc.onopen = () => {
         clearTimeout(ulanishVaqti);
+        cb.onOgoh?.('Жонли суҳбат уланди. Сизни тинглаяпман.');
         cb.onHolat('eshitmoqda');
         send({ type: 'response.create', response: { instructions: 'Qisqa salomlash va foydalanuvchini tinglashga tayyorligingni ayt. Asbob chaqirma.' } });
       };
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       const r = await fetch('/api/agent/jonli', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tur: 'ulanish', sdp: offer.sdp, ...(opt.zaxira ? { zaxira: true } : {}), ...(opt.zaxira && opt.qoplash ? { qoplash: opt.qoplash } : {}) }), signal: ctrl.signal });
+        body: JSON.stringify({ tur: 'ulanish', sdp: offer.sdp, ...(opt.mahalliyOvoz ? { mahalliyOvoz: true } : {}), ...(opt.zaxira ? { zaxira: true } : {}), ...(opt.zaxira && opt.qoplash ? { qoplash: opt.qoplash } : {}), ...(opt.davom ? { davom: opt.davom } : {}) }), signal: ctrl.signal });
       const d = await r.json() as { sdp?: string; ruxsat?: string; muddatMs?: number; tashqiOvoz?: boolean; xabar?: string };
       // A late answer after cancel still needs a provider hangup.
       if (tugadi) { if (d.ruxsat) atrofniYop(d.ruxsat); return; }
-      if (!r.ok || !d.sdp || !d.ruxsat) { xato(d.xabar ?? 'Jonli xizmatga ulanib bo‘lmadi.'); return; }
+      if (!r.ok || !d.sdp || !d.ruxsat) { if (r.status >= 500 && qaytaUlan('provayder')) return; xato(d.xabar ?? 'Jonli xizmatga ulanib bo‘lmadi.'); return; }
       ruxsat = d.ruxsat;
       tashqiOvoz = d.tashqiOvoz === true;
       await pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
-      vaqt = setTimeout(() => { cb.onXato('Besh daqiqalik suhbat tugadi. Davom etish uchun qayta ulang.'); bekor(); }, Math.min(d.muddatMs ?? 300_000, 300_000));
+      jonliRuxsatniYangilabTur({ ruxsat: () => ruxsat, yangilandi: (v) => { ruxsat = v; }, muddatMs: d.muddatMs ?? 300_000, signal: ctrl.signal,
+        xato: (s) => { if ([401, 403, 429].includes(s) || !qaytaUlan('aloqa')) xato('Jonli suhbat ruxsatini yangilab bo‘lmadi. Qayta ulang.'); },
+      });
     } catch (e) {
       if (tugadi) return;
+      if (!['NotAllowedError', 'NotFoundError'].includes((e as Error)?.name) && qaytaUlan('aloqa')) return;
       xato((e as Error)?.name === 'NotAllowedError' ? 'Mikrofonga ruxsat bering va qayta ulang.' : 'Jonli ovozga ulanib bo‘lmadi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.');
     }
   };

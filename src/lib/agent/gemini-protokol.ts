@@ -34,6 +34,7 @@ export function geminiWsManziliTogrimi(manzil: string): boolean {
 export type GeminiHodisa =
   | { t: 'tayyor' }
   | { t: 'matn'; matn: string }
+  | { t: 'ovoz'; data: string; hz: number }
   | { t: 'kirish'; matn: string; tamom?: boolean }
   | { t: 'yakun' }
   | { t: 'toxtadi' }
@@ -51,7 +52,7 @@ const obyektmi = (x: unknown): x is Record<string, unknown> => typeof x === 'obj
  * 'transkript' — model gapiradi, matn outputTranscription'dan olinadi
  * (Gemini ovozining o'zi ishlatilmaydi).
  */
-export function geminiXabarOqi(xom: unknown, chiqish: 'matn' | 'transkript' = 'matn'): GeminiHodisa[] {
+export function geminiXabarOqi(xom: unknown, chiqish: 'matn' | 'transkript' = 'matn', ovoz = false): GeminiHodisa[] {
   let d: unknown = xom;
   if (typeof xom === 'string') {
     if (xom.length > ENG_KATTA_XABAR) return [];
@@ -71,6 +72,14 @@ export function geminiXabarOqi(xom: unknown, chiqish: 'matn' | 'transkript' = 'm
       ...(kirish.finished === true ? { tamom: true } : {}) });
     else if (obyektmi(kirish) && kirish.finished === true) out.push({ t: 'kirish', matn: '', tamom: true });
     if (sc.interrupted === true) out.push({ t: 'toxtadi' });
+    if (ovoz && sc.interrupted !== true && obyektmi(sc.modelTurn) && Array.isArray(sc.modelTurn.parts)) {
+      for (const p of sc.modelTurn.parts.slice(0, 20)) {
+        if (!obyektmi(p) || p.thought === true || !obyektmi(p.inlineData)) continue;
+        const a = p.inlineData;
+        const m = typeof a.mimeType === 'string' && /^audio\/pcm;rate=(16000|24000|48000)$/.exec(a.mimeType);
+        if (m && typeof a.data === 'string' && a.data.length <= 320_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(a.data)) out.push({ t: 'ovoz', data: a.data, hz: Number(m[1]) });
+      }
+    }
     if (chiqish === 'matn') {
       const mt = sc.modelTurn;
       if (obyektmi(mt) && Array.isArray(mt.parts)) {

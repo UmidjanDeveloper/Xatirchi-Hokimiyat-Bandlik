@@ -6,11 +6,11 @@ import { alifboServer } from '@/lib/alifbo-server';
 import { korishdami } from '@/lib/korish-rejimi';
 import { prisma } from '@/lib/prisma';
 import { A } from '@/lib/alifbo';
-import { bazaChegarasi } from '@/lib/kirish-chegarasi';
+import { bazaChegarasi, bazaChegarasiBandQil, bazaBandiniQaytar } from '@/lib/kirish-chegarasi';
 import { AGENT_ROLLARI } from '@/lib/agent/ruxsat';
 import { asbobniBajar, asbobniTop } from '@/lib/agent/asboblar';
 import { mahallaRoyxati } from '@/lib/agent/mahalla';
-import { JONLI_ASBOB_LIMIT, JONLI_MUDDAT_MS, jonliSozlama, jonliSessiya, jonliUlanish, jonliYop, jonliRuxsatYarat, jonliRuxsatOqi } from '@/lib/agent/jonli';
+import { JONLI_ASBOB_LIMIT, JONLI_MUDDAT_MS, jonliChegaralari, jonliKunKaliti, jonliSozlama, jonliSessiya, jonliUlanish, jonliYop, jonliRuxsatYarat, jonliRuxsatOqi, jonliRuxsatYangila } from '@/lib/agent/jonli';
 import { GeminiXatosi, geminiSetup, geminiSozlama, geminiToken, jonliProvayderi, jonliZaxiraBormi } from '@/lib/agent/gemini';
 import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 import type { AgentKontekst } from '@/lib/agent/turlar';
@@ -22,12 +22,13 @@ const Sxema = z.discriminatedUnion('tur', [
   // `zaxira`: Gemini ishlamadi, OpenAI o'z ovozi bilan davom etsin. `qoplash`: ishlamagan Gemini urinishining
   // imzolangan ruxsatnomasi; u bilan zaxiraga o'tish kunlik hisobni IKKINCHI marta yemaydi (bir marta ishlatiladi).
   z.object({ tur: z.literal('ulanish'), sdp: z.string().min(10).max(40_000).startsWith('v=0'),
-    zaxira: z.boolean().optional(), qoplash: z.string().max(2000).optional() }).strict(),
+    mahalliyOvoz: z.boolean().optional(), zaxira: z.boolean().optional(), qoplash: z.string().max(2000).optional(), davom: z.string().max(2000).optional() }).strict(),
   // Gemini Live: brauzer o'zi WebSocket ochadi, server faqat yakka foydalanishli token beradi
-  z.object({ tur: z.literal('gemini_ulanish') }).strict(),
+  z.object({ tur: z.literal('gemini_ulanish'), mahalliyOvoz: z.boolean().optional(), zaxira: z.boolean().optional(), davom: z.string().max(2000).optional() }).strict(),
   z.object({ tur: z.literal('asbob'), ruxsat: z.string().max(2000), callId: z.string().regex(/^[a-zA-Z0-9_-]{1,150}$/),
     nomi: z.string().max(60), args: z.record(z.unknown()) }).strict(),
   z.object({ tur: z.literal('yopish'), ruxsat: z.string().max(2000) }).strict(),
+  z.object({ tur: z.literal('yangilash'), ruxsat: z.string().max(2000) }).strict(),
 ]);
 
 export async function POST(request: Request) {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
   const provayder = jonliProvayderi();
   if (!provayder) return xato('Jonli ovozli suhbat ulanmagan. Oddiy mikrofon yoki yozma suhbatdan foydalaning.', 503);
   const sozlama = jonliSozlama(); // OpenAI yo'li uchun (Gemini'da null bo'lishi mumkin)
-  const gsoz = geminiSozlama();
+  const gsoz = geminiSozlama(process.env, { zaxira: true });
   const zsoz = jonliSozlama(process.env, { mahalliyOvoz: true }); // zaxira: OpenAI o'z ovozi
   if (Number(request.headers.get('content-length')) > 60_000) return xato('So‘rov juda katta.', 413);
   // Stream chegarasi: Content-Length bo'lmasa ham katta tana JSON parse'ga yetib bormaydi.
@@ -62,7 +63,16 @@ export async function POST(request: Request) {
   const ctx: AgentKontekst = { userId: q.sessiya.userId, rol: q.sessiya.rol, fullName: '', mahallaId: q.sessiya.mahallaId,
     alifbo, hozir: new Date(), oqishFaqat: Boolean(q.korish) || korishdami(q.sessiya) };
   const d = tana.data;
+  const bandlar: { kalit: string; id: string }[] = [];
+  let ulanishTayyor = false;
   try {
+    if (d.tur === 'yangilash') {
+      const yangi = jonliRuxsatYangila(ctx, d.ruxsat);
+      if (!yangi) return xato('Jonli suhbat ruxsati o‘zgargan. Qayta ulang.', 403);
+      const t = await bazaChegarasi(`jonli-yangilash:${ctx.userId}`, 12, 60_000);
+      if (!t.allowed) return xato('Jonli ruxsat tez-tez yangilanmoqda. Biroz kuting.', 429);
+      return json({ ruxsat: yangi, muddatMs: JONLI_MUDDAT_MS });
+    }
     if (d.tur === 'asbob' || d.tur === 'yopish') {
       const ruxsat = jonliRuxsatOqi(ctx, d.ruxsat, d.tur === 'yopish');
       if (!ruxsat) return xato('Jonli suhbat tugagan yoki hisob o‘zgargan. Qayta ulang.', 403);
@@ -81,16 +91,15 @@ export async function POST(request: Request) {
     }
     // OpenAI yo'li: odatdagi (OpenAI asosiy) yoki Gemini ishlamagani uchun zaxira (faqat OpenAI sozlangan bo'lsa)
     const zaxiraSorovi = d.tur === 'ulanish' && d.zaxira === true;
-    const openaiSoz = d.tur === 'ulanish' ? (zaxiraSorovi ? zsoz : sozlama) : null;
+    const openaiSoz = d.tur === 'ulanish' ? (zaxiraSorovi || d.mahalliyOvoz ? zsoz : sozlama) : null;
     if (d.tur === 'ulanish' && (!openaiSoz || (provayder !== 'openai' && !(provayder === 'gemini' && zaxiraSorovi && jonliZaxiraBormi())))) {
       return xato('Jonli xizmat sozlamasi o‘zgargan. Sahifani yangilang va qayta ulang.', 409);
     }
-    if (d.tur === 'gemini_ulanish' && (provayder !== 'gemini' || !gsoz)) return xato('Jonli xizmat sozlamasi o‘zgargan. Sahifani yangilang va qayta ulang.', 409);
+    if (d.tur === 'gemini_ulanish' && (!gsoz || (provayder !== 'gemini' && !(d.zaxira && jonliZaxiraBormi())))) return xato('Jonli xizmat sozlamasi o‘zgargan. Sahifani yangilang va qayta ulang.', 409);
     if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) return xato('Jonli suhbatning server sozlamasi to‘liq emas.', 503);
-    const tezlik = await bazaChegarasi(`jonli-ulanish:${ctx.userId}`, 2, 60_000);
-    if (!tezlik.allowed) return xato('Biroz kutib qayta ulang.', 429);
-    const n = Number(process.env.AGENT_REALTIME_DAILY_LIMIT ?? 6);
-    const limit = Number.isInteger(n) && n >= 1 && n <= 24 ? n : 6;
+    const tezlik = await bazaChegarasi(`jonli-ulanish:${ctx.userId}`, 6, 60_000);
+    if (!tezlik.allowed) return json({ xabar: A('Ulanishlar tez-tez takrorlandi. Biroz kutib qayta ulang.', alifbo), sabab: 'tezlik', retryAfter: tezlik.retryAfter }, 429);
+    const limit = jonliChegaralari();
     // Ishlamagan Gemini urinishi allaqachon kunlik hisobga yozilgan: shu urinishning zaxirasi ikkinchi marta yemaydi.
     let qoplangan = false;
     if (d.tur === 'ulanish' && zaxiraSorovi && d.qoplash) {
@@ -98,31 +107,48 @@ export async function POST(request: Request) {
       if (v?.prov === 'gemini') {
         const bir = await bazaChegarasi(`jonli-qoplash:${v.id}`, 1, 2 * JONLI_MUDDAT_MS);
         if (!bir.allowed) return xato('Bu ulanish allaqachon zaxiraga o‘tkazilgan.', 409);
-        qoplangan = true;
+        qoplangan = v.hisoblangan;
       }
     }
+    if (d.davom) {
+      const v = jonliRuxsatOqi(ctx, d.davom, true);
+      if (!v?.hisoblangan) return xato('Davom etish ruxsati eskirgan. Qayta suhbat boshlang.', 403);
+      const bir = await bazaChegarasi(`jonli-davom:${v.id}`, 1, 2 * JONLI_MUDDAT_MS);
+      if (!bir.allowed) return xato('Bu suhbat allaqachon qayta ulangan.', 409);
+      qoplangan = true;
+    }
     if (!qoplangan) {
-      const kunlik = await bazaChegarasi(`jonli-kunlik:${ctx.userId}`, limit, 24 * 3600_000);
-      if (!kunlik.allowed) return xato('Bugungi jonli suhbatlar chegarasi tugadi. Yozma suhbat ishlaydi.', 429);
-      const umumiy = await bazaChegarasi('jonli-umumiy', 240, 30 * 24 * 3600_000);
-      if (!umumiy.allowed) return xato('Jonli suhbatlar chegarasi tugadi. Yozma suhbat ishlaydi.', 429);
+      const kun = jonliKunKaliti(ctx.hozir);
+      for (const [kalit, son, sabab] of [
+        [`jonli-kunlik:${ctx.userId}:${kun}`, limit.kunlik, 'kunlik'],
+        [`jonli-umumiy-kun:${kun}`, limit.umumiyKunlik, 'umumiy'],
+      ] as const) {
+        const band = await bazaChegarasiBandQil(kalit, son, 24 * 3600_000, ctx.hozir);
+        if (!band.allowed) return json({ xabar: A('Sozlangan jonli suhbat limiti tugadi. Administrator jonli suhbat limitini tekshirishi mumkin.', alifbo), sabab, retryAfter: band.retryAfter }, 429);
+        if (band.bandId) bandlar.push({ kalit, id: band.bandId });
+      }
     }
     const [xodim, nomlar] = await Promise.all([
       prisma.user.findUnique({ where: { id: ctx.userId }, select: { fullName: true } }), mahallaRoyxati(),
     ]);
     ctx.fullName = xodim?.fullName ?? '';
     if (d.tur === 'gemini_ulanish') {
-      const setup = geminiSetup(ctx, gsoz!, nomlar.map((m) => m.nomi));
-      const { wsUrl } = await geminiToken(setup, gsoz!, { signal: request.signal });
+      const geminiSoz = d.mahalliyOvoz ? { ...gsoz!, tashqiOvoz: false, chiqish: 'transkript' as const } : gsoz!;
+      const setup = geminiSetup(ctx, geminiSoz, nomlar.map((m) => m.nomi));
+      const { wsUrl } = await geminiToken(setup, geminiSoz, { signal: request.signal });
       request.signal.throwIfAborted();
+      ctx.hozir = new Date();
+      ulanishTayyor = true;
       return json({
-        provayder: 'gemini', wsUrl, setup, muddatMs: JONLI_MUDDAT_MS, tashqiOvoz: true, chiqish: gsoz!.chiqish,
+        provayder: 'gemini', wsUrl, setup, muddatMs: JONLI_MUDDAT_MS, tashqiOvoz: geminiSoz.tashqiOvoz, chiqish: geminiSoz.chiqish,
         ruxsat: jonliRuxsatYarat(ctx, `gemini_${randomUUID().replace(/-/g, '')}`, undefined, 'gemini'),
       });
     }
     if (d.tur !== 'ulanish' || !openaiSoz) return xato('So‘rov noto‘g‘ri.', 400);
     const u = await jonliUlanish(d.sdp, jonliSessiya(ctx, openaiSoz, nomlar.map((m) => m.nomi)), openaiSoz.kalit, { signal: request.signal });
     if (request.signal.aborted) { await jonliYop(u.call, openaiSoz.kalit).catch(() => {}); return xato('Ulanish bekor qilindi.', 408); }
+    ctx.hozir = new Date();
+    ulanishTayyor = true;
     return json({ sdp: u.sdp, ruxsat: jonliRuxsatYarat(ctx, u.call), muddatMs: JONLI_MUDDAT_MS, tashqiOvoz: openaiSoz.tashqiOvoz, zaxira: zaxiraSorovi });
   } catch (e) {
     // Provider javobi, SDP, foydalanuvchi matni va kalitlar jurnalga yozilmaydi.
@@ -131,12 +157,14 @@ export async function POST(request: Request) {
       if (e instanceof GeminiXatosi) await serverXatosi('agent:jonli-gemini', e).catch(() => {});
       // OpenAI sozlangan bo'lsa brauzer o'zi zaxiraga o'tadi: unga shu urinishning imzolangan "qoplash" ruxsatnomasi beriladi.
       let zaxira: string | undefined;
-      if (jonliZaxiraBormi()) { try { zaxira = jonliRuxsatYarat(ctx, `zaxira_${randomUUID().replace(/-/g, '')}`, undefined, 'gemini'); } catch { /* sessiya sirsiz */ } }
+      if (jonliZaxiraBormi()) { try { zaxira = jonliRuxsatYarat(ctx, `zaxira_${randomUUID().replace(/-/g, '')}`, undefined, 'gemini', false); } catch { /* sessiya sirsiz */ } }
       return json({
         xabar: A('Gemini жонли хизматига уланиб бўлмади. Калит, квота ва модел номини текширинг (администратор: «Уланишни текшириш») ёки оддий суҳбатдан фойдаланинг.', alifbo),
         ...(zaxira ? { zaxira } : {}),
       }, 502);
     }
     return xato('Jonli ovoz xizmatiga ulanib bo‘lmadi. OpenAI hisobidagi xizmat ruxsati va balansni tekshiring yoki oddiy suhbatdan foydalaning.', 502);
+  } finally {
+    if (!ulanishTayyor) await Promise.all(bandlar.map((b) => bazaBandiniQaytar(b.kalit, b.id)));
   }
 }

@@ -4,7 +4,7 @@ import { alifboServer } from '@/lib/alifbo-server';
 import { bazaChegarasi } from '@/lib/kirish-chegarasi';
 import { maxfiyniTozala } from '@/lib/maxfiy';
 import { mahallaRoyxati } from '@/lib/agent/mahalla';
-import { GeminiXatosi, geminiSetup, geminiSozlama, geminiToken } from '@/lib/agent/gemini';
+import { GeminiXatosi, geminiSetup, geminiSozlama, geminiToken, jonliProvayderi } from '@/lib/agent/gemini';
 import { geminiSoketniTekshir, type TekshiruvQadami } from '@/lib/agent/gemini-tekshir';
 import { NutqXatosi, nutqProvayderi, nutqUlanishi, nutqXizmati, nutqYarat } from '@/lib/agent/nutq';
 import { openaiZaxiraniTekshir } from '@/lib/agent/openai-tekshir';
@@ -40,9 +40,11 @@ export async function POST() {
   else if (ovoz !== 'tayyor') yoq.push(`ElevenLabs sozlamasi (${ovoz})`);
   if (env.AGENT_REALTIME === '0') yoq.push('AGENT_REALTIME=0 ni olib tashlang');
   if (env.AGENT_JONLI_PROVAYDER?.trim() === 'openai') yoq.push('AGENT_JONLI_PROVAYDER=openai ni olib tashlang');
-  const soz = geminiSozlama();
-  qadamlar.push(soz
-    ? { nom: 'Sozlama', ok: true, izoh: `Gemini modeli: ${soz.model} · API versiyasi: ${soz.surum} · javob turi: ${soz.chiqish} · ovoz: ElevenLabs` }
+  const asosiy = jonliProvayderi();
+  if (asosiy === 'openai') qadamlar.push({ ...await openaiZaxiraniTekshir(), nom: 'OpenAI jonli suhbat' });
+  const soz = asosiy === 'openai' ? null : geminiSozlama();
+  if (asosiy !== 'openai') qadamlar.push(soz
+    ? { nom: 'Sozlama', ok: true, izoh: `Gemini modeli: ${soz.model} · API versiyasi: ${soz.surum} · javob turi: ${soz.chiqish} · ovoz: ${soz.tashqiOvoz ? 'tashqi TTS' : 'Gemini'}` }
     : { nom: 'Sozlama', ok: false, izoh: `Vercel'da yetishmaydi yoki noto‘g‘ri: ${yoq.join(', ') || 'GEMINI_LIVE_MODEL qiymati noto‘g‘ri'}.` });
 
   if (soz) {
@@ -63,7 +65,8 @@ export async function POST() {
 
   /* 5. ElevenLabs (alohida: Gemini yiqilsa ham ovozni tekshiramiz) */
   const prov = nutqProvayderi();
-  if (!prov) qadamlar.push({ nom: 'ElevenLabs ovozi', ok: false, izoh: `Ovoz sozlanmagan (${ovoz}).` });
+  if (!prov && asosiy) qadamlar.push({ nom: `${asosiy === 'gemini' ? 'Gemini' : 'OpenAI'} ovozi`, ok: true, izoh: 'Native jonli ovoz sozlangan. Haqiqiy ovozni jonli suhbatda sinang; ElevenLabs majburiy emas.' });
+  else if (!prov) qadamlar.push({ nom: 'ElevenLabs ovozi', ok: false, izoh: `Ovoz sozlanmagan (${ovoz}).` });
   else {
     const t1 = Date.now();
     try {
@@ -75,6 +78,7 @@ export async function POST() {
   }
 
   /* 6. OpenAI zaxirasi (Gemini yoki ElevenLabs yiqilsa avtomatik o'tiladi). Ixtiyoriy: umumiy "ok" ga ta'sir qilmaydi. */
+  if (asosiy === 'openai') return json({ ok: qadamlar.every((x) => x.ok), qadamlar });
   const zaxira = await openaiZaxiraniTekshir();
   qadamlar.push(zaxira);
 

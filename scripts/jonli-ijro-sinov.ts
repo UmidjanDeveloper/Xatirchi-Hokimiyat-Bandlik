@@ -108,10 +108,10 @@ async function main() {
     s.peer.channel.emit({ type: 'response.done', response: { status: 'completed', output } }); await tick(); assert.equal(s.effects, 0);
     assert.ok(s.sent.some((m) => m.item?.output?.includes('buyruq_rad'))); c.bekor();
   });
-  await test('Maximum tool steps produces terminal state after at most 30 effects', async () => {
+  await test('Rolling server tool limit is enforced without a stale thirty-tool client lifetime limit', async () => {
     const s = setup(); const c = jonliBoshla(s.cb); await tick();
     s.peer.channel.emit({ type: 'response.done', response: { status: 'completed', output: Array.from({ length: 31 }, (_, i) => ({ type: 'function_call', call_id: `call${i}`, name: 'sahifani_och', arguments: '{}' })) } });
-    await tick(); assert.equal(s.toolCalls, 30); assert.equal(s.effects, 30); assert.equal(s.ended, 1); assert.ok(s.errors.length); c.bekor();
+    await tick(); assert.equal(s.toolCalls, 31); assert.equal(s.effects, 31); assert.equal(s.ended, 0); c.bekor();
   });
   await test('ElevenLabs mode speaks completed text once and cancels playback on user interruption/close', async () => {
     const s = setup(); s.setStart(async () => Response.json({ sdp: 'v=0 mock', ruxsat: 'fixture', tashqiOvoz: true }));

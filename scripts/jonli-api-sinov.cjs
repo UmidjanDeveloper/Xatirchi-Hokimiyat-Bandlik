@@ -10,11 +10,21 @@ mock('src/lib/api-auth.ts', { talabQil: async () => auth });
 mock('src/lib/alifbo-server.ts', { alifboServer: () => 'lot' });
 mock('src/lib/korish-rejimi.ts', { korishdami: () => false });
 mock('src/lib/prisma.ts', { prisma: { user: { findUnique: async () => ({ fullName: 'Sinov' }) } } });
-mock('src/lib/kirish-chegarasi.ts', { bazaChegarasi: async (key) => {
+const chegara = async (key) => {
   if (key.includes(denied || '!never!')) return { allowed: false };
-  if (key.startsWith('jonli-call:')) { if (seen.has(key)) return { allowed: false }; seen.add(key); }
+  if ((key.startsWith('jonli-call:') || key.startsWith('jonli-davom:'))) { if (seen.has(key)) return { allowed: false }; seen.add(key); }
   return { allowed: true };
-} });
+};
+const bandlar = new Map(); let bandSoni = 0;
+mock('src/lib/kirish-chegarasi.ts', {
+  bazaChegarasi: chegara,
+  bazaChegarasiBandQil: async (key, limit) => {
+    const n = await chegara(key); if (!n.allowed) return n;
+    const bandId = `band_${++bandSoni}`; bandlar.set(bandId, { key, limit });
+    return { ...n, bandId };
+  },
+  bazaBandiniQaytar: async (key, id) => { assert.equal(bandlar.get(id)?.key, key); bandlar.delete(id); },
+});
 mock('src/lib/agent/asboblar.ts', {
   modelAsboblari: () => [],
   asbobniTop: (rol, name, view) => name === 'hisobotni_yukla' || (name === 'amalni_taklif_qil' && rol === 'ADMIN' && !view) ? {} : undefined,
@@ -29,7 +39,7 @@ global.fetch = async (url, init) => {
 };
 process.env.OPENAI_API_KEY = 'test-only-private-key'; process.env.SESSION_SECRET = 'test-only-long-session-secret-more-than-32'; process.env.AGENT_REALTIME = '1';
 const { POST } = require(path.join(root, 'src/app/api/agent/jonli/route.ts'));
-const { jonliRuxsatYarat } = require(path.join(root, 'src/lib/agent/jonli.ts'));
+const { jonliRuxsatYarat, jonliRuxsatOqi } = require(path.join(root, 'src/lib/agent/jonli.ts'));
 const request = (data, signal) => new Request('https://local.invalid/api/agent/jonli', { method: 'POST', body: JSON.stringify(data), headers: { 'content-type': 'application/json' }, signal });
 const start = { tur: 'ulanish', sdp: 'v=0\r\nmock-offer' };
 let checks = 0;
@@ -51,6 +61,18 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
   await test('SDP negotiation issues bound tool ticket without private key', async () => {
     const r = await POST(request(start)); assert.equal(r.status, 200); const d = await r.json(); token = d.ruxsat;
     assert.match(d.sdp, /^v=0/); assert.ok(token); assert.ok(!JSON.stringify(d).includes(process.env.OPENAI_API_KEY)); assert.match(r.headers.get('cache-control'), /no-store/);
+  });
+  await test('Renewal keeps provider/call/tool identity, never charges daily start budget or contacts provider', async () => {
+    const ctx = { ...admin.sessiya, fullName: '', alifbo: 'lot', hozir: new Date() };
+    const old = jonliRuxsatYarat({ ...ctx, hozir: new Date(Date.now() - 200_000) }, 'rtc_renew');
+    const before = bandSoni, contacted = provider;
+    const r = await POST(request({ tur: 'yangilash', ruxsat: old })); assert.equal(r.status, 200);
+    const d = await r.json(), a = jonliRuxsatOqi(ctx, old), b = jonliRuxsatOqi(ctx, d.ruxsat);
+    assert.equal(b.id, a.id); assert.equal(b.call, a.call); assert.ok(b.muddat > a.muddat); assert.equal(provider, contacted); assert.equal(bandSoni, before);
+    auth = { sessiya: { ...admin.sessiya, userId: 'other' } }; assert.equal((await POST(request({ tur: 'yangilash', ruxsat: old }))).status, 403); auth = admin;
+    const failed = jonliRuxsatYarat(ctx, 'failed_token', undefined, 'gemini', false);
+    assert.equal((await POST(request({ tur: 'yangilash', ruxsat: failed }))).status, 403);
+    const native = await (await POST(request({ ...start, mahalliyOvoz: true }))).json(); assert.equal(native.tashqiOvoz, false);
   });
   const tool = { tur: 'asbob', ruxsat: token, callId: 'call_excel', nomi: 'hisobotni_yukla', args: { format: 'excel', qamrov: 'tuman' } };
   await test('Known authorized tool executes once; repeated call ID rejected', async () => { assert.equal((await POST(request(tool))).status, 200); assert.equal((await POST(request(tool))).status, 409); assert.equal(operations, 1); });

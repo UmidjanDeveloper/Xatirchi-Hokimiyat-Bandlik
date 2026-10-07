@@ -48,7 +48,7 @@ export interface OvozNatijasi { audio: ArrayBuffer; provayder: 'openai' | 'eleve
  */
 export async function ovozZanjiri(
   matn: string,
-  opt: { env?: NodeJS.ProcessEnv; signal?: AbortSignal; fetchFn?: typeof fetch; hozir?: () => number } = {}
+  opt: { env?: NodeJS.ProcessEnv; signal?: AbortSignal; fetchFn?: typeof fetch; hozir?: () => number; zaxira?: boolean } = {}
 ): Promise<OvozNatijasi> {
   const env = opt.env ?? process.env;
   const hozir = opt.hozir ?? Date.now;
@@ -59,7 +59,7 @@ export async function ovozZanjiri(
   const zaxira = nutqZaxirasi(env);
   if (!asosiy && !zaxira) throw new NutqXatosi('bosh', 'Овозли жавоб созланмаган.');
   const zaxiraBor = Boolean(zaxira) && nutqXizmati(env) === 'elevenlabs';
-  const sakrash = asosiy?.provayder === 'elevenlabs' && zaxiraBor && ELEVENLABS_SINISH.gacha > hozir();
+  const sakrash = asosiy?.provayder === 'elevenlabs' && zaxiraBor && (opt.zaxira === true || ELEVENLABS_SINISH.gacha > hozir());
   let sabab: string | undefined;
   if (asosiy && !sakrash) {
     try {

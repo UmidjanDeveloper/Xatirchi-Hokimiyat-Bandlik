@@ -64,7 +64,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
       try {
         const r = await fetch('/api/agent/gapir', {
           method: 'POST', signal: b.ctrl.signal, headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ matn: nutqParchasi(b.matn), jonli: ruxsat() }),
+          body: JSON.stringify({ matn: nutqParchasi(b.matn), jonli: ruxsat(), ...(zaxiraBildirildi ? { zaxira: true } : {}) }),
         });
         if (!r.ok) {
           const d = await r.json().catch(() => ({})) as { xabar?: string };
@@ -166,6 +166,20 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   };
 
   return {
+    /** Gemini native PCM: TTS xizmatidan mustaqil, ayni navbat va bekor qilish egasi. */
+    qoshPcm(data: string, hz: number) {
+      try {
+        const raw = atob(data);
+        if (!raw.length || raw.length % 2 || navbat.length >= 300) return;
+        const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+        const v = new DataView(bytes.buffer);
+        const buf = ctx.createBuffer(1, bytes.length / 2, hz);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < ch.length; i++) ch[i] = v.getInt16(i * 2, true) / 32768;
+        navbat.push({ matn: '', ctrl: new AbortController(), holat: 'tayyor', natija: Promise.resolve(buf) });
+        void davom();
+      } catch { xato('Gemini овозини ўқиб бўлмади. Жавоб матни экранда.'); }
+    },
     /** Bitta gapni (yoki bo'lakni) o'qish uchun navbatga qo'yadi */
     qosh(matn: string) {
       const t = matn.trim();

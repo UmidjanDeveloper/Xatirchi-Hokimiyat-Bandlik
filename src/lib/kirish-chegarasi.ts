@@ -37,6 +37,14 @@ export async function bazaChegarasi(
   oynaMs: number,
   hozir = new Date()
 ): Promise<BazaChegarasiNatijasi> {
+  const n = await bazaChegarasiBandQil(kalit, limit, oynaMs, hozir);
+  return { allowed: n.allowed, remaining: n.remaining, retryAfter: n.retryAfter };
+}
+
+/** Band qilingan aynan shu so'rovni qaytarish mumkin; boshqa parallel urinishga tegmaydi. */
+export async function bazaChegarasiBandQil(
+  kalit: string, limit: number, oynaMs: number, hozir = new Date()
+): Promise<BazaChegarasiNatijasi & { bandId?: string }> {
   const xesh = kalitXeshi(kalit);
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${xesh}))`;
@@ -55,8 +63,16 @@ export async function bazaChegarasi(
         retryAfter: Math.max(1, Math.ceil((eng + oynaMs - hozir.getTime()) / 1000)),
       };
     }
-    await tx.kirishUrinishi.create({ data: { kalit: xesh, vaqt: hozir } });
-    return { allowed: true, remaining: limit - urinishlar.length - 1, retryAfter: 0 };
+    const band = await tx.kirishUrinishi.create({ data: { kalit: xesh, vaqt: hozir }, select: { id: true } });
+    return { allowed: true, remaining: limit - urinishlar.length - 1, retryAfter: 0, bandId: band.id };
+  });
+}
+
+export async function bazaBandiniQaytar(kalit: string, bandId: string): Promise<void> {
+  const xesh = kalitXeshi(kalit);
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${xesh}))`;
+    await tx.kirishUrinishi.deleteMany({ where: { id: bandId, kalit: xesh } });
   });
 }
 
