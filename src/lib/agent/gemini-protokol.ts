@@ -34,12 +34,13 @@ export function geminiWsManziliTogrimi(manzil: string): boolean {
 export type GeminiHodisa =
   | { t: 'tayyor' }
   | { t: 'matn'; matn: string }
-  | { t: 'kirish'; matn: string }
+  | { t: 'kirish'; matn: string; tamom?: boolean }
   | { t: 'yakun' }
   | { t: 'toxtadi' }
   | { t: 'asbob'; id: string; nomi: string; args: Record<string, unknown> }
   | { t: 'asbob_bekor'; idlar: string[] }
-  | { t: 'ketadi' };
+  | { t: 'ketadi' }
+  | { t: 'xato' };
 
 const obyektmi = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
@@ -58,13 +59,17 @@ export function geminiXabarOqi(xom: unknown, chiqish: 'matn' | 'transkript' = 'm
   }
   if (!obyektmi(d)) return [];
   const out: GeminiHodisa[] = [];
+  // Provider rejection must not leave a connected, silent session.
+  if (obyektmi(d.error)) return [{ t: 'xato' }];
 
   if (d.setupComplete !== undefined) out.push({ t: 'tayyor' });
 
   const sc = d.serverContent;
   if (obyektmi(sc)) {
     const kirish = sc.inputTranscription;
-    if (obyektmi(kirish) && typeof kirish.text === 'string' && kirish.text) out.push({ t: 'kirish', matn: kirish.text.slice(0, ENG_UZUN_BOLAK) });
+    if (obyektmi(kirish) && typeof kirish.text === 'string' && kirish.text) out.push({ t: 'kirish', matn: kirish.text.slice(0, ENG_UZUN_BOLAK),
+      ...(kirish.finished === true ? { tamom: true } : {}) });
+    else if (obyektmi(kirish) && kirish.finished === true) out.push({ t: 'kirish', matn: '', tamom: true });
     if (sc.interrupted === true) out.push({ t: 'toxtadi' });
     if (chiqish === 'matn') {
       const mt = sc.modelTurn;

@@ -59,7 +59,8 @@ export function geminiSozlama(env: NodeJS.ProcessEnv = process.env): GeminiSozla
   return {
     kalit, model,
     surum: env.GEMINI_API_SURUM?.trim() === 'v1beta' ? 'v1beta' : 'v1alpha',
-    chiqish: env.GEMINI_LIVE_CHIQISH?.trim() === 'transkript' ? 'transkript' : 'matn',
+    // Native Live modellar audio javob beradi; TEXT talab qilish ulanishni rad ettiradi.
+    chiqish: env.GEMINI_LIVE_CHIQISH?.trim() === 'matn' ? 'matn' : 'transkript',
     baza: sinovBazasi || BAZA,
   };
 }

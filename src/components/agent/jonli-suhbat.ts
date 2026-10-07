@@ -4,7 +4,7 @@ import type { MaskotHolati } from './maskot';
 export interface JonliHodisalar {
   onHolat(h: MaskotHolati): void;
   onDaraja(d: number): void;
-  onMatn(id: string, r: 'f' | 'a', matn: string): void;
+  onMatn(id: string, r: 'f' | 'a', matn: string, tamom?: boolean): void;
   onAmallar(amallar: Amal[], manbalar: Manba[], signal: AbortSignal): Promise<Record<string, unknown>>;
   onXato(matn: string): void;
   onTugadi(): void;

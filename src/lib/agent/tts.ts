@@ -28,7 +28,8 @@ export function ovozMavjud(env: NodeJS.ProcessEnv = process.env): boolean {
  */
 const ELEVENLABS_SINISH = { ketma: 0, gacha: 0 };
 const SAKRASH_MS = 60_000;
-const ELEVENLABS_KUTISH_ZAXIRA_BILAN_MS = 10_000;
+const ELEVENLABS_KUTISH_ZAXIRA_BILAN_MS = 6_000;
+const OVOZ_ZANJIRI_MS = 22_000; // Vercel maxDuration=25 va mijozning 25s kutishidan oldin yakunlansin.
 export function elevenlabsHolatiniTozala() { ELEVENLABS_SINISH.ketma = 0; ELEVENLABS_SINISH.gacha = 0; }
 
 /** OpenAI xatosining xom matni foydalanuvchiga chiqmaydi: faqat holat kodi yoki turi */
@@ -51,6 +52,9 @@ export async function ovozZanjiri(
 ): Promise<OvozNatijasi> {
   const env = opt.env ?? process.env;
   const hozir = opt.hozir ?? Date.now;
+  const bosh = Date.now();
+  const signal = AbortSignal.any([AbortSignal.timeout(OVOZ_ZANJIRI_MS), ...(opt.signal ? [opt.signal] : [])]);
+  signal.throwIfAborted();
   const asosiy = ttsSozlama(env);
   const zaxira = nutqZaxirasi(env);
   if (!asosiy && !zaxira) throw new NutqXatosi('bosh', 'Овозли жавоб созланмаган.');
@@ -59,7 +63,7 @@ export async function ovozZanjiri(
   let sabab: string | undefined;
   if (asosiy && !sakrash) {
     try {
-      const audio = await matnniOvozga(matn, asosiy, opt.signal, opt.fetchFn, zaxiraBor && asosiy.provayder === 'elevenlabs' ? ELEVENLABS_KUTISH_ZAXIRA_BILAN_MS : undefined);
+      const audio = await matnniOvozga(matn, asosiy, signal, opt.fetchFn, zaxiraBor && asosiy.provayder === 'elevenlabs' ? ELEVENLABS_KUTISH_ZAXIRA_BILAN_MS : 20_000);
       ELEVENLABS_SINISH.ketma = 0;
       return { audio, provayder: asosiy.provayder ?? 'openai', zaxira: false };
     } catch (e) {
@@ -73,8 +77,10 @@ export async function ovozZanjiri(
   } else {
     sabab = 'ElevenLabs yaqinda ketma-ket yiqilgan; vaqtincha o‘tkazib yuborildi';
   }
+  signal.throwIfAborted();
   try {
-    const audio = await matnniOvozga(matn, { provayder: 'openai', kalit: zaxira!.kalit, model: zaxira!.model, voice: zaxira!.ovoz }, opt.signal, opt.fetchFn);
+    const audio = await matnniOvozga(matn, { provayder: 'openai', kalit: zaxira!.kalit, model: zaxira!.model, voice: zaxira!.ovoz }, signal, opt.fetchFn,
+      Math.max(1, OVOZ_ZANJIRI_MS - (Date.now() - bosh)));
     return { audio, provayder: 'openai', zaxira: true, sabab };
   } catch (e) {
     if (opt.signal?.aborted) throw e;

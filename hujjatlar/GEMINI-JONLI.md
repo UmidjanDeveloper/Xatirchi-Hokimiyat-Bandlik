@@ -37,7 +37,7 @@ Hech narsa qo'lda almashtirilmaydi. `OPENAI_API_KEY` va `AGENT_TTS=1` borliginin
 | Gemini WebSocket'ni rad etdi / uzdi / 15 soniyada ulanmadi | o'sha: OpenAI |
 | Gemini ulandi, lekin ~12 soniyada birinchi javobni bermadi | o'sha: OpenAI |
 | ElevenLabs ovozi yiqildi (kredit, ovoz ID, 5xx) | server **o'sha gapni OpenAI ovozi bilan** o'qiydi; bir marta ogohlantirish chiqadi. ElevenLabs ketma-ket 2 marta yiqilsa, 60 soniya unga so'rov yuborilmaydi (suhbat sekinlashmasin) |
-| Gemini **ishlab, javob berib bo'lgach** uzildi | zaxiraga o'tilmaydi: suhbat tugaydi (ishlayotgan narsa ishlayveradi) |
+| Gemini **ishlab, javob berib bo'lgach** uzildi | OpenAI davom ettiradi; oxirgi savolni qayta ayting, buyruq avtomatik takrorlanmaydi |
 | Kunlik chegara (429), ruxsat yo'q (403) | zaxiraga o'tilmaydi: OpenAI ham shu chegaraga uriladi |
 
 - Zaxiraga o'tgach 3 daqiqa Gemini'ga qayta urinilmaydi (har bosishda 10–15 soniya kutmaslik va kunlik hisobni
@@ -63,7 +63,7 @@ Barchasi **Settings → Environment Variables** da, `NEXT_PUBLIC_` prefiksisiz. 
 | `ELEVENLABS_VOICE_ID` | tanlangan ovoz ID si | **shart** |
 | `ELEVENLABS_MODEL_ID` | odatiy `eleven_v3` (o'zbek tili bor) | ixtiyoriy |
 | `GEMINI_LIVE_MODEL` | odatiy `gemini-3.1-flash-live-preview` | ixtiyoriy |
-| `GEMINI_LIVE_CHIQISH` | `matn` (odatiy) yoki `transkript` | ixtiyoriy |
+| `GEMINI_LIVE_CHIQISH` | `transkript` (odatiy native audio) yoki `matn` (TEXT modeli) | ixtiyoriy |
 | `GEMINI_API_SURUM` | `v1alpha` (odatiy) yoki `v1beta` | ixtiyoriy |
 | `OPENAI_API_KEY` | OpenAI kaliti: **zaxira** (eshitish, javob, ovoz) uchun | tavsiya |
 | `AGENT_JONLI_PROVAYDER` | `openai` yozilsa Gemini o'chadi, OpenAI Realtime qaytadi | ixtiyoriy |
@@ -117,9 +117,8 @@ iPhone/Android'da sinab sozlanishi kerak.
   tanishi ("malformed auth token" deb javob berdi, ya'ni manzil to'g'ri). Qolgan hammasini yuqoridagi
   "Уланишни текшириш" birinchi marta ishga tushganda ko'rsatadi.
 - **Model nomi.** Google "preview" modellarni almashtirib turadi (yarim-kaskad modellar 2025-dekabrda o'chirilgan).
-  Odatiy `gemini-3.1-flash-live-preview` — rasmiy ro'yxatdagi joriy nom. Matn javobini (ElevenLabs uchun
-  kerak) u qo'llamasa, tekshiruv "bo'sh javob" yoki "rad etdi" ko'rsatadi: `GEMINI_LIVE_CHIQISH=transkript`
-  qiling (model gapiradi, ovozi tashlanadi, matni transkripsiyadan olinadi; matn tinish belgilari sifati past bo'lishi mumkin).
+  Odatiy `gemini-3.1-flash-live-preview` uchun native audio + transkript ishlatiladi.
+  `GEMINI_LIVE_CHIQISH=transkript` qo'ying yoki qiymatni olib tashlang (model gapiradi, ovozi tashlanadi, matni transkripsiyadan olinadi; matn tinish belgilari sifati past bo'lishi mumkin).
 - **OpenAI zaxirasi haqiqiy OpenAI bilan** sinalmagan (bu muhitdan OpenAI'ga chiqilmaydi): brauzer so'rovi, qoplash
   ruxsatnomasi, hisob va xavfsizlik soxta serverda tekshirilgan, WebRTC qismi esa avvaldan ishlaydigan OpenAI yo'li.
   **iPhone Safari'da** zaxiraga o'tish foydalanuvchi bosishidan keyin sodir bo'ladi (avtomatik): mikrofon oqimi shu
@@ -134,3 +133,32 @@ iPhone/Android'da sinab sozlanishi kerak.
 | `npm run sinov:gemini` | protokol, gap bo'lgich, token so'rovi shakli, sozlama, xavfsizlik, **OpenAI zaxira zanjiri** (soxta Google/OpenAI), route'lar (32 + 18 tekshiruv) |
 | `npm run sinov:gemini-brauzer` | haqiqiy Chromium: mikrofon → soxta Gemini WebSocket → soxta ElevenLabs, asbob, bo'lish, to'xtatish, tekshiruv tugmasi (qo'lda, `next dev` bilan; sarlavhasiga qarang). C bo'limi: Gemini ishlamasa OpenAI'ga o'tish (`GEMINI_BRAUZER_BOLIM=C` faqat shuni yuritadi) |
 | `npm run sinov:brauzer-pet` | haqiqiy Chromium: Hamroh tugmasi hamma rol va menyu sahifalarida ko'rinadimi, telefonda sahifa gorizontal siljimaydimi, oyna ochiladi/yopiladi, oyna yiqilsa tugma qaytadimi |
+
+## Zaxira va robot harakati
+
+Gemini ulanishda yoki ishlayotgan suhbat o'rtasida uzilsa, tayyor OpenAI
+Realtime zaxirasiga o'tiladi. Mikrofon qayta so'ralmaydi. Uzilgan paytdagi
+buyruq avtomatik qayta bajarilmaydi; oxirgi savolni qayta ayting. Mahalla,
+Excel, tasdiqlash va rol ruxsatlari mavjud server asboblari orqali ishlaydi.
+ElevenLabs vaqtida javob bermasa, 6 soniyadan keyin OpenAI TTS ishlaydi;
+ikki xizmatga umumiy 22 soniya beriladi (Vercel route limiti 25 soniya).
+Bekor qilish zaxira so'rovini boshlamaydi.
+
+`gemini-3.1-flash-live-preview` uchun `GEMINI_LIVE_CHIQISH=transkript`
+qo'ying yoki bu o'zgaruvchini olib tashlang. Native Live AUDIO javobi
+transkriptidan foydalaniladi; Gemini ovozi ijro etilmaydi. Shu sabab Gemini
+va ElevenLabs xarajatlari alohida hisoblanadi. `matn` faqat TEXT javobini
+qo'llaydigan Live model tanlanganda ishlatiladi.
+
+Robot ko'zlarini pirpiratadi, nigohini o'zgartiradi, tinglash/o'ylash/gapirishga
+mos bosh harakati qiladi. Og'izning kengligi va ochilishi haqiqiy audio
+kuchiga bog'langan; tovush bo'lmasa og'iz yopiladi. Emotsiyalar kechikkan
+vazifalar va suhbatdagi mavjud holatlarni kuzatadi. Reduced motion rejimida
+bosh va ko'z animatsiyalari to'xtaydi, audio og'iz ko'rsatkichi qoladi.
+
+Vercel uchun `OPENAI_API_KEY` (Secret), `AGENT_REALTIME=1`, `AGENT_TTS=1`
+bo'lsin. OpenAI'ni doim asosiy qilish uchun `AGENT_JONLI_PROVAYDER=openai`;
+Gemini ustuvor va OpenAI zaxira uchun bu qiymatni `gemini` qiling yoki
+olib tashlang. Ovoz doim OpenAI bo'lishi kerak bo'lsa `AGENT_TTS_PROVIDER=openai`.
+Sozlama o'zgargach yangi kod bilan Redeploy qiling. API balans va model
+ruxsati provider hisobida alohida tekshiriladi.

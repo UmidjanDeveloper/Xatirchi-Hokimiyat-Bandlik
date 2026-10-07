@@ -50,7 +50,7 @@ export function jonliSessiya(ctx: AgentKontekst, sozlama: NonNullable<ReturnType
         transcription: { model: 'gpt-4o-transcribe', language: 'uz', prompt: `O'zbek tilidagi suhbat. Xatirchi mahallalari: ${nomlar.join(', ')}. Excel, hisobot, bandlik, xatlov.` },
         turn_detection: { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true },
       },
-      output: { voice: sozlama.voice, speed: 1 },
+      ...(!sozlama.tashqiOvoz ? { output: { voice: sozlama.voice, speed: 1 } } : {}),
     },
     tools: modelAsboblari(ctx.rol, ctx.oqishFaqat).map((t) => ({ type: 'function', ...t.function })),
     tool_choice: 'auto',

@@ -108,7 +108,7 @@ export default function AgentOynasi({
   const [tekshirilmoqda, setTekshirilmoqda] = useState(false);
   const [tekshiruv, setTekshiruv] = useState<{ ok: boolean; qadamlar: { nom: string; ok: boolean; ms?: number; izoh: string }[] } | null>(null);
   const jonli = useRef<ReturnType<typeof jonliBoshla> | null>(null);
-  const jonliMatnRef = useRef<(id: string, r: 'f' | 'a', m: string) => void>(() => {});
+  const jonliMatnRef = useRef<(id: string, r: 'f' | 'a', m: string, tamom?: boolean) => void>(() => {});
   const jonliAmalRef = useRef<(a: Amal[], m: Manba[], s: AbortSignal) => Promise<Record<string, unknown>>>(async () => ({}));
   const jonliIdlar = useRef(new Map<string, number>());
   const jonliOvozRef = useRef<(m: string, s: AbortSignal) => Promise<void>>(async () => {});
@@ -519,7 +519,7 @@ export default function AgentOynasi({
     }
   };
 
-  jonliMatnRef.current = (id, r, m) => {
+  jonliMatnRef.current = (id, r, m, tamom) => {
     let mahalliy = jonliIdlar.current.get(id);
     if (mahalliy === undefined) { mahalliy = idSanagich.current++; jonliIdlar.current.set(id, mahalliy); }
     const xabarId = mahalliy;
@@ -529,7 +529,7 @@ export default function AgentOynasi({
     });
     const ifoda = suhbatIfodasi(m);
     if (ifoda) setKayfiyat(ifoda.kayfiyat);
-    const qaror = r === 'f' ? ovozTasdiqQarori(m) : null;
+    const qaror = r === 'f' && tamom !== false ? ovozTasdiqQarori(m) : null;
     if (!qaror || korish || ovozTasdiqlari.current.has(id)) return;
     ovozTasdiqlari.current.add(id);
     const kutilgan = [...new Map(xabarlar.flatMap((x) => (x.amallar ?? []).filter(
@@ -570,24 +570,29 @@ export default function AgentOynasi({
     // Gemini yaqinda ishlamagan bo'lsa avval OpenAI zaxirasi: buzuq xizmatga har bosishda urinib kutmaymiz
     const zaxiradanBoshla = zaxiraBor && geminiYaqindaYiqildi();
     const gemini = asosiyGemini && !zaxiradanBoshla;
-    if (!(gemini ? geminiJonliMumkinmi() : jonliMumkinmi())) { setBildirish(t('Bu brauzerda jonli ovoz ishlamaydi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.')); return; }
+    const geminiQurilma = gemini && geminiJonliMumkinmi();
+    const qurilmaZaxirasi = gemini && !geminiQurilma && zaxiraBor && jonliMumkinmi();
+    if (!(gemini ? geminiQurilma || qurilmaZaxirasi : jonliMumkinmi())) { setBildirish(t('Bu brauzerda jonli ovoz ishlamaydi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.')); return; }
     toxtat(); nutqniTayyorla(); setBildirish(''); setJonliFaol(true); setMimikaSinovi(false); setZaxirada(zaxiradanBoshla);
     const hodisalar: JonliHodisalar = {
       onHolat: setHolat, onDaraja: setOgizDarajasi,
-      onMatn: (id, r, m) => jonliMatnRef.current(id, r, m),
+      onMatn: (id, r, m, tamom) => jonliMatnRef.current(id, r, m, tamom),
       onAmallar: (a, m, s) => jonliAmalRef.current(a, m, s),
       onOvoz: (m, s) => jonliOvozRef.current(m, s),
       onXato: (m) => { setBildirish(t(m)); setKayfiyat('xavotir'); },
       onOgoh: (m) => setBildirish(t(m)),
       onTugadi: () => { jonli.current = null; setJonliFaol(false); setZaxirada(false); },
     };
-    if (!gemini) { jonli.current = jonliBoshla(hodisalar, asosiyGemini ? { zaxira: true } : {}); return; }
+    if (!gemini || qurilmaZaxirasi) {
+      if (qurilmaZaxirasi) { setZaxirada(true); setBildirish(t('Бу браузерда Gemini жонли режими очилмади. OpenAI билан давом этилмоқда.')); }
+      jonli.current = jonliBoshla(hodisalar, asosiyGemini ? { zaxira: true } : {}); return;
+    }
     jonli.current = geminiJonliBoshla({
       ...hodisalar,
       // Gemini (yoki ElevenLabs ovozi) ishlamadi: OpenAI eshitadi, o'ylaydi va o'z ovozi bilan gapiradi
-      ...(zaxiraBor ? { onZaxira: (qoplash, _sabab, mikrofon) => {
+      ...(zaxiraBor ? { onZaxira: (qoplash, sabab, mikrofon) => {
         geminiYiqildiniBelgila(); setZaxirada(true);
-        setBildirish(t('Gemini ишламади: OpenAI билан давом этилмоқда.'));
+        setBildirish(t(sabab.startsWith('suhbat_uzildi:') ? 'Gemini алоқаси узилди. OpenAI билан давом этилмоқда; охирги саволни қайта айтинг.' : 'Gemini ишламади: OpenAI билан давом этилмоқда.'));
         jonli.current = jonliBoshla(hodisalar, { zaxira: true, qoplash, mikrofon });
       } } : {}),
     });

@@ -76,6 +76,28 @@ async function main() {
     await dialog.locator('[data-robot-sahna] [data-kayfiyat="xursand"]').waitFor();
     await page.screenshot({ animations: 'disabled', path: `${surat}/xursand.png` });
     ok('Conversation command visibly smiles without claiming a task was completed');
+    const robot = dialog.locator('[data-robot-sahna] .robot');
+    await page.evaluate(() => { document.documentElement.dataset.fx = 'full'; });
+    const motions = await robot.evaluate((r: Element) => ({
+      head: getComputedStyle(r.querySelector('.robot-bosh')!).animationName,
+      eyes: getComputedStyle(r.querySelector('.robot-koz')!).animationName,
+      gaze: getComputedStyle(r.querySelector('.robot-nigoh-avto')!).animationName,
+    }));
+    assert.equal(motions.head, 'robot-nafas'); assert.equal(motions.eyes, 'robot-kiprik'); assert.equal(motions.gaze, 'robot-nigoh');
+    await robot.hover({ position: { x: 90, y: 28 } });
+    await page.waitForFunction(() => {
+      const e = document.querySelector('[data-robot-sahna] .robot-nigoh');
+      return e && new DOMMatrix(getComputedStyle(e).transform).m41 > .5;
+    });
+    const blink = await robot.evaluate((r: Element) => {
+      const eyes = r.querySelector('.robot-koz')!;
+      const a = eyes.getAnimations()[0]; a.currentTime = 5700 * .41;
+      const closed = new DOMMatrix(getComputedStyle(eyes).transform).m22;
+      a.currentTime = 0;
+      return { closed, open: new DOMMatrix(getComputedStyle(eyes).transform).m22 };
+    });
+    assert.ok(blink.closed < .2 && blink.open > .95);
+    ok('Robot breathes, blinks and shifts its gaze; pointer gaze runs on the real SVG face');
     await dialog.getByRole('button', { name: 'Yopish', exact: true }).click();
     // Only audio transport is stubbed. Real React state, WebAudio, DOM and CSS run in Chromium.
     await page.route('**/api/agent/holat', async (route: { fulfill(v: unknown): Promise<void> }) => { await route.fulfill({ json: { ...status, ovozChiqish: true, ovozUlanishi: 'tayyor' } }); });
@@ -87,12 +109,18 @@ async function main() {
     await page.waitForFunction(() => Number(document.querySelector('[data-robot-sahna] .robot-ogiz')?.getAttribute('ry')) > 2);
     await page.screenshot({ animations: 'disabled', path: `${surat}/gapirmoqda.png` });
     ok('Real WebAudio fixture opens the mouth even in low-power mode');
+    const values = await dialog.locator('.robot-ogiz').evaluate((r: Element) => ({ rx: Number(r.getAttribute('rx')), ry: Number(r.getAttribute('ry')) }));
+    assert.ok(values.rx < 9 && values.ry > 2); assert.equal(await dialog.locator('.robot-ogiz-ichki').count(), 1);
+    ok('Speech changes both mouth width and height from the actual audio and shows an inner mouth');
     await dialog.getByRole('button', { name: 'Yopish', exact: true }).click();
     await page.locator('[data-agent-tugmasi]').click();
     assert.equal(await dialog.locator('[data-holat="gapirmoqda"]').count(), 0);
     ok('Closing the conversation stops playback and resets the face');
     await page.setViewportSize({ width: 375, height: 812 });
+    await page.evaluate(() => { document.documentElement.dataset.fx = 'full'; });
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    const reduced = await robot.evaluate((r: Element) => [...r.querySelectorAll('.robot-bosh, .robot-koz, .robot-nigoh-avto')].map((e) => getComputedStyle(e).animationName));
+    assert.ok(reduced.every((n: string) => n === 'none'));
     const bounds = await dialog.boundingBox();
     assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 375 && bounds.y >= 0);
     const input = await dialog.locator('textarea').boundingBox();

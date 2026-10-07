@@ -1087,21 +1087,35 @@
 @keyframes koala-dam { 0%, 100% { transform: rotate(9deg) scale(.95); } 50% { transform: rotate(9deg) scale(.98); } }
 
 /* Professional robot companion. Audio amplitude updates only the mouth. */
-.robot { --robot-rang: #5eead4; color: var(--text); }
+.robot { --robot-rang: #5eead4; --robot-nutq: 0; color: var(--text); }
 .robot-tana { width: 100%; height: 100%; overflow: visible; }
 .robot-xursand { --robot-rang: #86efac; }
 .robot-jiddiy { --robot-rang: #fb923c; }
 .robot-xavotir { --robot-rang: #fcd34d; }
 .robot-qosh-chap, .robot-qosh-ong { transform-box: fill-box; transform-origin: center; }
-.robot-ogiz { transform-box: fill-box; transform-origin: center; }
+.robot-bosh { transform-origin: 60px 91px; }
+.robot-ogiz, .robot-ogiz-ichki { transition: rx 65ms linear, ry 65ms linear; }
+.robot-nigoh-avto { transform-origin: 60px 54px; }
 @media (prefers-reduced-motion: no-preference) {
-  html:not([data-fx='lite']) .robot-koz { transform-box: fill-box; transform-origin: center; animation: robot-kiprik 6s infinite; }
+  html:not([data-fx='lite']) .robot-koz { transform-box: fill-box; transform-origin: center; animation: robot-kiprik 5.7s infinite; }
   html:not([data-fx='lite']) .maskot-oylamoqda .robot-signal { animation: robot-kutish 1s ease-in-out infinite; }
-  html:not([data-fx='lite']) .maskot-eshitmoqda .robot-tana { animation: robot-tinglash 2s ease-in-out infinite; }
+  html:not([data-fx='lite']) .maskot-tayyor .robot-bosh { animation: robot-nafas 5.5s ease-in-out infinite; }
+  html:not([data-fx='lite']) .maskot-eshitmoqda .robot-bosh { animation: robot-tinglash 3.6s ease-in-out infinite; }
+  html:not([data-fx='lite']) .maskot-oylamoqda .robot-bosh { animation: robot-oy 4.5s ease-in-out infinite; }
+  html:not([data-fx='lite']) .robot-nigoh-avto { animation: robot-nigoh 9s ease-in-out infinite; }
+  html:not([data-fx='lite']) .maskot-oylamoqda .robot-nigoh-avto { animation: robot-izlanish 4.5s ease-in-out infinite; }
+  html:not([data-fx='lite']) .maskot-gapirmoqda .robot-bosh { animation: robot-soz 2.6s ease-in-out infinite; }
+  html:not([data-fx='lite']) .maskot-gapirmoqda .robot-qosh { transform: translateY(calc(var(--robot-nutq) * -1.8px)); transition: transform 100ms ease-out; }
+  html:not([data-fx='lite']) .maskot-gapirmoqda .robot-nigoh-avto { transform: scaleY(calc(1 + var(--robot-nutq) * .1)); }
 }
-@keyframes robot-kiprik { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.1); } }
+@keyframes robot-kiprik { 0%, 39%, 43%, 73%, 78%, 100% { transform: scaleY(1); } 41%, 75%, 77% { transform: scaleY(.08); } 76% { transform: scaleY(.85); } }
 @keyframes robot-kutish { 50% { opacity: .3; } }
-@keyframes robot-tinglash { 50% { transform: rotate(-3deg); } }
+@keyframes robot-nafas { 50% { transform: translateY(-1px) rotate(.6deg); } }
+@keyframes robot-tinglash { 0%, 100% { transform: rotate(-2deg); } 45% { transform: rotate(2deg) translateY(-1px); } 65% { transform: rotate(0deg); } }
+@keyframes robot-oy { 45%, 65% { transform: rotate(4deg) translateY(-1.5px); } }
+@keyframes robot-soz { 0%, 100% { transform: rotate(-1deg); } 25% { transform: rotate(1.4deg) translateY(-.7px); } 60% { transform: rotate(-1.8deg); } 80% { transform: rotate(.8deg); } }
+@keyframes robot-nigoh { 0%, 16%, 45%, 65%, 100% { translate: 0 0; } 25%, 35% { translate: 1.7px -.8px; } 75%, 85% { translate: -1.2px .5px; } }
+@keyframes robot-izlanish { 0%, 100% { translate: 0 0; } 25%, 60% { translate: 2px -2px; } 80% { translate: -1px -1px; } }
 
 /* Essential facial feedback also works on low-power phones. */
 .robot-koz, .robot-qosh path { transition: d 180ms ease, fill 180ms ease; }
@@ -1111,9 +1125,9 @@
 }
 @keyframes robot-quvonch { 35% { transform: translateY(-5px) rotate(-4deg); } 70% { transform: rotate(3deg); } }
 @keyframes robot-jiddiy { 25% { transform: rotate(-4deg); } 65% { transform: rotate(4deg); } }
-@media (prefers-reduced-motion: reduce) { .robot-koz, .robot-qosh path { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .robot *, .robot-ogiz, .robot-ogiz-ichki { animation: none !important; transition: none !important; } }
 
 .robot-nigoh { transform: translate(var(--robot-nigoh-x, 0px), var(--robot-nigoh-y, 0px)); transition: transform 120ms ease-out; }
-.robot-signal, .robot-koz { filter: drop-shadow(0 0 2px var(--robot-rang)); }
+.robot-signal, .robot-koz, .robot-nutq-ogiz { filter: drop-shadow(0 0 2px var(--robot-rang)); }
 [data-robot-sahna] { background: radial-gradient(ellipse at 22% 45%, rgb(45 212 191 / .08), transparent 65%), var(--surface); }
 @media (prefers-reduced-motion: reduce) { .robot-nigoh { transform: none; transition: none; } }

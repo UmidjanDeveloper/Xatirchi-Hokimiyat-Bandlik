@@ -26,11 +26,17 @@ const ctx: AgentKontekst = { userId: 'admin-test', rol: 'ADMIN', fullName: 'Sino
 
 const sinovlar: [string, () => unknown | Promise<unknown>][] = [];
 const test = (nom: string, f: () => unknown | Promise<unknown>) => sinovlar.push([nom, f]);
+test('Provider rad javobi jim qolmaydi; qisman transkript tasdiq deb olinmaydi', () => {
+  assert.deepEqual(geminiXabarOqi({ error: { message: KALIT } }), [{ t: 'xato' }]);
+  assert.deepEqual(geminiXabarOqi({ serverContent: { inputTranscription: { text: 'tasdiqlayman' } } }), [{ t: 'kirish', matn: 'tasdiqlayman' }]);
+  assert.deepEqual(geminiXabarOqi({ serverContent: { inputTranscription: { text: ' demadim', finished: true } } }), [{ t: 'kirish', matn: ' demadim', tamom: true }]);
+  assert.deepEqual(geminiXabarOqi({ serverContent: { inputTranscription: { finished: true } } }), [{ t: 'kirish', matn: '', tamom: true }]);
+});
 
 /* ───────────── sozlama ───────────── */
-test('Sozlama: kalit + ElevenLabs bo‘lsagina yoqiladi; odatiy model, v1alpha, matn rejimi', () => {
+test('Sozlama: kalit + ElevenLabs bo‘lsagina yoqiladi; odatiy native audio model, v1alpha, transkript rejimi', () => {
   const s = geminiSozlama(ENV)!;
-  assert.ok(s); assert.equal(s.model, GEMINI_ODATIY_MODEL); assert.equal(s.surum, 'v1alpha'); assert.equal(s.chiqish, 'matn');
+  assert.ok(s); assert.equal(s.model, GEMINI_ODATIY_MODEL); assert.equal(s.surum, 'v1alpha'); assert.equal(s.chiqish, 'transkript');
   assert.equal(s.baza, 'https://generativelanguage.googleapis.com');
   assert.equal(geminiSozlama({ NODE_ENV: 'test' } as NodeJS.ProcessEnv), null);
   assert.equal(geminiSozlama({ ...ENV, GEMINI_API_KEY: '  ' }), null);
@@ -89,18 +95,18 @@ test('Sxema: turlar KATTA harfda, additionalProperties yo‘q; hamma rol asbobla
     for (const a of t) assert.deepEqual(yomonKalit(geminiSxema(a.function.parameters)), [], `${rol}/${a.function.name}`);
   }
 });
-test('Setup: model nomi, TEXT, ko‘rsatma (Hamroh + mahalla nomlari + Gemini qoidasi), asboblar rolga mos, kalit yo‘q', () => {
+test('Setup: model nomi, AUDIO, ko‘rsatma (Hamroh + mahalla nomlari + Gemini qoidasi), asboblar rolga mos, kalit yo‘q', () => {
   const soz = geminiSozlama(ENV)!;
   const s = geminiSetup(ctx, soz, ['Uyshun', 'Qorabuloq']);
   assert.equal(s.model, `models/${GEMINI_ODATIY_MODEL}`);
-  assert.deepEqual(s.generationConfig.responseModalities, ['TEXT']);
+  assert.deepEqual(s.generationConfig.responseModalities, ['AUDIO']);
   const matn = s.systemInstruction.parts[0].text;
   assert.match(matn, /Hamroh/); assert.match(matn, /Qorabuloq/); assert.match(matn, /GEMINI JONLI REJIMI/); assert.match(matn, /ElevenLabs/);
   const nomlar = s.tools![0].functionDeclarations.map((f) => f.name);
   assert.ok(nomlar.includes('hisobotni_yukla') && nomlar.includes('mahallani_top') && nomlar.includes('tizim_holati'));
   assert.ok(!geminiSetup({ ...ctx, rol: 'BANDLIK' }, soz, []).tools![0].functionDeclarations.some((f) => f.name === 'tizim_holati'));
   assert.ok(!geminiSetup({ ...ctx, oqishFaqat: true }, soz, []).tools![0].functionDeclarations.some((f) => f.name === 'amalni_taklif_qil'));
-  assert.deepEqual(s.inputAudioTranscription, {}); assert.equal(s.outputAudioTranscription, undefined);
+  assert.deepEqual(s.inputAudioTranscription, {}); assert.deepEqual(s.outputAudioTranscription, {});
   assert.ok(!JSON.stringify(s).includes(KALIT) && !JSON.stringify(s).includes(EL_KALIT));
   const t = geminiSetup(ctx, { ...soz, chiqish: 'transkript' }, []);
   assert.deepEqual(t.generationConfig.responseModalities, ['AUDIO']); assert.deepEqual(t.outputAudioTranscription, {});
@@ -388,6 +394,18 @@ test('Ovoz zanjiri: ElevenLabs ketma-ket yiqilsa 60 soniya unga so‘rov yuboril
   hozir += 61_000;
   await ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f, hozir: t });
   assert.ok(eleven.length > sinovlar2, 'tanaffusdan keyin yana sinaladi');
+  bosh();
+});
+test('ElevenLabs javobsiz qolsa OpenAI Vercel muddati tugashidan oldin ishga tushadi', async () => {
+  bosh(); const start = Date.now(); let backup = 0;
+  const f: typeof fetch = async (u, init) => {
+    if (String(u).includes('elevenlabs.io')) return new Promise<Response>((_, reject) => {
+      init!.signal!.addEventListener('abort', () => reject(new DOMException('fixture deadline', 'AbortError')), { once: true });
+    });
+    backup++; assert.ok(Date.now() - start < 12_000); init!.signal!.throwIfAborted(); return mp3();
+  };
+  const n = await ovozZanjiri('Salom.', { env: OPENAI_ENV, fetchFn: f });
+  assert.equal(n.zaxira, true); assert.equal(backup, 1); assert.ok(Date.now() - start < 22_000);
   bosh();
 });
 test('Ovoz zanjiri: ElevenLabs sozlanmagan bo‘lsa to‘g‘ridan-to‘g‘ri OpenAI; hech narsa yo‘q bo‘lsa xato', async () => {

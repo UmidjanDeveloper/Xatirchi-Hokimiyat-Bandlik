@@ -76,9 +76,9 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
   await test('Token issued: official URL/headers, locked setup returned, private key never leaves server', async () => {
     const r = await POST(request(start)); assert.equal(r.status, 200); body = await r.json(); token = body.ruxsat;
     assert.equal(provider, 1); assert.equal(urls[0], 'https://generativelanguage.googleapis.com/v1alpha/auth_tokens');
-    assert.equal(body.provayder, 'gemini'); assert.equal(body.chiqish, 'matn'); assert.equal(body.tashqiOvoz, true);
+    assert.equal(body.provayder, 'gemini'); assert.equal(body.chiqish, 'transkript'); assert.equal(body.tashqiOvoz, true);
     assert.match(body.wsUrl, /^wss:\/\/generativelanguage\.googleapis\.com\/ws\/.*BidiGenerateContentConstrained\?access_token=/);
-    assert.equal(body.setup.model, 'models/gemini-3.1-flash-live-preview'); assert.deepEqual(body.setup.generationConfig.responseModalities, ['TEXT']);
+    assert.equal(body.setup.model, 'models/gemini-3.1-flash-live-preview'); assert.deepEqual(body.setup.generationConfig.responseModalities, ['AUDIO']);
     assert.match(body.setup.systemInstruction.parts[0].text, /Uyshun/);
     assert.ok(body.setup.tools[0].functionDeclarations.some((f) => f.name === 'hisobotni_yukla' && f.parameters.type === 'OBJECT' && !('additionalProperties' in f.parameters)));
     const s = JSON.stringify(body);

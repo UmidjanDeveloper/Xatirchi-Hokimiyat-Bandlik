@@ -28,7 +28,7 @@ import { PrismaClient } from '@prisma/client';
 import { parolXeshla } from '../src/lib/auth';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const { chromium } = require('playwright');
 const prisma = new PrismaClient();
 const BAZA = process.env.BAZA ?? 'http://127.0.0.1:3197';
 const GOOGLE_PORT = Number(process.env.GOOGLE_SOXTA_PORT ?? 8966);
@@ -156,7 +156,7 @@ async function main() {
     await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
       h.url = ws.url(); h.ochildi++;
       let ikkilik = 0;
-      const yubor = (o: unknown) => { const s = JSON.stringify(o); ws.send(++ikkilik % 2 ? s : Buffer.from(s)); }; // matn va ikkilik kadrlar almashadi
+      const yubor = (o: any) => { if (o.serverContent?.modelTurn?.parts) o.serverContent.outputTranscription = { text: o.serverContent.modelTurn.parts.map((p: any) => p.text ?? '').join('') }; const s = JSON.stringify(o); ws.send(++ikkilik % 2 ? s : Buffer.from(s)); }; // matn va ikkilik kadrlar almashadi
       ws.onClose((code: number, reason: string) => { h.yopildi = { code, reason }; });
       ws.onMessage((xom: string | Buffer) => {
         const d = JSON.parse(String(xom));
@@ -220,8 +220,8 @@ async function main() {
     tekshir('A4. WebSocket manzili rasmiy host/yo‘l, token query’da, asosiy kalit YO‘Q',
       /^wss:\/\/generativelanguage\.googleapis\.com\/ws\/google\.ai\.generativelanguage\.v1alpha\.GenerativeService\.BidiGenerateContentConstrained\?access_token=auth_tokens%2Fe2etoken/.test(h.url) && !h.url.includes(process.env.GEMINI_API_KEY ?? 'x!'), h.url.slice(0, 120));
     const s = h.setup ?? {};
-    tekshir('A5. Setup: model, faqat TEXT, ko‘rsatma (Hamroh + mahalla nomlari), asboblar (mahallani_top, hisobotni_yukla), kirish transkripsiyasi',
-      s.model?.startsWith('models/') && JSON.stringify(s.generationConfig?.responseModalities) === '["TEXT"]' &&
+    tekshir('A5. Setup: model, AUDIO transkript, ko‘rsatma (Hamroh + mahalla nomlari), asboblar (mahallani_top, hisobotni_yukla), kirish transkripsiyasi',
+      s.model?.startsWith('models/') && JSON.stringify(s.generationConfig?.responseModalities) === '["AUDIO"]' &&
       /Hamroh/.test(s.systemInstruction?.parts?.[0]?.text ?? '') && /Uyshun/.test(s.systemInstruction?.parts?.[0]?.text ?? '') &&
       ['mahallani_top', 'hisobotni_yukla'].every((n) => s.tools?.[0]?.functionDeclarations?.some((f: S) => f.name === n && f.parameters?.type === 'OBJECT')) && s.inputAudioTranscription !== undefined);
 
@@ -328,7 +328,7 @@ async function main() {
           h.matnlar.push(ri.text);
           if (/жонли суҳбат бошланди/.test(ri.text)) {
             // Juda uzun salom: ovoz ~10 soniya o'ynaydi (5 bo'lak x 3 s)
-            for (let i = 1; i <= 8; i++) ws.send(JSON.stringify({ serverContent: { modelTurn: { parts: [{ text: `${i}-fikr: bu ancha uzun gap bo‘lib, ovozli o‘qilishi uchun yetarli. ` }] } } }));
+            for (let i = 1; i <= 8; i++) ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: `${i}-fikr: bu ancha uzun gap bo‘lib, ovozli o‘qilishi uchun yetarli. ` } } }));
             ws.send(JSON.stringify({ serverContent: { turnComplete: true } }));
           }
         } else if (ri?.audio) h.audio.push({ rms: rmsOl(ri.audio.data), mime: ri.audio.mimeType, bayt: Buffer.from(ri.audio.data, 'base64').length });
@@ -394,9 +394,13 @@ async function main() {
           ws.send(JSON.stringify({ setupComplete: {} })); return;
         }
         if (d.realtimeInput?.text && /жонли суҳбат бошланди/.test(d.realtimeInput.text) && reja.ws === 'javob_keyin_yopiladi') {
-          ws.send(JSON.stringify({ serverContent: { modelTurn: { parts: [{ text: 'Ассалому алайкум. Сизни тинглаяпман.' }] } } }));
+          ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: 'Ассалому алайкум. Сизни тинглаяпман.' } } }));
           ws.send(JSON.stringify({ serverContent: { turnComplete: true } }));
           setTimeout(() => ws.close({ code: 1011, reason: 'server xatosi' }), 1500);
+        }
+        if (d.realtimeInput?.text && /жонли суҳбат бошланди/.test(d.realtimeInput.text) && reja.ws === 'jim') {
+          // Empty turnComplete must not cancel the first genuine-answer deadline.
+          ws.send(JSON.stringify({ serverContent: { turnComplete: true } }));
         }
       });
     });
@@ -469,13 +473,13 @@ async function main() {
     tekshir('C11. Gemini ulandi, lekin javob bermadi: ~12 soniyada OpenAI zaxirasi (qoplash = Gemini ruxsatnomasi)', z4 && sekund >= 10 && sekund <= 22 && ul4?.qoplash === c4.bosh.geminiRuxsat, `${sekund.toFixed(1)} s`);
     await c4.kapat();
 
-    /* C12: Gemini ISHLADI (javob berdi), keyin server uzdi -> zaxiraga O'TILMAYDI (ishlagan suhbat tugaydi) */
+    /* C12: Gemini javob berganidan keyin ham uzilsa OpenAI davom ettiradi. */
     const c5 = await zaxiraSahifasi('keyin_yopildi', { ws: 'javob_keyin_yopiladi' });
     await c5.bosish();
     const salom = await kut(() => c5.gapirSorov.length >= 1, 15_000);
-    const tugadi = await kut(async () => /Жонли суҳбат якунланди/.test(await c5.matn()), 12_000);
+    const davom = await kut(() => c5.sorovlar.some((x) => x.tur === 'ulanish'), 12_000);
     await uyqu(1500);
-    tekshir('C12. Gemini javob bergach uzilsa zaxiraga O‘TILMAYDI: “суҳбат якунланди” ko‘rsatiladi, OpenAI’ga so‘rov ketmaydi', salom && tugadi && !c5.sorovlar.some((x) => x.tur === 'ulanish'), c5.sorovlar.map((x) => x.tur).join());
+    tekshir('C12. Gemini javob bergach uzilsa ham OpenAI zaxirasi davom etadi; oxirgi buyruq avtomatik takrorlanmaydi', salom && davom && c5.sorovlar.some((x) => x.tur === 'ulanish' && x.body.zaxira === true), c5.sorovlar.map((x) => x.tur).join());
     await c5.kapat();
 
     /* C13: ElevenLabs ovozi o'rniga server OpenAI ovozini ishlatgan (x-nutq-zaxira) -> bir marta ogohlantiriladi */
@@ -484,6 +488,12 @@ async function main() {
     const ogoh = await kut(async () => /ElevenLabs овози ишламади/.test(await c6.matn()), 15_000);
     tekshir('C13. Server ElevenLabs o‘rniga OpenAI ovozini ishlatsa foydalanuvchi bir marta ogohlantiriladi', ogoh);
     await c6.kapat();
+    const c7 = await zaxiraSahifasi('workletsiz', { ws: 'rad' });
+    await c7.page.evaluate(() => Object.defineProperty(window, 'AudioWorkletNode', { value: undefined, configurable: true }));
+    await c7.bosish();
+    const native = await kut(() => c7.sorovlar.some((x) => x.tur === 'ulanish'), 8000);
+    tekshir('C14. AudioWorklet bo‘lmasa mavjud WebRTC OpenAI zaxirasi darhol ochiladi; Gemini tokeni olinmaydi', native && !c7.sorovlar.some((x) => x.tur === 'gemini_ulanish'));
+    await c7.kapat();
   } catch (e) {
     for (const p of Cb.contexts().flatMap((c: S) => c.pages())) {
       await p.screenshot({ path: `${SKRIN}/xato-c.png` }).catch(() => {});
