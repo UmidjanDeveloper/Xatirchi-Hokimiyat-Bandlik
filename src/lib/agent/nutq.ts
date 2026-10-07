@@ -77,6 +77,8 @@ export class NutqXatosi extends Error {
   }
 }
 
+export const NUTQ_KORSATMASI = 'Speak only in natural literary Uzbek (uz-UZ), like a native Uzbek-speaking professional assistant, without Russian or English intonation. Keep a warm, confident conversational voice; sound pleased when the text confirms success and firm, never aggressive, when reminding about overdue tasks. Pronounce Uzbek o‘, g‘, q, x, h, sh and ch clearly. Use conversational phrasing, brief pauses between sentences, and read numbers in Uzbek. Do not add any words or translate the text.';
+
 /** Kalit serverda qoladi; audio va javob matni disk yoki bazaga yozilmaydi. */
 export async function nutqYarat(
   prov: NutqProvayderi, matn: string,
@@ -101,7 +103,7 @@ export async function nutqYarat(
         body: JSON.stringify({
           model, voice: /^tts-1/.test(model) && !OVOZLAR.slice(0, 6).includes(prov.ovoz as typeof OVOZLAR[0]) ? 'onyx' : prov.ovoz,
           input, response_format: 'mp3', speed: 1,
-          ...(izoh ? { instructions: 'Speak only in natural literary Uzbek (uz-UZ), like a native Uzbek-speaking professional assistant, without Russian or English intonation. Keep a warm, confident conversational voice; sound pleased when the text confirms success and firm, never aggressive, when reminding about overdue tasks. Pronounce Uzbek o‘, g‘, q, x, h, sh and ch clearly. Use conversational phrasing, brief pauses between sentences, and read numbers in Uzbek. Do not add any words or translate the text.' } : {}),
+          ...(izoh ? { instructions: NUTQ_KORSATMASI } : {}),
         }),
       });
       if (!r.ok) {

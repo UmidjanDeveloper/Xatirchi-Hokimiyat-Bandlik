@@ -6,6 +6,7 @@ import { AGENT_ROLLARI, agentOchiqmi } from '@/lib/agent/ruxsat';
 import { A } from '@/lib/alifbo';
 import { alifboServer } from '@/lib/alifbo-server';
 import { ENG_UZUN_NUTQ } from '@/lib/agent/chegaralar';
+import { ovozOqimi } from '@/lib/agent/nutq-oqim';
 import { ovozMavjud, ovozZanjiri } from '@/lib/agent/tts';
 import { NutqXatosi, nutqUlanishi } from '@/lib/agent/nutq';
 import { jonliRuxsatOqi } from '@/lib/agent/jonli';
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 25;
 // `jonli`: yaroqli jonli suhbat ruxsatnomasi (faqat shu server imzolaydi). Jonli suhbatda javob
 // bitta javob bitta ovoz so'rovida o'qiladi; faol suhbatda oddiy "tinglash" tugmasidan ko'ra ko'proq so'rov kerak bo'ladi.
-const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ), jonli: z.string().max(2000).optional(), zaxira: z.boolean().optional() });
+const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ), jonli: z.string().max(2000).optional(), zaxira: z.boolean().optional(), oqim: z.boolean().optional() });
 
 export async function POST(request: Request) {
   const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
@@ -66,9 +67,11 @@ export async function POST(request: Request) {
   if (!daily.allowed) return xato('Бугунги овозли жавоб чегараси тугади.', 429);
   try {
     // ElevenLabs ishlamasa OpenAI ovozi o'qiydi (zaxira); ikkalasi ham yiqilsa sabab ikkalasidan.
-    const n = await ovozZanjiri(A(parsed.data.matn, 'lot'), { signal: request.signal, zaxira: parsed.data.zaxira });
+    const n = parsed.data.oqim
+      ? await ovozOqimi(A(parsed.data.matn, 'lot'), { signal: request.signal, zaxira: parsed.data.zaxira })
+      : { ...await ovozZanjiri(A(parsed.data.matn, 'lot'), { signal: request.signal, zaxira: parsed.data.zaxira }), pcm: false };
     return new Response(n.audio, { headers: {
-      'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, no-store',
+      'Content-Type': n.pcm ? 'audio/pcm;rate=24000' : 'audio/mpeg', 'X-Accel-Buffering': 'no', 'Cache-Control': 'private, no-store',
       // Brauzer "zaxira ovoz ishlatilmoqda" deb bir marta ogohlantiradi; sabab matni sarlavhaga chiqmaydi.
       'X-Nutq-Provayder': n.provayder, ...(n.zaxira ? { 'X-Nutq-Zaxira': '1' } : {}),
     } });

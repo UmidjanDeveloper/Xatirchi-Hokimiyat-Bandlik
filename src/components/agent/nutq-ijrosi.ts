@@ -1,5 +1,6 @@
 'use client';
 
+import { pcmNutqniIjroEt } from './pcm-nutq';
 import { nutqParchasi } from '@/lib/agent/matnlar';
 import { gapir, gapirishniToxtat, uzbekOvozi } from './ovoz';
 
@@ -94,7 +95,7 @@ export function javobniGapir(matn: string, h: {
     try {
       const r = await fetch('/api/agent/gapir', {
         method: 'POST', signal: ctrl.signal, headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ matn: nutqParchasi(matn), ...(zaxiraOvozi ? { zaxira: true } : {}) }),
+        body: JSON.stringify({ matn: nutqParchasi(matn), oqim: true, ...(zaxiraOvozi ? { zaxira: true } : {}) }),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({})) as { xabar?: string };
@@ -102,9 +103,20 @@ export function javobniGapir(matn: string, h: {
         yakunla(d.xabar ?? 'Овозли жавоб олинмади. Жавобни ўқинг.');
         return;
       }
+      if (tugadi) { await r.body?.cancel(); return; }
+      if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; h.onZaxiraOvozi?.(); }
+      if (/^audio\/pcm;rate=24000$/i.test(r.headers.get('content-type') ?? '')) {
+        const a = audio;
+        if (!a) throw new Error('Audio ochilmadi.');
+        await pcmNutqniIjroEt(a, r, ctrl.signal, {
+          onBoshlandi: () => { if (!tugadi) { if (taymer) clearTimeout(taymer); h.onBoshlandi(); } },
+          onDaraja: (d) => { if (!tugadi) h.onDaraja?.(d); },
+        });
+        if (!tugadi) yakunla();
+        return;
+      }
       const bayt = await r.arrayBuffer();
       if (tugadi) return;
-      if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; h.onZaxiraOvozi?.(); }
       const a = audio;
       if (a?.state === 'suspended') await a.resume();
       if (tugadi) return;

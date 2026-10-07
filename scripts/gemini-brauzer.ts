@@ -63,11 +63,20 @@ const rmsOl = (base64: string): number => {
 };
 
 /* ───────────── soxta Google token manzili ───────────── */
+let pcmBoshladi = 0, pcmTugadi = 0;
 const tokenSorovlari: { kalit: string | undefined; body: Record<string, unknown> }[] = [];
 const google = http.createServer((req, res) => {
   const qismlar: Buffer[] = [];
   req.on('data', (c) => qismlar.push(c));
   req.on('end', () => {
+    if (req.method === 'POST' && req.url === '/pcm') {
+      pcmBoshladi = Date.now(); pcmTugadi = 0;
+      res.writeHead(200, { 'content-type': 'audio/pcm;rate=24000', 'access-control-allow-origin': BAZA, 'access-control-allow-credentials': 'true', 'x-nutq-provayder': 'elevenlabs' });
+      const a = setTimeout(() => res.write(wav(24000, 1.5, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)).subarray(44)), 100);
+      const b = setTimeout(() => res.write(wav(24000, .5, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)).subarray(44)), 1200);
+      const c = setTimeout(() => { pcmTugadi = Date.now(); res.end(); }, 1600);
+      res.on('close', () => { clearTimeout(a); clearTimeout(b); clearTimeout(c); }); return;
+    }
     if (req.method === 'POST' && req.url === '/v1alpha/auth_tokens') {
       tokenSorovlari.push({ kalit: req.headers['x-goog-api-key'] as string | undefined, body: JSON.parse(Buffer.concat(qismlar).toString() || '{}') });
       res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ name: 'auth_tokens/e2etoken0123456789' }));
@@ -132,7 +141,7 @@ async function main() {
   const holat = await fetch(`${BAZA}/kirish`).then((r) => r.status).catch(() => 0);
   if (holat !== 200) throw new Error(`server ${BAZA} javob bermayapti`);
 
-  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDE'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
+  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDEF'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
   if (bolim.includes('A')) {
   /* ═══ A. To'liq oqim: salom, transkripsiya, asbob, gaplab o'qish, yozma matn, to'xtatish (jim mikrofon) ═══ */
   const A = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
@@ -589,6 +598,35 @@ async function main() {
         await ctx.close();
       }
     } finally { await eb.close(); }
+  }
+
+  if (bolim.includes('F')) {
+    const fb = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
+    try {
+      const u = await xodimYarat('early_pcm'); const { ctx, page, xatolar } = await sahifaOch(fb, u.username, 'window.__name = (t) => t;');
+      const requests: S[] = [];
+      await page.route('**/api/agent/gapir', async (r: S) => { requests.push(JSON.parse(r.request().postData() ?? '{}')); await r.continue({ url: `http://127.0.0.1:${GOOGLE_PORT}/pcm` }); });
+      await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
+        ws.onMessage((raw: string) => {
+          const b = JSON.parse(String(raw));
+          if (b.setup) ws.send(JSON.stringify({ setupComplete: {} }));
+          if (b.realtimeInput?.text) ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: 'Salom, sizni tinglayapman.' }, turnComplete: true } }));
+        });
+      });
+      await oynaOch(page); await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
+      const speaks = await kut(async () => (await holatOl(page)) === 'gapirmoqda', 15_000, 20);
+      const firstMs = Date.now() - pcmBoshladi;
+      tekshir('F1. Jonli TTS birinchi PCM bo‘lagi bilan gapiradi, 1600 ms lik fayl tugashini kutmaydi', speaks && pcmTugadi === 0 && firstMs < 1400 && requests.length === 1 && requests[0].oqim === true, `${firstMs} ms`);
+      const mouth = await kut(async () => Number(await page.locator('[data-holat]').first().evaluate((el: HTMLElement) => el.style.getPropertyValue('--robot-nutq'))) > .1, 1000, 20);
+      tekshir('F2. Oqim ovozi og‘iz amplitudasini ham darhol yangilaydi', mouth);
+      await page.getByRole('button', { name: 'Жонли суҳбатни тўхтатиш' }).click();
+      await uyqu(200); pcmTugadi = 0;
+      await page.getByRole('button', { name: 'Овозни синаш', exact: true }).click();
+      const normal = await kut(async () => (await holatOl(page)) === 'gapirmoqda', 5000, 20);
+      tekshir('F3. Oddiy ovoz tugmasi ham fayl tugashidan oldin gapiradi, bitta ovoz tanlovi saqlanadi', normal && pcmTugadi === 0 && requests.length === 2 && requests[1].oqim === true);
+      tekshir('F4. Sahifada audio oqimi xatosi yoki bekor qilingan ulanishning qayta tiklanishi yo‘q', xatolar.length === 0 && requests.length === 2, xatolar.join(' | '));
+      await ctx.close();
+    } finally { await fb.close(); }
   }
 
 }

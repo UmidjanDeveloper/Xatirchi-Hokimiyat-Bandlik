@@ -67,7 +67,10 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
     const old = jonliRuxsatYarat({ ...ctx, hozir: new Date(Date.now() - 200_000) }, 'rtc_renew');
     const before = bandSoni, contacted = provider;
     const r = await POST(request({ tur: 'yangilash', ruxsat: old })); assert.equal(r.status, 200);
-    const d = await r.json(), a = jonliRuxsatOqi(ctx, old), b = jonliRuxsatOqi(ctx, d.ruxsat);
+    // Yangilangan token POST paytida yaratiladi: undan OLDINGI vaqt kelajak tokenini rad qiladi.
+    const d = await r.json(), readCtx = { ...ctx, hozir: new Date() };
+    const a = jonliRuxsatOqi(readCtx, old), b = jonliRuxsatOqi(readCtx, d.ruxsat);
+    assert.ok(a); assert.ok(b);
     assert.equal(b.id, a.id); assert.equal(b.call, a.call); assert.ok(b.muddat > a.muddat); assert.equal(provider, contacted); assert.equal(bandSoni, before);
     auth = { sessiya: { ...admin.sessiya, userId: 'other' } }; assert.equal((await POST(request({ tur: 'yangilash', ruxsat: old }))).status, 403); auth = admin;
     const failed = jonliRuxsatYarat(ctx, 'failed_token', undefined, 'gemini', false);

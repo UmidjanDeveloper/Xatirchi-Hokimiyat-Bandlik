@@ -15,7 +15,7 @@ global.fetch = async (url) => {
   calls++;
   assert.match(String(url), /^https:\/\/api.elevenlabs.io\//);
   if (String(url).endsWith('/models')) return Response.json([{ model_id: 'eleven_v3', can_do_text_to_speech: true, languages: [{ language_id: uzbek ? 'uz' : 'en' }] }]);
-  return status === 200 ? new Response(new Uint8Array([0x49, 0x44, 0x33, 1]), { headers: { 'content-type': 'audio/mpeg' } }) : new Response('private-key-fixture-only raw body', { status });
+  return status === 200 ? new Response(new Uint8Array([0x49, 0x44, 0x33, 1]), { headers: { 'content-type': String(url).includes('/stream?') ? 'audio/pcm' : 'audio/mpeg' } }) : new Response('private-key-fixture-only raw body', { status });
 };
 const { POST } = require(path.join(root, 'src/app/api/agent/gapir/route.ts'));
 const req = (data = { matn: 'Assalomu alaykum' }) => new Request('https://local.invalid/api/agent/gapir', { method: 'POST', body: JSON.stringify(data), headers: { 'content-type': 'application/json' } });
@@ -42,6 +42,12 @@ const test = async (name, f) => { await f(); tests++; console.log('OK', name); }
     const r = await POST(req({ matn: 'Salom', voice: '../evil', model: 'anything', url: 'https://other.invalid' }));
     assert.equal(r.status, 200); assert.equal(r.headers.get('content-type'), 'audio/mpeg'); assert.match(r.headers.get('cache-control'), /no-store/);
     assert.equal((await r.arrayBuffer()).byteLength, 4);
+  });
+  await test('Streaming route emits PCM with the same auth/quota checks, voice header and no buffering', async () => {
+    const r = await POST(req({ matn: 'Salom.', oqim: true })); assert.equal(r.status, 200);
+    assert.equal(r.headers.get('content-type'), 'audio/pcm;rate=24000'); assert.equal(r.headers.get('x-nutq-provayder'), 'elevenlabs');
+    assert.equal(r.headers.get('x-accel-buffering'), 'no'); assert.equal((await r.arrayBuffer()).byteLength, 4);
+    const old = calls; allowed = false; assert.equal((await POST(req({ matn: 'Salom.', oqim: true }))).status, 429); allowed = true; assert.equal(calls, old);
   });
   await test('Rejected key reports a useful safe error, keeps no-store, never exposes provider body', async () => {
     status = 401; const r = await POST(req()); assert.equal(r.status, 502); const d = await r.json();

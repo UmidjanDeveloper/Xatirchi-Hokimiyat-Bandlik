@@ -1,5 +1,6 @@
 'use client';
 
+import { pcmNutqniIjroEt } from './pcm-nutq';
 import { nutqParchasi } from '@/lib/agent/matnlar';
 
 /**
@@ -36,7 +37,7 @@ interface Bolak {
   matn: string;
   ctrl: AbortController;
   holat: 'kutadi' | 'yuklanmoqda' | 'tayyor';
-  natija: Promise<AudioBuffer | null> | null;
+  natija: Promise<AudioBuffer | Response | null> | null;
 }
 
 export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: NutqNavbatiHodisalari) {
@@ -44,6 +45,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   let manba: AudioBufferSourceNode | null = null;
   let analizator: AnalyserNode | null = null;
   let kadr: number | null = null;
+  let pcmCtrl: AbortController | null = null;
   /** `davom` sikli ishlayotgan avlod (toxtat() avlodni oshirgach eski sikl avtomatik "band emas" bo'ladi) */
   let bandAvlod = -1;
   let ijroYakuni: (() => void) | null = null;
@@ -56,7 +58,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
 
   const xato = (m: string) => { if (!xatoBerildi) { xatoBerildi = true; h.onXato(m); } };
 
-  const yukla = (b: Bolak, mening: number): Promise<AudioBuffer | null> => {
+  const yukla = (b: Bolak, mening: number): Promise<AudioBuffer | Response | null> => {
     b.holat = 'yuklanmoqda';
     yuklanmoqda++;
     return (async () => {
@@ -64,7 +66,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
       try {
         const r = await fetch('/api/agent/gapir', {
           method: 'POST', signal: b.ctrl.signal, headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ matn: nutqParchasi(b.matn), jonli: ruxsat(), ...(zaxiraBildirildi ? { zaxira: true } : {}) }),
+          body: JSON.stringify({ matn: nutqParchasi(b.matn), oqim: true, jonli: ruxsat(), ...(zaxiraBildirildi ? { zaxira: true } : {}) }),
         });
         if (!r.ok) {
           const d = await r.json().catch(() => ({})) as { xabar?: string };
@@ -73,6 +75,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
           return null;
         }
         if (r.headers.get('x-nutq-zaxira') === '1' && !zaxiraBildirildi && mening === avlod) { zaxiraBildirildi = true; h.onZaxiraOvozi?.(); }
+        if (/^audio\/pcm;rate=24000$/i.test(r.headers.get('content-type') ?? '')) return r;
         const bayt = await r.arrayBuffer();
         if (mening !== avlod) return null;
         return await ctx.decodeAudioData(bayt);
@@ -107,6 +110,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   };
 
   const tozala = () => {
+    pcmCtrl?.abort(); pcmCtrl = null;
     if (kadr !== null) cancelAnimationFrame(kadr);
     kadr = null;
     analizator?.disconnect();
@@ -157,7 +161,16 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
         const buf = await (b.natija ?? (b.natija = yukla(b, mening)));
         if (mening !== avlod) return;
         navbat.shift();
-        if (buf) await ijroEt(buf, mening);
+        if (buf instanceof Response) {
+          pcmCtrl = b.ctrl;
+          try {
+            await pcmNutqniIjroEt(ctx, buf, b.ctrl.signal, {
+              onBoshlandi: () => { if (mening === avlod && !boshlandi) { boshlandi = true; h.onBoshlandi(); } },
+              onDaraja: (d) => { if (mening === avlod) h.onDaraja(d); },
+            });
+          } catch { if (mening === avlod && !b.ctrl.signal.aborted) xato('Ovoz oqimi uzildi. Javob matni ekranda.'); }
+          finally { if (pcmCtrl === b.ctrl) pcmCtrl = null; }
+        } else if (buf) await ijroEt(buf, mening);
       }
     } finally {
       if (bandAvlod === mening) bandAvlod = -1;

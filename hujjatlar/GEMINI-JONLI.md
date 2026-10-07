@@ -25,7 +25,7 @@ Agar Vercel’da eski `AGENT_REALTIME_DAILY_LIMIT=6` saqlangan bo‘lsa, kod uni
 ## Ovoz va ulanish
 
 - Gemini faqat o‘z kaliti bilan ham ishlaydi: tashqi TTS sozlanmagan bo‘lsa native PCM ovozi ijro etiladi. OpenAI ham o‘z native ovozini qo‘llaydi.
-- Tashqi TTS yoqilganida Gemini’ning native ovozi tashlanadi; tayyor javob **bitta** ovoz so‘rovida o‘qiladi. Matn oqim bilan ko‘rinadi. Bir javob gaplarga bo‘linib turli ovozlarda o‘qilmaydi.
+- Tashqi TTS yoqilganida Gemini’ning native ovozi tashlanadi; tayyor javob **bitta** ovoz so‘rovida o‘qiladi. Matn oqim bilan ko‘rinadi. Tashqi TTS 24 kHz PCM oqimini yuboradi: birinchi audio kelishi bilan ijro boshlanadi, butun fayl yuklanishi kutilmaydi. Model/tarif oqimni rad etsa shu ovozning MP3 yo‘li saqlanadi. Bir javob gaplarga bo‘linib turli ovozlarda o‘qilmaydi.
 - ElevenLabs ishlamasa OpenAI TTS o‘sha javobni o‘qiydi va ogohlantirish chiqadi. Shu ochiq suhbatdagi keyingi javoblar OpenAI ovozida qoladi; har javobda ElevenLabs’ga qaytib ovoz almashtirilmaydi.
 - Ikkala tashqi TTS ishlamasa jonli ulanish shu provayderning native ovozi bilan qayta ochiladi. Oxirgi savolni qayta ayting; buyruq avtomatik qayta bajarilmaydi.
 - OpenAI asosiy bo‘lsa Gemini zaxira, Gemini asosiy bo‘lsa OpenAI zaxira bo‘la oladi. Ikkala xizmat sozlangan bo‘lishi kerak. Bitta xizmat bo‘lsa shu xizmatga cheklangan qayta urinish qilinadi.
@@ -50,3 +50,11 @@ ElevenLabs asosiy so‘roviga zaxira borligida 10 soniya, butun TTS zanjiriga 22
 `npm run sinov:jonli`, `npm run sinov:gemini`, `npm run sinov:elevenlabs` server shartnomalari, ruxsat, kvota, tiklash, bekor qilish va ovoz oqimini tekshiradi. `npm run sinov:gemini-brauzer` mahalliy bazada haqiqiy Chromium / AudioWorklet / AudioContext bilan soxta providerlarni tekshiradi; D bo‘limi native PCM va suhbatni uzmasdan ruxsat yangilanishini qoplaydi.
 
 Haqiqiy API kalitlari bo‘lmasa bular provider hisobidagi balans, model ruxsati yoki o‘zbekcha talaffuzni tasdiqlamaydi. Haqiqiy Gemini/OpenAI/ElevenLabs, Xatirchi shevalari va iPhone/Android audiosi saytning administrator tekshiruvi hamda real ovozli suhbat bilan alohida sinalishi kerak. API kalitini suhbatga yubormang.
+
+## Ovoz boshlanishidagi kechikish
+
+`/api/agent/gapir`ning `oqim: true` rejimi ElevenLabs HTTP `/stream?output_format=pcm_24000` va OpenAI `response_format=pcm`dan foydalanadi. Birinchi audio baytidan oldin zaxira tanlanishi mumkin; audio boshlanganidan keyin provider o‘sha javob ichida almashtirilmaydi. Brauzer 24 kHz PCM16 bo‘laklarini ketma-ket audio vaqtiga qo‘yadi va og‘iz amplitudasini oqimdan oladi. Qo‘lda to‘xtatish tarmoq o‘qishini va barcha rejalangan ovozlarni bekor qiladi.
+
+Model javobi tugashi hanuz kutiladi — bu o‘zgarish audio faylining to‘liq tayyorlanishi/yuklanishini kutishni olib tashlaydi. Voice ID, Eleven v3, `language_code=uz` va bir javobga bitta TTS so‘rovi saqlanadi. Haqiqiy tezlik provider modelining birinchi audio tayyorlash vaqtiga bog‘liq; oqimni qo‘llamaydigan model/tarif MP3 bilan ishlaydi va uning kutishi qoladi. Birinchi audio uchun ElevenLabs’ga zaxira borligida 6 soniya, butun generatsiya zanjiriga 22 soniya ajratiladi. PCM ko‘pi bilan 9.6 MB (200 soniya); yuklash tugagach bu deadline ovoz ijrosini kesmaydi.
+
+`npm run sinov:elevenlabs` oqim va bekor qilish regressiyalarini qoplaydi. `GEMINI_BRAUZER_BOLIM=F npm run sinov:gemini-brauzer` soxta HTTP PCM provider bilan jonli va oddiy ovoz tugmasining fayl tugashidan oldin gapirishini tekshiradi. Bu haqiqiy ElevenLabs tezligi o‘lchovi emas.

@@ -42,7 +42,7 @@ async function baytlar(r: Response, limit: number, signal: AbortSignal): Promise
  * Xom javob matni HECH QACHON ko'rsatilmaydi va xabar `maxfiyniTozala`dan o'tadi.
  * Umumiy "tekshiring" matni sababni yashirardi: endi aynan nima rad etilgani ko'rinadi.
  */
-async function xatoTafsiloti(r: Response, kalit: string): Promise<string> {
+export async function xatoTafsiloti(r: Response, kalit: string): Promise<string> {
   const rid = (r.headers.get('request-id') ?? '').replace(/[^\w-]/g, '').slice(0, 64);
   let qism = '';
   try {
@@ -64,7 +64,7 @@ async function xatoTafsiloti(r: Response, kalit: string): Promise<string> {
   return [qism, rid ? `so'rov ${rid}` : ''].filter(Boolean).join(' · ');
 }
 
-function rad(status: number, tafsilot = ''): NutqXatosi {
+export function rad(status: number, tafsilot = ''): NutqXatosi {
   const izoh = status === 401 ? 'ElevenLabs API kaliti qabul qilinmadi yoki unda ruxsat yo‘q. Vercel sozlamasini tekshiring.'
     : status === 403 ? 'ElevenLabs kalitida kerakli ruxsat yo‘q. Text to Speech va Models Read ruxsatlarini tekshiring.'
     : status === 402 ? 'ElevenLabs hisobidagi kredit yoki tarifni tekshiring.'
@@ -72,6 +72,24 @@ function rad(status: number, tafsilot = ''): NutqXatosi {
     : status === 429 ? 'ElevenLabs so‘rovlar chegarasiga yetdi. Biroz kutib qayta urinib ko‘ring.'
     : 'ElevenLabs ovoz tayyorlamadi. Kalit ruxsati, ovoz, model va hisobdagi kreditni tekshiring.';
   return new NutqXatosi('provayder', `${izoh} (${status}${tafsilot ? `: ${tafsilot}` : ''})`);
+}
+
+export async function elevenlabsModeliniTekshir(prov: NutqProvayderi, signal: AbortSignal, fetchFn: typeof fetch = fetch): Promise<void> {
+  const headers = { 'xi-api-key': prov.kalit };
+  const id = createHash('sha256').update(prov.kalit).update(':').update(prov.model).digest('hex');
+  if (fetchFn !== fetch || (kesh.get(id) ?? 0) <= Date.now()) {
+    const r = await fetchFn('https://api.elevenlabs.io/v1/models', { headers, signal, cache: 'no-store', redirect: 'error' });
+    if (!r.ok) throw rad(r.status, await xatoTafsiloti(r, prov.kalit));
+    const bytes = await baytlar(r, 512_000, signal);
+    let raw: unknown; try { raw = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new NutqXatosi('bosh', 'ElevenLabs model ro‘yxati noto‘g‘ri.'); }
+    const models = Modellar.safeParse(raw);
+    if (!models.success) throw new NutqXatosi('bosh', 'ElevenLabs model ro‘yxati noto‘g‘ri.');
+    const model = models.data.find((m) => m.model_id === prov.model);
+    if (!model?.can_do_text_to_speech || !model.languages.some((l) => l.language_id === 'uz')) {
+      throw new NutqXatosi('provayder', 'Tanlangan ElevenLabs modeli o‘zbek tilini qo‘llamaydi. O‘zbek tilini qo‘llaydigan modelni tanlang.');
+    }
+    if (fetchFn === fetch) { if (kesh.size >= 100) kesh.clear(); kesh.set(id, Date.now() + KESH_MS); }
+  }
 }
 
 /** Fixed API host; no API keys, text or provider response details are logged/persisted. */
@@ -89,21 +107,7 @@ export async function elevenlabsNutq(
   const headers = { 'xi-api-key': prov.kalit };
   try {
     ctrl.signal.throwIfAborted();
-    // Check real model capabilities instead of assuming every multilingual model supports Uzbek.
-    const id = createHash('sha256').update(prov.kalit).update(':').update(prov.model).digest('hex');
-    if (opt.fetchFn || (kesh.get(id) ?? 0) <= Date.now()) {
-      const r = await fetchFn('https://api.elevenlabs.io/v1/models', { headers, signal: ctrl.signal, cache: 'no-store', redirect: 'error' });
-      if (!r.ok) throw rad(r.status, await xatoTafsiloti(r, prov.kalit));
-      const bytes = await baytlar(r, 512_000, ctrl.signal);
-      let raw: unknown; try { raw = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new NutqXatosi('bosh', 'ElevenLabs model ro‘yxati noto‘g‘ri.'); }
-      const models = Modellar.safeParse(raw);
-      if (!models.success) throw new NutqXatosi('bosh', 'ElevenLabs model ro‘yxati noto‘g‘ri.');
-      const model = models.data.find((m) => m.model_id === prov.model);
-      if (!model?.can_do_text_to_speech || !model.languages.some((l) => l.language_id === 'uz')) {
-        throw new NutqXatosi('provayder', 'Tanlangan ElevenLabs modeli o‘zbek tilini qo‘llamaydi. O‘zbek tilini qo‘llaydigan modelni tanlang.');
-      }
-      if (!opt.fetchFn) { if (kesh.size >= 100) kesh.clear(); kesh.set(id, Date.now() + KESH_MS); }
-    }
+    await elevenlabsModeliniTekshir(prov, ctrl.signal, opt.fetchFn);
     const tts = (body: Record<string, unknown>) => fetchFn(`https://api.elevenlabs.io/v1/text-to-speech/${prov.ovoz}?output_format=mp3_44100_128`, {
       method: 'POST', signal: ctrl.signal, redirect: 'error', cache: 'no-store',
       headers: { ...headers, 'content-type': 'application/json', accept: 'audio/mpeg' },
