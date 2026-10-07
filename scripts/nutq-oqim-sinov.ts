@@ -61,6 +61,22 @@ async function main() {
     }) as typeof fetch;
     const r = await ovozOqimi('Salom.', { env, fetchFn: f }); assert.equal(r.pcm, false); assert.equal(r.provayder, 'elevenlabs'); assert.equal(audioCalls, 2);
   });
+  await test('Unsupported stream endpoint, mismatched audio MIME and empty PCM recover the same voice before any audio', async () => {
+    for (const mode of [404, 405, 406, 415, 501, 'mime', 'empty']) {
+      let calls = 0;
+      const f = (async (url, init) => {
+        if (String(url).endsWith('/models')) return models();
+        assert.ok(String(url).includes('elevenlabs'), 'a format error must not change voices'); calls++;
+        const body = JSON.parse(String(init?.body)); assert.equal(body.model_id, 'eleven_v3'); assert.equal(body.language_code, 'uz');
+        if (String(url).includes('/stream?')) return typeof mode === 'number'
+          ? Response.json({ detail: 'stream unavailable' }, { status: mode })
+          : new Response(mode === 'empty' ? new Uint8Array() : new Uint8Array([73, 68, 51]), { headers: { 'content-type': mode === 'empty' ? 'audio/pcm' : 'audio/mpeg' } });
+        return new Response(new Uint8Array([73, 68, 51, 1]), { headers: { 'content-type': 'audio/mpeg' } });
+      }) as typeof fetch;
+      const r = await ovozOqimi('Salom.', { env, fetchFn: f });
+      assert.equal(r.pcm, false); assert.equal(r.provayder, 'elevenlabs'); assert.equal(r.zaxira, false); assert.equal(calls, 2);
+    }
+  });
   await test('Browser starts before EOF, schedules contiguous samples across odd transport boundaries, and cancels all audio', async () => {
     Object.assign(globalThis, { requestAnimationFrame: () => 1, cancelAnimationFrame() {} });
     const sources: Array<{ buffer: AudioBuffer; onended(): void; start(t: number): void; stop(): void }> = [];

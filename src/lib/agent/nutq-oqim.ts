@@ -28,6 +28,12 @@ export async function ovozOqimi(matn: string, opt: {
     const bekor = () => { void reader?.cancel().catch(() => {}); };
     s.addEventListener('abort', bekor, { once: true });
     const tozala = () => { clearTimeout(firstTimer); clearTimeout(timer); s.removeEventListener('abort', bekor); };
+    const mp3 = async (): Promise<OqimNatijasi> => {
+      clearTimeout(firstTimer);
+      // Oqim mos kelmasa ham Voice ID, model va til o'zgarmaydi.
+      const audio = await nutqYarat(prov, input, { signal, fetchFn: opt.fetchFn });
+      tozala(); return { audio, pcm: false, provayder: prov.provayder ?? 'openai', zaxira: backup };
+    };
     try {
       s.throwIfAborted();
       let r: Response;
@@ -42,11 +48,7 @@ export async function ovozOqimi(matn: string, opt: {
         if (!r.ok) {
           const detail = await xatoTafsiloti(r, prov.kalit);
           // Eski tarif/model PCM oqimini rad etsa, o'sha ElevenLabs ovozi saqlanadi.
-          if ([400, 422].includes(r.status)) {
-            clearTimeout(firstTimer);
-            const audio = await nutqYarat(prov, input, { signal, fetchFn: opt.fetchFn });
-            tozala(); return { audio, pcm: false, provayder: 'elevenlabs', zaxira: backup };
-          }
+          if ([400, 404, 405, 406, 415, 422, 501].includes(r.status)) return await mp3();
           throw rad(r.status, detail);
         }
       } else {
@@ -66,13 +68,21 @@ export async function ovozOqimi(matn: string, opt: {
           throw new NutqXatosi('provayder', `OpenAI ovoz tayyorlamadi (HTTP ${r.status}).`);
         }
       }
-      if (!/^(audio\/(pcm|raw|l16)|application\/octet-stream)(?:;|$)/i.test(r.headers.get('content-type') ?? '') || Number(r.headers.get('content-length')) > ENG_KOP_PCM) {
-        await r.body?.cancel(); throw new NutqXatosi('bosh', 'Nutq oqimi noto‘g‘ri.');
+      if (!/^(audio\/(pcm|x-pcm|raw|l16)|application\/octet-stream)(?:;|$)/i.test(r.headers.get('content-type') ?? '')) {
+        await r.body?.cancel(); return await mp3();
+      }
+      if (Number(r.headers.get('content-length')) > ENG_KOP_PCM) {
+        await r.body?.cancel(); throw new NutqXatosi('bosh', 'Nutq oqimi juda katta.');
       }
       reader = r.body?.getReader();
-      if (!reader) throw new NutqXatosi('bosh', 'Nutq oqimi bo‘sh.');
+      if (!reader) return await mp3();
       let first: Uint8Array | undefined, empty = 0;
-      while (!first?.byteLength) { if (++empty > 1000) throw new NutqXatosi('bosh', 'Nutq oqimi bo‘sh.'); s.throwIfAborted(); const v = await reader.read(); s.throwIfAborted(); if (v.done) throw new NutqXatosi('bosh', 'Nutq oqimi bo‘sh.'); first = v.value; }
+      while (!first?.byteLength) {
+        if (++empty > 1000) throw new NutqXatosi('bosh', 'Nutq oqimi bo‘sh.');
+        s.throwIfAborted(); const v = await reader.read(); s.throwIfAborted();
+        if (v.done) { reader.releaseLock(); reader = undefined; return await mp3(); }
+        first = v.value;
+      }
       if (first.byteLength > ENG_KOP_PCM) throw new NutqXatosi('bosh', 'Nutq oqimi juda katta.');
       clearTimeout(firstTimer);
       let size = first.byteLength;

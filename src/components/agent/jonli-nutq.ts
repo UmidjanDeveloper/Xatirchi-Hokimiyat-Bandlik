@@ -55,30 +55,39 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   let xatoBerildi = false;
   let yuklanmoqda = 0;
   let zaxiraBildirildi = false;
+  let oqimMumkin = true;
 
   const xato = (m: string) => { if (!xatoBerildi) { xatoBerildi = true; h.onXato(m); } };
 
-  const yukla = (b: Bolak, mening: number): Promise<AudioBuffer | Response | null> => {
+  const yukla = (b: Bolak, mening: number, oqim = oqimMumkin): Promise<AudioBuffer | Response | null> => {
     b.holat = 'yuklanmoqda';
     yuklanmoqda++;
     return (async () => {
-      const taymer = setTimeout(() => b.ctrl.abort(), SORO_KUTISH_MS);
+      let taymer = setTimeout(() => b.ctrl.abort(), SORO_KUTISH_MS);
       try {
-        const r = await fetch('/api/agent/gapir', {
-          method: 'POST', signal: b.ctrl.signal, headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ matn: nutqParchasi(b.matn), oqim: true, jonli: ruxsat(), ...(zaxiraBildirildi ? { zaxira: true } : {}) }),
-        });
-        if (!r.ok) {
-          const d = await r.json().catch(() => ({})) as { xabar?: string };
-          if (r.status === 401) { window.location.href = '/kirish'; return null; }
-          if (mening === avlod) xato(d.xabar ?? 'Овозли жавоб олинмади. Жавоб матни экранда.');
-          return null;
+        for (let n = 0; n < 2; n++) {
+          const r = await fetch('/api/agent/gapir', {
+            method: 'POST', signal: b.ctrl.signal, headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ matn: nutqParchasi(b.matn), oqim, jonli: ruxsat(), ...(zaxiraBildirildi ? { zaxira: true } : {}) }),
+          });
+          if (mening !== avlod || b.ctrl.signal.aborted) { await r.body?.cancel(); return null; }
+          if (r.status === 502 && oqim) {
+            await r.body?.cancel(); oqimMumkin = false; oqim = false;
+            clearTimeout(taymer); taymer = setTimeout(() => b.ctrl.abort(), SORO_KUTISH_MS); continue;
+          }
+          if (!r.ok) {
+            const d = await r.json().catch(() => ({})) as { xabar?: string };
+            if (r.status === 401) { window.location.href = '/kirish'; return null; }
+            if (mening === avlod) xato(d.xabar ?? 'Овозли жавоб олинмади. Жавоб матни экранда.');
+            return null;
+          }
+          if (r.headers.get('x-nutq-zaxira') === '1' && !zaxiraBildirildi && mening === avlod) { zaxiraBildirildi = true; h.onZaxiraOvozi?.(); }
+          if (/^audio\/pcm;rate=24000$/i.test(r.headers.get('content-type') ?? '')) return r;
+          const bayt = await r.arrayBuffer();
+          if (mening !== avlod) return null;
+          return await ctx.decodeAudioData(bayt);
         }
-        if (r.headers.get('x-nutq-zaxira') === '1' && !zaxiraBildirildi && mening === avlod) { zaxiraBildirildi = true; h.onZaxiraOvozi?.(); }
-        if (/^audio\/pcm;rate=24000$/i.test(r.headers.get('content-type') ?? '')) return r;
-        const bayt = await r.arrayBuffer();
-        if (mening !== avlod) return null;
-        return await ctx.decodeAudioData(bayt);
+        return null;
       } catch {
         if (mening === avlod && !b.ctrl.signal.aborted) xato('Овозли жавоб олинмади. Жавоб матни экранда.');
         else if (mening === avlod) xato('Овоз кечикди. Жавоб матни экранда.');
@@ -163,12 +172,22 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
         navbat.shift();
         if (buf instanceof Response) {
           pcmCtrl = b.ctrl;
+          let started = false;
           try {
             await pcmNutqniIjroEt(ctx, buf, b.ctrl.signal, {
-              onBoshlandi: () => { if (mening === avlod && !boshlandi) { boshlandi = true; h.onBoshlandi(); } },
+              onBoshlandi: () => { started = true; if (mening === avlod && !boshlandi) { boshlandi = true; h.onBoshlandi(); } },
               onDaraja: (d) => { if (mening === avlod) h.onDaraja(d); },
             });
-          } catch { if (mening === avlod && !b.ctrl.signal.aborted) xato('Ovoz oqimi uzildi. Javob matni ekranda.'); }
+          } catch {
+            oqimMumkin = false;
+            if (mening === avlod && !b.ctrl.signal.aborted) {
+              if (started) xato('Ovoz oqimi uzildi. Javob matni ekranda.');
+              else {
+                const mp3 = await yukla(b, mening, false);
+                if (mening === avlod && mp3 && !(mp3 instanceof Response)) await ijroEt(mp3, mening);
+              }
+            }
+          }
           finally { if (pcmCtrl === b.ctrl) pcmCtrl = null; }
         } else if (buf) await ijroEt(buf, mening);
       }

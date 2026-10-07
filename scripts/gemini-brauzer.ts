@@ -141,7 +141,7 @@ async function main() {
   const holat = await fetch(`${BAZA}/kirish`).then((r) => r.status).catch(() => 0);
   if (holat !== 200) throw new Error(`server ${BAZA} javob bermayapti`);
 
-  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDEF'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
+  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDEFG'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
   if (bolim.includes('A')) {
   /* ═══ A. To'liq oqim: salom, transkripsiya, asbob, gaplab o'qish, yozma matn, to'xtatish (jim mikrofon) ═══ */
   const A = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
@@ -586,7 +586,7 @@ async function main() {
         await oynaOch(page); await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
         if (fail) {
           const switched = await kut(async () => starts.length === 2 && (await holatOl(page)) === 'gapirmoqda', 15_000);
-          tekshir('E2. Ikkala tashqi ovoz rad etilsa shu Gemini native ovozida davom etadi, kunlik davom ruxsati ishlatiladi', switched && /Овоз: Gemini/.test(await page.locator('body').innerText()) && starts[1].mahalliyOvoz === true && typeof starts[1].davom === 'string' && voices.length === 1 && xatolar.length === 0);
+          tekshir('E2. Oqim va MP3 rad etilsa shu Gemini native ovozida davom etadi, kunlik davom ruxsati ishlatiladi', switched && /Овоз: Gemini/.test(await page.locator('body').innerText()) && starts[1].mahalliyOvoz === true && typeof starts[1].davom === 'string' && voices.length === 2 && voices[0].oqim === true && voices[1].oqim === false && xatolar.length === 0);
           const mouth = await kut(async () => Number(await page.locator('[data-holat]').first().evaluate((el: HTMLElement) => el.style.getPropertyValue('--robot-nutq'))) > .1, 2000, 25);
           tekshir('E3. Native ovozning haqiqiy amplitudasi robot og‘zini harakatlantiradi', mouth);
         } else {
@@ -629,6 +629,38 @@ async function main() {
     } finally { await fb.close(); }
   }
 
+  if (bolim.includes('G')) {
+    const gb = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
+    try {
+      for (const failure of ['empty', '502']) {
+        const u = await xodimYarat(`recover_${failure}`); const { ctx, page, xatolar } = await sahifaOch(gb, u.username, 'window.__name = (t) => t;');
+        const requests: S[] = []; let setups = 0;
+        await page.route('**/api/agent/gapir', async (r: S) => {
+          const d = JSON.parse(r.request().postData() ?? '{}'); requests.push(d);
+          if (d.oqim) await r.fulfill(failure === 'empty'
+            ? { status: 200, contentType: 'audio/pcm;rate=24000', body: Buffer.alloc(0) }
+            : { status: 502, contentType: 'application/json', body: JSON.stringify({ xabar: 'Oqim mos kelmadi.' }) });
+          else await r.fulfill({ status: 200, contentType: 'audio/mpeg', body: wav(24000, 3, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)), headers: { 'x-nutq-provayder': 'elevenlabs' } });
+        });
+        await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
+          ws.onMessage((raw: string) => {
+            const b = JSON.parse(String(raw));
+            if (b.setup) { setups++; ws.send(JSON.stringify({ setupComplete: {} })); }
+            if (b.realtimeInput?.text) ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: 'Salom, sizni tinglayapman.' }, turnComplete: true } }));
+          });
+        });
+        await oynaOch(page); await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
+        const live = await kut(async () => (await holatOl(page)) === 'gapirmoqda', 15_000, 20);
+        tekshir(`G1-${failure}. Jonli ovoz oqimi ishlamasa ayni suhbatda MP3 o‘qiladi, qayta ulanish yo‘q`, live && requests.length === 2 && requests[0].oqim === true && requests[1].oqim === false && setups === 1);
+        await page.getByRole('button', { name: 'Жонли суҳбатни тўхтатиш' }).click(); await uyqu(100);
+        await page.getByRole('button', { name: 'Овозни синаш', exact: true }).click();
+        const ordinary = await kut(async () => (await holatOl(page)) === 'gapirmoqda', 5000, 20);
+        tekshir(`G2-${failure}. Oddiy ovoz tugmasi ham xatodan keyin bitta MP3 ijrosini boshlaydi`, ordinary && requests.length === 4 && requests[2].oqim === true && requests[3].oqim === false);
+        tekshir(`G3-${failure}. Tiklangan ovoz og‘izni harakatlantiradi va sahifada kutilmagan xato yo‘q`, xatolar.length === 0 && await kut(async () => Number(await page.locator('[data-holat]').first().evaluate((el: HTMLElement) => el.style.getPropertyValue('--robot-nutq'))) > .1, 1000, 20), xatolar.join(' | '));
+        await ctx.close();
+      }
+    } finally { await gb.close(); }
+  }
 }
 
 main().catch((e) => { xato++; console.error('XATO (kutilmagan):', e); }).finally(async () => {

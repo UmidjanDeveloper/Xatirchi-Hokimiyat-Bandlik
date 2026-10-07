@@ -58,3 +58,11 @@ Haqiqiy API kalitlari bo‘lmasa bular provider hisobidagi balans, model ruxsati
 Model javobi tugashi hanuz kutiladi — bu o‘zgarish audio faylining to‘liq tayyorlanishi/yuklanishini kutishni olib tashlaydi. Voice ID, Eleven v3, `language_code=uz` va bir javobga bitta TTS so‘rovi saqlanadi. Haqiqiy tezlik provider modelining birinchi audio tayyorlash vaqtiga bog‘liq; oqimni qo‘llamaydigan model/tarif MP3 bilan ishlaydi va uning kutishi qoladi. Birinchi audio uchun ElevenLabs’ga zaxira borligida 6 soniya, butun generatsiya zanjiriga 22 soniya ajratiladi. PCM ko‘pi bilan 9.6 MB (200 soniya); yuklash tugagach bu deadline ovoz ijrosini kesmaydi.
 
 `npm run sinov:elevenlabs` oqim va bekor qilish regressiyalarini qoplaydi. `GEMINI_BRAUZER_BOLIM=F npm run sinov:gemini-brauzer` soxta HTTP PCM provider bilan jonli va oddiy ovoz tugmasining fayl tugashidan oldin gapirishini tekshiradi. Bu haqiqiy ElevenLabs tezligi o‘lchovi emas.
+
+### Oqim ishlamasa ovozni tiklash
+
+Oqim endpointi formatni yoki metodni rad etsa (400/404/405/406/415/422/501), PCM o‘rniga boshqa MIME qaytsa yoki audio bo‘sh kelsa server aynan shu Voice ID, model va tilning MP3 yo‘liga qaytadi. Bu urinishlar mavjud 22 soniyalik server muddatiga kiradi; PCM ijrosi boshlanganidan keyin server boshqa ovozga o‘tmaydi.
+
+Brauzer oqim so‘rovidagi 502 yoki birinchi audio ijrosidan oldingi PCM xatosida ko‘pi bilan **bir marta** `oqim: false` bilan qayta so‘raydi. Oddiy tugma va jonli suhbat bu yo‘lni bir xil qo‘llaydi; keyingi javoblar o‘sha ochiq oyna/suhbatda MP3 bilan o‘qiladi. Odatiy javobda bitta so‘rov qoladi, tiklashda ikkita bo‘lishi mumkin va ikkalasi mavjud ruxsat/kvota tekshiruvidan o‘tadi. Har bir urinish brauzerda 25 soniyadan oshmaydi. 401/403/429 qayta sinalmaydi; bekor qilingan yoki eshittirish boshlangan javob qayta o‘qilmaydi.
+
+`GEMINI_BRAUZER_BOLIM=G npm run sinov:gemini-brauzer` haqiqiy Chromium’da bo‘sh PCM va 502dan keyin jonli hamda oddiy ovoz ijrosi va mimika tiklanishini soxta provider bilan tekshiradi. `scripts/nutq-tiklash-sinov.ts` ruxsat/kvota, bekor qilish, ikkinchi xato va ijro boshlanganidan keyin takrorlanmaslikni qoplaydi. Haqiqiy provider hisobidagi kalit, balans va qurilmaning ovoz ruxsati alohida tekshiriladi.

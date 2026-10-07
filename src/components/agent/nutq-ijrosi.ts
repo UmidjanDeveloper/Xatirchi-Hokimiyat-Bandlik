@@ -5,6 +5,7 @@ import { nutqParchasi } from '@/lib/agent/matnlar';
 import { gapir, gapirishniToxtat, uzbekOvozi } from './ovoz';
 
 let zaxiraOvozi = false; // Shu oyna ichida keyingi javoblar boshqa ovozga qaytmasin.
+let oqimMumkin = true; // Oqim ishlamagan qurilmada keyingi javoblar MP3 bilan o'qiladi.
 let audio: AudioContext | null = null;
 let bekorQil: (() => void) | null = null;
 
@@ -90,30 +91,49 @@ export function javobniGapir(matn: string, h: {
   if (!h.serverMumkin) { yakunla('Ўзбекча овоз уланмаган. Администратор овоз хизматини ёқиши керак.'); return; }
   if (taymer) clearTimeout(taymer);
   h.onYuklash();
-  taymer = setTimeout(() => { ctrl.abort(); yakunla('Овоз кечикди. Жавобни ўқинг ёки қайта урининг.'); }, 25_000);
+  const kutish = () => {
+    if (taymer) clearTimeout(taymer);
+    taymer = setTimeout(() => { ctrl.abort(); yakunla('Овоз кечикди. Жавобни ўқинг ёки қайта урининг.'); }, 25_000);
+  };
+  kutish();
   void (async () => {
     try {
-      const r = await fetch('/api/agent/gapir', {
-        method: 'POST', signal: ctrl.signal, headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ matn: nutqParchasi(matn), oqim: true, ...(zaxiraOvozi ? { zaxira: true } : {}) }),
-      });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({})) as { xabar?: string };
-        if (r.status === 401) window.location.href = '/kirish';
-        yakunla(d.xabar ?? 'Овозли жавоб олинмади. Жавобни ўқинг.');
-        return;
-      }
-      if (tugadi) { await r.body?.cancel(); return; }
-      if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; h.onZaxiraOvozi?.(); }
+      const ol = async (oqim: boolean): Promise<Response | null> => {
+        const r = await fetch('/api/agent/gapir', {
+          method: 'POST', signal: ctrl.signal, headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ matn: nutqParchasi(matn), oqim, ...(zaxiraOvozi ? { zaxira: true } : {}) }),
+        });
+        if (tugadi) { await r.body?.cancel(); return null; }
+        // Faqat ovoz olinmagan 502: ruxsat yoki kvota radini qayta so'ramaymiz.
+        if (r.status === 502 && oqim) { await r.body?.cancel(); oqimMumkin = false; kutish(); return ol(false); }
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({})) as { xabar?: string };
+          if (r.status === 401) window.location.href = '/kirish';
+          yakunla(d.xabar ?? 'Овозли жавоб олинмади. Жавобни ўқинг.');
+          return null;
+        }
+        if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; h.onZaxiraOvozi?.(); }
+        return r;
+      };
+      let r = await ol(oqimMumkin);
+      if (!r) return;
       if (/^audio\/pcm;rate=24000$/i.test(r.headers.get('content-type') ?? '')) {
         const a = audio;
         if (!a) throw new Error('Audio ochilmadi.');
-        await pcmNutqniIjroEt(a, r, ctrl.signal, {
-          onBoshlandi: () => { if (!tugadi) { if (taymer) clearTimeout(taymer); h.onBoshlandi(); } },
-          onDaraja: (d) => { if (!tugadi) h.onDaraja?.(d); },
-        });
-        if (!tugadi) yakunla();
-        return;
+        let boshlandi = false;
+        try {
+          await pcmNutqniIjroEt(a, r, ctrl.signal, {
+            onBoshlandi: () => { if (!tugadi) { boshlandi = true; if (taymer) clearTimeout(taymer); h.onBoshlandi(); } },
+            onDaraja: (d) => { if (!tugadi) h.onDaraja?.(d); },
+          });
+          if (!tugadi) yakunla();
+          return;
+        } catch (e) {
+          oqimMumkin = false;
+          // Eshitilgan javob qayta o'qilmaydi; bekor qilish yangi so'rov boshlamaydi.
+          if (boshlandi || tugadi || ctrl.signal.aborted) throw e;
+          kutish(); r = await ol(false); if (!r) return;
+        }
       }
       const bayt = await r.arrayBuffer();
       if (tugadi) return;
