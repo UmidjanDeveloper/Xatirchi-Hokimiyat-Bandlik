@@ -289,6 +289,7 @@ export default function AgentOynasi({
       onDaraja: setOgizDarajasi,
       onYuklash: () => { setNutqYuklanmoqda(true); setHolat('oylamoqda'); },
       onBoshlandi: () => { setNutqYuklanmoqda(false); setHolat('gapirmoqda'); },
+      onZaxiraOvozi: () => setBildirish(t('ElevenLabs овози ишламади: бу жавоб OpenAI овози билан ўқилмоқда.')),
       onXato: (xabar) => {
         suhbatRef.current = false;
         setSuhbatRejimi(false);

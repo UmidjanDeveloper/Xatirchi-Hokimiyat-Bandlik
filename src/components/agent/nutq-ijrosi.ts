@@ -38,6 +38,7 @@ export function javobniGapir(matn: string, h: {
   onBoshlandi(): void;
   onTugadi(): void;
   onXato(xabar: string): void;
+  onZaxiraOvozi?(): void;
 }): void {
   nutqniToxtat();
   const ctrl = new AbortController();
@@ -101,6 +102,7 @@ export function javobniGapir(matn: string, h: {
       }
       const bayt = await r.arrayBuffer();
       if (tugadi) return;
+      if (r.headers.get('x-nutq-zaxira') === '1') h.onZaxiraOvozi?.();
       const a = audio;
       if (a?.state === 'suspended') await a.resume();
       if (tugadi) return;

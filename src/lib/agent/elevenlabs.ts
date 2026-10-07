@@ -74,9 +74,6 @@ function rad(status: number, tafsilot = ''): NutqXatosi {
   return new NutqXatosi('provayder', `${izoh} (${status}${tafsilot ? `: ${tafsilot}` : ''})`);
 }
 
-/** Qo'shimcha maydonni (til majburlash va h.k.) rad etgan model/hisoblar: shu modellar eng oddiy shaklda ishlaydi */
-const soddaModellar = new Set<string>();
-
 /** Fixed API host; no API keys, text or provider response details are logged/persisted. */
 export async function elevenlabsNutq(
   prov: NutqProvayderi, input: string,
@@ -112,21 +109,12 @@ export async function elevenlabsNutq(
       headers: { ...headers, 'content-type': 'application/json', accept: 'audio/mpeg' },
       body: JSON.stringify(body),
     });
-    // To'liq shakl: o'zbek tilini majburlash, matnni normallashtirish, barqarorlik. Ba'zi model/hisoblar
-    // bu maydonlardan birini rad etadi (400/422): u holda rasmiy SDK yuboradigan eng oddiy shakl ({text, model_id}).
-    const soddami = !opt.fetchFn && soddaModellar.has(prov.model);
-    let r = await tts(soddami
-      ? { text: input, model_id: prov.model }
-      : { text: input, model_id: prov.model, language_code: 'uz', apply_text_normalization: 'auto', voice_settings: { stability: 0.5 } });
-    let birinchi = '';
-    if (!r.ok && !soddami && (r.status === 400 || r.status === 422)) {
-      birinchi = await xatoTafsiloti(r, prov.kalit);
-      r = await tts({ text: input, model_id: prov.model });
-      if (r.ok && !opt.fetchFn) soddaModellar.add(prov.model);
-    }
+    // SDK'da normalizatsiya sukutda auto. Tilni hech qachon olib tashlamaymiz:
+    // boshqa hisobdagi 400/422 xatosi barcha so'rovlarga ta'sir qilmasin.
+    const r = await tts({ text: input, model_id: prov.model, language_code: 'uz', voice_settings: { stability: 0.5 } });
     if (!r.ok) {
       const t = await xatoTafsiloti(r, prov.kalit);
-      throw rad(r.status, birinchi && birinchi !== t ? `${t} | birinchi urinish: ${birinchi}` : t);
+      throw rad(r.status, t);
     }
     if (!/^(audio\/mpeg|application\/octet-stream)(?:;|$)/i.test(r.headers.get('content-type') ?? '')) {
       await r.body?.cancel(); throw new NutqXatosi('bosh', 'ElevenLabs audio qaytarmadi.');

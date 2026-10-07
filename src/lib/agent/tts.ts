@@ -28,7 +28,7 @@ export function ovozMavjud(env: NodeJS.ProcessEnv = process.env): boolean {
  */
 const ELEVENLABS_SINISH = { ketma: 0, gacha: 0 };
 const SAKRASH_MS = 60_000;
-const ELEVENLABS_KUTISH_ZAXIRA_BILAN_MS = 6_000;
+const ELEVENLABS_KUTISH_ZAXIRA_BILAN_MS = 10_000;
 const OVOZ_ZANJIRI_MS = 22_000; // Vercel maxDuration=25 va mijozning 25s kutishidan oldin yakunlansin.
 export function elevenlabsHolatiniTozala() { ELEVENLABS_SINISH.ketma = 0; ELEVENLABS_SINISH.gacha = 0; }
 

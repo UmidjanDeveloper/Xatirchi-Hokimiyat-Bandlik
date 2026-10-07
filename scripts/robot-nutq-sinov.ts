@@ -20,25 +20,28 @@ async function main() {
     window: { AudioContext: AudioMock, speechSynthesis: { getVoices: () => [{ lang: 'uz-UZ' }], cancel() {} } },
     requestAnimationFrame: (f: FrameRequestCallback) => { frames.set(++frameId, f); return frameId; },
     cancelAnimationFrame: (id: number) => frames.delete(id),
-    fetch: async () => { calls++; return new Response(new Uint8Array([1, 2]), { headers: { 'content-type': 'audio/mpeg' } }); },
+    fetch: async () => { calls++; return new Response(new Uint8Array([1, 2]), { headers: { 'content-type': 'audio/mpeg', ...(calls > 1 ? { 'x-nutq-zaxira': '1' } : {}) } }); },
   });
   nutqniTayyorla();
-  let started = 0, ended = 0;
+  let started = 0, ended = 0, fallback = 0;
   const levels: number[] = [];
-  const h = { serverMumkin: true, onYuklash() {}, onBoshlandi() { started++; }, onTugadi() { ended++; }, onXato(m: string) { throw new Error(m); }, onDaraja(d: number) { levels.push(d); } };
+  const h = { serverMumkin: true, onYuklash() {}, onBoshlandi() { started++; }, onTugadi() { ended++; }, onXato(m: string) { throw new Error(m); }, onDaraja(d: number) { levels.push(d); }, onZaxiraOvozi() { fallback++; } };
   const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
   javobniGapir('Salom', h); await flush();
   assert.equal(calls, 1, 'Configured server voice takes priority over browser voices');
+  assert.equal(fallback, 0);
   assert.equal(started, 1); assert.equal(manba!.started, true); assert.ok(levels.some((d) => d > 0));
   manba!.onended?.();
   assert.equal(ended, 1); assert.equal(levels.at(-1), 0); assert.equal(frames.size, 0); assert.equal(analizatorYopildi, 1);
   javobniGapir('Ikkinchi javob', h); await flush();
+  assert.equal(fallback, 1, 'Backup voice is announced before playback');
   const lateEnd = manba!.onended;
   nutqniToxtat(); lateEnd?.();
   assert.equal(ended, 1, 'Cancelled audio must not advance the conversation');
   assert.equal(frames.size, 0); assert.equal(levels.at(-1), 0); assert.equal(manba!.stopped, true);
   javobniGapir('Kech javob', h); nutqniToxtat(); await flush();
   assert.equal(started, 2, 'Late fetch must not start cancelled audio');
+  assert.equal(fallback, 1, 'Cancelled response must not announce a backup voice');
   nutqMuhitiniYop();
   console.log('3/3 passed: server voice priority/amplitude, playback cleanup, cancellation');
 }

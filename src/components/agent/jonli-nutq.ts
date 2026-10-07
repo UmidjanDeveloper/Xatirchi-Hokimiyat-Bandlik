@@ -4,13 +4,12 @@ import { nutqParchasi } from '@/lib/agent/matnlar';
 
 /**
  * ============================================================
- *  JONLI SUHBATDA OVOZ NAVBATI (ElevenLabs, gap-gap)
+ *  JONLI SUHBATDA OVOZ NAVBATI
  *
- *  Gemini matnni oqim bilan yozadi; birinchi gap tugashi bilan uni
- *  `/api/agent/gapir` ga yuboramiz (ElevenLabs), shu orasida keyingi gaplar
- *  yozilib, ularning ovozi ham tayyorlanadi (bir vaqtda ko'pi bilan 2 ta).
- *  Ovoz TARTIB bilan, uzilishsiz o'ynaydi. Bu butun javob yozilishini
- *  kutishdan ancha tez: birinchi gap deyarli darhol eshitiladi.
+ *  Gemini tugallangan javobni `/api/agent/gapir` ga bitta so'rovda
+ *  yuboradi. Navbat javoblarni tartib bilan o'qiydi va yagona audio
+ *  manbasini boshqaradi. Bir javob gaplarga bo'linib turli provayderlarda
+ *  o'qilmaydi; zaxira butun javob uchun ishlaydi.
  *
  *  `toxtat()` — foydalanuvchi gapni bo'lganda: kutayotgan so'rovlar bekor
  *  qilinadi, o'ynayotgan ovoz o'chiriladi, kechikib kelgan javoblar

@@ -2,7 +2,7 @@
 
 import type { Amal, Manba } from '@/lib/agent/turlar';
 import {
-  GapBolgich, asbobIdsiniTozala, geminiAsbobJavobi, geminiAudioXabari, geminiMatnXabari, geminiSozlashXabari,
+  asbobIdsiniTozala, geminiAsbobJavobi, geminiAudioXabari, geminiMatnXabari, geminiSozlashXabari,
   geminiWsManziliTogrimi, geminiXabarOqi, pcm16Base64, type GeminiHodisa,
 } from '@/lib/agent/gemini-protokol';
 import type { JonliHodisalar } from './jonli-suhbat';
@@ -13,7 +13,9 @@ import { nutqNavbatiYarat, type NutqNavbati } from './jonli-nutq';
  *  JONLI SUHBAT — GEMINI LIVE + ELEVENLABS (brauzer tomoni)
  *
  *    mikrofon -> AudioWorklet (16 kHz PCM) -> Gemini Live (WebSocket)
- *    Gemini MATN yozadi -> gaplarga bo'linadi -> ElevenLabs -> quloq
+ *    Gemini MATN yozadi -> tugallangan javob -> ElevenLabs -> quloq
+ *    Bitta javob bitta TTS so'rovi: ovoz va gaplar ohangi almashmaydi.
+ *    Matn oqim bilan ko'rinadi; ovoz turnComplete kelgach tayyorlanadi.
  *
  *  Asosiy API kaliti brauzerda YO'Q: server yakka foydalanishli token
  *  beradi (`/api/agent/jonli`, tur=gemini_ulanish), ko'rsatma va asboblar
@@ -85,7 +87,6 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
   let navbat = 0;
   let asbobCtrl: AbortController | null = null;
   let nutq: NutqNavbati | null = null;
-  const bolgich = new GapBolgich();
   const chaqiruvlar = new Set<string>();
   const bekorIdlar = new Set<string>();
   const matnlar = new Map<string, string>();
@@ -150,7 +151,6 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
     navbat++;
     asbobCtrl?.abort();
     nutq?.toxtat();
-    bolgich.reset();
     modelId = null;
     yuqoriKadr = 0;
     cb.onDaraja(0);
@@ -222,12 +222,13 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
         ishladi = true; clearTimeout(birinchiVaqt);
         if (!modelId) { modelId = `${sessiyaId}:a${idSoni++}`; cb.onHolat('oylamoqda'); }
         yangila(modelId, 'a', h.matn);
-        for (const g of bolgich.push(h.matn)) nutq?.qosh(g);
         break;
       }
       case 'yakun': {
         if (modelId || nutq?.faol()) { ishladi = true; clearTimeout(birinchiVaqt); }
-        for (const g of bolgich.flush()) nutq?.qosh(g);
+        // Alohida gaplarda zaxira provayderi turlicha bo'lishi mumkin. To'liq javob
+        // bitta so'rovda o'qiladi; zaxira kerak bo'lsa butun javob OpenAI ovozida.
+        if (modelId) nutq?.qosh(matnlar.get(modelId) ?? '');
         modelId = null;
         foydalanuvchiYopiq = true;
         nutq?.tugatish();
@@ -263,7 +264,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
   const mikrofonOqimi = (e: MessageEvent<{ f: Float32Array; rms: number }>) => {
     if (tugadi || !tayyor) return;
     const { f, rms } = e.data;
-    const ovozChiqmoqda = Boolean(nutq?.faol()) || performance.now() < sonishGacha;
+    const ovozChiqmoqda = Boolean(modelId || nutq?.faol()) || performance.now() < sonishGacha;
     if (!ovozChiqmoqda) {
       yuqoriKadr = 0;
       if (halqa.length) halqa = [];
@@ -391,7 +392,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar): { bekor(): void; yubor(ma
     },
     eslat(matn) {
       if (tugadi || !tayyor) return;
-      nutq?.toxtat(); bolgich.reset(); modelId = null;
+      nutq?.toxtat(); modelId = null;
       yubor(geminiMatnXabari(`Интерфейс натижаси: ${matn}. Натижани қисқа ўзбекча айт.`));
     },
   };

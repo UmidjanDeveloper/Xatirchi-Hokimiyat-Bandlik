@@ -22,6 +22,11 @@ tushunish va platforma buyruqlari mavjud AI orqali ishlaydi.
 boshqa ovoz ID sini tanlash kifoya; kodni qayta yozish kerak emas. Hech bir
 modelga xatosiz talaffuz kafolati berilmaydi.
 
+Kod `language_code=uz` va `stability=0.5` bilan o'qiydi. Model sozlamani rad etsa,
+o'zbek tili olib tashlanib qayta urinilmaydi. OpenAI zaxirasi ishlasa, bu haqda
+Hamroh xabar beradi; butun javob bitta ovozda o'qiladi. Haqiqiy talaffuz uchun
+aynan tanlangan Voice ID ning o'zbekcha namunasini eshitish kerak.
+
 ## 2. API kaliti ruxsatlarini tekshiring
 
 ElevenLabs hisobidagi API Keys sozlamalarida ilova foydalanadigan kalitda

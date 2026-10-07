@@ -144,9 +144,11 @@ async function main() {
     let asbobYuborildi = false, salomJavob = false;
     const gapirSorov: { matn: string; jonli: boolean; t: number }[] = [];
     let bir = 0, ENG_KOP = 0;
+    let modelYozmoqda = false, ttsErta = false;
 
     await page.route('**/api/agent/gapir', async (route: S) => {
       const b = JSON.parse(route.request().postData() ?? '{}');
+      if (modelYozmoqda) ttsErta = true;
       gapirSorov.push({ matn: b.matn, jonli: typeof b.jonli === 'string' && b.jonli.length > 20, t: Date.now() });
       bir++; ENG_KOP = Math.max(ENG_KOP, bir);
       await uyqu(250);
@@ -190,11 +192,15 @@ async function main() {
         } else if (d.toolResponse) {
           h.asbobJavoblari.push(d.toolResponse);
           const uzun = ['Маҳалла топилди ва тасдиқланди. ', 'Хатлов бўйича маълумотлар тайёр, уларни ҳозир айтиб бераман. ', 'Биринчидан, ходимлар ишни бошлаган. ', 'Иккинчидан, ҳужжатлар йиғилмоқда. ', 'Учинчидан, натижалар кутилмоқда. ', 'Тўртинчидан, ҳисобот тайёрланади. ', 'Яна нима керак?'];
+          modelYozmoqda = true;
           for (const q of uzun.slice(0, 2)) yubor({ serverContent: { modelTurn: { parts: [{ text: q }] } } });
           // Gemini hujjati: transkripsiya javobga nisbatan tartibsiz kelishi mumkin — kech bo'lak javobni BEKOR QILMASLIGI kerak
           yubor({ serverContent: { inputTranscription: { text: ' ҳозир' } } });
-          for (const q of uzun.slice(2)) yubor({ serverContent: { modelTurn: { parts: [{ text: q }] } } });
-          yubor({ serverContent: { turnComplete: true } });
+          setTimeout(() => {
+            for (const q of uzun.slice(2)) yubor({ serverContent: { modelTurn: { parts: [{ text: q }] } } });
+            modelYozmoqda = false;
+            yubor({ serverContent: { turnComplete: true } });
+          }, 800);
         }
       });
     });
@@ -225,9 +231,9 @@ async function main() {
       /Hamroh/.test(s.systemInstruction?.parts?.[0]?.text ?? '') && /Uyshun/.test(s.systemInstruction?.parts?.[0]?.text ?? '') &&
       ['mahallani_top', 'hisobotni_yukla'].every((n) => s.tools?.[0]?.functionDeclarations?.some((f: S) => f.name === n && f.parameters?.type === 'OBJECT')) && s.inputAudioTranscription !== undefined);
 
-    const salomEshitildi = await kut(() => gapirSorov.length >= 2 && /Ассалому алайкум!/.test(gapirSorov[0]?.matn ?? ''), 15_000);
-    tekshir('A6. Salom gaplab ElevenLabs’ga yuborildi: 1-gap alohida (tez), 2-gap keyin; jonli ruxsatnoma bilan',
-      salomEshitildi && gapirSorov[0].matn.trim() === 'Ассалому алайкум!' && /Сизни тинглаяпман/.test(gapirSorov[1].matn) && gapirSorov.slice(0, 2).every((g) => g.jonli), JSON.stringify(gapirSorov.slice(0, 2).map((g) => g.matn)));
+    const salomEshitildi = await kut(() => gapirSorov.length >= 1 && /Ассалому алайкум!/.test(gapirSorov[0]?.matn ?? ''), 15_000);
+    tekshir('A6. Salomning ikkala gapi bitta TTS so‘rovida: javob ichida ovoz almashmaydi, jonli ruxsatnoma bor',
+      salomEshitildi && gapirSorov[0].matn.trim() === 'Ассалому алайкум! Сизни тинглаяпман.' && gapirSorov[0].jonli, JSON.stringify(gapirSorov[0]?.matn));
     const salomGreeting = h.matnlar.some((x) => /жонли суҳбат бошланди/.test(x));
     tekshir('A7. Ulangach Hamroh salomlashishi so‘raldi (realtimeInput.text)', salomGreeting);
     await page.waitForFunction(() => document.querySelector('[data-holat]')?.getAttribute('data-holat') === 'gapirmoqda', null, { timeout: 8000 }).catch(() => {});
@@ -247,9 +253,9 @@ async function main() {
       asbobKeldi && jr?.id === 'function-call-777' && jr?.name === 'mahallani_top' && out?.topildi === true && /(Uyshun|Уйшун)/i.test(String(out?.nomi ?? '')), JSON.stringify(out)?.slice(0, 120));
     const matn1 = await kut(async () => /Уйшун маҳалласини топ/.test(await royxatMatni(page)), 8000);
     tekshir('A11. Foydalanuvchi gapi (transkripsiya bo‘laklari) bitta xabarga yig‘ilib ekranda ko‘rinadi', matn1);
-    const uzunGap = await kut(() => gapirSorov.length >= 5, 20_000);
-    tekshir('A12. Uzun javob gap-gap ElevenLabs’ga bo‘lindi (2…5 so‘rov), tartib saqlandi, bir vaqtda ko‘pi bilan 2 ta',
-      uzunGap && gapirSorov.length <= 8 && ENG_KOP <= 2 && gapirSorov.slice(2).every((g, i, a) => i === 0 || g.t >= a[i - 1].t), `so'rov=${gapirSorov.length}, bir-vaqtda=${ENG_KOP}`);
+    const uzunGap = await kut(() => gapirSorov.length >= 2, 20_000);
+    tekshir('A12. Oqimdagi yettita gap bitta to‘liq TTS so‘rovida, birinchi gap takrorlanmaydi',
+      uzunGap && !ttsErta && gapirSorov.length === 2 && ENG_KOP === 1 && /Маҳалла топилди/.test(gapirSorov[1].matn) && /Яна нима керак\?/.test(gapirSorov[1].matn), `so'rov=${gapirSorov.length}, bir-vaqtda=${ENG_KOP}, tugamasdan-ovoz=${ttsErta}`);
     const javobKorinadi = await kut(async () => /Маҳалла топилди/.test(await royxatMatni(page)) && /Яна нима керак\?/.test(await royxatMatni(page)), 8000);
     tekshir('A13. Model javobi (oqim bilan kelgan matn) to‘liq ko‘rinadi', javobKorinadi);
     const t13 = await royxatMatni(page);
@@ -327,7 +333,7 @@ async function main() {
         if (ri?.text) {
           h.matnlar.push(ri.text);
           if (/жонли суҳбат бошланди/.test(ri.text)) {
-            // Juda uzun salom: ovoz ~10 soniya o'ynaydi (5 bo'lak x 3 s)
+            // Sakkiz bo'lak bitta javobga yig'iladi; sinov audiosi 3 soniya.
             for (let i = 1; i <= 8; i++) ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: `${i}-fikr: bu ancha uzun gap bo‘lib, ovozli o‘qilishi uchun yetarli. ` } } }));
             ws.send(JSON.stringify({ serverContent: { turnComplete: true } }));
           }

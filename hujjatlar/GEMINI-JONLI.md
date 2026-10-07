@@ -7,7 +7,7 @@ va o'z ovozi bilan gapiradi) davom ettiradi; ular ishlasa ishlayveradi. Batafsil
 ## Qanday ishlaydi
 
 ```
-mikrofon ──16 kHz PCM──▶ Gemini Live ──matn──▶ gaplarga bo'lish ──▶ ElevenLabs ──▶ quloq
+mikrofon ──16 kHz PCM──▶ Gemini Live ──tugallangan matn──▶ ElevenLabs ──▶ quloq
 (brauzer)               (WebSocket)           (brauzer)            (server orqali)
                             ▲
                             └── asbob chaqiruvi ──▶ /api/agent/jonli (rol, ko'rish rejimi, tezlik tekshiriladi)
@@ -16,9 +16,11 @@ mikrofon ──16 kHz PCM──▶ Gemini Live ──matn──▶ gaplarga bo'l
 - **Kalit brauzerga chiqmaydi.** Server Gemini'dan *yakka foydalanishli, qisqa muddatli
   token* oladi (`POST /v1alpha/auth_tokens`). Model, tizim ko'rsatmasi, asboblar va javob
   turi shu tokenga **qulflangan**: brauzer ularni o'zgartira olmaydi.
-- **Javob gap-gap o'qiladi.** Gemini matnni oqim bilan yozadi; birinchi gap tugashi bilan
-  u ElevenLabs'ga ketadi, qolganlari yozilayotganda ovozi tayyorlanadi. Butun javobni kutish
-  yo'q: bu ElevenLabs bilan ishlaganda kechikishning asosiy qismini kamaytiradi.
+- **Har javob bitta ovoz so'rovida o'qiladi.** Matn ekranda oqim bilan ko'rinadi;
+  `turnComplete` kelgach to'liq javob ElevenLabs'ga yuboriladi. Bu gaplar orasida
+  ElevenLabs/OpenAI ovozlari almashishini va ohangning qayta boshlanishini oldini oladi.
+  Ovoz boshlanguncha matn tugashini kutish kerak. 2200 belgidan uzun javobning qolgan
+  qismi ekranda saqlanadi va ovoz foydalanuvchiga davomni yozma o'qishni aytadi.
 - **Asboblar** (Excel hisobot, mahalla ko'rsatkichlari, sahifa ochish...) avvalgidek serverdagi
   `/api/agent/jonli` orqali, imzolangan ruxsatnoma bilan bajariladi. Ko'rish rejimida faqat
   o'qish asboblari ishlaydi.
@@ -140,7 +142,7 @@ Gemini ulanishda yoki ishlayotgan suhbat o'rtasida uzilsa, tayyor OpenAI
 Realtime zaxirasiga o'tiladi. Mikrofon qayta so'ralmaydi. Uzilgan paytdagi
 buyruq avtomatik qayta bajarilmaydi; oxirgi savolni qayta ayting. Mahalla,
 Excel, tasdiqlash va rol ruxsatlari mavjud server asboblari orqali ishlaydi.
-ElevenLabs vaqtida javob bermasa, 6 soniyadan keyin OpenAI TTS ishlaydi;
+ElevenLabs vaqtida javob bermasa, 10 soniyadan keyin OpenAI TTS ishlaydi;
 ikki xizmatga umumiy 22 soniya beriladi (Vercel route limiti 25 soniya).
 Bekor qilish zaxira so'rovini boshlamaydi.
 

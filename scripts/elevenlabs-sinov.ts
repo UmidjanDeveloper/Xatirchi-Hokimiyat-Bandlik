@@ -53,18 +53,21 @@ async function main() {
       assert.equal(count, 2);
     }
   });
-  await test('Optional fields rejected (422) -> one retry with the plain SDK-style body {text, model_id}; success is returned', async () => {
+  await test('Rejected Uzbek settings never retry without language; later requests retain Uzbek', async () => {
     const bodies: Record<string, unknown>[] = []; let calls = 0;
-    const bytes = await nutqYarat(prov, 'Salom', { fetchFn: (async (url, init) => {
+    const f = (async (url, init) => {
       calls++; if (String(url).endsWith('/models')) return models();
       bodies.push(JSON.parse(String(init?.body)));
       return bodies.length === 1
         ? Response.json({ detail: [{ loc: ['body', 'language_code'], msg: 'Model does not support language_code', type: 'value_error' }] }, { status: 422 })
         : audio();
-    }) as typeof fetch });
-    assert.equal(bytes.byteLength, 4); assert.equal(calls, 3);
-    assert.ok('language_code' in bodies[0] && 'voice_settings' in bodies[0] && 'apply_text_normalization' in bodies[0]);
-    assert.deepEqual(Object.keys(bodies[1]).sort(), ['model_id', 'text']);
+    }) as typeof fetch;
+    await assert.rejects(nutqYarat(prov, 'Salom', { fetchFn: f }), NutqXatosi);
+    assert.equal(bodies.length, 1);
+    const bytes = await nutqYarat(prov, 'Qorabuloq mahallasi', { fetchFn: f });
+    assert.equal(bytes.byteLength, 4); assert.equal(calls, 4);
+    assert.ok(bodies.every((b) => b.language_code === 'uz' && b.voice_settings));
+    assert.ok(bodies.every((b) => !('apply_text_normalization' in b)));
   });
   await test('Failure messages show only HTTP status, provider status/message and request-id; raw/non-JSON payloads and our key never appear', async () => {
     const xato = async (status: number, body: BodyInit, headers: Record<string, string> = {}) => {
@@ -74,17 +77,17 @@ async function main() {
       } catch (e) { return { m: (e as Error).message, t }; }
       throw new Error('xato kutilgan edi');
     };
-    // 400 + JSON detail: ikkala urinish ham rad etadi -> sabab ko'rinadi (kalit "***" bo'ladi)
+    // 400 + JSON detail: qayta so‘rov yuborilmaydi -> sabab ko'rinadi (kalit "***" bo'ladi)
     const a = await xato(400, JSON.stringify({ detail: { status: 'voice_not_found', message: 'Voice uzbek_fixture_voice not found for key private-fixture-only' } }), { 'request-id': 'req_abc-123', 'content-type': 'application/json' });
-    assert.equal(a.t, 2); assert.match(a.m, /\(400: voice_not_found: Voice uzbek_fixture_voice not found for key \*\*\*/); assert.match(a.m, /so'rov req_abc-123/); assert.ok(!a.m.includes('private-fixture'));
+    assert.equal(a.t, 1); assert.match(a.m, /\(400: voice_not_found: Voice uzbek_fixture_voice not found for key \*\*\*/); assert.match(a.m, /so'rov req_abc-123/); assert.ok(!a.m.includes('private-fixture'));
     // 401: kalit XATOmi yoki RUXSAT yetishmaydimi — endi ajratiladi
     const b = await xato(401, JSON.stringify({ detail: { status: 'missing_permissions', message: 'The API key is missing the permission text_to_speech' } }));
     assert.equal(b.t, 1); assert.match(b.m, /\(401: missing_permissions: The API key is missing the permission text_to_speech\)/);
     // 429 va 500: oddiy matn, sinov uchun JSON emas -> faqat holat
     for (const st of [429, 500]) { const c = await xato(st, 'secret raw provider payload private-fixture-only'); assert.match(c.m, new RegExp(`\\(${st}\\)$`)); assert.ok(!c.m.includes('payload') && !c.m.includes('private-fixture')); }
-    // 422 massiv detail (FastAPI shakli): joy va xabar, birinchi urinish ham ko'rsatiladi
+    // 422 massiv detail (FastAPI shakli): joy va xabar ko‘rsatiladi
     const d = await xato(422, JSON.stringify({ detail: [{ loc: ['body', 'model_id'], msg: 'Field required' }] }));
-    assert.equal(d.t, 2); assert.match(d.m, /\(422: body\.model_id Field required\)/);
+    assert.equal(d.t, 1); assert.match(d.m, /\(422: body\.model_id Field required\)/);
   });
   await test('JSON, empty audio, oversized known-length and oversized chunked audio are refused', async () => {
     for (const r of [Response.json({}), new Response(null, { headers: { 'content-type': 'audio/mpeg' } }),
