@@ -23,6 +23,23 @@ async function main() {
     assert.equal((await reader.read()).value?.length, 4800); assert.ok(tail); assert.equal(cancelled, 0);
     await reader.cancel(); assert.equal(cancelled, 1); assert.equal(signal?.aborted, true);
   });
+  await test('Default model (no ELEVENLABS_MODEL_ID) streams with the Uzbek-capable catalog model; unsupported configured v3 is replaced, not sent', async () => {
+    const katalog = () => Response.json([
+      { model_id: 'eleven_v3', can_do_text_to_speech: true, languages: [{ language_id: 'en' }] },
+      { model_id: 'eleven_v4_turbo', can_do_text_to_speech: true, languages: [{ language_id: 'uzb' }] },
+    ]);
+    for (const model of [undefined, 'eleven_v3']) {
+      const modeller: string[] = [];
+      const f = (async (url, init) => {
+        if (String(url).endsWith('/models')) return katalog();
+        modeller.push(JSON.parse(String(init?.body)).model_id); return pcm();
+      }) as typeof fetch;
+      const e = { ...env, ELEVENLABS_API_KEY: `fixture-${model ?? 'default'}`, ...(model ? { ELEVENLABS_MODEL_ID: model } : { ELEVENLABS_MODEL_ID: '' }) } as NodeJS.ProcessEnv;
+      const r = await ovozOqimi('Salom.', { env: e, fetchFn: f }); assert.equal(r.pcm, true); assert.equal(r.provayder, 'elevenlabs'); assert.equal(r.zaxira, false);
+      assert.ok(r.audio instanceof ReadableStream); await r.audio.cancel();
+      assert.deepEqual(modeller, ['eleven_v4_turbo']);
+    }
+  });
   await test('Timeout/invalid empty first audio can fall back once, then voice is pinned without retrying ElevenLabs', async () => {
     const urls: string[] = [];
     const f = (async (url) => {

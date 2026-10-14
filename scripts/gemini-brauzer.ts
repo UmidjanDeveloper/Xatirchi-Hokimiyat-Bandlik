@@ -9,6 +9,9 @@
  *  OpenAI zaxirasi (C bo'limi): brauzerning OpenAI'ga ketadigan so'rovi ushlanadi, haqiqiy OpenAI'ga chiqilmaydi.
  *  Haqiqiy Gemini/ElevenLabs/OpenAI bilan end-to-end sinov EMAS.
  *
+ *  Bo'limlar: A to'liq oqim, B gapni bo'lish, C zaxira, D native ovoz, E zaxira ovozi, F oqimli PCM, G tiklash,
+ *  H telefon audio sessiyasi, I gap-gap o'qish (birinchi gap javob tugamasdan; zaxira ovozi javob ichida almashmaydi).
+ *
  *  Ishga tushirish (ishlab chiqarish rejimida token manzili o'zgarmaydi,
  *  shuning uchun `next dev`):
  *    GEMINI_API_KEY=AIza-sinov GEMINI_API_BAZA_SINOV=http://127.0.0.1:8966 \
@@ -64,12 +67,19 @@ const rmsOl = (base64: string): number => {
 
 /* ───────────── soxta Google token manzili ───────────── */
 let pcmBoshladi = 0, pcmTugadi = 0;
+const pcmSorovlari: Record<string, unknown>[] = [];
 const tokenSorovlari: { kalit: string | undefined; body: Record<string, unknown> }[] = [];
+const modelSorovlari: { kalit: string | undefined; url: string }[] = [];
 const google = http.createServer((req, res) => {
   const qismlar: Buffer[] = [];
   req.on('data', (c) => qismlar.push(c));
   req.on('end', () => {
+    if (req.method === 'OPTIONS' && req.url === '/pcm') {
+      // Brauzer boshqa origin'ga JSON POST qilganda oldindan so'raydi (F bo'limi: fetch shu manzilga yo'naltiriladi)
+      res.writeHead(204, { 'access-control-allow-origin': BAZA, 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST' }).end(); return;
+    }
     if (req.method === 'POST' && req.url === '/pcm') {
+      try { pcmSorovlari.push(JSON.parse(Buffer.concat(qismlar).toString() || '{}')); } catch { /* sinov so'rovi JSON emas */ }
       pcmBoshladi = Date.now(); pcmTugadi = 0;
       res.writeHead(200, { 'content-type': 'audio/pcm;rate=24000', 'access-control-allow-origin': BAZA, 'access-control-allow-credentials': 'true', 'x-nutq-provayder': 'elevenlabs' });
       const a = setTimeout(() => res.write(wav(24000, 1.5, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)).subarray(44)), 100);
@@ -77,7 +87,11 @@ const google = http.createServer((req, res) => {
       const c = setTimeout(() => { pcmTugadi = Date.now(); res.end(); }, 1600);
       res.on('close', () => { clearTimeout(a); clearTimeout(b); clearTimeout(c); }); return;
     }
-    if (req.method === 'POST' && req.url === '/v1alpha/auth_tokens') {
+    if (req.method === 'GET' && req.url?.startsWith('/v1beta/models')) {
+      // Kalit uchun mavjud Live modellar (server standart modelni shu ro'yxat bilan tekshiradi)
+      modelSorovlari.push({ kalit: req.headers['x-goog-api-key'] as string | undefined, url: req.url });
+      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ models: [{ name: 'models/gemini-3.8-live', supportedGenerationMethods: ['bidiGenerateContent', 'countTokens'] }, { name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }] }));
+    } else if (req.method === 'POST' && req.url === '/v1alpha/auth_tokens') {
       tokenSorovlari.push({ kalit: req.headers['x-goog-api-key'] as string | undefined, body: JSON.parse(Buffer.concat(qismlar).toString() || '{}') });
       res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ name: 'auth_tokens/e2etoken0123456789' }));
     } else res.writeHead(404).end();
@@ -141,7 +155,7 @@ async function main() {
   const holat = await fetch(`${BAZA}/kirish`).then((r) => r.status).catch(() => 0);
   if (holat !== 200) throw new Error(`server ${BAZA} javob bermayapti`);
 
-  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDEFGH'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
+  const bolim = process.env.GEMINI_BRAUZER_BOLIM ?? 'ABCDEFGHI'; // masalan GEMINI_BRAUZER_BOLIM=C — faqat zaxira bo'limi
   if (bolim.includes('A')) {
   /* ═══ A. To'liq oqim: salom, transkripsiya, asbob, gaplab o'qish, yozma matn, to'xtatish (jim mikrofon) ═══ */
   const A = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
@@ -153,7 +167,7 @@ async function main() {
     let asbobYuborildi = false, salomJavob = false;
     const gapirSorov: { matn: string; jonli: boolean; t: number }[] = [];
     let bir = 0, ENG_KOP = 0;
-    let modelYozmoqda = false, ttsErta = false;
+    let modelYozmoqda = false, ttsErta = false, uzunYakunT = 0;
 
     await page.route('**/api/agent/gapir', async (route: S) => {
       const b = JSON.parse(route.request().postData() ?? '{}');
@@ -207,7 +221,7 @@ async function main() {
           yubor({ serverContent: { inputTranscription: { text: ' ҳозир' } } });
           setTimeout(() => {
             for (const q of uzun.slice(2)) yubor({ serverContent: { modelTurn: { parts: [{ text: q }] } } });
-            modelYozmoqda = false;
+            modelYozmoqda = false; uzunYakunT = Date.now();
             yubor({ serverContent: { turnComplete: true } });
           }, 800);
         }
@@ -232,6 +246,8 @@ async function main() {
     tekshir('A3. Server Google’dan token oldi: x-goog-api-key serverda, uses=1, setup qulflangan (fieldMask yo‘q)',
       Boolean(tk) && tk!.kalit === process.env.GEMINI_API_KEY && tk!.body.uses === 1 && tk!.body.fieldMask === undefined &&
       JSON.stringify(tk!.body.bidiGenerateContentSetup) === JSON.stringify(h.setup), `kalit=${tk?.kalit ? 'bor' : 'yo‘q'}`);
+    tekshir('A3b. Server standart model kalit uchun mavjudligini Google’dan so‘radi (kalit faqat sarlavhada), setup shu model bilan',
+      modelSorovlari.length >= 1 && modelSorovlari.every((m) => m.kalit === process.env.GEMINI_API_KEY && !m.url.includes(process.env.GEMINI_API_KEY ?? 'x!')) && h.setup?.model === 'models/gemini-3.8-live', `so'rov=${modelSorovlari.length}, model=${h.setup?.model}`);
     tekshir('A4. WebSocket manzili rasmiy host/yo‘l, token query’da, asosiy kalit YO‘Q',
       /^wss:\/\/generativelanguage\.googleapis\.com\/ws\/google\.ai\.generativelanguage\.v1alpha\.GenerativeService\.BidiGenerateContentConstrained\?access_token=auth_tokens%2Fe2etoken/.test(h.url) && !h.url.includes(process.env.GEMINI_API_KEY ?? 'x!'), h.url.slice(0, 120));
     const s = h.setup ?? {};
@@ -240,9 +256,9 @@ async function main() {
       /Hamroh/.test(s.systemInstruction?.parts?.[0]?.text ?? '') && /Uyshun/.test(s.systemInstruction?.parts?.[0]?.text ?? '') &&
       ['mahallani_top', 'hisobotni_yukla'].every((n) => s.tools?.[0]?.functionDeclarations?.some((f: S) => f.name === n && f.parameters?.type === 'OBJECT')) && s.inputAudioTranscription !== undefined);
 
-    const salomEshitildi = await kut(() => gapirSorov.length >= 1 && /Ассалому алайкум!/.test(gapirSorov[0]?.matn ?? ''), 15_000);
-    tekshir('A6. Salomning ikkala gapi bitta TTS so‘rovida: javob ichida ovoz almashmaydi, jonli ruxsatnoma bor',
-      salomEshitildi && gapirSorov[0].matn.trim() === 'Ассалому алайкум! Сизни тинглаяпман.' && gapirSorov[0].jonli, JSON.stringify(gapirSorov[0]?.matn));
+    const salomEshitildi = await kut(() => gapirSorov.length >= 2 && /Ассалому алайкум!/.test(gapirSorov[0]?.matn ?? ''), 15_000);
+    tekshir('A6. Salom gap-gap o‘qiladi: birinchi gap alohida (butun javobni kutmasdan), ikkinchisi undan keyin; har so‘rovda jonli ruxsatnoma bor',
+      salomEshitildi && gapirSorov[0].matn.trim() === 'Ассалому алайкум!' && gapirSorov[1].matn.trim() === 'Сизни тинглаяпман.' && gapirSorov[0].jonli && gapirSorov[1].jonli, JSON.stringify(gapirSorov.slice(0, 2).map((g) => g.matn)));
     const salomGreeting = h.matnlar.some((x) => /жонли суҳбат бошланди/.test(x));
     tekshir('A7. Ulangach Hamroh salomlashishi so‘raldi (realtimeInput.text)', salomGreeting);
     await page.waitForFunction(() => document.querySelector('[data-holat]')?.getAttribute('data-holat') === 'gapirmoqda', null, { timeout: 8000 }).catch(() => {});
@@ -262,9 +278,14 @@ async function main() {
       asbobKeldi && jr?.id === 'function-call-777' && jr?.name === 'mahallani_top' && out?.topildi === true && /(Uyshun|Уйшун)/i.test(String(out?.nomi ?? '')), JSON.stringify(out)?.slice(0, 120));
     const matn1 = await kut(async () => /Уйшун маҳалласини топ/.test(await royxatMatni(page)), 8000);
     tekshir('A11. Foydalanuvchi gapi (transkripsiya bo‘laklari) bitta xabarga yig‘ilib ekranda ko‘rinadi', matn1);
-    const uzunGap = await kut(() => gapirSorov.length >= 2, 20_000);
-    tekshir('A12. Oqimdagi yettita gap bitta to‘liq TTS so‘rovida, birinchi gap takrorlanmaydi',
-      uzunGap && !ttsErta && gapirSorov.length === 2 && ENG_KOP === 1 && /Маҳалла топилди/.test(gapirSorov[1].matn) && /Яна нима керак\?/.test(gapirSorov[1].matn), `so'rov=${gapirSorov.length}, bir-vaqtda=${ENG_KOP}, tugamasdan-ovoz=${ttsErta}`);
+    const uzunGap = await kut(() => gapirSorov.length >= 7, 25_000);
+    const javobBolaklari = gapirSorov.slice(2, 7).map((g) => g.matn.trim());
+    const toliqJavob = 'Маҳалла топилди ва тасдиқланди. Хатлов бўйича маълумотлар тайёр, уларни ҳозир айтиб бераман. Биринчидан, ходимлар ишни бошлаган. Иккинчидан, ҳужжатлар йиғилмоқда. Учинчидан, натижалар кутилмоқда. Тўртинчидан, ҳисобот тайёрланади. Яна нима керак?';
+    tekshir('A12. Yettita gap tartib bilan o‘qiladi (5 ta ovoz so‘rovi), hech narsa takrorlanmaydi yoki tushib qolmaydi, bir vaqtda ko‘pi bilan 2 ta so‘rov',
+      uzunGap && gapirSorov.length === 7 && ENG_KOP <= 2 && javobBolaklari.join(' ') === toliqJavob && /^Маҳалла топилди/.test(javobBolaklari[0]) && /Яна нима керак\?$/.test(javobBolaklari[4]),
+      `so'rov=${gapirSorov.length}, bir-vaqtda=${ENG_KOP}, bo'laklar=${JSON.stringify(javobBolaklari).slice(0, 200)}`);
+    tekshir('A12b. KECHIKISH: birinchi gap model javobi tugamasdan ovozga beriladi (butun javob yozilishi kutilmaydi)',
+      uzunGap && ttsErta && uzunYakunT > 0 && gapirSorov[2].t < uzunYakunT, `birinchi so'rov ${uzunYakunT ? uzunYakunT - gapirSorov[2].t : '?'} ms javob tugashidan oldin`);
     const javobKorinadi = await kut(async () => /Маҳалла топилди/.test(await royxatMatni(page)) && /Яна нима керак\?/.test(await royxatMatni(page)), 8000);
     tekshir('A13. Model javobi (oqim bilan kelgan matn) to‘liq ko‘rinadi', javobKorinadi);
     const t13 = await royxatMatni(page);
@@ -330,8 +351,9 @@ async function main() {
     const gapirSorov: { matn: string; t: number }[] = [];
     await page.route('**/api/agent/gapir', async (route: S) => {
       gapirSorov.push({ matn: JSON.parse(route.request().postData() ?? '{}').matn, t: Date.now() });
-      await uyqu(200);
-      await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: ttsAudio });
+      // Dastlabki ikki bo'lak tez; keyingilari sekin: gap bo'linganda ular so'rovda yoki navbatda turadi
+      await uyqu(gapirSorov.length <= 2 ? 200 : 4000);
+      await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: ttsAudio }).catch(() => { /* brauzer so'rovni bekor qilgan */ });
     });
     await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
       h.ochildi++;
@@ -361,7 +383,7 @@ async function main() {
     tekshir('B3. Gapning boshi yo‘qolmaydi: bo‘lish paytida yig‘ilgan baland ovozli kadrlar Gemini’ga yuboriladi', yangiOvoz, `baland kadr=${h.audio.filter((a) => a.rms > 0.1).length}`);
     const n = gapirSorov.length;
     await uyqu(2500);
-    tekshir('B4. Bo‘linganda kutayotgan ovoz so‘rovlari bekor qilinadi: yangi ElevenLabs so‘rovi ketmaydi', gapirSorov.length === n, `oldin=${sorovlarBoshida}, bo'linganda=${n}, keyin=${gapirSorov.length}`);
+    tekshir('B4. Bo‘linganda navbatdagi (hali boshlanmagan) ovoz so‘rovlari bekor qilinadi: yangi ElevenLabs so‘rovi ketmaydi, javobning qolgan gaplari o‘qilmaydi', gapirSorov.length === n && n < 5, `oldin=${sorovlarBoshida}, bo'linganda=${n}, keyin=${gapirSorov.length}, jami gap=5`);
     tekshir('B5. Sahifada kutilmagan xato yo‘q', xatolar.length === 0, xatolar.join(' | '));
     await page.screenshot({ path: `${SKRIN}/b-bolish.png` });
   } finally { await B.close(); }
@@ -440,6 +462,9 @@ async function main() {
     tekshir('C2. Mikrofon ruxsati ikkinchi marta so‘ralmadi: Gemini oqimi OpenAI’ga berildi (getUserMedia 1 marta)', (await c1.gumSoni()) === 1, `getUserMedia=${await c1.gumSoni()}`);
     const xabar1 = await kut(async () => /OpenAI билан қайта уланмоқда/.test(await c1.matn()), 6000, 100);
     tekshir('C3. Qayta ulanish holati foydalanuvchiga ko‘rsatiladi', xabar1);
+    const sabab1 = /ws_rad_1007: models\/xyz is not found for API version v1alpha/.test(await c1.matn());
+    tekshir('C3b. Administrator Gemini yiqilgan sababni ko‘radi (kod + Google xabari): ogohlantirishda ham, suhbat davomidagi doimiy satrda ham',
+      sabab1 && (await c1.page.locator('[data-zaxira-sababi]').count()) === 1, (await c1.page.locator('[data-zaxira-sababi]').allInnerTexts()).join(' | ').slice(0, 200));
     const bosFl = await c1.page.evaluate(() => sessionStorage.getItem('hamroh:gemini-yiqildi'));
     tekshir('C4. Gemini yiqilgani 3 daqiqaga eslab qolinadi (sessionStorage)', Boolean(bosFl) && Date.now() - Number(bosFl) < 30_000);
     const xatoKorindi = await kut(async () => /Jonli xizmatlar javob bermadi|Жонли хизматлар жавоб бермади/.test(await c1.matn()), 10_000);
@@ -501,7 +526,7 @@ async function main() {
     /* C13: ElevenLabs ovozi o'rniga server OpenAI ovozini ishlatgan (x-nutq-zaxira) -> bir marta ogohlantiriladi */
     const c6 = await zaxiraSahifasi('ovoz', { ws: 'javob_keyin_yopiladi', gapirZaxira: true });
     await c6.bosish();
-    const ogoh = await kut(async () => /ElevenLabs овози ишламади/.test(await c6.matn()), 15_000);
+    const ogoh = await kut(async () => /ElevenLabs овози олинмади/.test(await c6.matn()), 15_000);
     tekshir('C13. Server ElevenLabs o‘rniga OpenAI ovozini ishlatsa foydalanuvchi bir marta ogohlantiriladi', ogoh);
     await c6.kapat();
     const c7 = await zaxiraSahifasi('workletsiz', { ws: 'rad' });
@@ -603,9 +628,11 @@ async function main() {
   if (bolim.includes('F')) {
     const fb = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
     try {
-      const u = await xodimYarat('early_pcm'); const { ctx, page, xatolar } = await sahifaOch(fb, u.username, 'window.__name = (t) => t;');
-      const requests: S[] = [];
-      await page.route('**/api/agent/gapir', async (r: S) => { requests.push(JSON.parse(r.request().postData() ?? '{}')); await r.continue({ url: `http://127.0.0.1:${GOOGLE_PORT}/pcm` }); });
+      // Yangi Chromium `route.continue({ url })` ni boshqa origin'ga ruxsat bermaydi (ERR_BLOCKED_BY_CLIENT): `/api/agent/gapir`
+      // so'rovi sahifa ichida (fetch o'rami) oqimli soxta serverga yo'naltiriladi; so'rovlar o'sha serverda yozib boriladi.
+      const u = await xodimYarat('early_pcm'); const { ctx, page, xatolar } = await sahifaOch(fb, u.username,
+        `window.__name = (t) => t; (() => { const orig = window.fetch.bind(window); window.fetch = (input, init) => orig(String(typeof input === 'string' ? input : input.url).endsWith('/api/agent/gapir') ? 'http://127.0.0.1:${GOOGLE_PORT}/pcm' : input, init); })();`);
+      const requests = pcmSorovlari; requests.length = 0;
       await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
         ws.onMessage((raw: string) => {
           const b = JSON.parse(String(raw));
@@ -698,6 +725,58 @@ async function main() {
       tekshir('H4. Yopilgach audio sessiyasi auto holatiga qaytadi, kutilmagan JS xatosi yo‘q', await page.evaluate(() => (navigator as S).audioSession.type === 'auto') && xatolar.length === 0, xatolar.join(' | '));
       await ctx.close();
     } finally { await hb.close(); }
+  }
+
+  if (bolim.includes('I')) {
+    /* ═══ I. Gap-gap o'qish: birinchi gap javob tugamasdan; zaxira ovozi tanlansa javob ichida ovoz almashmaydi ═══ */
+    const ib = await chromium.launch({ executablePath: process.env.PW_CHROME ?? '/opt/pw-browsers/chromium', args: bayroq('/tmp/gemini-mik-jim.wav') });
+    try {
+      const u = await xodimYarat('sentences');
+      // Ijro tartibi: har bo'lakning davomiyligi har xil (0,6 / 0,8 / 1,0 s), AudioBufferSource.start() tartibi yozib boriladi
+      const { ctx, page, xatolar } = await sahifaOch(ib, u.username, `
+        window.__name = (t) => t; window.__ijro = [];
+        const start = AudioBufferSourceNode.prototype.start;
+        AudioBufferSourceNode.prototype.start = function (...a) { window.__ijro.push(Math.round((this.buffer?.duration ?? 0) * 10) / 10); return start.apply(this, a); };
+      `);
+      type Sorov = { body: S; t: number; javobT: number };
+      const sorovlar: Sorov[] = []; let yakunT = 0;
+      await page.route('**/api/agent/holat', async (r: S) => { const res = await r.fetch(), j = await res.json(); j.jonliZaxira = false; await r.fulfill({ response: res, json: j }); });
+      await page.route('**/api/agent/gapir', async (r: S) => {
+        const rec: Sorov = { body: JSON.parse(r.request().postData() ?? '{}'), t: Date.now(), javobT: 0 }; sorovlar.push(rec);
+        const n = sorovlar.length;
+        await uyqu(300); rec.javobT = Date.now();
+        // birinchi bo'lakni ElevenLabs bermadi (zaxira ovozi); har bo'lakning davomiyligi har xil
+        await r.fulfill({ status: 200, contentType: 'audio/mpeg', body: wav(16000, 0.4 + n * 0.2, (t) => .2 * Math.sin(t * 330 * Math.PI * 2)), headers: { 'x-nutq-zaxira': '1', 'x-nutq-provayder': 'openai' } });
+      });
+      await page.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws: S) => {
+        ws.onMessage((raw: string) => {
+          const b = JSON.parse(String(raw));
+          if (b.setup) ws.send(JSON.stringify({ setupComplete: {} }));
+          if (b.realtimeInput?.text && /жонли суҳбат бошланди/.test(b.realtimeInput.text)) {
+            // Model matni belgilar bilan oqib keladi; uchinchi gap oxirida nuqtadan keyin bo'sh joy yo'q (flush bilan beriladi)
+            const gaplar = ['Birinchi gap shu yerda tugaydi. ', 'Ikkinchi gap ham shu yerda tugaydi. ', 'Uchinchi gap oxirida.'];
+            gaplar.forEach((g, i) => setTimeout(() => ws.send(JSON.stringify({ serverContent: { outputTranscription: { text: g } } })), 100 + i * 400));
+            setTimeout(() => { yakunT = Date.now(); ws.send(JSON.stringify({ serverContent: { turnComplete: true } })); }, 100 + gaplar.length * 400);
+          }
+        });
+      });
+      await oynaOch(page); await page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).click();
+      const hammasi = await kut(() => sorovlar.length === 3, 15_000);
+      tekshir('I1. Uch gap — uchta ovoz so‘rovi, tartib bilan, to‘liq matn takrorlanmaydi va tushib qolmaydi',
+        hammasi && sorovlar.map((s2) => s2.body.matn).join(' ') === 'Birinchi gap shu yerda tugaydi. Ikkinchi gap ham shu yerda tugaydi. Uchinchi gap oxirida.' &&
+        sorovlar.every((s2) => typeof s2.body.jonli === 'string' && s2.body.jonli.length > 20), JSON.stringify(sorovlar.map((s2) => s2.body.matn)));
+      tekshir('I2. KECHIKISH: birinchi gap model javobi tugashidan ~800 ms oldin o‘qishga berildi (butun javob kutilmadi)',
+        hammasi && yakunT > 0 && sorovlar[0].t < yakunT - 500, `${yakunT - (sorovlar[0]?.t ?? 0)} ms oldin`);
+      tekshir('I3. Zaxira ovozi birinchi bo‘lakda tanlangach, keyingi gaplar ham zaxirada so‘raladi (javob ichida ElevenLabs/OpenAI almashmaydi); ikkinchi so‘rov birinchi javobdan keyin ketadi',
+        hammasi && sorovlar[0].body.zaxira !== true && sorovlar[1].body.zaxira === true && sorovlar[2].body.zaxira === true && sorovlar[1].t >= sorovlar[0].javobT,
+        JSON.stringify(sorovlar.map((s2) => s2.body.zaxira)));
+      const tugadi = await kut(async () => (await page.evaluate(() => (window as S).__ijro.length)) >= 3 && (await holatOl(page)) === 'eshitmoqda', 20_000, 50);
+      const ijro = await page.evaluate(() => (window as S).__ijro as number[]);
+      tekshir('I4. Bo‘laklar aynan tartib bilan, hammasi bitta-bitta ijro etiladi, keyin maskot tinglashga qaytadi', tugadi && JSON.stringify(ijro) === JSON.stringify([0.6, 0.8, 1]), JSON.stringify(ijro));
+      const matn = await page.locator('body').innerText();
+      tekshir('I5. Zaxira ovozi haqida bir marta xabar beriladi (ElevenLabs ovozi tanlanmadi) va sahifada xato yo‘q', (matn.match(/OpenAI овози танланди/g) ?? []).length <= 1 && /Овоз: OpenAI/.test(matn) && xatolar.length === 0, xatolar.join(' | '));
+      await ctx.close();
+    } finally { await ib.close(); }
   }
 }
 

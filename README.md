@@ -608,7 +608,7 @@ Hamroh oynasida **Ovozni sinash** tugmasi bor. Ovoz ulanmagan bo'lsa,
 endi sabab yashirilmaydi; administrator uchun sozlash ko'rsatmasi chiqadi.
 Server ovozi uchun `AGENT_TTS=1` va tanlangan xizmat kaliti kerak.
 ElevenLabs: `AGENT_TTS_PROVIDER=elevenlabs`, `ELEVENLABS_API_KEY`,
-`ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL_ID=eleven_v3`.
+`ELEVENLABS_VOICE_ID` (`ELEVENLABS_MODEL_ID` bo‘sh qoladi: standart `eleven_v4_turbo`).
 O'zbek tili qo'llanishi provider model katalogidan tekshiriladi; qo'llamaydigan
 modelga nutq so'rovi yuborilmaydi. ElevenLabs kaliti mavjud bo'lsa, xizmat
 avtomatik tanlanadi; aniq `AGENT_TTS_PROVIDER=openai` bu tanlovni almashtiradi.

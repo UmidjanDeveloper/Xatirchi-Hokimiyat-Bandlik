@@ -12,6 +12,7 @@ import { asbobniBajar, asbobniTop } from '@/lib/agent/asboblar';
 import { mahallaRoyxati } from '@/lib/agent/mahalla';
 import { JONLI_ASBOB_LIMIT, JONLI_MUDDAT_MS, jonliChegaralari, jonliKunKaliti, jonliSozlama, jonliSessiya, jonliUlanish, jonliYop, jonliRuxsatYarat, jonliRuxsatOqi, jonliRuxsatYangila } from '@/lib/agent/jonli';
 import { GeminiXatosi, geminiSetup, geminiSozlama, geminiToken, jonliProvayderi, jonliZaxiraBormi } from '@/lib/agent/gemini';
+import { geminiModeliniHal } from '@/lib/agent/gemini-modellar';
 import { serverXatosi } from '@/lib/tizim-kuzatuvi';
 import type { AgentKontekst } from '@/lib/agent/turlar';
 
@@ -133,7 +134,8 @@ export async function POST(request: Request) {
     ]);
     ctx.fullName = xodim?.fullName ?? '';
     if (d.tur === 'gemini_ulanish') {
-      const geminiSoz = d.mahalliyOvoz ? { ...gsoz!, tashqiOvoz: false, chiqish: 'transkript' as const } : gsoz!;
+      // Standart model kalit uchun mavjud bo'lmasa (eskirgan preview), mavjud Live model tanlanadi; xatoda o'zgarmaydi.
+      const geminiSoz = await geminiModeliniHal(d.mahalliyOvoz ? { ...gsoz!, tashqiOvoz: false, chiqish: 'transkript' as const } : gsoz!, { signal: request.signal });
       const setup = geminiSetup(ctx, geminiSoz, nomlar.map((m) => m.nomi));
       const { wsUrl } = await geminiToken(setup, geminiSoz, { signal: request.signal });
       request.signal.throwIfAborted();
@@ -161,6 +163,8 @@ export async function POST(request: Request) {
       return json({
         xabar: A('Gemini жонли хизматига уланиб бўлмади. Калит, квота ва модел номини текширинг (администратор: «Уланишни текшириш») ёки оддий суҳбатдан фойдаланинг.', alifbo),
         ...(zaxira ? { zaxira } : {}),
+        // Sababning o'zi (Google aytgan, kalitsiz, tozalangan) faqat administratorga: zaxiraga o'tish jimgina yashirmasin.
+        ...(q.sessiya.rol === 'ADMIN' && e instanceof GeminiXatosi ? { tafsilot: e.message.slice(0, 300) } : {}),
       }, 502);
     }
     return xato('Jonli ovoz xizmatiga ulanib bo‘lmadi. OpenAI hisobidagi xizmat ruxsati va balansni tekshiring yoki oddiy suhbatdan foydalaning.', 502);

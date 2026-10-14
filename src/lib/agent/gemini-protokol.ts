@@ -41,9 +41,23 @@ export type GeminiHodisa =
   | { t: 'asbob'; id: string; nomi: string; args: Record<string, unknown> }
   | { t: 'asbob_bekor'; idlar: string[] }
   | { t: 'ketadi' }
-  | { t: 'xato' };
+  | { t: 'xato'; matn?: string };
 
 const obyektmi = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
+
+/**
+ * Provayder xatosini administratorga ko'rsatishdan oldin: kalit/token ko'rinishidagi satrlar yashiriladi,
+ * bo'shliqlar siqiladi, uzunlik cheklanadi. (Server `maxfiy.ts` ni ishlatadi; bu modul brauzerda ham ishlaydi.)
+ */
+export function providerMatniniTozala(matn: string): string {
+  return matn
+    .replace(/auth_tokens\/\S+/g, 'auth_tokens/***')
+    .replace(/AIza[\w-]{10,}/g, '***')
+    // Uzun tasodifiy satr (katta+kichik harf va raqam aralash yoki defissiz yaxlit): kalit/token. Model nomlari
+    // ("gemini-2.5-flash-native-audio-preview-12-2025": kichik harf, defis bilan) administratorga ko'rinadi.
+    .replace(/[A-Za-z0-9_-]{32,}/g, (t) => ((/[A-Z]/.test(t) && /\d/.test(t)) || !/[-_]/.test(t) ? '***' : t))
+    .replace(/\s+/g, ' ').trim().slice(0, 300);
+}
 
 /**
  * Bitta server xabarini hodisalarga ajratadi. Noto'g'ri yoki juda katta
@@ -61,7 +75,7 @@ export function geminiXabarOqi(xom: unknown, chiqish: 'matn' | 'transkript' = 'm
   if (!obyektmi(d)) return [];
   const out: GeminiHodisa[] = [];
   // Provider rejection must not leave a connected, silent session.
-  if (obyektmi(d.error)) return [{ t: 'xato' }];
+  if (obyektmi(d.error)) return [{ t: 'xato', ...(typeof d.error.message === 'string' && d.error.message ? { matn: providerMatniniTozala(d.error.message.slice(0, 600)) } : {}) }];
 
   if (d.setupComplete !== undefined) out.push({ t: 'tayyor' });
 
@@ -145,13 +159,15 @@ export function pcm16Base64(f: Float32Array): string {
 
 /**
  * Model matni oqib kelganda tugallangan gaplarni darhol beradi, shunda
- * ElevenLabs birinchi gapni butun javob yozilishini kutmasdan o'qiy boshlaydi.
+ * ElevenLabs birinchi gapni butun javob yozilishini kutmasdan o'qiy boshlaydi
+ * (javob boshlanishigacha vaqt butun javob yozilish vaqtiga emas, birinchi gapga bog'liq bo'ladi).
  *
  * Chegara — nuqta/so'roq/undov/ko'p nuqtadan KEYIN bo'sh joy yoki yangi qator.
  * "83,5" yoki "12.5" kabi sonlar bo'linmaydi. Juda qisqa bo'laklar
  * birlashtiriladi (ovoz kesik-kesik chiqmasin). Bir javob uchun ovoz
  * so'rovlari soni `engKopBolak` bilan cheklangan: oxirgisi qolgan hamma
- * matnni oladi.
+ * matnni oladi. Transkripsiyada tinish belgisi bo'lmasa, birinchi bo'lak
+ * `engUzunBirinchi` belgidan keyin so'z chegarasida beriladi (ovoz kutib qolmasin).
  */
 export class GapBolgich {
   private bufer = '';
@@ -161,7 +177,8 @@ export class GapBolgich {
     private readonly engKam = 28,
     private readonly engKamBirinchi = 14,
     private readonly engUzun = 420,
-    private readonly engKopBolak = 5
+    private readonly engKopBolak = 5,
+    private readonly engUzunBirinchi = 150
   ) {}
 
   private oxirgimi(): boolean { return this.berilgan >= this.engKopBolak - 1; }
@@ -200,11 +217,12 @@ export class GapBolgich {
       const oxir = m.index + m[0].length;
       if (this.bufer.slice(0, oxir).trim().length >= kam) return oxir;
     }
-    // Juda uzun, tugamagan gap: oxirgi vergul/bo'sh joyda kesamiz
-    if (this.bufer.length >= this.engUzun) {
-      const q = this.bufer.slice(0, this.engUzun);
+    // Juda uzun, tugamagan gap: oxirgi vergul/bo'sh joyda kesamiz (birinchi bo'lak qisqaroq: ovoz tezroq boshlansin)
+    const chek = this.berilgan === 0 ? Math.min(this.engUzunBirinchi, this.engUzun) : this.engUzun;
+    if (this.bufer.length >= chek) {
+      const q = this.bufer.slice(0, chek);
       const k = Math.max(q.lastIndexOf(', '), q.lastIndexOf(' '));
-      return k > kam ? k + 1 : this.engUzun;
+      return k > kam ? k + 1 : chek;
     }
     return -1;
   }

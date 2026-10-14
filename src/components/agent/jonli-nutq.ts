@@ -8,10 +8,12 @@ import { nutqParchasi } from '@/lib/agent/matnlar';
  * ============================================================
  *  JONLI SUHBATDA OVOZ NAVBATI
  *
- *  Gemini tugallangan javobni `/api/agent/gapir` ga bitta so'rovda
- *  yuboradi. Navbat javoblarni tartib bilan o'qiydi va yagona audio
- *  manbasini boshqaradi. Bir javob gaplarga bo'linib turli provayderlarda
- *  o'qilmaydi; zaxira butun javob uchun ishlaydi.
+ *  Gemini javobi gap-gap `/api/agent/gapir` ga yuboriladi (birinchi gap
+ *  butun javobni kutmaydi). Navbat bo'laklarni tartib bilan o'qiydi va
+ *  yagona audio manbasini boshqaradi; keyingi bo'lak ovozi oldingisi
+ *  o'ynayotganda tayyorlanadi (bir vaqtda `BIR_VAQTDA` ta so'rov).
+ *  Zaxira (OpenAI) ovozi bir marta tanlansa, suhbatning qolgan bo'laklari
+ *  ham shu ovozda so'raladi: ElevenLabs bilan zaxira ketma-ket almashmaydi.
  *
  *  `toxtat()` — foydalanuvchi gapni bo'lganda: kutayotgan so'rovlar bekor
  *  qilinadi, o'ynayotgan ovoz o'chiriladi, kechikib kelgan javoblar
@@ -33,6 +35,8 @@ export interface NutqNavbatiHodisalari {
 
 const BIR_VAQTDA = 2;
 const SORO_KUTISH_MS = 25_000;
+/** Birinchi bo'lak javob bermaguncha (qaysi ovoz ishlashi noma'lum) faqat bitta so'rov: javob ichida ovoz almashib ketmasin */
+const BIRINCHI_SOROV = 1;
 
 interface Bolak {
   matn: string;
@@ -58,6 +62,8 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   let zaxiraBildirildi = false;
   let zaxiraTanlandi = false;
   let oqimMumkin = true;
+  /** Hech bo'lmasa bitta ovoz so'rovi tugagan: server qaysi ovozni (asosiy yoki zaxira) berayotgani ma'lum */
+  let ovozMalum = false;
 
   const xato = (m: string) => { if (!xatoBerildi) { xatoBerildi = true; h.onXato(m); } };
   const ijroBoshlandi = () => {
@@ -101,7 +107,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
       } finally {
         clearTimeout(taymer);
         b.holat = 'tayyor';
-        if (mening === avlod) { yuklanmoqda--; boshla(mening); }
+        if (mening === avlod) { ovozMalum = true; yuklanmoqda--; boshla(mening); }
       }
     })();
   };
@@ -109,7 +115,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   /** Navbatdagi, hali boshlanmagan bo'laklarning so'rovini (BIR_VAQTDA gacha) boshlaydi */
   const boshla = (mening: number) => {
     for (const b of navbat) {
-      if (yuklanmoqda >= BIR_VAQTDA) break;
+      if (yuklanmoqda >= (ovozMalum ? BIR_VAQTDA : BIRINCHI_SOROV)) break;
       if (b.holat === 'kutadi') b.natija = yukla(b, mening);
     }
   };

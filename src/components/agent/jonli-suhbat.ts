@@ -19,9 +19,12 @@ export interface JonliHodisalar {
    * Berilmasa xato ko'rsatiladi va suhbat tugaydi.
    */
   onZaxira?(qoplash: string | undefined, sabab: string, mikrofon: MediaStream | null): void;
-  /** Xato emas, ogohlantirish (masalan "ElevenLabs ishlamadi, OpenAI ovozi o'qiyapti") */
-  onOgoh?(matn: string): void;
-  onQaytaUlanish?(sabab: 'muddat' | 'aloqa' | 'provayder' | 'ovoz', ruxsat: string | undefined, mikrofon: MediaStream | null, qoplash?: string): void;
+  /**
+   * Xato emas, ogohlantirish (masalan "ElevenLabs ishlamadi, OpenAI ovozi o'qiyapti"). `tafsilot` — texnik sabab
+   * (Google/server aytgan, kalitsiz): interfeys uni faqat administratorga ko'rsatadi.
+   */
+  onOgoh?(matn: string, tafsilot?: string): void;
+  onQaytaUlanish?(sabab: 'muddat' | 'aloqa' | 'provayder' | 'ovoz', ruxsat: string | undefined, mikrofon: MediaStream | null, qoplash?: string, tafsilot?: string): void;
 }
 
 export function jonliMumkinmi(): boolean {

@@ -39,11 +39,11 @@ export async function ovozOqimi(matn: string, opt: {
       let r: Response;
       if (prov.provayder === 'elevenlabs') {
         if (!/^[a-zA-Z0-9_-]{1,100}$/.test(prov.ovoz) || !/^[a-zA-Z0-9_-]{1,100}$/.test(prov.model)) throw new NutqXatosi('bosh', 'ElevenLabs sozlamasi noto‘g‘ri.');
-        await elevenlabsModeliniTekshir(prov, s, f);
+        const model = await elevenlabsModeliniTekshir(prov, s, f);
         r = await f(`https://api.elevenlabs.io/v1/text-to-speech/${prov.ovoz}/stream?output_format=pcm_24000`, {
           method: 'POST', signal: s, redirect: 'error', cache: 'no-store',
           headers: { 'xi-api-key': prov.kalit, 'content-type': 'application/json', accept: 'audio/pcm' },
-          body: JSON.stringify({ text: input, model_id: prov.model, language_code: 'uz', voice_settings: { stability: .5 } }),
+          body: JSON.stringify({ text: input, model_id: model, language_code: 'uz', voice_settings: { stability: .5 } }),
         });
         if (!r.ok) {
           const detail = await xatoTafsiloti(r, prov.kalit);

@@ -1,7 +1,7 @@
 import { nutqUlanishi, nutqXizmati } from '@/lib/agent/nutq';
 import { vazifalarim } from '@/lib/vazifalar';
 import { robotVazifaHolati } from '@/lib/agent/robot-kayfiyati';
-import { jonliProvayderi, jonliZaxiraBormi } from '@/lib/agent/gemini';
+import { geminiSozlama, jonliProvayderi, jonliZaxiraBormi } from '@/lib/agent/gemini';
 import { ovozMavjud } from '@/lib/agent/tts';
 import { NextResponse } from 'next/server';
 import { talabQil } from '@/lib/api-auth';
@@ -24,9 +24,10 @@ export async function GET() {
   const prov = agentProvayderi();
   const h = await bugungiHisob(q.sessiya.userId, rol);
   // Counts follow the existing role/mahalla boundary; no task rows leave this endpoint.
+  const gsoz = geminiSozlama();
   const vazifa = await vazifalarim(q.sessiya).then((v) => robotVazifaHolati(v.bloklar)).catch(() => null);
   return NextResponse.json(
-    { vazifa, ovozUlanishi: nutqUlanishi(), ovozXizmati: nutqXizmati(), ai: Boolean(prov), ovozServer: Boolean(prov), ovozChiqish: ovozMavjud(), jonli: Boolean(jonliProvayderi()), jonliProvayder: jonliProvayderi(), jonliZaxira: jonliZaxiraBormi(), limit: h.limit, qolgan: h.qolgan },
+    { vazifa, ovozUlanishi: nutqUlanishi(), ovozXizmati: nutqXizmati(), ai: Boolean(prov), ovozServer: Boolean(prov), ovozChiqish: ovozMavjud(), jonli: Boolean(jonliProvayderi()), jonliProvayder: jonliProvayderi(), jonliZaxira: jonliZaxiraBormi(), geminiOvozi: gsoz ? (gsoz.tashqiOvoz ? 'tashqi' : 'gemini') : null, limit: h.limit, qolgan: h.qolgan },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }

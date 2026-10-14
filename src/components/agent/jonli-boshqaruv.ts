@@ -38,10 +38,10 @@ export function jonliBoshqaruv(cb: JonliHodisalar, opt: {
       onMatn: (...a) => { if (!tugadi && mening === avlod) cb.onMatn(...a); },
       onAmallar: (...a) => !tugadi && mening === avlod ? cb.onAmallar(...a) : Promise.resolve({ bekor: true }),
       onOvoz: (m, s) => !tugadi && mening === avlod ? cb.onOvoz?.(m, s) ?? Promise.resolve() : Promise.resolve(),
-      onOgoh: (m) => { if (!tugadi && mening === avlod) cb.onOgoh?.(m); },
+      onOgoh: (m, t) => { if (!tugadi && mening === avlod) cb.onOgoh?.(m, t); },
       onXato: (m) => { if (!tugadi && mening === avlod) cb.onXato(m); },
       onTugadi: () => { if (!tugadi && mening === avlod) yakun(); },
-      onQaytaUlanish: (sabab, ruxsat, mikrofon, qoplash) => {
+      onQaytaUlanish: (sabab, ruxsat, mikrofon, qoplash, tafsilot) => {
         if (tugadi || mening !== avlod) { if (tugadi || mikrofon !== mik) mikrofon?.getTracks().forEach((t) => t.stop()); return; }
         mik = mikrofon;
         nazorat = null; // Pastki ulanish allaqachon yopildi; kutishda mikrofon egasi shu modul.
@@ -52,7 +52,8 @@ export function jonliBoshqaruv(cb: JonliHodisalar, opt: {
         }
         if (sabab === 'ovoz') mahalliyOvoz = true;
         if (sabab === 'provayder' && opt.zaxiraBor) p = p === 'gemini' ? 'openai' : 'gemini';
-        cb.onOgoh?.(sabab === 'ovoz' ? 'Tashqi ovoz ishlamadi. Jonli xizmatning o‘z ovoziga o‘tilmoqda; oxirgi savolni qayta ayting.' : sabab === 'muddat' ? 'Жонли суҳбат автоматик янгиланмоқда.' : `${p === 'gemini' ? 'Gemini' : 'OpenAI'} билан қайта уланмоқда. Охирги саволни қайта айтинг.`);
+        cb.onOgoh?.(sabab === 'ovoz' ? 'Tashqi ovoz ishlamadi. Jonli xizmatning o‘z ovoziga o‘tilmoqda; oxirgi savolni qayta ayting.' : sabab === 'muddat' ? 'Жонли суҳбат автоматик янгиланмоқда.' : `${p === 'gemini' ? 'Gemini' : 'OpenAI'} билан қайта уланмоқда. Охирги саволни қайта айтинг.`,
+          sabab === 'provayder' ? tafsilot : undefined);
         cb.onHolat('oylamoqda'); cb.onDaraja(0);
         const davom = ruxsat && !ishlatilgan.has(ruxsat) ? ruxsat : undefined;
         if (davom) ishlatilgan.add(davom);

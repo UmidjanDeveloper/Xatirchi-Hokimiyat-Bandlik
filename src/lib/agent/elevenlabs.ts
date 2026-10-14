@@ -1,14 +1,45 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { maxfiyniTozala } from '@/lib/maxfiy';
-import { NutqXatosi, type NutqProvayderi } from './nutq';
+import { ELEVENLABS_ODATIY_MODEL, NutqXatosi, type NutqProvayderi } from './nutq';
 
 const Modellar = z.array(z.object({
   model_id: z.string(), can_do_text_to_speech: z.boolean().optional().default(false),
-  languages: z.array(z.object({ language_id: z.string() })).optional().default([]),
+  languages: z.array(z.object({ language_id: z.string(), name: z.string().optional() })).optional().default([]),
 }));
-const kesh = new Map<string, number>();
+type Model = z.infer<typeof Modellar>[number];
+/** Tanlangan model: kalit + sozlangan model bo'yicha 1 soat eslab qolinadi (bitta server nusxasi xotirasida) */
+const kesh = new Map<string, { tanlov: ModelTanlovi; gacha: number }>();
 const KESH_MS = 60 * 60_000;
+const MODEL_ID = /^[a-zA-Z0-9_-]{1,100}$/;
+
+export interface ModelTanlovi {
+  /** Haqiqatda ishlatiladigan model */
+  model: string;
+  /** Sozlangan model o'zbekchani qo'llamagani uchun katalogdan boshqasi tanlandi */
+  almashtirildi: boolean;
+  /** Sozlangan model (almashtirilgan bo'lsa) */
+  sozlangan: string;
+}
+
+/** O'zbek tili: katalog `uz`, `uzb`, `uz-UZ` yoki "Uzbek" nomi bilan yozishi mumkin (hujjatlarda `uzb`). */
+export function uzbekTiliMi(l: { language_id: string; name?: string }): boolean {
+  const kod = l.language_id.trim().toLowerCase().split(/[-_]/)[0];
+  return kod === 'uz' || kod === 'uzb' || /^uzbek\b/i.test((l.name ?? '').trim());
+}
+
+/** Jonli ovoz uchun afzallik: avval tez (Turbo), keyin ifodali v4, keyin v3 oilasi. Qolganlari alifbo tartibida. */
+const AFZAL_MODELLAR = ['eleven_v4_turbo', 'eleven_v4', 'eleven_v3_conversational', 'eleven_v3'];
+
+/** Sozlangan model o'zbekchani bilsa — o'zi; bilmasa — katalogdagi eng mosi; hech biri bilmasa `null`. */
+export function uzbekModeliniTanla(modellar: Model[], sozlangan: string): ModelTanlovi | null {
+  const uz = modellar.filter((m) => m.can_do_text_to_speech && MODEL_ID.test(m.model_id) && m.languages.some(uzbekTiliMi));
+  if (!uz.length) return null;
+  if (uz.some((m) => m.model_id === sozlangan)) return { model: sozlangan, almashtirildi: false, sozlangan };
+  const tanlangan = AFZAL_MODELLAR.map((id) => uz.find((m) => m.model_id === id)).find(Boolean)
+    ?? [...uz].sort((a, b) => a.model_id.localeCompare(b.model_id))[0];
+  return { model: tanlangan.model_id, almashtirildi: true, sozlangan };
+}
 const ENG_KOP_AUDIO = 3_000_000;
 
 /** Bounded provider bodies, including chunked responses without Content-Length. */
@@ -74,22 +105,44 @@ export function rad(status: number, tafsilot = ''): NutqXatosi {
   return new NutqXatosi('provayder', `${izoh} (${status}${tafsilot ? `: ${tafsilot}` : ''})`);
 }
 
-export async function elevenlabsModeliniTekshir(prov: NutqProvayderi, signal: AbortSignal, fetchFn: typeof fetch = fetch): Promise<void> {
+/**
+ * Ovoz modelini aniqlaydi. ElevenLabs hisobining model katalogi (`/v1/models`) bo'yicha: sozlangan model o'zbekchani
+ * qo'llasa shu ishlatiladi; qo'llamasa (masalan eleven_v3) o'zbekchasi bor modelga (afzal: eleven_v4_turbo) o'tiladi,
+ * chunki aks holda ElevenLabs butunlay ishlamay, ovoz jimgina OpenAI'ga o'tib qolardi.
+ * Hech bir model o'zbekchani qo'llamasa — aniq xato (pullik so'rov yuborilmaydi).
+ */
+export async function elevenlabsModeliniAniqla(
+  prov: NutqProvayderi, signal: AbortSignal, fetchFn: typeof fetch = fetch,
+  /** `yangi`: eslab qolingan natijani o'qimaydi (administrator tekshiruvi har safar hisobning hozirgi holatini ko'rsin) */
+  opt: { yangi?: boolean } = {}
+): Promise<ModelTanlovi> {
+  // `ELEVENLABS_KATALOG_TEKSHIRUVI=0`: katalog ma'lumoti eskirgan bo'lsa (hujjatda o'zbekcha bor, katalogda hali yo'q) model
+  // to'g'ridan-to'g'ri ishlatiladi. Qo'llamasa ElevenLabs `language_code=uz` ni o'zi rad etadi (ovoz zaxiraga o'tadi).
+  if (prov.katalogTekshir === false) return { model: prov.model, almashtirildi: false, sozlangan: prov.model };
   const headers = { 'xi-api-key': prov.kalit };
   const id = createHash('sha256').update(prov.kalit).update(':').update(prov.model).digest('hex');
-  if (fetchFn !== fetch || (kesh.get(id) ?? 0) <= Date.now()) {
-    const r = await fetchFn('https://api.elevenlabs.io/v1/models', { headers, signal, cache: 'no-store', redirect: 'error' });
-    if (!r.ok) throw rad(r.status, await xatoTafsiloti(r, prov.kalit));
-    const bytes = await baytlar(r, 512_000, signal);
-    let raw: unknown; try { raw = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new NutqXatosi('bosh', 'ElevenLabs model ro‘yxati noto‘g‘ri.'); }
-    const models = Modellar.safeParse(raw);
-    if (!models.success) throw new NutqXatosi('bosh', 'ElevenLabs model ro‘yxati noto‘g‘ri.');
-    const model = models.data.find((m) => m.model_id === prov.model);
-    if (!model?.can_do_text_to_speech || !model.languages.some((l) => l.language_id === 'uz')) {
-      throw new NutqXatosi('provayder', 'Tanlangan ElevenLabs modeli o‘zbek tilini qo‘llamaydi. O‘zbek tilini qo‘llaydigan modelni tanlang.');
-    }
-    if (fetchFn === fetch) { if (kesh.size >= 100) kesh.clear(); kesh.set(id, Date.now() + KESH_MS); }
+  const eslangan = fetchFn === fetch && !opt.yangi ? kesh.get(id) : undefined;
+  if (eslangan && eslangan.gacha > Date.now()) return eslangan.tanlov;
+  const r = await fetchFn('https://api.elevenlabs.io/v1/models', { headers, signal, cache: 'no-store', redirect: 'error' });
+  if (!r.ok) throw rad(r.status, await xatoTafsiloti(r, prov.kalit));
+  const bytes = await baytlar(r, 512_000, signal);
+  let raw: unknown; try { raw = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new NutqXatosi('bosh', 'ElevenLabs model ro‘yxati noto‘g‘ri.'); }
+  const models = Modellar.safeParse(raw);
+  if (!models.success) throw new NutqXatosi('bosh', 'ElevenLabs model ro‘yxati noto‘g‘ri.');
+  const tanlov = uzbekModeliniTanla(models.data, prov.model);
+  if (!tanlov) {
+    const bor = models.data.find((m) => m.model_id === prov.model);
+    throw new NutqXatosi('provayder', bor
+      ? `ElevenLabs hisobingizda ${prov.model} modeli o‘zbek tilini qo‘llamaydi va o‘zbekchali boshqa ovoz modeli ham ko‘rinmayapti. Vercel'da ELEVENLABS_MODEL_ID=${ELEVENLABS_ODATIY_MODEL} ni sinab ko‘ring yoki ElevenLabs tarifini tekshiring.`
+      : `ElevenLabs hisobingizda ${prov.model} modeli topilmadi va o‘zbekchali boshqa model ham yo‘q. Vercel'da ELEVENLABS_MODEL_ID=${ELEVENLABS_ODATIY_MODEL} ni sinab ko‘ring.`);
   }
+  if (fetchFn === fetch) { if (kesh.size >= 100) kesh.clear(); kesh.set(id, { tanlov, gacha: Date.now() + KESH_MS }); }
+  return tanlov;
+}
+
+/** Eski nom: faqat model ID si kerak bo'lganda. */
+export async function elevenlabsModeliniTekshir(prov: NutqProvayderi, signal: AbortSignal, fetchFn: typeof fetch = fetch): Promise<string> {
+  return (await elevenlabsModeliniAniqla(prov, signal, fetchFn)).model;
 }
 
 /** Fixed API host; no API keys, text or provider response details are logged/persisted. */
@@ -107,7 +160,7 @@ export async function elevenlabsNutq(
   const headers = { 'xi-api-key': prov.kalit };
   try {
     ctrl.signal.throwIfAborted();
-    await elevenlabsModeliniTekshir(prov, ctrl.signal, opt.fetchFn);
+    const model = await elevenlabsModeliniTekshir(prov, ctrl.signal, opt.fetchFn);
     const tts = (body: Record<string, unknown>) => fetchFn(`https://api.elevenlabs.io/v1/text-to-speech/${prov.ovoz}?output_format=mp3_44100_128`, {
       method: 'POST', signal: ctrl.signal, redirect: 'error', cache: 'no-store',
       headers: { ...headers, 'content-type': 'application/json', accept: 'audio/mpeg' },
@@ -115,7 +168,7 @@ export async function elevenlabsNutq(
     });
     // SDK'da normalizatsiya sukutda auto. Tilni hech qachon olib tashlamaymiz:
     // boshqa hisobdagi 400/422 xatosi barcha so'rovlarga ta'sir qilmasin.
-    const r = await tts({ text: input, model_id: prov.model, language_code: 'uz', voice_settings: { stability: 0.5 } });
+    const r = await tts({ text: input, model_id: model, language_code: 'uz', voice_settings: { stability: 0.5 } });
     if (!r.ok) {
       const t = await xatoTafsiloti(r, prov.kalit);
       throw rad(r.status, t);
