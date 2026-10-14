@@ -14,8 +14,10 @@ Settings → Environment Variables’da quyidagi nomlarni kiriting, keyin yangi 
 | `AGENT_TTS_PROVIDER` | `elevenlabs` yoki `openai` |
 | `ELEVENLABS_API_KEY` | ElevenLabs Text to Speech + Models Read ruxsatli kaliti |
 | `ELEVENLABS_VOICE_ID` | Masalan, tanlangan `jxZfc7gW7v5VBNzQzdyo` |
-| `ELEVENLABS_MODEL_ID` | `eleven_v3`; `eleven_v4` tasdiqlangan model emas |
-| `GEMINI_LIVE_MODEL` | Odatiy `gemini-3.1-flash-live-preview` |
+| `ELEVENLABS_MODEL_ID` | Odatiy `eleven_v4_turbo` (jonli suhbat uchun tez, hujjatlarida o‘zbek tili bor). Bo‘sh qoldirish tavsiya etiladi. Hisobingiz katalogida o‘zbekchasi yo‘q model (masalan `eleven_v3`) yozilsa, o‘zbekchasi bor model (avval `eleven_v4_turbo`) **avtomatik tanlanadi**; o‘zbekchasi bor model umuman bo‘lmasa aniq xato chiqadi |
+| `ELEVENLABS_KATALOG_TEKSHIRUVI` | Odatiy yoqilgan. `0` — o‘zbek tili model katalogidan tekshirilmaydi, model to‘g‘ridan-to‘g‘ri ishlatiladi (ElevenLabs hujjatida model o‘zbekchani qo‘llashi aytilgan, lekin hisob katalogi hali ko‘rsatmasa). Qo‘llamasa ElevenLabs `language_code=uz` ni o‘zi rad etadi va ovoz OpenAI zaxirasiga o‘tadi |
+| `GEMINI_LIVE_MODEL` | Odatiy `gemini-3.8-live`. **Bo‘sh qoldiring**: standart model kalitingiz uchun mavjud bo‘lmasa, kalitning Live modellari ro‘yxatidan (`models.list`, `bidiGenerateContent`) mosi o‘zi tanlanadi. Yozilgan model hech qachon almashtirilmaydi (kalitda yo‘q bo‘lsa «Уланишни текшириш» ro‘yxatni ko‘rsatadi) |
+| `GEMINI_LIVE_OVOZ` | `gemini` — jonli suhbatda **Gemini’ning o‘z ovozi** (javob tugashini ham, ElevenLabs so‘rovini ham kutmaydi: eng tez). Bo‘sh — ElevenLabs. Oddiy «Тинглаш» tugmasi ElevenLabs’da qoladi |
 | `GEMINI_LIVE_CHIQISH` | Native Live uchun `transkript` yoki qiymatni olib tashlang; `matn` faqat TEXT qo‘llaydigan modelda |
 | `AGENT_REALTIME_DAILY_LIMIT` | Odatiy 120 yangi suhbat / xodim / Toshkent kalendar kuni; 1–1000 |
 | `AGENT_REALTIME_GLOBAL_DAILY_LIMIT` | Odatiy 2400 yangi suhbat / butun sayt / Toshkent kalendar kuni; 1–10000 |
@@ -25,8 +27,8 @@ Agar Vercel’da eski `AGENT_REALTIME_DAILY_LIMIT=6` saqlangan bo‘lsa, kod uni
 ## Ovoz va ulanish
 
 - Gemini faqat o‘z kaliti bilan ham ishlaydi: tashqi TTS sozlanmagan bo‘lsa native PCM ovozi ijro etiladi. OpenAI ham o‘z native ovozini qo‘llaydi.
-- Tashqi TTS yoqilganida Gemini’ning native ovozi tashlanadi; tayyor javob **bitta** ovoz so‘rovida o‘qiladi. Matn oqim bilan ko‘rinadi. Tashqi TTS 24 kHz PCM oqimini yuboradi: birinchi audio kelishi bilan ijro boshlanadi, butun fayl yuklanishi kutilmaydi. Model/tarif oqimni rad etsa shu ovozning MP3 yo‘li saqlanadi. Bir javob gaplarga bo‘linib turli ovozlarda o‘qilmaydi.
-- ElevenLabs ishlamasa OpenAI TTS o‘sha javobni o‘qiydi va ogohlantirish chiqadi. Shu ochiq suhbatdagi keyingi javoblar OpenAI ovozida qoladi; har javobda ElevenLabs’ga qaytib ovoz almashtirilmaydi.
+- Tashqi TTS yoqilganida Gemini’ning native ovozi tashlanadi; Gemini yozgan matn **gap-gap** ElevenLabs’ga beriladi: birinchi gap tugashi bilan ovoz so‘rovi ketadi, butun javob yozilishi kutilmaydi (javob boshlanishigacha vaqt butun javobga emas, birinchi gapga bog‘liq). Gaplar navbat bilan, bitta ovozda o‘ynaydi; keyingi gap oldingisi o‘ynayotganda tayyorlanadi. Matn ekranda oqim bilan ko‘rinadi. Tashqi TTS 24 kHz PCM oqimini yuboradi: birinchi audio kelishi bilan ijro boshlanadi. Model/tarif oqimni rad etsa shu ovozning MP3 yo‘li saqlanadi. Bir javobda ko‘pi bilan 5 ta ovoz so‘rovi: oxirgisi qolgan matnni oladi; tinish belgisiz transkriptda birinchi bo‘lak ~150 belgida so‘z chegarasida beriladi.
+- ElevenLabs ishlamasa OpenAI TTS shu gapni o‘qiydi va ogohlantirish chiqadi. Zaxira ovozi bir marta tanlangach shu suhbatdagi **keyingi gaplar ham** OpenAI ovozida so‘raladi; ElevenLabs’ga qaytib ovoz almashtirilmaydi. Birinchi bo‘lak javob bergunicha faqat bitta so‘rov ketadi (ovoz javob o‘rtasida almashib qolmasin).
 - Ikkala tashqi TTS ishlamasa jonli ulanish shu provayderning native ovozi bilan qayta ochiladi. Oxirgi savolni qayta ayting; buyruq avtomatik qayta bajarilmaydi.
 - OpenAI asosiy bo‘lsa Gemini zaxira, Gemini asosiy bo‘lsa OpenAI zaxira bo‘la oladi. Ikkala xizmat sozlangan bo‘lishi kerak. Bitta xizmat bo‘lsa shu xizmatga cheklangan qayta urinish qilinadi.
 - Uzilishda ikki marta qayta urinish; ishlamasa aniq xabar va qayta boshlash tugmasi. Qo‘lda yopilgach ulanish/ovoz tiklanmaydi. Mikrofon oqimi zaxiraga o‘tishda qayta ishlatiladi.
@@ -41,9 +43,25 @@ Bu ko‘rsatmalar nutq modeliga yordam beradi; shovqin, sheva yoki har bir gapni
 
 ## Administrator tekshiruvi
 
-Hamroh → «Жонли уланишни текшириш» → «Уланишни текшириш». Asosiy provayder, token/model, javob va sozlangan ovoz tekshiriladi; provider xatosi kalitsiz ko‘rsatiladi. Native Gemini ovozi uchun sozlama tekshiruvi haqiqiy talaffuz bahosi emas. Keyin «Жонли суҳбат»ni bosing va o‘z shevangizda mahalla / Excel so‘rovi ayting.
+Hamroh → «Жонли уланишни текшириш» → «Уланишни текшириш» (soatiga 20 marta). Qadamlar:
 
-ElevenLabs asosiy so‘roviga zaxira borligida 10 soniya, butun TTS zanjiriga 22 soniya ajratilgan (Vercel route 25 soniya). Jonli TTS alohida limit: daqiqada 30, 24 soatda 400 javob; oddiy «Тинглаш» uchun daqiqada 6, 24 soatda 80. Native ovoz tashqi TTS limitini sarflamaydi, provider o‘z hisobiga yozadi.
+1. **Sozlama** — qaysi Gemini modeli, API versiyasi, ovoz (tashqi TTS yoki Gemini ovozi) ishlatilishi.
+2. **Gemini modellari** — kalitingiz uchun mavjud Live modellar ro‘yxati. Ro‘yxat bo‘sh bo‘lsa kalit/loyiha/Billing muammosi; sozlangan `GEMINI_LIVE_MODEL` ro‘yxatda bo‘lmasa shu ko‘rsatiladi.
+3. **Gemini token** va **WebSocket + sozlama**, **Gemini javobi** — haqiqiy ishlatiladigan modelda. Javob vaqti ikki ko‘rsatkich bilan: «savoldan birinchi matngacha» va «javob tugashigacha» (tashqi TTS javob tugashini kutmasdan gap-gap boshlanadi, lekin birinchi gapni berish uchun model ovoz yaratishi kerak).
+4. **ElevenLabs modeli** — hisob katalogida o‘zbek tili bor modelmi; kerak bo‘lsa qaysi model tanlangani.
+5. **ElevenLabs tezligi** — jonli suhbatdagi yo‘l bilan (OpenAI zaxirasisiz) birinchi audio necha ms da kelgani. 1500 ms dan oshsa maslahat chiqadi.
+6. **OpenAI zaxirasi** — alohida: u yiqilsa ham asosiy natija o‘zgarmaydi (faqat zaxira tayyor emasligi ko‘rinadi).
+7. **Nima qilish kerak** — yiqilgan qadamlar uchun aniq amal (Billing, kalit, model nomi, `ELEVENLABS_MODEL_ID`...).
+
+Provider xatosi kalitsiz ko‘rsatiladi. Native Gemini ovozi uchun sozlama tekshiruvi haqiqiy talaffuz bahosi emas. Keyin «Жонли суҳбат»ni bosing va o‘z shevangizda mahalla / Excel so‘rovi ayting.
+
+**Gemini yiqilsa jimgina OpenAI’ga o‘tmaydi:** administrator uchun Hamroh oynasidagi xabarda Google aytgan sabab ko‘rinadi (masalan `… yopildi (kod 1011)`, `… 429 …`, `models/… is not found`). Boshqa rollarga faqat umumiy xabar chiqadi; kalit hech kimga ko‘rsatilmaydi. Hamroh oynasidagi «Овоз:» yorlig‘i ham ovoz manbasini (ElevenLabs / OpenAI / Gemini) ko‘rsatadi.
+
+ElevenLabs asosiy so‘roviga zaxira borligida 6 soniya (birinchi audio uchun), butun TTS zanjiriga 22 soniya ajratilgan (Vercel route 25 soniya). Jonli TTS alohida limit: daqiqada 45, 24 soatda 1000 ovoz so‘rovi (bir javob ko‘pi bilan 5 ta so‘rov); oddiy «Тинглаш» uchun daqiqada 6, 24 soatda 80. Native ovoz tashqi TTS limitini sarflamaydi, provider o‘z hisobiga yozadi.
+
+## Gemini hisobi: Billing va Free tier
+
+Google AI Studio → API keys sahifasida kalit «Free tier» / «Account inactive» deb ko‘rsatilsa, kalit bog‘langan loyihada to‘lov (Billing) faollashtirilmagan: Live API kvotasi juda kichik yoki yopiq bo‘lishi mumkin, «Уланишни текшириш» esa 429 / kvota / `1011` kabi sabab ko‘rsatadi. Billing’ni faollashtiring (Tier 1) va kalitni yangilang. Bundan tashqari Google shartlariga ko‘ra bepul darajadagi so‘rovlar mahsulotlarni yaxshilashga ishlatilishi mumkin; jonli suhbatda xodimlarning savollari Google’ga yuborilishini hisobga olib, rasmiy foydalanish uchun pullik darajani tanlang va shartlarni tekshiring.
 
 ## Tekshiruv chegaralari
 
@@ -55,15 +73,25 @@ Haqiqiy API kalitlari bo‘lmasa bular provider hisobidagi balans, model ruxsati
 
 `/api/agent/gapir`ning `oqim: true` rejimi ElevenLabs HTTP `/stream?output_format=pcm_24000` va OpenAI `response_format=pcm`dan foydalanadi. Birinchi audio baytidan oldin zaxira tanlanishi mumkin; audio boshlanganidan keyin provider o‘sha javob ichida almashtirilmaydi. Brauzer 24 kHz PCM16 bo‘laklarini ketma-ket audio vaqtiga qo‘yadi va og‘iz amplitudasini oqimdan oladi. Qo‘lda to‘xtatish tarmoq o‘qishini va barcha rejalangan ovozlarni bekor qiladi.
 
-Model javobi tugashi hanuz kutiladi — bu o‘zgarish audio faylining to‘liq tayyorlanishi/yuklanishini kutishni olib tashlaydi. Voice ID, Eleven v3, `language_code=uz` va bir javobga bitta TTS so‘rovi saqlanadi. Haqiqiy tezlik provider modelining birinchi audio tayyorlash vaqtiga bog‘liq; oqimni qo‘llamaydigan model/tarif MP3 bilan ishlaydi va uning kutishi qoladi. Birinchi audio uchun ElevenLabs’ga zaxira borligida 6 soniya, butun generatsiya zanjiriga 22 soniya ajratiladi. PCM ko‘pi bilan 9.6 MB (200 soniya); yuklash tugagach bu deadline ovoz ijrosini kesmaydi.
+Kechikishning uchta qismi bor va uchalasi ham qisqartirilgan:
 
-`npm run sinov:elevenlabs` oqim va bekor qilish regressiyalarini qoplaydi. `GEMINI_BRAUZER_BOLIM=F npm run sinov:gemini-brauzer` soxta HTTP PCM provider bilan jonli va oddiy ovoz tugmasining fayl tugashidan oldin gapirishini tekshiradi. Bu haqiqiy ElevenLabs tezligi o‘lchovi emas.
+1. **Model javobini yozib bo‘lishini kutish** — endi kutilmaydi: Gemini matni gap-gap ElevenLabs’ga beriladi, ovoz birinchi gap tayyor bo‘lishi bilan boshlanadi (avval butun javob `turnComplete` kelgunicha kutilardi: uzun javobda bu bir necha soniya edi).
+2. **ElevenLabs modeli** — `eleven_v3` ifodali, lekin sekin va jonli suhbat uchun mo‘ljallanmagan; standart `eleven_v4_turbo` real vaqt uchun (taxminan 100–150 ms). Model aniqlash natijasi bir soat eslab qolinadi.
+3. **Audio faylining to‘liq tayyorlanishi** — PCM oqimi bilan birinchi baytda boshlanadi.
+
+Eng tez variant: `GEMINI_LIVE_OVOZ=gemini` (Gemini o‘z ovozi bilan gapiradi, tashqi TTS umuman yo‘q); ElevenLabs ovozi/talaffuzi shart bo‘lsa — standart rejim.
+
+Voice ID, `language_code=uz` saqlanadi. Haqiqiy tezlik provider modelining birinchi audio tayyorlash vaqtiga bog‘liq; oqimni qo‘llamaydigan model/tarif MP3 bilan ishlaydi va uning kutishi qoladi. Birinchi audio uchun ElevenLabs’ga zaxira borligida 6 soniya, butun generatsiya zanjiriga 22 soniya ajratiladi. PCM ko‘pi bilan 9.6 MB (200 soniya) har so‘rovga; yuklash tugagach bu deadline ovoz ijrosini kesmaydi.
+
+Gap-gap o‘qishda gaplar orasida ohang biroz farq qilishi mumkin (har gap alohida so‘rov, Voice ID va model bir xil). Bu tezlik uchun to‘lov; ovoz sifati bir xil bo‘lishi shart bo‘lgan joyda `GEMINI_LIVE_OVOZ=gemini` yoki qisqa javob ko‘rsatmasi (2–4 jumla) ishlating.
+
+`npm run sinov:elevenlabs` oqim, model aniqlash va bekor qilish regressiyalarini qoplaydi. `GEMINI_BRAUZER_BOLIM=F npm run sinov:gemini-brauzer` soxta HTTP PCM provider bilan jonli va oddiy ovoz tugmasining fayl tugashidan oldin gapirishini, `GEMINI_BRAUZER_BOLIM=I` esa gap-gap o‘qishni (birinchi gap model javobi tugashidan oldin, zaxira ovozi javob ichida almashmasligi, tartib) tekshiradi. Bu haqiqiy ElevenLabs tezligi o‘lchovi emas: haqiqiy raqamni administrator tekshiruvidagi «ElevenLabs tezligi» qatori beradi.
 
 ### Oqim ishlamasa ovozni tiklash
 
 Oqim endpointi formatni yoki metodni rad etsa (400/404/405/406/415/422/501), PCM o‘rniga boshqa MIME qaytsa yoki audio bo‘sh kelsa server aynan shu Voice ID, model va tilning MP3 yo‘liga qaytadi. Bu urinishlar mavjud 22 soniyalik server muddatiga kiradi; PCM ijrosi boshlanganidan keyin server boshqa ovozga o‘tmaydi.
 
-Brauzer oqim so‘rovidagi 502 yoki birinchi audio ijrosidan oldingi PCM xatosida ko‘pi bilan **bir marta** `oqim: false` bilan qayta so‘raydi. Oddiy tugma va jonli suhbat bu yo‘lni bir xil qo‘llaydi; keyingi javoblar o‘sha ochiq oyna/suhbatda MP3 bilan o‘qiladi. Odatiy javobda bitta so‘rov qoladi, tiklashda ikkita bo‘lishi mumkin va ikkalasi mavjud ruxsat/kvota tekshiruvidan o‘tadi. Har bir urinish brauzerda 25 soniyadan oshmaydi. 401/403/429 qayta sinalmaydi; bekor qilingan yoki eshittirish boshlangan javob qayta o‘qilmaydi.
+Brauzer oqim so‘rovidagi 502 yoki birinchi audio ijrosidan oldingi PCM xatosida ko‘pi bilan **bir marta** `oqim: false` bilan qayta so‘raydi. Oddiy tugma va jonli suhbat bu yo‘lni bir xil qo‘llaydi; keyingi javoblar o‘sha ochiq oyna/suhbatda MP3 bilan o‘qiladi. Odatiy holda har gap uchun bitta so‘rov ketadi, tiklashda ikkita bo‘lishi mumkin va ikkalasi mavjud ruxsat/kvota tekshiruvidan o‘tadi. Har bir urinish brauzerda 25 soniyadan oshmaydi. 401/403/429 qayta sinalmaydi; bekor qilingan yoki eshittirish boshlangan javob qayta o‘qilmaydi.
 
 `GEMINI_BRAUZER_BOLIM=G npm run sinov:gemini-brauzer` haqiqiy Chromium’da bo‘sh PCM va 502dan keyin jonli hamda oddiy ovoz ijrosi va mimika tiklanishini soxta provider bilan tekshiradi. `scripts/nutq-tiklash-sinov.ts` ruxsat/kvota, bekor qilish, ikkinchi xato va ijro boshlanganidan keyin takrorlanmaslikni qoplaydi. Haqiqiy provider hisobidagi kalit, balans va qurilmaning ovoz ruxsati alohida tekshiriladi.
 

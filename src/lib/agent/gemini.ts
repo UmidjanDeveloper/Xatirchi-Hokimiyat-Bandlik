@@ -19,7 +19,7 @@ import type { AgentKontekst } from './turlar';
  *       ko'rsatmani o'zgartira olmaydi.
  *    3. Brauzer Gemini bilan WebSocket orqali to'g'ridan-to'g'ri gaplashadi
  *       (mikrofon -> 16 kHz PCM). Gemini transkript va native audio bilan javob beradi.
- *    4. Tashqi TTS bo'lsa tayyor javob bitta so'rovda o'qiladi; aks holda native audio ijro etiladi.
+ *    4. Tashqi TTS bo'lsa javob matni gap-gap o'qiladi (birinchi gap butun javobni kutmaydi); aks holda native audio ijro etiladi.
  *    5. Asbob chaqiruvlari (Excel, mahalla ko'rsatkichlari...) brauzer
  *       orqali mavjud `/api/agent/jonli` ga boradi: u yerda rol, ko'rish
  *       rejimi va tezlik tekshiriladi (OpenAI yo'li bilan bir xil).
@@ -30,7 +30,12 @@ import type { AgentKontekst } from './turlar';
  * ============================================================
  */
 
-export const GEMINI_ODATIY_MODEL = 'gemini-3.1-flash-live-preview';
+/**
+ * Google 3.1 Flash Live Preview'ni "legacy" deb belgilab, gemini-3.8-live ga o'tishni tavsiya qiladi (97–99 til, jumladan o'zbek).
+ * Model nomlari tez almashadi: `GEMINI_LIVE_MODEL` bo'sh bo'lsa, kalit uchun mavjud Live modellar ro'yxatidan
+ * (`gemini-modellar.ts`) mosi o'zi tanlanadi.
+ */
+export const GEMINI_ODATIY_MODEL = 'gemini-3.8-live';
 const MODEL_ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/;
 const BAZA = 'https://generativelanguage.googleapis.com';
 
@@ -42,7 +47,10 @@ export interface GeminiSozlama {
   chiqish: 'matn' | 'transkript';
   /** Faqat sinovda (mahalliy soxta server) o'zgaradi */
   baza: string;
+  /** Javob tashqi TTS (ElevenLabs/OpenAI) bilan o'qiladi; false bo'lsa Gemini'ning o'z ovozi ijro etiladi (eng tez) */
   tashqiOvoz: boolean;
+  /** `GEMINI_LIVE_MODEL` yozilmagan: kalit uchun mavjud Live modellardan mosi tanlanishi mumkin */
+  modelAvto: boolean;
 }
 
 /** Gemini kaliti bo'lsa ishlaydi; tashqi TTS ixtiyoriy, aks holda native audio. */
@@ -58,7 +66,9 @@ export function geminiSozlama(env: NodeJS.ProcessEnv = process.env, opt: { zaxir
     // Native Live modellar audio javob beradi; TEXT talab qilish ulanishni rad ettiradi.
     chiqish: ovozMavjud(env) && env.GEMINI_LIVE_CHIQISH?.trim() === 'matn' ? 'matn' : 'transkript',
     baza: sinovBazasi || BAZA,
-    tashqiOvoz: ovozMavjud(env),
+    // GEMINI_LIVE_OVOZ=gemini: jonli suhbatda Gemini'ning o'z ovozi (javob tugashini kutmaydi); oddiy "Tinglash" ElevenLabs'da qoladi
+    tashqiOvoz: ovozMavjud(env) && env.GEMINI_LIVE_OVOZ?.trim().toLowerCase() !== 'gemini',
+    modelAvto: !env.GEMINI_LIVE_MODEL?.trim(),
   };
 }
 
@@ -106,6 +116,7 @@ const GEMINI_QOSHIMCHA = `
 
 GEMINI JONLI REJIMI
 - Sen MATN yozasan; uni ElevenLabs ovozi o'qiydi. Javobni odatda 2–4 qisqa jumlada yoz. Har jumla nuqta, so'roq yoki undov bilan tugasin.
+- Birinchi jumla qisqa bo'lsin (8 so'zgacha): ovoz darhol boshlanadi; batafsil qismini keyingi jumlalarda ayt.
 - Ro'yxat belgilari, jadval, emoji, markdown, qavs ichidagi izoh yozma. Sonlarni o'qishga qulay yoz ("83,5 foiz").
 - Asbob natijasini kutayotganda uzun gapirma: natija kelgach javob ber.`;
 
@@ -146,7 +157,7 @@ export class GeminiXatosi extends Error {
 
 const TOKEN_NOMI = /^auth_tokens\/[A-Za-z0-9_.~+=/-]{8,1500}$/;
 
-function xatoMatni(holat: number, xom: string): GeminiXatosi {
+export function xatoMatni(holat: number, xom: string): GeminiXatosi {
   let izoh = '';
   try {
     const m = (JSON.parse(xom) as { error?: { message?: unknown } }).error?.message;

@@ -13,7 +13,8 @@ tushunish va platforma buyruqlari mavjud AI orqali ishlaydi.
 3. Tanlangan ovoz menyusidan **Copy Voice ID** ni bosing yoki ovoz tafsilotidan
    Voice ID ni nusxalang. Interfeys ko'rinishi hisobga qarab farq qilishi mumkin.
    Voice ID — ovoz identifikatori; API kaliti bilan bir xil emas.
-4. Text to Speech sahifasida **Eleven v3** modelini tanlab quyidagini sinang:
+4. Text to Speech sahifasida **Eleven v4 Turbo** (jonli suhbat uchun tez) yoki **Eleven v4** modelini tanlab quyidagini sinang
+   (o‘zbekcha bu modellarda e'lon qilingan; `eleven_v3` hisobingizda o‘zbekchasiz bo‘lishi mumkin):
 
    > Assalomu alaykum! Men Hamrohman. Xatirchi tumani bo'yicha Excel hisobot
    > kerakmi yoki Qorabuloq mahallasi bo'yichami? O'qish, g'oya va xushxabar.
@@ -51,7 +52,7 @@ variable sifatida saqlang.
 | `AGENT_TTS_PROVIDER` | `elevenlabs` |
 | `ELEVENLABS_API_KEY` | O'zingiz olgan maxfiy API kaliti |
 | `ELEVENLABS_VOICE_ID` | 1-qadamdagi tanlangan ovoz ID si |
-| `ELEVENLABS_MODEL_ID` | `eleven_v3` |
+| `ELEVENLABS_MODEL_ID` | Bo‘sh qoldiring (standart `eleven_v4_turbo`) yoki `eleven_v4`. Hisob katalogida o‘zbekchasi yo‘q model yozilsa, o‘zbekchasi bor model avtomatik tanlanadi |
 
 Kalit qatori uchun Sensitive sozlamasi mavjud bo'lsa, uni yoqing. Bu nomlarda
 `NEXT_PUBLIC_` prefiksi bo'lmasin: kalit brauzerga chiqmasligi kerak.
@@ -91,8 +92,8 @@ ataylab o'chirilmagan bo'lsa.
 
 ElevenLabs tanlanganida OpenAI Realtime mikrofonni tinglaydi, matn javobi va
 buyruqlarni tayyorlaydi. **Javobni ElevenLabs o'qiydi**; OpenAI'ning `cedar`
-ovozi ishlatilmaydi. Hamroh qisqa javobning matni tayyor bo'lgach ovoz yaratadi,
-shu sababli native audio rejimiga nisbatan qo'shimcha kutish bor.
+ovozi ishlatilmaydi. Hamroh javob matnini gap-gap ovozga aylantiradi (birinchi gap
+tayyor bo'lishi bilan), shu sababli native audio rejimiga nisbatan biroz kutish bor.
 Ovozni bo'lsangiz, oldingi audio/so'rov bekor qilinadi. Telefon yoki xonadagi
 aks-sado ovozning o'zini yangi savol deb eshitishga sabab bo'lsa, quloqchin
 bilan tekshiring. Haqiqiy qurilmada baribir sinash kerak.
@@ -114,12 +115,14 @@ Excel" buyrug'ini tekshiring. Hisobot mavjud panel eksporti orqali yuklanadi.
 | API kaliti qabul qilinmadi | Kalit to'liq nusxalanganini, Production uchun saqlanganini tekshiring. |
 | Ruxsat yetishmaydi | Text to Speech va Models Read ruxsatlarini tekshiring. |
 | Ovoz/model topilmadi | Ovoz hisobga qo'shilganini, Voice ID to'g'riligini tekshiring. |
-| Model o'zbek tilini qo'llamaydi | API model katalogida `uz` tili bor modelni tanlang. Kod boshqa tilga indamay o'tmaydi. |
+| Model o'zbek tilini qo'llamaydi | Kod o'zbekchasi bor modelni (avval `eleven_v4_turbo`) katalogdan o'zi tanlaydi. Hech biri bo'lmasa xato chiqadi: `ELEVENLABS_MODEL_ID=eleven_v4_turbo` ni sinang va tarifni tekshiring. Kod boshqa tilga indamay o'tmaydi. |
+| Ovoz sekin keladi | «Уланишни текшириш» → «ElevenLabs tezligi» qatoriga qarang; `eleven_v3` o'rniga `eleven_v4_turbo` ishlating yoki Gemini ovozi uchun `GEMINI_LIVE_OVOZ=gemini`. |
 | Kredit/chegara/xizmat xatosi | ElevenLabs Usage/tarifni tekshiring; kerak bo'lsa biroz kuting. |
 | Jonli tugma ishlamaydi | OpenAI Realtime ruxsati, balans, kalit va `AGENT_REALTIME` qiymatini tekshiring. |
 | Hali eski ovoz | Yangi commit va environment qiymatlari deploy qilinganini tekshiring, saytni yangilang. |
 
-TTS bir xodimga daqiqada 6 ta, kuniga 80 ta so'rov bilan cheklangan.
+Oddiy «Тинглаш» tugmasida TTS bir xodimga daqiqada 6 ta, kuniga 80 ta so'rov bilan cheklangan;
+jonli suhbatda javob gap-gap o'qiladi va alohida limit (daqiqada 45, kuniga 1000 so'rov) amal qiladi.
 Matn uchun mavjud 2200 belgilik, audio uchun 3 MB chegara amal qiladi.
 Modelning o'zbekcha qo'llashi bir soat xotirada keshlanadi; serverless yangi
 instansiya uni qayta tekshiradi. Ilova ovoz yoki suhbat matnini server bazasiga
@@ -133,6 +136,6 @@ API shartining manbasi: [ElevenLabs rasmiy TypeScript SDK](https://github.com/el
 
 ## Ovoz almashishi va yangi jonli zaxira
 
-ElevenLabs xato bersa OpenAI TTS bitta to‘liq javobni o‘qiydi. Endi shu ochiq suhbatdagi keyingi javoblar ham zaxira ovozda qoladi: har gapda ElevenLabs’ga qaytilmaydi. Hamroh oynasi yopilib qayta ochilganda asosiy ovoz yana sinab ko‘riladi.
+ElevenLabs xato bersa OpenAI TTS shu gapni o‘qiydi. Shu ochiq suhbatdagi keyingi gaplar va javoblar ham zaxira ovozda qoladi: har gapda ElevenLabs’ga qaytilmaydi. Hamroh oynasi yopilib qayta ochilganda asosiy ovoz yana sinab ko‘riladi.
 
 Gemini uchun ElevenLabs shart emas: tashqi TTS sozlanmagan bo‘lsa Gemini o‘z native ovozida gapiradi. Ikkala tashqi TTS ishlamasa jonli suhbat native ovoz bilan tiklanadi; oxirgi savolni qayta ayting. Besh daqiqalik server ruxsati suhbatni uzmasdan avtomatik yangilanadi. Asosiy/zaxira provayder va kunlik limitlar uchun [GEMINI-JONLI.md](GEMINI-JONLI.md)ga qarang.

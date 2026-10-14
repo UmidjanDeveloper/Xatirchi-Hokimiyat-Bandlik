@@ -5,10 +5,12 @@
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { GEMINI_ODATIY_MODEL, GeminiXatosi, geminiSetup, geminiSozlama, geminiSxema, geminiToken, jonliProvayderi, jonliZaxiraBormi } from '../src/lib/agent/gemini';
-import { geminiSoketniTekshir } from '../src/lib/agent/gemini-tekshir';
+import { geminiSoketniTekshir, type TekshiruvQadami } from '../src/lib/agent/gemini-tekshir';
+import { geminiLiveModellari, geminiLiveModeliniTanla, geminiModeliniHal, geminiModelKeshiniTozala } from '../src/lib/agent/gemini-modellar';
+import { tekshiruvMaslahati } from '../src/lib/agent/tekshiruv-maslahat';
 import {
   GapBolgich, GEMINI_AUDIO_TURI, asbobIdsiniTozala, geminiAsbobJavobi, geminiAudioXabari, geminiMatnXabari,
-  geminiWsManziliTogrimi, geminiXabarOqi, pcm16Base64,
+  geminiWsManziliTogrimi, geminiXabarOqi, pcm16Base64, providerMatniniTozala,
 } from '../src/lib/agent/gemini-protokol';
 import { jonliRuxsatOqi, jonliRuxsatYarat, jonliSessiya, jonliSozlama, JONLI_MUDDAT_MS } from '../src/lib/agent/jonli';
 import { NutqXatosi, nutqZaxirasi } from '../src/lib/agent/nutq';
@@ -27,7 +29,13 @@ const ctx: AgentKontekst = { userId: 'admin-test', rol: 'ADMIN', fullName: 'Sino
 const sinovlar: [string, () => unknown | Promise<unknown>][] = [];
 const test = (nom: string, f: () => unknown | Promise<unknown>) => sinovlar.push([nom, f]);
 test('Provider rad javobi jim qolmaydi; qisman transkript tasdiq deb olinmaydi', () => {
-  assert.deepEqual(geminiXabarOqi({ error: { message: KALIT } }), [{ t: 'xato' }]);
+  // Provayder xabari administratorga ko'rsatiladi, lekin kalit/token ko'rinishidagi satrlar yashiriladi
+  assert.deepEqual(geminiXabarOqi({ error: { message: KALIT } }), [{ t: 'xato', matn: '***' }]);
+  assert.deepEqual(geminiXabarOqi({ error: { code: 400 } }), [{ t: 'xato' }]);
+  assert.deepEqual(geminiXabarOqi({ error: { message: 'models/xyz is not found for API version v1alpha' } }), [{ t: 'xato', matn: 'models/xyz is not found for API version v1alpha' }]);
+  const uzun = geminiXabarOqi({ error: { message: `Bad token auth_tokens/${'x'.repeat(40)} and key ${KALIT}\n\n${'a '.repeat(400)}` } })[0] as { matn?: string };
+  assert.ok(uzun.matn && uzun.matn.length <= 300 && !uzun.matn.includes('xxxxxxxx') && !uzun.matn.includes('AIza') && !/\s{2}/.test(uzun.matn), uzun.matn);
+  assert.equal(providerMatniniTozala(''), '');
   assert.deepEqual(geminiXabarOqi({ serverContent: { inputTranscription: { text: 'tasdiqlayman' } } }), [{ t: 'kirish', matn: 'tasdiqlayman' }]);
   assert.deepEqual(geminiXabarOqi({ serverContent: { inputTranscription: { text: ' demadim', finished: true } } }), [{ t: 'kirish', matn: ' demadim', tamom: true }]);
   assert.deepEqual(geminiXabarOqi({ serverContent: { inputTranscription: { finished: true } } }), [{ t: 'kirish', matn: '', tamom: true }]);
@@ -62,6 +70,18 @@ test('Sozlama: sinov bazasi faqat ishlab chiqarishdan tashqarida va faqat 127.0.
   assert.equal(geminiSozlama({ ...yo, NODE_ENV: 'production' } as NodeJS.ProcessEnv)?.baza, 'https://generativelanguage.googleapis.com');
   assert.equal(geminiSozlama({ ...ENV, GEMINI_API_BAZA_SINOV: 'http://evil.example:80' })?.baza, 'https://generativelanguage.googleapis.com');
   assert.equal(geminiSozlama({ ...ENV, GEMINI_API_BAZA_SINOV: 'https://127.0.0.1:4555' })?.baza, 'https://generativelanguage.googleapis.com');
+});
+test('Sozlama: model nomi yozilmasa avtomatik tanlanadi (modelAvto); GEMINI_LIVE_OVOZ=gemini jonli suhbatda Gemini ovozini tanlaydi', () => {
+  assert.equal(geminiSozlama(ENV)?.modelAvto, true);
+  assert.equal(geminiSozlama({ ...ENV, GEMINI_LIVE_MODEL: '   ' })?.modelAvto, true);
+  assert.equal(geminiSozlama({ ...ENV, GEMINI_LIVE_MODEL: 'gemini-3.8-live' })?.modelAvto, false);
+  assert.equal(geminiSozlama(ENV)?.tashqiOvoz, true);
+  for (const q of ['gemini', 'GEMINI', ' Gemini ']) assert.equal(geminiSozlama({ ...ENV, GEMINI_LIVE_OVOZ: q })?.tashqiOvoz, false, q);
+  for (const q of ['', 'elevenlabs', 'tashqi']) assert.equal(geminiSozlama({ ...ENV, GEMINI_LIVE_OVOZ: q })?.tashqiOvoz, true, q);
+  // Gemini ovozi tanlansa ko'rsatma ham "matn yoz" demaydi (aks holda model matn yozib, ovoz chiqmay qolardi)
+  const g = geminiSozlama({ ...ENV, GEMINI_LIVE_OVOZ: 'gemini' })!;
+  assert.doesNotMatch(geminiSetup(ctx, g, []).systemInstruction.parts[0].text, /Sen MATN yozasan/);
+  assert.match(geminiSetup(ctx, geminiSozlama(ENV)!, []).systemInstruction.parts[0].text, /Sen MATN yozasan/);
 });
 test('Provayder tanlovi: Gemini (to‘liq bo‘lsa) -> OpenAI -> yo‘q', () => {
   assert.equal(jonliProvayderi(ENV), 'gemini');
@@ -259,6 +279,152 @@ test('Gap bo‘lgich: kirill matn, yangi qator chegarasi, juda uzun gap bo‘lib
   const kop = oqim(new GapBolgich(), 'Bu yetarlicha uzun gap bo‘lib turibdi. '.repeat(40));
   assert.ok(kop.length <= 5, String(kop.length)); assert.ok(kop.join(' ').length >= 1400);
   const r = new GapBolgich(); r.push('Yetarlicha uzun birinchi gap. Keyingi'); r.reset(); assert.deepEqual(r.flush(), []);
+});
+
+test('Gap bo‘lgich: tinish belgisiz transkriptda birinchi bo‘lak ~150 belgida so‘z chegarasida beriladi (ovoz kutib qolmaydi)', () => {
+  const m = 'bu juda uzun gap bo‘lib tinish belgisi umuman yo‘q holda davom etadi '.repeat(8).trim();
+  const b = new GapBolgich();
+  let birinchi: string[] = [];
+  for (const h of m) { const x = b.push(h); if (x.length) { birinchi = x; break; } }
+  assert.equal(birinchi.length, 1);
+  assert.ok(birinchi[0].length >= 100 && birinchi[0].length <= 150, String(birinchi[0].length));
+  assert.ok(m.startsWith(birinchi[0]) && m[birinchi[0].length] === ' ', 'so‘z o‘rtasida kesilmaydi');
+  // belgi-belgi va bir yo'la oqim bir xil bo'laklar beradi, hech narsa yo'qolmaydi
+  const bir = oqim(new GapBolgich(), m, m.length), belgi = oqim(new GapBolgich(), m, 1);
+  assert.deepEqual(belgi, bir); assert.equal(bir.join(' ').replace(/\s+/g, ' '), m);
+  // tinish belgisi bor bo'lsa, u birinchi (qisqa gap uzun chegaradan oldin beriladi)
+  assert.deepEqual(new GapBolgich().push('Assalomu alaykum, Umidjon aka. Xatir'), ['Assalomu alaykum, Umidjon aka.']);
+  // maxsus qiymat: birinchi bo'lak chegarasi sozlanadi
+  const q = new GapBolgich(28, 14, 420, 5, 60);
+  assert.ok(q.push('so‘z '.repeat(30))[0].length <= 60);
+});
+
+test('Provayder xabari ekranga chiqishdan oldin tozalanadi (kalit/token/uzun satrlar yashiriladi)', () => {
+  assert.equal(providerMatniniTozala(KALIT), '***');
+  assert.equal(providerMatniniTozala('Bad auth_tokens/abcDEF123_-xyz token'), 'Bad auth_tokens/*** token');
+  assert.equal(providerMatniniTozala(`models/xyz   is not\nfound ${'x'.repeat(40)}`), 'models/xyz is not found ***');
+  assert.equal(providerMatniniTozala('a '.repeat(400)).length, 300);
+  // model nomlari (kichik harf, defisli) o'qiladigan bo'lib qoladi; aralash harf+raqamli uzun satr yashiriladi
+  assert.equal(providerMatniniTozala('models/gemini-2.5-flash-native-audio-preview-12-2025 is not found'), 'models/gemini-2.5-flash-native-audio-preview-12-2025 is not found');
+  assert.equal(providerMatniniTozala(`token Ab3${'xY9-'.repeat(12)}`), 'token ***');
+});
+
+/* ───────────── kalit uchun Gemini Live modellari ───────────── */
+const royxatJavob = (modellar: unknown[], nextPageToken?: string) => javobJSON({ models: modellar, ...(nextPageToken ? { nextPageToken } : {}) });
+const live = (name: string, methods = ['bidiGenerateContent', 'countTokens']) => ({ name: `models/${name}`, supportedGenerationMethods: methods });
+const SOZ = geminiSozlama(ENV)!;
+test('Model ro‘yxati: faqat bidiGenerateContent qo‘llaydiganlar, "models/" siz, tartiblangan; kalit faqat sarlavhada', async () => {
+  const sorovlar: { url: string; init: RequestInit }[] = [];
+  const f = (async (u: string, i: RequestInit) => {
+    sorovlar.push({ url: String(u), init: i });
+    return royxatJavob([live('gemini-3.8-live'), live('gemini-2.5-flash', ['generateContent']), live('gemini-3.1-flash-live-preview'), { name: 'models/no-methods' }, live('bad id/../x'), 42, null]);
+  }) as unknown as typeof fetch;
+  const r = await geminiLiveModellari(SOZ, { fetchFn: f });
+  assert.deepEqual(r, ['gemini-3.1-flash-live-preview', 'gemini-3.8-live']);
+  assert.equal(sorovlar.length, 1);
+  assert.match(sorovlar[0].url, /^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\?pageSize=1000$/);
+  assert.ok(!sorovlar[0].url.includes(KALIT));
+  assert.equal((sorovlar[0].init.headers as Record<string, string>)['x-goog-api-key'], KALIT);
+  assert.equal(sorovlar[0].init.redirect, 'error'); assert.equal(sorovlar[0].init.method, 'GET');
+});
+test('Model ro‘yxati: sahifalar birlashtiriladi; xatolar sababi aniq, kalit hech qachon xabarda yo‘q', async () => {
+  const chaqiruv: string[] = [];
+  const sahifali = (async (u: string) => {
+    chaqiruv.push(String(u));
+    return new URL(String(u)).searchParams.get('pageToken') === 'p2' ? royxatJavob([live('gemini-4-live')]) : royxatJavob([live('gemini-3.8-live')], 'p2');
+  }) as unknown as typeof fetch;
+  assert.deepEqual(await geminiLiveModellari(SOZ, { fetchFn: sahifali }), ['gemini-3.8-live', 'gemini-4-live']);
+  assert.equal(chaqiruv.length, 2);
+  const xato = async (f: () => Response | Promise<Response>) => geminiLiveModellari(SOZ, { fetchFn: (async () => f()) as unknown as typeof fetch }).then(() => null, (e: unknown) => e as GeminiXatosi);
+  const k = await xato(() => javobJSON({ error: { message: `API key not valid ${KALIT}` } }, 401));
+  assert.equal(k?.kod, 'kalit'); assert.ok(!k!.message.includes(KALIT));
+  assert.equal((await xato(() => javobJSON({}, 403)))?.kod, 'ruxsat');
+  assert.equal((await xato(() => javobJSON({}, 429)))?.kod, 'chegara');
+  assert.equal((await xato(() => new Response('<html>', { status: 200 })))?.kod, 'javob');
+  assert.equal((await xato(() => { throw new TypeError(`fetch failed ${KALIT}`); }))?.kod, 'tarmoq');
+  const t = await xato(() => { throw Object.assign(new Error('x'), { name: 'TimeoutError' }); });
+  assert.equal(t?.kod, 'vaqt'); assert.ok(!t!.message.includes(KALIT));
+  // cheksiz sahifalash yo'q
+  let n = 0;
+  await geminiLiveModellari(SOZ, { fetchFn: (async () => { n++; return royxatJavob([live('gemini-x-live')], 'abadiy'); }) as unknown as typeof fetch });
+  assert.ok(n <= 5, String(n));
+});
+test('Model ro‘yxati: haqiqiy fetch uchun eslab qolinadi (kalit bo‘yicha), `keshsiz` va tozalash yangidan so‘raydi, xato eslanmaydi', async () => {
+  const asl = globalThis.fetch; let n = 0; geminiModelKeshiniTozala();
+  const bu = { ...SOZ, kalit: 'cache-gemini-key-A' };
+  try {
+    globalThis.fetch = (async () => { n++; return royxatJavob([live('gemini-3.8-live')]); }) as unknown as typeof fetch;
+    await geminiLiveModellari(bu); await geminiLiveModellari(bu); assert.equal(n, 1);
+    await geminiLiveModellari({ ...bu, kalit: 'cache-gemini-key-B' }); assert.equal(n, 2);
+    await geminiLiveModellari(bu, { keshsiz: true }); assert.equal(n, 3);
+    geminiModelKeshiniTozala(); await geminiLiveModellari(bu); assert.equal(n, 4);
+    globalThis.fetch = (async () => { n++; return javobJSON({}, 500); }) as unknown as typeof fetch;
+    const c = { ...bu, kalit: 'cache-gemini-key-C' };
+    await assert.rejects(geminiLiveModellari(c)); await assert.rejects(geminiLiveModellari(c)); assert.equal(n, 6);
+  } finally { globalThis.fetch = asl; geminiModelKeshiniTozala(); }
+});
+test('Model tanlovi: sozlangan bo‘lsa o‘zi; keyin standart; keyin eng yangi "live" (preview emaslari ustun); yaramaydiganlar tashlanadi', () => {
+  assert.equal(geminiLiveModeliniTanla(['gemini-3.1-flash-live-preview', 'gemini-3.8-live'], 'gemini-3.1-flash-live-preview'), 'gemini-3.1-flash-live-preview');
+  assert.equal(geminiLiveModeliniTanla(['gemini-3.1-flash-live-preview', 'gemini-3.8-live', 'gemini-4-live'], 'x-yoq'), 'gemini-3.8-live', 'standart model ro‘yxatda bor');
+  assert.equal(geminiLiveModeliniTanla(['gemini-3.1-flash-live-preview'], 'x-yoq'), 'gemini-3.1-flash-live-preview', 'eski, lekin ishlaydigan model');
+  assert.equal(geminiLiveModeliniTanla(['gemini-4-live', 'gemini-4.1-live', 'gemini-4.1-live-preview'], 'x-yoq'), 'gemini-4.1-live');
+  assert.equal(geminiLiveModeliniTanla(['gemini-5-live-preview', 'gemini-4-live'], 'x-yoq'), 'gemini-5-live-preview', 'yangi versiya preview bo‘lsa ham ustun');
+  assert.equal(geminiLiveModeliniTanla(['gemini-9-live-translate', 'gemini-9-live-tts', 'gemini-2-flash-live-image'], 'x-yoq'), null);
+  assert.equal(geminiLiveModeliniTanla([], 'x'), null);
+});
+test('Model hal qilish: faqat modelAvto bo‘lganda ro‘yxat so‘raladi; standart mavjud bo‘lmasa mavjud Live modelga o‘tadi; xatoda sozlama o‘zgarmaydi', async () => {
+  let n = 0;
+  const bilan = (modellar: string[] | Error) => (async (_u: string, i?: RequestInit) => { n++; i?.signal?.throwIfAborted(); if (modellar instanceof Error) throw modellar; return royxatJavob(modellar.map((m) => live(m))); }) as unknown as typeof fetch;
+  // aniq model: hech qachon almashtirilmaydi va ro'yxat so'ralmaydi
+  const aniq = { ...SOZ, model: 'gemini-eski-live', modelAvto: false };
+  assert.deepEqual(await geminiModeliniHal(aniq, { fetchFn: bilan(['gemini-3.8-live']) }), aniq); assert.equal(n, 0);
+  // standart mavjud: o'zgarmaydi
+  assert.equal((await geminiModeliniHal(SOZ, { fetchFn: bilan(['gemini-3.8-live', 'gemini-4-live']) })).model, 'gemini-3.8-live'); assert.equal(n, 1);
+  // standart mavjud emas: eng mos Live model
+  const h = await geminiModeliniHal(SOZ, { fetchFn: bilan(['gemini-3.1-flash-live-preview']) });
+  assert.equal(h.model, 'gemini-3.1-flash-live-preview'); assert.equal(h.kalit, SOZ.kalit); assert.equal(h.tashqiOvoz, SOZ.tashqiOvoz);
+  // ro'yxat bo'sh yoki olinmadi: sozlama o'zgarmaydi, istisno chiqmaydi
+  assert.deepEqual(await geminiModeliniHal(SOZ, { fetchFn: bilan([]) }), SOZ);
+  assert.deepEqual(await geminiModeliniHal(SOZ, { fetchFn: bilan(new TypeError(`fetch failed ${KALIT}`)) }), SOZ);
+  assert.deepEqual(await geminiModeliniHal(SOZ, { fetchFn: (async () => javobJSON({}, 403)) as unknown as typeof fetch }), SOZ);
+  const c = new AbortController(); c.abort();
+  assert.deepEqual(await geminiModeliniHal(SOZ, { fetchFn: bilan(['gemini-3.1-flash-live-preview']), signal: c.signal }), SOZ);
+});
+
+/* ───────────── administrator maslahati ───────────── */
+test('Administrator maslahati: yiqilgan qadamga mos aniq amal (Billing, kalit, model, ElevenLabs modeli/ruxsati/tezligi); hammasi yaxshi bo‘lsa bo‘sh', () => {
+  const q = (nom: string, ok: boolean, izoh: string, ms?: number): TekshiruvQadami => ({ nom, ok, izoh, ...(ms === undefined ? {} : { ms }) });
+  assert.deepEqual(tekshiruvMaslahati([q('Sozlama', true, 'x'), q('Gemini token', true, 'ok'), q('ElevenLabs tezligi', true, 'Birinchi audio 400 ms', 400)]), []);
+  const bir = (...a: TekshiruvQadami[]) => tekshiruvMaslahati(a).join(' | ');
+  assert.match(bir(q('Gemini token', false, 'Gemini so‘rovlar chegarasi yoki kvotasi tugadi (429). Quota exceeded')), /Billing/);
+  assert.match(bir(q('Gemini WebSocket + sozlama', false, 'Ulanish yopildi (kod 1011). resource exhausted')), /Billing/);
+  assert.match(bir(q('Gemini token', false, 'Gemini kaliti qabul qilinmadi yoki unda ruxsat yo‘q (403).')), /GEMINI_API_KEY/);
+  assert.match(bir(q('Gemini WebSocket + sozlama', false, 'Ulanish yopildi (kod 1007). models/xyz is not found')), /GEMINI_LIVE_MODEL/);
+  assert.match(bir(q('Gemini modellari', false, 'Sozlangan GEMINI_LIVE_MODEL=x kalitingiz uchun Live ro‘yxatida yo‘q.')), /GEMINI_LIVE_MODEL/);
+  assert.match(bir(q('Gemini javobi', false, 'Javob bo‘sh keldi.')), /GEMINI_LIVE_CHIQISH/);
+  assert.match(bir(q('Gemini WebSocket + sozlama', false, 'setupComplete kelmadi (kechikdi)')), /vaqtda javob/);
+  assert.match(bir(q('ElevenLabs modeli', false, 'ElevenLabs hisobingizda eleven_v3 modeli o‘zbek tilini qo‘llamaydi')), /ELEVENLABS_MODEL_ID=eleven_v4_turbo/);
+  assert.match(bir(q('ElevenLabs ovozi', false, 'ElevenLabs hisobidagi kredit yoki tarifni tekshiring. (402)')), /tarif/);
+  assert.match(bir(q('ElevenLabs modeli', false, 'ElevenLabs kalitida kerakli ruxsat yo‘q. Text to Speech va Models Read ruxsatlarini tekshiring. (403)')), /Models/);
+  assert.match(bir(q('ElevenLabs ovozi', false, 'ElevenLabs API kaliti qabul qilinmadi yoki unda ruxsat yo‘q. (401)')), /ELEVENLABS_API_KEY/);
+  assert.match(bir(q('ElevenLabs ovozi', false, 'ElevenLabs ovozi yoki modeli topilmadi. Voice ID ni tekshiring. (404)')), /ELEVENLABS_VOICE_ID/);
+  assert.match(bir(q('ElevenLabs tezligi', true, 'Birinchi audio 2400 ms', 2400)), /sekin \(2400 ms\)/);
+  assert.equal(bir(q('OpenAI zaxirasi', false, 'OPENAI_API_KEY yo‘q')), '', 'OpenAI zaxirasi alohida (asosiy tekshiruvga kirmaydi)');
+  assert.equal(bir(q('ElevenLabs ovozi', false, 'Ovoz sozlanmagan (kalit_yoq).')), '', 'sozlanmagan ovoz "kalit rad etildi" deb aytilmaydi');
+  // bir nechta muammo: har biri alohida satr
+  assert.equal(tekshiruvMaslahati([q('Gemini token', false, '429 kvota'), q('ElevenLabs ovozi', false, '(401)')]).length, 2);
+});
+
+test('Tekshiruv: Google `error` yuborsa kutmasdan sabab ko‘rsatiladi; javob vaqti savoldan boshlab hisoblanadi', async () => {
+  Soxta.senariy = (s) => { queueMicrotask(() => { s.xabar({ setupComplete: {} }); queueMicrotask(() => s.xabar({ error: { message: `quota exceeded ${KALIT}` } })); }); };
+  const t0 = Date.now();
+  const x = await tekshir({ kutishMs: 5000 });
+  assert.ok(Date.now() - t0 < 1500, 'timeout kutilmadi');
+  assert.deepEqual(x.map((q) => [q.nom, q.ok]), [['Gemini WebSocket + sozlama', true], ['Gemini javobi', false]]);
+  assert.match(x[1].izoh, /quota exceeded/); assert.ok(!x[1].izoh.includes(KALIT));
+  Soxta.senariy = (s) => { queueMicrotask(() => { s.xabar({ setupComplete: {} }); queueMicrotask(() => { s.xabar({ serverContent: { modelTurn: { parts: [{ text: 'Salom.' }] } } }); s.xabar({ serverContent: { turnComplete: true } }); }); }); };
+  const y = await tekshir();
+  assert.match(y[1].izoh, /Savoldan birinchi matngacha \d+ ms, javob tugashigacha \d+ ms/);
 });
 
 /* ───────────── administrator tekshiruvi (soxta WebSocket) ───────────── */

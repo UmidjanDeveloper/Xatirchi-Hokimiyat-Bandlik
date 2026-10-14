@@ -14,8 +14,8 @@ import { korishdami } from '@/lib/korish-rejimi';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 25;
-// `jonli`: yaroqli jonli suhbat ruxsatnomasi (faqat shu server imzolaydi). Jonli suhbatda javob
-// bitta javob bitta ovoz so'rovida o'qiladi; faol suhbatda oddiy "tinglash" tugmasidan ko'ra ko'proq so'rov kerak bo'ladi.
+// `jonli`: yaroqli jonli suhbat ruxsatnomasi (faqat shu server imzolaydi). Jonli suhbatda javob gap-gap o'qiladi
+// (bir javob ko'pi bilan 5 ta so'rov, birinchi gap butun javobni kutmaydi): oddiy "tinglash" tugmasidan ko'ra ko'proq so'rov kerak bo'ladi.
 const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ), jonli: z.string().max(2000).optional(), zaxira: z.boolean().optional(), oqim: z.boolean().optional() });
 
 export async function POST(request: Request) {
@@ -58,11 +58,11 @@ export async function POST(request: Request) {
   if (parsed.data.jonli && !jonliRuxsat) return xato('Жонли суҳбат тугаган. Қайта уланг.', 403);
   // Jonli suhbat: alohida (kengroq, lekin chegaralangan) hisob; oddiy tugma hisobiga tegmaydi.
   const minute = jonliRuxsat
-    ? await bazaChegarasi(`agent-tts-jonli:${q.sessiya.userId}`, 30, 60_000)
+    ? await bazaChegarasi(`agent-tts-jonli:${q.sessiya.userId}`, 45, 60_000)
     : await bazaChegarasi(`agent-tts:${q.sessiya.userId}`, 6, 60_000);
   if (!minute.allowed) return xato('Бир оз кутинг. Матн экранда сақланган.', 429);
   const daily = jonliRuxsat
-    ? await bazaChegarasi(`agent-tts-jonli-kun:${q.sessiya.userId}`, 400, 86_400_000)
+    ? await bazaChegarasi(`agent-tts-jonli-kun:${q.sessiya.userId}`, 1000, 86_400_000)
     : await bazaChegarasi(`agent-tts-kun:${q.sessiya.userId}`, 80, 86_400_000);
   if (!daily.allowed) return xato('Бугунги овозли жавоб чегараси тугади.', 429);
   try {

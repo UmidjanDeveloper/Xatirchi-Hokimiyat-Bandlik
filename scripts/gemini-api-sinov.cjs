@@ -43,14 +43,27 @@ mock('src/lib/agent/tts.ts', {
   ovozZanjiri: async () => { if (zanjirXato) throw zanjirXato; speech++; return { audio: new Uint8Array([1, 2, 3]).buffer, provayder: zaxiraOvoz ? 'openai' : 'elevenlabs', zaxira: zaxiraOvoz }; },
 });
 const originalFetch = global.fetch;
+// Kalit uchun mavjud Live modellar (models.list), ElevenLabs katalogi/TTS va OpenAI TTS: sinov davomida o'zgartiriladi
+let modelRoyxati = ['gemini-3.8-live'], modelSorovlari = 0, modelJavob = null;
+let elTtsJavob = null, elTtsSorovlari = 0, openaiTtsSorovlari = 0;
+const PCM = () => new Response(new Uint8Array(4800), { headers: { 'content-type': 'audio/pcm' } });
 global.fetch = async (url, init) => {
-  provider++; urls.push(String(url)); init?.signal?.throwIfAborted();
-  if (String(url).endsWith('/hangup')) return new Response(null, { status: 200 });
-  if (String(url).includes('generativelanguage')) return providerJavob ? providerJavob() : new Response(JSON.stringify({ name: 'auth_tokens/testtoken12345' }), { status: 200 });
+  const u = String(url);
+  provider++; urls.push(u); init?.signal?.throwIfAborted();
+  if (u.endsWith('/hangup')) return new Response(null, { status: 200 });
+  if (/^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\?/.test(u)) {
+    modelSorovlari++;
+    if (modelJavob) return modelJavob();
+    return new Response(JSON.stringify({ models: modelRoyxati.map((m) => ({ name: `models/${m}`, supportedGenerationMethods: ['bidiGenerateContent'] })) }), { status: 200 });
+  }
+  if (u.includes('generativelanguage')) return providerJavob ? providerJavob() : new Response(JSON.stringify({ name: 'auth_tokens/testtoken12345' }), { status: 200 });
+  if (u === 'https://api.elevenlabs.io/v1/models') return Response.json([{ model_id: 'eleven_v4_turbo', can_do_text_to_speech: true, languages: [{ language_id: 'uzb' }] }]);
+  if (u.startsWith('https://api.elevenlabs.io/v1/text-to-speech/')) { elTtsSorovlari++; return elTtsJavob ? elTtsJavob() : PCM(); }
+  if (u.startsWith('https://api.openai.com/v1/audio/speech')) { openaiTtsSorovlari++; return PCM(); }
   return new Response('v=0\r\nmock-answer', { headers: { location: '/v1/realtime/calls/rtc_test' } });
 };
 const GEMINI = 'AIza-test-only-private-gemini-key-000000';
-const setEnv = (e) => { for (const k of ['OPENAI_API_KEY', 'GEMINI_API_KEY', 'AGENT_REALTIME', 'AGENT_JONLI_PROVAYDER', 'AGENT_TTS', 'ELEVENLABS_API_KEY', 'ELEVENLABS_VOICE_ID', 'AGENT_TTS_PROVIDER']) delete process.env[k]; Object.assign(process.env, e); };
+const setEnv = (e) => { for (const k of ['OPENAI_API_KEY', 'GEMINI_API_KEY', 'AGENT_REALTIME', 'AGENT_JONLI_PROVAYDER', 'AGENT_TTS', 'ELEVENLABS_API_KEY', 'ELEVENLABS_VOICE_ID', 'AGENT_TTS_PROVIDER', 'GEMINI_LIVE_MODEL', 'GEMINI_LIVE_OVOZ', 'GEMINI_LIVE_CHIQISH', 'ELEVENLABS_MODEL_ID']) delete process.env[k]; Object.assign(process.env, e); };
 const geminiEnv = { GEMINI_API_KEY: GEMINI, AGENT_TTS: '1', ELEVENLABS_API_KEY: 'el-test-key', ELEVENLABS_VOICE_ID: 'voice_1' };
 process.env.SESSION_SECRET = 'test-only-long-session-secret-more-than-32';
 setEnv(geminiEnv);
@@ -85,10 +98,13 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
   let token, body;
   await test('Token issued: official URL/headers, locked setup returned, private key never leaves server', async () => {
     const r = await POST(request(start)); assert.equal(r.status, 200); body = await r.json(); token = body.ruxsat;
-    assert.equal(provider, 1); assert.equal(urls[0], 'https://generativelanguage.googleapis.com/v1alpha/auth_tokens');
+    // Standart model kalit uchun mavjudligi bir marta tekshiriladi (models.list), keyin bitta token so'rovi
+    const tokenUrls = urls.filter((x) => x.endsWith('/auth_tokens'));
+    assert.deepEqual(tokenUrls, ['https://generativelanguage.googleapis.com/v1alpha/auth_tokens']); assert.equal(modelSorovlari, 1);
+    assert.ok(urls.every((x) => !x.includes(GEMINI)), 'kalit hech qachon URL ga tushmaydi');
     assert.equal(body.provayder, 'gemini'); assert.equal(body.chiqish, 'transkript'); assert.equal(body.tashqiOvoz, true);
     assert.match(body.wsUrl, /^wss:\/\/generativelanguage\.googleapis\.com\/ws\/.*BidiGenerateContentConstrained\?access_token=/);
-    assert.equal(body.setup.model, 'models/gemini-3.1-flash-live-preview'); assert.deepEqual(body.setup.generationConfig.responseModalities, ['AUDIO']);
+    assert.equal(body.setup.model, 'models/gemini-3.8-live'); assert.deepEqual(body.setup.generationConfig.responseModalities, ['AUDIO']);
     assert.match(body.setup.systemInstruction.parts[0].text, /Uyshun/);
     assert.ok(body.setup.tools[0].functionDeclarations.some((f) => f.name === 'hisobotni_yukla' && f.parameters.type === 'OBJECT' && !('additionalProperties' in f.parameters)));
     const s = JSON.stringify(body);
@@ -131,6 +147,38 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
     const ctrl = new AbortController(); ctrl.abort();
     assert.notEqual((await POST(request(start, ctrl.signal))).status, 200);
   });
+  await test('Gemini failure reason is shown to administrators only (never the key); other roles get the generic message', async () => {
+    providerJavob = () => new Response(JSON.stringify({ error: { message: `Billing required for this model ${GEMINI}` } }), { status: 403 });
+    const a = await (await POST(request(start))).json();
+    assert.match(a.tafsilot, /403/); assert.match(a.tafsilot, /Billing required/); assert.ok(!JSON.stringify(a).includes(GEMINI));
+    auth = { sessiya: { ...admin.sessiya, rol: 'HOKIM' } };
+    const h = await POST(request(start)); const hj = await h.json();
+    assert.equal(h.status, 502); assert.equal(hj.tafsilot, undefined); assert.ok(!JSON.stringify(hj).includes('Billing'));
+    auth = admin; providerJavob = null;
+  });
+  await test('Default model missing for this key: an available Live model is used and remembered; explicit GEMINI_LIVE_MODEL is never replaced or listed; list failure keeps the default', async () => {
+    const { geminiModelKeshiniTozala } = require(path.join(root, 'src/lib/agent/gemini-modellar.ts'));
+    const modelOl = async () => (await (await POST(request(start))).json()).setup.model;
+    try {
+      setEnv(geminiEnv); geminiModelKeshiniTozala(); modelRoyxati = ['gemini-3.1-flash-live-preview']; modelSorovlari = 0;
+      assert.equal(await modelOl(), 'models/gemini-3.1-flash-live-preview'); assert.equal(modelSorovlari, 1);
+      assert.equal(await modelOl(), 'models/gemini-3.1-flash-live-preview'); assert.equal(modelSorovlari, 1, 'ro‘yxat eslab qolinadi');
+      setEnv({ ...geminiEnv, GEMINI_LIVE_MODEL: 'gemini-custom-live' }); modelSorovlari = 0;
+      assert.equal(await modelOl(), 'models/gemini-custom-live'); assert.equal(modelSorovlari, 0, 'aniq model uchun ro‘yxat so‘ralmaydi');
+      setEnv(geminiEnv); geminiModelKeshiniTozala(); modelJavob = () => new Response('{}', { status: 403 }); modelSorovlari = 0;
+      assert.equal(await modelOl(), 'models/gemini-3.8-live'); assert.equal(modelSorovlari, 1, 'ro‘yxat olinmasa standart model bilan davom etadi');
+    } finally { modelJavob = null; modelRoyxati = ['gemini-3.8-live']; geminiModelKeshiniTozala(); setEnv(geminiEnv); }
+  });
+  await test('GEMINI_LIVE_OVOZ=gemini: live start asks for Gemini native voice (no external TTS), ordinary Listen button keeps ElevenLabs', async () => {
+    try {
+      setEnv({ ...geminiEnv, GEMINI_LIVE_OVOZ: 'gemini' });
+      const d = await (await POST(request(start))).json();
+      assert.equal(d.tashqiOvoz, false); assert.equal(d.chiqish, 'transkript'); assert.doesNotMatch(d.setup.systemInstruction.parts[0].text, /Sen MATN yozasan/);
+      const holat = require(path.join(root, 'src/lib/agent/gemini.ts'));
+      assert.equal(holat.geminiSozlama().tashqiOvoz, false);
+      const nutq = require(path.join(root, 'src/lib/agent/nutq.ts')); assert.equal(nutq.nutqUlanishi(), 'tayyor');
+    } finally { setEnv(geminiEnv); }
+  });
   await test('Live speech budget: only a valid live ticket gets the wider ElevenLabs budget; bad ticket refused', async () => {
     keys.length = 0;
     assert.equal((await gapir.POST(gapirSorov({ matn: 'Salom.' }))).status, 200);
@@ -170,6 +218,7 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
     providerJavob = () => new Response('{"error":{"message":"quota"}}', { status: 429 });
     const r = await POST(request(start)); assert.equal(r.status, 502); const d = await r.json();
     assert.ok(d.zaxira && jonliRuxsatOqi(kimlik(), d.zaxira)?.prov === 'gemini'); qoplash = d.zaxira;
+    assert.match(d.tafsilot, /429/, 'administrator Google bergan sababni ko‘radi');
     assert.equal(jonliRuxsatOqi(kimlik(), qoplash).hisoblangan, false);
     assert.equal(bandlar.size, oldBands, 'failed Gemini start refunds both reservations');
     const s = JSON.stringify(d); for (const gizli of [GEMINI, OPENAI, 'el-test-key', process.env.SESSION_SECRET]) assert.ok(!s.includes(gizli));
@@ -244,16 +293,62 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
     assert.ok(urls.slice(before).some((u) => u.endsWith('/hangup')));
     setEnv({}); assert.equal((await POST(request(start))).status, 503); assert.equal((await POST(request({ tur: 'ulanish', sdp: 'v=0\r\nx' }))).status, 503);
   });
+  // Administrator tekshiruvi: Gemini WebSocket qadami soxta (haqiqiy ulanishsiz), qolgani soxta HTTP orqali haqiqiy kod yo'lida
+  const wsChaqiruvlari = [];
+  mock('src/lib/agent/openai-tekshir.ts', { openaiZaxiraniTekshir: async () => ({ nom: 'OpenAI zaxirasi', ok: true, izoh: 'fixture' }) });
+  mock('src/lib/agent/gemini-tekshir.ts', { geminiSoketniTekshir: async (p) => { wsChaqiruvlari.push(p); return [{ nom: 'Gemini WebSocket + sozlama', ok: true, izoh: 'fixture' }, { nom: 'Gemini javobi', ok: true, ms: 900, izoh: 'fixture' }]; } });
+  const probe = require(path.join(root, 'src/app/api/agent/jonli-tekshir/route.ts'));
+  const qadamNomlari = (d) => d.qadamlar.map((x) => `${x.ok ? '✓' : '✗'} ${x.nom}`);
+  await test('Admin check (Gemini primary): lists Live models, tests the model that will really be used, measures ElevenLabs first audio without the OpenAI backup', async () => {
+    const { geminiModelKeshiniTozala } = require(path.join(root, 'src/lib/agent/gemini-modellar.ts'));
+    try {
+      setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI }); geminiModelKeshiniTozala(); modelRoyxati = ['gemini-3.1-flash-live-preview']; wsChaqiruvlari.length = 0; elTtsSorovlari = 0; openaiTtsSorovlari = 0;
+      const d = await (await probe.POST()).json();
+      assert.equal(d.ok, true, JSON.stringify(d.qadamlar)); assert.equal(d.zaxiraTayyor, true);
+      assert.deepEqual(qadamNomlari(d), ['✓ Sozlama', '✓ Gemini modellari', '✓ Gemini token', '✓ Gemini WebSocket + sozlama', '✓ Gemini javobi', '✓ ElevenLabs modeli', '✓ ElevenLabs tezligi', '✓ OpenAI zaxirasi']);
+      assert.match(d.qadamlar.find((x) => x.nom === 'Gemini modellari').izoh, /gemini-3\.1-flash-live-preview/);
+      assert.equal(wsChaqiruvlari.length, 1); assert.equal(wsChaqiruvlari[0].setup.model, 'models/gemini-3.1-flash-live-preview', 'WebSocket tekshiruvi haqiqatda ishlatiladigan modelda');
+      assert.equal(wsChaqiruvlari[0].chiqish, 'transkript'); assert.ok(!/AIza|el-test-key/.test(JSON.stringify(d)) && !JSON.stringify(d).includes(GEMINI));
+      assert.equal(elTtsSorovlari, 1); assert.equal(openaiTtsSorovlari, 0, 'ElevenLabs tekshiruvida OpenAI zaxirasi ishlamaydi');
+      assert.match(d.qadamlar.find((x) => x.nom === 'ElevenLabs tezligi').izoh, /Birinchi audio \d+ ms da keldi \(PCM oqimi, model eleven_v4_turbo\)/);
+    } finally { modelRoyxati = ['gemini-3.8-live']; geminiModelKeshiniTozala(); }
+  });
+  await test('Admin check: failing steps get specific "what to do" advice (Gemini model/billing, ElevenLabs key); OpenAI backup never changes the verdict', async () => {
+    const { geminiModelKeshiniTozala } = require(path.join(root, 'src/lib/agent/gemini-modellar.ts'));
+    try {
+      // Gemini modellari ro'yxati bo'sh (kalit/billing) + ElevenLabs kaliti rad etildi
+      setEnv({ ...geminiEnv, OPENAI_API_KEY: OPENAI }); geminiModelKeshiniTozala(); modelRoyxati = [];
+      elTtsJavob = () => new Response(JSON.stringify({ detail: { status: 'invalid_api_key', message: 'bad key' } }), { status: 401 });
+      const d = await (await probe.POST()).json();
+      assert.equal(d.ok, false);
+      const nomlar = qadamNomlari(d);
+      assert.ok(nomlar.includes('✗ Gemini modellari') && nomlar.includes('✗ ElevenLabs ovozi') && nomlar.includes('✗ Nima qilish kerak'), nomlar.join(' | '));
+      const maslahat = d.qadamlar.find((x) => x.nom === 'Nima qilish kerak').izoh;
+      assert.match(maslahat, /1\).*Billing/); assert.match(maslahat, /2\).*ELEVENLABS_API_KEY/);
+      assert.equal(openaiTtsSorovlari, 0);
+      // faqat OpenAI zaxirasi yiqilsa: umumiy natija o'zgarmaydi
+      elTtsJavob = null; modelRoyxati = ['gemini-3.8-live']; geminiModelKeshiniTozala();
+      mock('src/lib/agent/openai-tekshir.ts', { openaiZaxiraniTekshir: async () => ({ nom: 'OpenAI zaxirasi', ok: false, izoh: 'OPENAI_API_KEY yo‘q' }) });
+      delete require.cache[require.resolve(path.join(root, 'src/app/api/agent/jonli-tekshir/route.ts'))];
+      const probe2 = require(path.join(root, 'src/app/api/agent/jonli-tekshir/route.ts'));
+      const z = await (await probe2.POST()).json();
+      assert.equal(z.ok, true); assert.equal(z.zaxiraTayyor, false);
+    } finally {
+      elTtsJavob = null; modelRoyxati = ['gemini-3.8-live']; geminiModelKeshiniTozala();
+      mock('src/lib/agent/openai-tekshir.ts', { openaiZaxiraniTekshir: async () => ({ nom: 'OpenAI zaxirasi', ok: true, izoh: 'fixture' }) });
+    }
+  });
   await test('OpenAI primary diagnostics still checks ElevenLabs; native voice does not require Gemini key', async () => {
-    mock('src/lib/agent/openai-tekshir.ts', { openaiZaxiraniTekshir: async () => ({ nom: 'OpenAI zaxirasi', ok: true, izoh: 'fixture' }) });
-    const nutq = require(path.join(root, 'src/lib/agent/nutq.ts')); let ttsChecks = 0;
-    mock('src/lib/agent/nutq.ts', { ...nutq, nutqYarat: async () => { ttsChecks++; throw new nutq.NutqXatosi('provayder', 'ElevenLabs API kaliti qabul qilinmadi'); } });
-    const probe = require(path.join(root, 'src/app/api/agent/jonli-tekshir/route.ts'));
+    delete require.cache[require.resolve(path.join(root, 'src/app/api/agent/jonli-tekshir/route.ts'))];
+    const probe3 = require(path.join(root, 'src/app/api/agent/jonli-tekshir/route.ts'));
+    elTtsSorovlari = 0; openaiTtsSorovlari = 0;
+    elTtsJavob = () => new Response(JSON.stringify({ detail: { status: 'invalid_api_key', message: 'bad key' } }), { status: 401 });
     setEnv({ ...geminiEnv, GEMINI_API_KEY: '', OPENAI_API_KEY: OPENAI, AGENT_JONLI_PROVAYDER: 'openai' });
-    const d = await (await probe.POST()).json(); assert.equal(d.ok, false); assert.equal(ttsChecks, 1);
+    const d = await (await probe3.POST()).json(); assert.equal(d.ok, false); assert.equal(elTtsSorovlari, 1);
     assert.equal(d.qadamlar[0].nom, 'OpenAI jonli suhbat'); assert.ok(d.qadamlar.some((x) => x.nom === 'ElevenLabs ovozi' && !x.ok)); assert.ok(!d.qadamlar.some((x) => /Gemini/.test(x.nom)));
+    elTtsJavob = null;
     setEnv({ OPENAI_API_KEY: OPENAI, AGENT_REALTIME: '1' });
-    const native = await (await probe.POST()).json(); assert.equal(native.ok, true); assert.equal(ttsChecks, 1); assert.ok(native.qadamlar.some((x) => x.nom === 'OpenAI ovozi'));
+    const native = await (await probe3.POST()).json(); assert.equal(native.ok, true); assert.equal(elTtsSorovlari, 1); assert.ok(native.qadamlar.some((x) => x.nom === 'OpenAI ovozi'));
   });
   console.log(`${checks}/${checks} Gemini API checks passed with mocked provider/DB.`);
 })().catch((e) => { console.error(e); process.exitCode = 1; }).finally(() => { global.fetch = originalFetch; });

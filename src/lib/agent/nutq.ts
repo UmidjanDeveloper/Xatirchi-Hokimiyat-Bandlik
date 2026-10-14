@@ -7,7 +7,18 @@ import { elevenlabsNutq } from './elevenlabs';
 export { ENG_UZUN_NUTQ };
 const OVOZLAR = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer', 'coral', 'sage', 'ash', 'marin', 'cedar'] as const;
 
-export interface NutqProvayderi { provayder?: 'openai' | 'elevenlabs'; kalit: string; model: string; ovoz: string }
+export interface NutqProvayderi {
+  provayder?: 'openai' | 'elevenlabs'; kalit: string; model: string; ovoz: string;
+  /** ElevenLabs: o'zbek tili model katalogidan tekshiriladimi (`false` — `ELEVENLABS_KATALOG_TEKSHIRUVI=0`: model to'g'ridan-to'g'ri ishlatiladi) */
+  katalogTekshir?: boolean;
+}
+
+/**
+ * ElevenLabs standart modeli. Eleven v3 "ijodiy" model (sekin) va o'zbekchasi tasdiqlanmagan; Eleven v4 / v4 Turbo
+ * hujjatlarida o'zbek (uzb) bor, Turbo esa jonli suhbat uchun (~100–150 ms). Katalogda o'zbekchasi yo'q model
+ * sozlangan bo'lsa, `elevenlabs.ts` o'zbekchasi bor modelni o'zi tanlaydi.
+ */
+export const ELEVENLABS_ODATIY_MODEL = 'eleven_v4_turbo';
 
 export function nutqXizmati(env: NodeJS.ProcessEnv = process.env): 'openai' | 'elevenlabs' | 'noma_lum' {
   const tanlov = env.AGENT_TTS_PROVIDER?.trim();
@@ -24,7 +35,7 @@ export function nutqUlanishi(env: NodeJS.ProcessEnv = process.env): 'tayyor' | '
   if (xizmat === 'elevenlabs') {
     if (!env.ELEVENLABS_VOICE_ID?.trim()) return 'ovoz_id_yoq';
     if (!/^[a-zA-Z0-9_-]{1,100}$/.test(env.ELEVENLABS_VOICE_ID.trim()) ||
-      !/^[a-zA-Z0-9_-]{1,100}$/.test(env.ELEVENLABS_MODEL_ID?.trim() || 'eleven_v3')) return 'sozlama_xato';
+      !/^[a-zA-Z0-9_-]{1,100}$/.test(env.ELEVENLABS_MODEL_ID?.trim() || ELEVENLABS_ODATIY_MODEL)) return 'sozlama_xato';
   }
   return 'tayyor';
 }
@@ -34,7 +45,8 @@ export function nutqProvayderi(env: NodeJS.ProcessEnv = process.env): NutqProvay
   if (nutqUlanishi(env) !== 'tayyor') return null;
   if (nutqXizmati(env) === 'elevenlabs') return {
     provayder: 'elevenlabs', kalit: env.ELEVENLABS_API_KEY!.trim(),
-    model: env.ELEVENLABS_MODEL_ID?.trim() || 'eleven_v3', ovoz: env.ELEVENLABS_VOICE_ID!.trim(),
+    model: env.ELEVENLABS_MODEL_ID?.trim() || ELEVENLABS_ODATIY_MODEL, ovoz: env.ELEVENLABS_VOICE_ID!.trim(),
+    katalogTekshir: env.ELEVENLABS_KATALOG_TEKSHIRUVI?.trim() !== '0',
   };
   return openaiNutq(env);
 }

@@ -63,6 +63,8 @@ interface HolatMalumoti {
   jonliProvayder?: 'gemini' | 'openai' | null;
   /** Gemini ishlamasa OpenAI'ga o'tish mumkinmi (OpenAI sozlangan) */
   jonliZaxira?: boolean;
+  /** Gemini jonli suhbatda kim gapiradi: tashqi TTS (ElevenLabs/OpenAI) yoki Gemini'ning o'z ovozi (GEMINI_LIVE_OVOZ=gemini) */
+  geminiOvozi?: 'tashqi' | 'gemini' | null;
   limit: number;
   qolgan: number;
 }
@@ -106,6 +108,8 @@ export default function AgentOynasi({
   const [jonliFaol, setJonliFaol] = useState(false);
   /** Jonli suhbat Gemini o'rniga OpenAI zaxirasida ishlayapti */
   const [zaxirada, setZaxirada] = useState(false);
+  /** Zaxiraga o'tish sababi (Google aytgan, kalitsiz): faqat administratorga va suhbat tugaguncha ko'rinib turadi */
+  const [zaxiraSababi, setZaxiraSababi] = useState('');
   const [jonliOvoz, setJonliOvoz] = useState<'gemini' | 'openai' | 'elevenlabs'>('openai');
   const [oddiyZaxiraOvoz, setOddiyZaxiraOvoz] = useState(false);
   const [jonliProvayder, setJonliProvayder] = useState<'gemini' | 'openai'>('openai');
@@ -159,6 +163,7 @@ export default function AgentOynasi({
     jonli.current = null;
     setJonliFaol(false);
     setZaxirada(false);
+    setZaxiraSababi('');
     suhbatRef.current = false;
     setSuhbatRejimi(false);
     if (davomTaymeri.current) clearTimeout(davomTaymeri.current);
@@ -578,22 +583,27 @@ export default function AgentOynasi({
     if (asosiy === 'gemini' && zaxiraBor && geminiYaqindaYiqildi()) boshlangich = 'openai';
     if (!mumkin[boshlangich] && zaxiraBor) boshlangich = boshlangich === 'gemini' ? 'openai' : 'gemini';
     if (!mumkin[boshlangich]) { setBildirish(t('Bu brauzerda jonli ovoz ishlamaydi. Oddiy mikrofon yoki yozma suhbatdan foydalaning.')); return; }
-    toxtat(); nutqniTayyorla(); setBildirish(''); setJonliFaol(true); setMimikaSinovi(false);
+    toxtat(); nutqniTayyorla(); setBildirish(''); setZaxiraSababi(''); setJonliFaol(true); setMimikaSinovi(false);
     const hodisalar: JonliHodisalar = {
       onHolat: setHolat, onDaraja: setOgizDarajasi,
       onMatn: (id, r, m, tamom) => jonliMatnRef.current(id, r, m, tamom),
       onAmallar: (a, m, s) => jonliAmalRef.current(a, m, s),
       onOvoz: (m, s) => jonliOvozRef.current(m, s),
       onXato: (m) => { setBildirish(t(m)); setKayfiyat('xavotir'); },
-      onOgoh: (m) => { if (/ElevenLabs.*OpenAI/.test(m)) setJonliOvoz('openai'); setBildirish(t(m)); },
-      onTugadi: () => { jonli.current = null; setJonliFaol(false); setZaxirada(false); },
+      // Texnik sabab (Google/server aytgan, kalitsiz) faqat administratorga: zaxiraga o'tish jimgina yashirilmasin
+      onOgoh: (m, tafsilot) => {
+        if (/ElevenLabs.*OpenAI/.test(m)) setJonliOvoz('openai');
+        if (rol === 'ADMIN' && tafsilot) setZaxiraSababi(tafsilot);
+        setBildirish(t(m) + (rol === 'ADMIN' && tafsilot ? ` [${tafsilot}]` : ''));
+      },
+      onTugadi: () => { jonli.current = null; setJonliFaol(false); setZaxirada(false); setZaxiraSababi(''); },
     };
     let ulandi = false;
     jonli.current = jonliBoshqaruv(hodisalar, {
       asosiy, boshlangich, zaxiraBor: zaxiraBor && mumkin.gemini && mumkin.openai,
       gemini: geminiJonliBoshla, openai: jonliBoshla,
       onProvayder: (p, mahalliyOvoz) => {
-        const tashqi = !mahalliyOvoz && (p === 'gemini' || p === asosiy) && malumot?.ovozChiqish;
+        const tashqi = !mahalliyOvoz && (p === 'gemini' ? malumot?.geminiOvozi !== 'gemini' : p === asosiy) && malumot?.ovozChiqish;
         setJonliOvoz(tashqi ? (malumot?.ovozXizmati === 'elevenlabs' ? 'elevenlabs' : 'openai') : p);
         setZaxirada(p !== asosiy);
         setJonliProvayder(p);
@@ -716,6 +726,7 @@ export default function AgentOynasi({
         <div className="min-w-0 flex-1 text-xs">
           <p className="font-medium text-ink">{t(holatMatni || 'Сизни тинглаяпман')}</p>
           {(jonliFaol || malumot?.ovozChiqish) && <p className="mt-1 text-ink-muted">{t(jonliFaol ? `Овоз: ${jonliOvoz === 'elevenlabs' ? 'ElevenLabs' : jonliOvoz === 'gemini' ? 'Gemini' : 'OpenAI'}` : !oddiyZaxiraOvoz && malumot?.ovozXizmati === 'elevenlabs' ? 'Овоз: ElevenLabs' : 'Овоз: OpenAI')}</p>}
+          {rol === 'ADMIN' && jonliFaol && zaxiraSababi && <p className="mt-1 break-words text-warn" data-zaxira-sababi="ha">{t('Захира сабаби:')} {zaxiraSababi}</p>}
           <button type="button" className="mt-2 w-full rounded-md bg-accent px-3 py-2 font-medium text-accent-contrast disabled:opacity-40"
             disabled={!malumotTayyor || !malumot?.jonli || band}
             aria-pressed={jonliFaol} onClick={jonliniBoshla}>

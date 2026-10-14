@@ -515,8 +515,8 @@ const SINOVLAR: Sinov[] = [
       const j = await sorov('/api/agent/jonli', { cookie: c.cookie, method: 'POST', body: { tur: 'ulanish', sdp: 'v=0 test-offer' } });
       return (
         h.status === 200 &&
-        Object.keys(d).sort().join() === 'ai,jonli,jonliProvayder,jonliZaxira,limit,ovozChiqish,ovozServer,ovozUlanishi,ovozXizmati,qolgan,vazifa' &&
-        d.jonliProvayder === null && d.jonliZaxira === false &&
+        Object.keys(d).sort().join() === 'ai,geminiOvozi,jonli,jonliProvayder,jonliZaxira,limit,ovozChiqish,ovozServer,ovozUlanishi,ovozXizmati,qolgan,vazifa' &&
+        d.jonliProvayder === null && d.jonliZaxira === false && d.geminiOvozi === null &&
         d.ovozUlanishi === 'kalit_yoq' &&
         d.ovozXizmati === 'openai' &&
         (d.vazifa === null || (typeof d.vazifa === 'object' && d.vazifa !== null &&
@@ -700,7 +700,7 @@ const SINOVLAR: Sinov[] = [
     },
   },
   {
-    nomi: '13n. Jonli ulanishni tekshirish (`/api/agent/jonli-tekshir`) FAQAT administratorga: kirishsiz, hokim, rahbar, bandlik, mahalla xodimi va ko\'rish rejimi — rad; administratorga qadamlar ro\'yxati (sozlanmagan bo\'lsa YETISHMAYOTGAN NOMLAR, qiymat emas); soatiga 8 martadan ko\'p emas; mikrofon skripti kirgan xodimga beriladi, kirishsizga yo\'q',
+    nomi: '13n. Jonli ulanishni tekshirish (`/api/agent/jonli-tekshir`) FAQAT administratorga: kirishsiz, hokim, rahbar, bandlik, mahalla xodimi va ko\'rish rejimi — rad; administratorga qadamlar ro\'yxati (sozlanmagan bo\'lsa YETISHMAYOTGAN NOMLAR, qiymat emas); soatiga 20 martadan ko\'p emas; mikrofon skripti kirgan xodimga beriladi, kirishsizga yo\'q',
     tekshir: async () => {
       const admin = await xodimYarat('ADMIN', null, 'tek_admin');
       const hokim = await xodimYarat('HOKIM', null, 'tek_hokim');
@@ -721,9 +721,9 @@ const SINOVLAR: Sinov[] = [
       const sozlama = d.qadamlar?.find((q) => q.nom === 'Sozlama');
       const ovoz = d.qadamlar?.find((q) => q.nom === 'ElevenLabs ovozi');
 
-      /* chegara: 8 ta ruxsat, 9-si 429 */
+      /* chegara: soatiga 20 ta ruxsat (birinchisi yuqorida), 21-si 429 */
       let oxirgi = birinchi;
-      for (let i = 0; i < 8; i++) oxirgi = await post(oz.cookie);
+      for (let i = 0; i < 20; i++) oxirgi = await post(oz.cookie);
 
       const skript = await fetch(`${BAZA}/gemini-pcm-worklet.js`, { headers: { cookie: oz.cookie }, redirect: 'manual' });
       const skriptMatni = await skript.text();

@@ -40,7 +40,7 @@ export async function geminiSoketniTekshir(p: {
       qadamlar.push({ nom: 'Gemini WebSocket', ok: false, izoh: `Ochib bo‘lmadi: ${maxfiyniTozala(e).slice(0, 200)}` });
       tugadi(); return;
     }
-    let sozlandi = false; let birinchi = 0; let matn = '';
+    let sozlandi = false; let birinchi = 0; let matn = ''; let savolT0 = 0;
     let yopildi = false;
     const yakun = (q: TekshiruvQadami) => {
       if (yopildi) return;
@@ -64,13 +64,22 @@ export async function geminiSoketniTekshir(p: {
         if (h.t === 'tayyor' && !sozlandi) {
           sozlandi = true;
           qadamlar.push({ nom: 'Gemini WebSocket + sozlama', ok: true, ms: Date.now() - t0, izoh: 'Model, ko‘rsatma va asboblar qabul qilindi.' });
-          soket.send(JSON.stringify(geminiMatnXabari(p.savol ?? 'Salom. Bir qisqa jumlada o‘zbekcha salom ber.')));
+          savolT0 = Date.now();
+          soket.send(JSON.stringify(geminiMatnXabari(p.savol ?? 'Salom. Xatirchi tumani haqida o‘zbekcha uchta qisqa jumla ayt.')));
+        } else if (h.t === 'xato') {
+          // Google `error` xabari yuborsa (model/sozlama rad etildi) timeout kutilmaydi
+          yakun({ nom: sozlandi ? 'Gemini javobi' : 'Gemini WebSocket + sozlama', ok: false, ms: Date.now() - t0,
+            izoh: `Gemini xato qaytardi${h.matn ? `: ${maxfiyniTozala(h.matn).slice(0, 300)}` : ''}` });
         } else if (h.t === 'matn') {
-          if (!birinchi) birinchi = Date.now() - t0;
+          if (!birinchi) birinchi = Date.now() - savolT0;
           matn += h.matn;
         } else if (h.t === 'yakun') {
+          // Ovozli Live modellar javob AUDIOsini to'liq yaratguncha `turnComplete` bermaydi. Tashqi TTS birinchi gap tayyor
+          // bo'lishi bilan boshlanadi, shuning uchun jonli suhbatda ovoz "birinchi matn" vaqtiga yaqin boshlanadi;
+          // "javob tugashi" esa butun javobning davomiyligini ko'rsatadi.
+          const jami = Date.now() - savolT0;
           yakun(matn.trim()
-            ? { nom: 'Gemini javobi', ok: true, ms: birinchi, izoh: `Birinchi matn ${birinchi} ms da keldi (ulanishdan boshlab). Javob: «${matn.trim().slice(0, 140)}»` }
+            ? { nom: 'Gemini javobi', ok: true, ms: birinchi, izoh: `Savoldan birinchi matngacha ${birinchi} ms, javob tugashigacha ${jami} ms. Javob: «${matn.trim().slice(0, 140)}»` }
             : { nom: 'Gemini javobi', ok: false, ms: Date.now() - t0, izoh: 'Javob bo‘sh keldi. Model nomi yoki javob turi (matn/transkript) mos emas bo‘lishi mumkin.' });
         }
       }

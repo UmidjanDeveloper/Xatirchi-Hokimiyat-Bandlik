@@ -72,6 +72,36 @@ async function main() {
       s.q.toxtat(); await flush(); s.q.qosh('Keyingi javob.'); s.q.tugatish(); await flush();
       assert.deepEqual(s.requests.map((r) => r.oqim), [true, true]); assert.equal(s.errors.length, 0); s.ctx.end(); await flush(); s.q.toxtat();
     });
+    await test('Sentence chunks: first request goes alone; a backup voice chosen there pins every later chunk; order is kept and at most two requests run at once', async () => {
+      const waiting: Array<(r: Response) => void> = [];
+      const pending = () => new Promise<Response>((r) => { waiting.push(r); });
+      const backupMp3 = () => new Response(new Uint8Array([73, 68, 51, 1]), { headers: { 'content-type': 'audio/mpeg', 'x-nutq-zaxira': '1', 'x-nutq-provayder': 'openai' } });
+      const s = setup([pending, pending, pending, mp3]);
+      for (const g of ['Birinchi gap.', 'Ikkinchi gap.', 'Uchinchi gap.', 'To‘rtinchi gap.']) s.q.qosh(g);
+      s.q.tugatish(); await flush();
+      assert.equal(s.requests.length, 1, 'voice provider unknown yet: only the first chunk is requested');
+      waiting[0](backupMp3()); await flush();
+      assert.equal(s.requests.length, 3, 'once the provider is known two requests run together, the fourth waits');
+      assert.equal(s.ctx.starts, 1); assert.equal(s.started, 1);
+      waiting[1](mp3()); await flush(); assert.equal(s.requests.length, 4);
+      waiting[2](mp3()); await flush();
+      assert.deepEqual(s.requests.map((r) => r.matn), ['Birinchi gap.', 'Ikkinchi gap.', 'Uchinchi gap.', 'To‘rtinchi gap.']);
+      assert.deepEqual(s.requests.map((r) => (r as { zaxira?: boolean }).zaxira === true), [false, true, true, true], 'the backup voice stays for the rest of the answer');
+      assert.ok(s.requests.every((r) => r.jonli === 'signed-ticket'));
+      for (let n = 2; n <= 4; n++) { s.ctx.end(); await flush(); assert.equal(s.ctx.starts, n, `chunk ${n} plays after chunk ${n - 1}`); assert.equal(s.ended, 0); }
+      s.ctx.end(); await flush(); assert.equal(s.ended, 1); assert.equal(s.started, 1); assert.deepEqual(s.errors, []); s.q.toxtat();
+    });
+    await test('Sentence chunks with the normal voice never ask for the backup; interruption drops queued chunks and late audio', async () => {
+      const waiting: Array<(r: Response) => void> = [];
+      const s = setup([() => new Promise<Response>((r) => { waiting.push(r); }), mp3, mp3]);
+      for (const g of ['Birinchi gap.', 'Ikkinchi gap.', 'Uchinchi gap.']) s.q.qosh(g);
+      await flush(); assert.equal(s.requests.length, 1);
+      s.q.toxtat(); waiting[0](mp3()); await flush();
+      assert.equal(s.requests.length, 1, 'queued chunks are dropped on interruption'); assert.equal(s.ctx.starts, 0); assert.equal(s.ended, 0); assert.deepEqual(s.errors, []);
+      const t = setup([mp3, mp3]);
+      t.q.qosh('Birinchi gap.'); t.q.qosh('Ikkinchi gap.'); t.q.tugatish(); await flush();
+      assert.deepEqual(t.requests.map((r) => (r as { zaxira?: boolean }).zaxira), [undefined, undefined]); t.ctx.end(); await flush(); t.ctx.end(); await flush(); assert.equal(t.ended, 1); t.q.toxtat();
+    });
     await test('Ordinary voice button recovers pre-audio PCM failure without a second voice or duplicate callbacks', async () => {
       const requests: boolean[] = []; let started = 0, ended = 0; const errors: string[] = [];
       global.fetch = (async (_, init) => { const d = JSON.parse(String(init?.body)); requests.push(d.oqim); return d.oqim ? emptyPcm() : mp3(); }) as typeof fetch;

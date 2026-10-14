@@ -1,6 +1,7 @@
 /** Real provider adapter/config with fake HTTP; no paid calls or real keys. */
 import assert from 'node:assert/strict';
-import { nutqProvayderi, nutqUlanishi, nutqYarat, NutqXatosi } from '../src/lib/agent/nutq';
+import { ELEVENLABS_ODATIY_MODEL, nutqProvayderi, nutqUlanishi, nutqYarat, NutqXatosi } from '../src/lib/agent/nutq';
+import { elevenlabsModeliniAniqla, uzbekModeliniTanla, uzbekTiliMi } from '../src/lib/agent/elevenlabs';
 import { matnniOvozga, ttsSozlama } from '../src/lib/agent/tts';
 import { jonliSozlama, jonliSessiya } from '../src/lib/agent/jonli';
 import type { AgentKontekst } from '../src/lib/agent/turlar';
@@ -10,11 +11,17 @@ async function main() {
   const test = async (name: string, fn: () => unknown) => { await fn(); tests++; console.log('OK', name); };
   const env = { NODE_ENV: 'test', AGENT_TTS: '1', ELEVENLABS_API_KEY: 'private-fixture-only', ELEVENLABS_VOICE_ID: 'uzbek_fixture_voice' } as NodeJS.ProcessEnv;
   const prov = nutqProvayderi(env)!;
-  const models = () => Response.json([{ model_id: 'eleven_v3', can_do_text_to_speech: true, languages: [{ language_id: 'uz' }] }, { model_id: 'other' }]);
+  // Hisob katalogi: v4 Turbo hujjatlarda o'zbekchani "uzb" deb yozadi; v3 shu hisobda o'zbekchasiz; "other" TTS emas
+  const models = () => Response.json([
+    { model_id: 'eleven_v4_turbo', can_do_text_to_speech: true, languages: [{ language_id: 'uzb', name: 'Uzbek' }, { language_id: 'en' }] },
+    { model_id: 'eleven_v3', can_do_text_to_speech: true, languages: [{ language_id: 'en' }] },
+    { model_id: 'other' },
+  ]);
   const audio = () => new Response(new Uint8Array([0x49, 0x44, 0x33, 1]), { headers: { 'content-type': 'audio/mpeg' } });
   const fixture = (post: () => Response | Promise<Response> = audio): typeof fetch => (async (url) => String(url).endsWith('/models') ? models() : post()) as typeof fetch;
   await test('ElevenLabs automatically selected; requires opt-in/key/Voice ID; explicit OpenAI preserved', () => {
-    assert.equal(prov.provayder, 'elevenlabs'); assert.equal(prov.model, 'eleven_v3');
+    assert.equal(prov.provayder, 'elevenlabs'); assert.equal(prov.model, 'eleven_v4_turbo'); assert.equal(prov.model, ELEVENLABS_ODATIY_MODEL);
+    assert.equal(nutqProvayderi({ ...env, ELEVENLABS_MODEL_ID: 'eleven_v4' })?.model, 'eleven_v4');
     assert.equal(nutqUlanishi({ ...env, AGENT_TTS: '0' }), 'ochirilgan');
     assert.equal(nutqUlanishi({ ...env, ELEVENLABS_VOICE_ID: '' }), 'ovoz_id_yoq');
     assert.equal(nutqUlanishi({ ...env, ELEVENLABS_VOICE_ID: '../bad' }), 'sozlama_xato');
@@ -31,7 +38,7 @@ async function main() {
       if (String(url).endsWith('/models')) return models();
       assert.match(String(url), /^https:\/\/api.elevenlabs.io\/v1\/text-to-speech\/uzbek_fixture_voice\?output_format=mp3_44100_128$/);
       const d = JSON.parse(String(init?.body));
-      assert.equal(d.language_code, 'uz'); assert.equal(d.model_id, 'eleven_v3'); assert.equal(d.voice_settings.stability, 0.5);
+      assert.equal(d.language_code, 'uz'); assert.equal(d.model_id, 'eleven_v4_turbo'); assert.equal(d.voice_settings.stability, 0.5);
       assert.match(d.text, /Qorabuloq/); assert.match(d.text, /foiz/); assert.ok(!d.text.includes('Қ'));
       return audio();
     }) as typeof fetch);
@@ -43,6 +50,68 @@ async function main() {
       await assert.rejects(nutqYarat(prov, 'Salom', { fetchFn: (async () => { count++; return Response.json(body); }) as typeof fetch }), NutqXatosi);
       assert.equal(count, 1);
     }
+  });
+  await test('Uzbek is recognized in every catalog spelling (uz, uzb, uz-UZ, name Uzbek); other languages are not', () => {
+    for (const l of [{ language_id: 'uz' }, { language_id: 'uzb' }, { language_id: 'UZB' }, { language_id: 'uz-UZ' }, { language_id: 'uz_Latn' }, { language_id: 'x1', name: 'Uzbek' }, { language_id: 'x2', name: ' Uzbek (Latin)' }]) assert.equal(uzbekTiliMi(l), true, JSON.stringify(l));
+    for (const l of [{ language_id: 'en' }, { language_id: 'ru' }, { language_id: 'uk' }, { language_id: 'uzu' }, { language_id: 'kk', name: 'Kazakh' }, { language_id: '' }]) assert.equal(uzbekTiliMi(l), false, JSON.stringify(l));
+  });
+  await test('Configured model without Uzbek is replaced by an Uzbek-capable catalog model (Turbo first); an Uzbek-capable configured model is never replaced', () => {
+    const m = (id: string, tillar: string[], tts = true) => ({ model_id: id, can_do_text_to_speech: tts, languages: tillar.map((language_id) => ({ language_id })) });
+    const katalog = [m('eleven_v3', ['en']), m('eleven_v4', ['uzb']), m('eleven_v4_turbo', ['uzb']), m('eleven_zeta', ['uz'])];
+    assert.deepEqual(uzbekModeliniTanla(katalog, 'eleven_v3'), { model: 'eleven_v4_turbo', almashtirildi: true, sozlangan: 'eleven_v3' });
+    assert.deepEqual(uzbekModeliniTanla(katalog, 'eleven_v4'), { model: 'eleven_v4', almashtirildi: false, sozlangan: 'eleven_v4' });
+    assert.equal(uzbekModeliniTanla(katalog.filter((x) => x.model_id !== 'eleven_v4_turbo'), 'eleven_v3')?.model, 'eleven_v4');
+    assert.equal(uzbekModeliniTanla(katalog.filter((x) => x.model_id === 'eleven_zeta'), 'eleven_v3')?.model, 'eleven_zeta'); // noma'lum nom: alifbo bo'yicha birinchisi
+    assert.equal(uzbekModeliniTanla([m('eleven_v4_turbo', ['uzb'], false)], 'eleven_v3'), null); // TTS emas
+    assert.equal(uzbekModeliniTanla([m('eleven_v3', ['en'])], 'eleven_v3'), null);
+    assert.equal(uzbekModeliniTanla([m('bad id/../x', ['uz'])], 'eleven_v3'), null); // xavfsiz bo'lmagan ID URL/JSON ga o'tmaydi
+  });
+  await test('Paid TTS request uses the model resolved from the account catalog (v3 configured without Uzbek -> v4 Turbo); explicit working model is kept', async () => {
+    const tanlangan: string[] = [];
+    const f = (async (url, init) => {
+      if (String(url).endsWith('/models')) return models();
+      tanlangan.push(JSON.parse(String(init?.body)).model_id); return audio();
+    }) as typeof fetch;
+    await nutqYarat({ ...prov, model: 'eleven_v3' }, 'Salom', { fetchFn: f });
+    await nutqYarat(prov, 'Salom', { fetchFn: f });
+    assert.deepEqual(tanlangan, ['eleven_v4_turbo', 'eleven_v4_turbo']);
+    const t = await elevenlabsModeliniAniqla({ ...prov, model: 'eleven_v3' }, AbortSignal.timeout(2000), (async () => models()) as typeof fetch);
+    assert.deepEqual(t, { model: 'eleven_v4_turbo', almashtirildi: true, sozlangan: 'eleven_v3' });
+  });
+  await test('Model choice is remembered for the real fetch (one catalog request per hour), never for injected fetch, never after failure', async () => {
+    const asl = globalThis.fetch; let n = 0;
+    const kalitli = { ...prov, kalit: 'cache-fixture-key' };
+    try {
+      globalThis.fetch = (async () => { n++; return models(); }) as typeof fetch;
+      assert.equal((await elevenlabsModeliniAniqla(kalitli, AbortSignal.timeout(2000))).model, 'eleven_v4_turbo');
+      assert.equal((await elevenlabsModeliniAniqla(kalitli, AbortSignal.timeout(2000))).model, 'eleven_v4_turbo');
+      assert.equal(n, 1);
+      await elevenlabsModeliniAniqla({ ...kalitli, kalit: 'other-fixture-key' }, AbortSignal.timeout(2000));
+      assert.equal(n, 2);
+      globalThis.fetch = (async () => { n++; return new Response('x', { status: 403 }); }) as typeof fetch;
+      await assert.rejects(elevenlabsModeliniAniqla({ ...kalitli, kalit: 'denied-fixture-key' }, AbortSignal.timeout(2000)), NutqXatosi);
+      await assert.rejects(elevenlabsModeliniAniqla({ ...kalitli, kalit: 'denied-fixture-key' }, AbortSignal.timeout(2000)), NutqXatosi);
+      assert.equal(n, 4);
+    } finally { globalThis.fetch = asl; }
+  });
+  await test('ELEVENLABS_KATALOG_TEKSHIRUVI=0: model catalog is not requested; the configured model goes straight to TTS (language_code=uz still sent); default keeps the check', async () => {
+    assert.equal(nutqProvayderi(env)?.katalogTekshir, true);
+    assert.equal(nutqProvayderi({ ...env, ELEVENLABS_KATALOG_TEKSHIRUVI: '1' })?.katalogTekshir, true);
+    const ochiq = nutqProvayderi({ ...env, ELEVENLABS_KATALOG_TEKSHIRUVI: '0', ELEVENLABS_MODEL_ID: 'eleven_v4' })!;
+    assert.equal(ochiq.katalogTekshir, false);
+    const urls: string[] = []; const bodies: Record<string, unknown>[] = [];
+    const f = (async (url, init) => { urls.push(String(url)); bodies.push(JSON.parse(String(init?.body))); return audio(); }) as typeof fetch;
+    assert.equal((await nutqYarat(ochiq, 'Salom', { fetchFn: f })).byteLength, 4);
+    assert.equal(urls.length, 1); assert.ok(!urls[0].endsWith('/models'));
+    assert.equal(bodies[0].model_id, 'eleven_v4'); assert.equal(bodies[0].language_code, 'uz');
+    // katalog o'chirilgan bo'lsa ham xavfsiz bo'lmagan model ID rad etiladi
+    await assert.rejects(nutqYarat({ ...ochiq, model: 'bad id' }, 'Salom', { fetchFn: f }), NutqXatosi);
+    assert.equal(urls.length, 1);
+    // ElevenLabs o'zi rad etsa (o'zbekcha qo'llanmaydi) — xato, til olib tashlanib qayta urinilmaydi
+    const rad = (async (url) => { urls.push(String(url)); return Response.json({ detail: { status: 'unsupported_language', message: 'Model does not support language_code uz' } }, { status: 422 }); }) as typeof fetch;
+    urls.length = 0;
+    await assert.rejects(nutqYarat(ochiq, 'Salom', { fetchFn: rad }), (e: unknown) => e instanceof NutqXatosi && /unsupported_language/.test(e.message));
+    assert.equal(urls.length, 1);
   });
   await test('Wrong key, permissions, quota and provider outage expose only safe user-facing messages and never switch voices', async () => {
     for (const status of [401, 402, 403, 404, 429, 500]) {
