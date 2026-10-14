@@ -370,7 +370,7 @@ export function geminiJonliBoshla(cb: JonliHodisalar, opt: { mahalliyOvoz?: bool
           if (!tugadi && tashqiOvoz && cb.onQaytaUlanish) { tozala(true); cb.onQaytaUlanish('ovoz', ruxsat, mikrofon); }
           else if (!tugadi) cb.onXato(t);
         },
-        onZaxiraOvozi: () => { if (!tugadi) cb.onOgoh?.('ElevenLabs овози олинмади. OpenAI овози танланди.'); },
+        onZaxiraOvozi: (sabab) => { if (!tugadi) cb.onOgoh?.('ElevenLabs овози олинмади. OpenAI овози танланди.', sabab); },
       });
 
       const soket = new WebSocket(d.wsUrl);

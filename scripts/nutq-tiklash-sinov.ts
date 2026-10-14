@@ -27,11 +27,12 @@ async function main() {
       init?.signal?.throwIfAborted(); requests.push(JSON.parse(String(init?.body)));
       const f = responses.shift(); assert.ok(f, 'unbounded/unexpected speech retry'); return f();
     }) as typeof fetch;
-    const ctx = new AudioMock(); let started = 0, ended = 0; const errors: string[] = [];
+    const ctx = new AudioMock(); let started = 0, ended = 0; const errors: string[] = [], backups: Array<string | undefined> = [];
     const q = nutqNavbatiYarat(ctx as unknown as AudioContext, () => 'signed-ticket', {
       onBoshlandi() { started++; }, onTugadi() { ended++; }, onDaraja() {}, onXato(m) { errors.push(m); },
+      onZaxiraOvozi(m) { backups.push(m); },
     });
-    return { ctx, requests, errors, q, get started() { return started; }, get ended() { return ended; } };
+    return { ctx, requests, errors, backups, q, get started() { return started; }, get ended() { return ended; } };
   };
   try {
     await test('Live empty PCM recovers MP3 once; next reply retains compatibility mode and signed ticket', async () => {
@@ -53,6 +54,16 @@ async function main() {
         (globalThis.window as unknown as { location: { href: string } }).location = { href: '' };
         s.q.qosh('Salom.'); s.q.tugatish(); await flush(); assert.equal(s.requests.length, 1); assert.equal(s.ctx.starts, 0); s.q.toxtat();
       }
+    });
+    await test('A resolved server failure never repeats the voice chain in MP3, for live and ordinary speech', async () => {
+      const denied = () => Response.json({ xabar: 'ElevenLabs kalitida ruxsat yo‘q.' }, { status: 502, headers: { 'x-nutq-qayta': '0' } });
+      const s = setup([denied]); s.q.qosh('Salom.'); s.q.tugatish(); await flush();
+      assert.equal(s.requests.length, 1); assert.equal(s.ctx.starts, 0); assert.match(s.errors[0], /ruxsat/); s.q.toxtat();
+      let requests = 0; const errors: string[] = [];
+      global.fetch = (async () => { requests++; return denied(); }) as typeof fetch;
+      nutqMuhitiniYop(); nutqniTayyorla();
+      javobniGapir('Salom.', { serverMumkin: true, onYuklash() {}, onBoshlandi() { assert.fail('no audio returned'); }, onTugadi() {}, onXato(m) { errors.push(m); } });
+      await flush(); assert.equal(requests, 1); assert.match(errors[0], /ruxsat/); nutqMuhitiniYop();
     });
     await test('Cancel during compatibility fetch suppresses late audio and completion', async () => {
       let reply!: (r: Response) => void;
@@ -81,10 +92,11 @@ async function main() {
       s.q.tugatish(); await flush();
       assert.equal(s.requests.length, 1, 'voice provider unknown yet: only the first chunk is requested');
       waiting[0](backupMp3()); await flush();
-      assert.equal(s.requests.length, 3, 'once the provider is known two requests run together, the fourth waits');
+      assert.equal(s.requests.length, 2, 'next audio loads while the first is playing; later provider choices wait');
       assert.equal(s.ctx.starts, 1); assert.equal(s.started, 1);
-      waiting[1](mp3()); await flush(); assert.equal(s.requests.length, 4);
+      waiting[1](mp3()); await flush(); assert.equal(s.requests.length, 3);
       waiting[2](mp3()); await flush();
+      assert.equal(s.requests.length, 4);
       assert.deepEqual(s.requests.map((r) => r.matn), ['Birinchi gap.', 'Ikkinchi gap.', 'Uchinchi gap.', 'To‘rtinchi gap.']);
       assert.deepEqual(s.requests.map((r) => (r as { zaxira?: boolean }).zaxira === true), [false, true, true, true], 'the backup voice stays for the rest of the answer');
       assert.ok(s.requests.every((r) => r.jonli === 'signed-ticket'));
@@ -101,6 +113,19 @@ async function main() {
       const t = setup([mp3, mp3]);
       t.q.qosh('Birinchi gap.'); t.q.qosh('Ikkinchi gap.'); t.q.tugatish(); await flush();
       assert.deepEqual(t.requests.map((r) => (r as { zaxira?: boolean }).zaxira), [undefined, undefined]); t.ctx.end(); await flush(); t.ctx.end(); await flush(); assert.equal(t.ended, 1); t.q.toxtat();
+    });
+    await test('A later sentence falls back: no primary request overtakes that choice; backup notice waits for its own playback', async () => {
+      let reply!: (r: Response) => void;
+      const s = setup([mp3, () => new Promise<Response>((r) => { reply = r; }), mp3]);
+      for (const g of ['Birinchi gap.', 'Ikkinchi gap.', 'Uchinchi gap.']) s.q.qosh(g);
+      s.q.tugatish(); await flush(); assert.equal(s.requests.length, 2); assert.equal(s.ctx.starts, 1);
+      reply(new Response(new Uint8Array([73, 68, 51, 1]), { headers: { 'content-type': 'audio/mpeg', 'x-nutq-zaxira': '1', 'x-nutq-sabab': encodeURIComponent('ElevenLabs 403: missing_permissions') } }));
+      await flush(); assert.equal(s.requests.length, 3);
+      assert.equal((s.requests[2] as { zaxira?: boolean }).zaxira, true);
+      assert.deepEqual(s.backups, [], 'preloaded fallback must not claim the playing primary is OpenAI');
+      s.ctx.end(); await flush(); assert.equal(s.ctx.starts, 2);
+      assert.deepEqual(s.backups, ['ElevenLabs 403: missing_permissions']);
+      s.ctx.end(); await flush(); s.ctx.end(); await flush(); assert.equal(s.ended, 1); s.q.toxtat();
     });
     await test('Ordinary voice button recovers pre-audio PCM failure without a second voice or duplicate callbacks', async () => {
       const requests: boolean[] = []; let started = 0, ended = 0; const errors: string[] = [];

@@ -2,6 +2,7 @@
 
 import { pcmNutqniIjroEt } from './pcm-nutq';
 import { audioKontekstiniUygot } from './audio-seans';
+import { ovozTafsiloti } from './ovoz-tafsiloti';
 import { nutqParchasi } from '@/lib/agent/matnlar';
 
 /**
@@ -30,19 +31,21 @@ export interface NutqNavbatiHodisalari {
   onDaraja(d: number): void;
   onXato(matn: string): void;
   /** Server ElevenLabs o'rniga OpenAI zaxira ovozidan foydalandi (suhbatda bir marta xabar beriladi) */
-  onZaxiraOvozi?(): void;
+  onZaxiraOvozi?(sabab?: string): void;
 }
 
-const BIR_VAQTDA = 2;
+// Keyingi bo'lak oldingisi o'ynayotganda tayyorlanadi. Tanlov javoblari
+// tartibli bo'lsin: kech fallback kelgach oldindan so'ralgan ElevenLabs ovozi qaytmasin.
+const BIR_VAQTDA = 1;
 const SORO_KUTISH_MS = 25_000;
-/** Birinchi bo'lak javob bermaguncha (qaysi ovoz ishlashi noma'lum) faqat bitta so'rov: javob ichida ovoz almashib ketmasin */
-const BIRINCHI_SOROV = 1;
 
 interface Bolak {
   matn: string;
   ctrl: AbortController;
   holat: 'kutadi' | 'yuklanmoqda' | 'tayyor';
   natija: Promise<AudioBuffer | Response | null> | null;
+  zaxira?: boolean;
+  sabab?: string;
 }
 
 export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: NutqNavbatiHodisalari) {
@@ -62,12 +65,10 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   let zaxiraBildirildi = false;
   let zaxiraTanlandi = false;
   let oqimMumkin = true;
-  /** Hech bo'lmasa bitta ovoz so'rovi tugagan: server qaysi ovozni (asosiy yoki zaxira) berayotgani ma'lum */
-  let ovozMalum = false;
 
   const xato = (m: string) => { if (!xatoBerildi) { xatoBerildi = true; h.onXato(m); } };
-  const ijroBoshlandi = () => {
-    if (zaxiraTanlandi && !zaxiraBildirildi) { zaxiraBildirildi = true; h.onZaxiraOvozi?.(); }
+  const ijroBoshlandi = (b?: Bolak) => {
+    if (b?.zaxira && !zaxiraBildirildi) { zaxiraBildirildi = true; h.onZaxiraOvozi?.(b.sabab); }
     if (!boshlandi) { boshlandi = true; h.onBoshlandi(); }
   };
 
@@ -83,7 +84,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
             body: JSON.stringify({ matn: nutqParchasi(b.matn), oqim, jonli: ruxsat(), ...(zaxiraTanlandi ? { zaxira: true } : {}) }),
           });
           if (mening !== avlod || b.ctrl.signal.aborted) { await r.body?.cancel(); return null; }
-          if (r.status === 502 && oqim) {
+          if (r.status === 502 && oqim && r.headers.get('x-nutq-qayta') !== '0') {
             await r.body?.cancel(); oqimMumkin = false; oqim = false;
             clearTimeout(taymer); taymer = setTimeout(() => b.ctrl.abort(), SORO_KUTISH_MS); continue;
           }
@@ -93,7 +94,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
             if (mening === avlod) xato(d.xabar ?? 'Овозли жавоб олинмади. Жавоб матни экранда.');
             return null;
           }
-          if (r.headers.get('x-nutq-zaxira') === '1' && mening === avlod) zaxiraTanlandi = true;
+          if (r.headers.get('x-nutq-zaxira') === '1' && mening === avlod) { zaxiraTanlandi = true; b.zaxira = true; b.sabab = ovozTafsiloti(r); }
           if (/^audio\/pcm;rate=24000$/i.test(r.headers.get('content-type') ?? '')) return r;
           const bayt = await r.arrayBuffer();
           if (mening !== avlod) return null;
@@ -107,7 +108,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
       } finally {
         clearTimeout(taymer);
         b.holat = 'tayyor';
-        if (mening === avlod) { ovozMalum = true; yuklanmoqda--; boshla(mening); }
+        if (mening === avlod) { yuklanmoqda--; boshla(mening); }
       }
     })();
   };
@@ -115,7 +116,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
   /** Navbatdagi, hali boshlanmagan bo'laklarning so'rovini (BIR_VAQTDA gacha) boshlaydi */
   const boshla = (mening: number) => {
     for (const b of navbat) {
-      if (yuklanmoqda >= (ovozMalum ? BIR_VAQTDA : BIRINCHI_SOROV)) break;
+      if (yuklanmoqda >= BIR_VAQTDA) break;
       if (b.holat === 'kutadi') b.natija = yukla(b, mening);
     }
   };
@@ -147,7 +148,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
     y?.();
   };
 
-  const ijroEt = async (buf: AudioBuffer, mening: number, signal: AbortSignal) => {
+  const ijroEt = async (buf: AudioBuffer, mening: number, signal: AbortSignal, b?: Bolak) => {
     try { await audioKontekstiniUygot(ctx, signal); }
     catch { if (mening === avlod && !signal.aborted) xato('Овозни эшитиш учун жонли суҳбат тугмасини қайта босинг.'); return; }
     if (mening !== avlod || signal.aborted) return;
@@ -163,7 +164,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
       ijroYakuni = tugadi;
       s.onended = () => { if (manba === s) tozala(); else tugadi(); };
       s.start();
-      ijroBoshlandi();
+      ijroBoshlandi(b);
       kadr = requestAnimationFrame(daraja);
     });
   };
@@ -193,7 +194,7 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
           let started = false;
           try {
             await pcmNutqniIjroEt(ctx, buf, b.ctrl.signal, {
-              onBoshlandi: () => { started = true; if (mening === avlod) ijroBoshlandi(); },
+              onBoshlandi: () => { started = true; if (mening === avlod) ijroBoshlandi(b); },
               onDaraja: (d) => { if (mening === avlod) h.onDaraja(d); },
             });
           } catch (e) {
@@ -204,13 +205,13 @@ export function nutqNavbatiYarat(ctx: AudioContext, ruxsat: () => string, h: Nut
                 if (started) xato('Ovoz oqimi uzildi. Javob matni ekranda.');
                 else {
                   const mp3 = await yukla(b, mening, false);
-                  if (mening === avlod && mp3 && !(mp3 instanceof Response)) await ijroEt(mp3, mening, b.ctrl.signal);
+                  if (mening === avlod && mp3 && !(mp3 instanceof Response)) await ijroEt(mp3, mening, b.ctrl.signal, b);
                 }
               }
             }
           }
           finally { if (pcmCtrl === b.ctrl) pcmCtrl = null; }
-        } else if (buf) await ijroEt(buf, mening, b.ctrl.signal);
+        } else if (buf) await ijroEt(buf, mening, b.ctrl.signal, b);
       }
     } finally {
       if (bandAvlod === mening) bandAvlod = -1;

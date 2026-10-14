@@ -5,7 +5,7 @@ import { GEMINI_ODATIY_MODEL, GeminiXatosi, xatoMatni, type GeminiSozlama } from
  * ============================================================
  *  KALIT UCHUN MAVJUD GEMINI LIVE MODELLARI
  *
- *  Live model nomlari tez almashadi (gemini-3.1-flash-live-preview "legacy" bo'ldi, gemini-3.8-live chiqdi).
+ *  Live model nomlari o'zgaradi; mavjudlikning manbasi — aynan shu kalit uchun qaytgan katalog.
  *  Qattiq yozilgan nom eskirsa, Gemini jimgina ishlamay, jonli suhbat OpenAI'ga o'tib qolardi. Shuning uchun:
  *
  *   - `GEMINI_LIVE_MODEL` YOZILMAGAN bo'lsa va standart model kalit uchun mavjud bo'lmasa, mavjud Live
@@ -87,7 +87,7 @@ function versiyaTaqqosla(a: number[], b: number[]): number {
  */
 export function geminiLiveModeliniTanla(royxat: string[], sozlangan: string): string | null {
   if (royxat.includes(sozlangan)) return sozlangan;
-  for (const id of [GEMINI_ODATIY_MODEL, 'gemini-3.1-flash-live-preview']) if (royxat.includes(id)) return id;
+  if (royxat.includes(GEMINI_ODATIY_MODEL)) return GEMINI_ODATIY_MODEL;
   const nomzod = royxat.filter((n) => /live/i.test(n) && !YARAMAYDI.test(n));
   nomzod.sort((a, b) => versiyaTaqqosla(versiya(b), versiya(a)) || Number(/preview/i.test(a)) - Number(/preview/i.test(b)) || a.localeCompare(b));
   return nomzod[0] ?? null;

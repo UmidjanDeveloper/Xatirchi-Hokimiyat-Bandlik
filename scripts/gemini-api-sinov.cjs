@@ -166,7 +166,7 @@ const test = async (name, f) => { await f(); checks++; console.log('OK', name); 
       setEnv({ ...geminiEnv, GEMINI_LIVE_MODEL: 'gemini-custom-live' }); modelSorovlari = 0;
       assert.equal(await modelOl(), 'models/gemini-custom-live'); assert.equal(modelSorovlari, 0, 'aniq model uchun ro‘yxat so‘ralmaydi');
       setEnv(geminiEnv); geminiModelKeshiniTozala(); modelJavob = () => new Response('{}', { status: 403 }); modelSorovlari = 0;
-      assert.equal(await modelOl(), 'models/gemini-3.8-live'); assert.equal(modelSorovlari, 1, 'ro‘yxat olinmasa standart model bilan davom etadi');
+      assert.equal(await modelOl(), 'models/gemini-3.1-flash-live-preview'); assert.equal(modelSorovlari, 1, 'ro‘yxat olinmasa rasmiy SDK modeli bilan davom etadi');
     } finally { modelJavob = null; modelRoyxati = ['gemini-3.8-live']; geminiModelKeshiniTozala(); setEnv(geminiEnv); }
   });
   await test('GEMINI_LIVE_OVOZ=gemini: live start asks for Gemini native voice (no external TTS), ordinary Listen button keeps ElevenLabs', async () => {

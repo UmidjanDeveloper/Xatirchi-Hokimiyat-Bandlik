@@ -18,3 +18,8 @@ export function geminiYaqindaYiqildi(hozir = Date.now()): boolean {
 export function geminiYiqildiniBelgila(hozir = Date.now()): void {
   try { sessionStorage.setItem(KALIT, String(hozir)); } catch { /* saqlash mumkin emas: faqat bu safar */ }
 }
+
+/** Administrator haqiqiy ulanishni qayta tekshirib tuzatgan: eski muvaffaqiyatsiz urinishni unutamiz. */
+export function geminiYiqildiniTozala(): void {
+  try { sessionStorage.removeItem(KALIT); } catch { /* saqlash mumkin emas */ }
+}

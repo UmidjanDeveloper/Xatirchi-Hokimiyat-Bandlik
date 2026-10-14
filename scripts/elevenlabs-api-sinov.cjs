@@ -51,7 +51,27 @@ const test = async (name, f) => { await f(); tests++; console.log('OK', name); }
   });
   await test('Rejected key reports a useful safe error, keeps no-store, never exposes provider body', async () => {
     status = 401; const r = await POST(req()); assert.equal(r.status, 502); const d = await r.json();
+    assert.equal(r.headers.get('x-nutq-qayta'), '0', 'a provider rejection must not start the same paid fallback chain again');
     assert.match(d.xabar, /API kaliti qabul qilinmadi/); assert.ok(!JSON.stringify(d).includes(process.env.ELEVENLABS_API_KEY)); assert.ok(!JSON.stringify(d).includes('raw body')); assert.match(r.headers.get('cache-control'), /no-store/);
+  });
+  await test('Successful backup reports the sanitized ElevenLabs cause only to administrators, for streaming and buffered audio', async () => {
+    process.env.OPENAI_API_KEY = 'openai-fixture';
+    global.fetch = async (url) => {
+      if (String(url).endsWith('/models')) return Response.json([{ model_id: 'eleven_v3', can_do_text_to_speech: true, languages: [{ language_id: 'uz' }] }]);
+      if (String(url).includes('elevenlabs.io')) return Response.json({ detail: { status: 'missing_permissions', message: 'Denied private-key-fixture-only' } }, { status: 403 });
+      return new Response(new Uint8Array([73, 68, 51, 1]), { headers: { 'content-type': 'audio/pcm' } });
+    };
+    for (const oqim of [true, false]) {
+      auth = admin;
+      const a = await POST(req({ matn: 'Salom.', oqim })); assert.equal(a.status, 200);
+      assert.equal(a.headers.get('x-nutq-zaxira'), '1');
+      assert.match(decodeURIComponent(a.headers.get('x-nutq-sabab')), /missing_permissions|o‘tkazib/);
+      assert.ok(!decodeURIComponent(a.headers.get('x-nutq-sabab')).includes(process.env.ELEVENLABS_API_KEY)); await a.arrayBuffer();
+      auth = { sessiya: { ...admin.sessiya, rol: 'HOKIM' } };
+      const h = await POST(req({ matn: 'Salom.', oqim })); assert.equal(h.status, 200);
+      assert.equal(h.headers.get('x-nutq-sabab'), null); await h.arrayBuffer();
+    }
+    auth = admin; delete process.env.OPENAI_API_KEY;
   });
   console.log(`${tests}/${tests} ElevenLabs API checks passed with fake HTTP.`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });

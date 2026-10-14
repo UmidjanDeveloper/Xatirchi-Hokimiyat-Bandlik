@@ -4,7 +4,7 @@ import { ENG_UZUN_NUTQ } from './chegaralar';
 
 const ENG_KOP_PCM = 9_600_000; // 200 s, 24 kHz mono signed PCM16.
 const JAMI_MS = 22_000;
-type OqimNatijasi = { audio: ReadableStream<Uint8Array> | ArrayBuffer; pcm: boolean; provayder: 'elevenlabs' | 'openai'; zaxira: boolean };
+type OqimNatijasi = { audio: ReadableStream<Uint8Array> | ArrayBuffer; pcm: boolean; provayder: 'elevenlabs' | 'openai'; zaxira: boolean; sabab?: string };
 
 /** Tanlov faqat birinchi audio baytidan OLDIN. Ijro boshlangan javobda ovoz almashmaydi. */
 export async function ovozOqimi(matn: string, opt: {
@@ -20,6 +20,7 @@ export async function ovozOqimi(matn: string, opt: {
   let topshirildi = false;
   const input = nutqMatni(matn);
   const f = opt.fetchFn ?? fetch;
+  let sabab: string | undefined;
   const tayyorla = async (prov: NutqProvayderi, backup: boolean): Promise<OqimNatijasi> => {
     const c = new AbortController();
     const s = AbortSignal.any([signal, c.signal]);
@@ -112,10 +113,19 @@ export async function ovozOqimi(matn: string, opt: {
   try {
     if (asosiy && !(opt.zaxira && zaxira && nutqXizmati(env) === 'elevenlabs')) {
       try { return await tayyorla(asosiy, false); }
-      catch (e) { if (signal.aborted || !zaxira || asosiy.provayder !== 'elevenlabs') throw e; }
+      catch (e) {
+        if (signal.aborted || !zaxira || asosiy.provayder !== 'elevenlabs') throw e;
+        sabab = e instanceof NutqXatosi ? e.message : 'ElevenLabs javob bermadi.';
+      }
     }
     signal.throwIfAborted();
     if (!zaxira) throw new NutqXatosi('bosh', 'Ovoz sozlanmagan.');
-    return await tayyorla(zaxira, true);
+    try { return { ...await tayyorla(zaxira, true), ...(sabab ? { sabab } : {}) }; }
+    catch (e) {
+      if (opt.signal?.aborted || !sabab) throw e;
+      const status = e instanceof NutqXatosi ? /(?:HTTP |openai )(\d{3})/i.exec(e.message)?.[1] : undefined;
+      const izoh = status ? `HTTP ${status}` : e instanceof NutqXatosi && e.kod === 'vaqt' ? 'vaqtida javob bermadi' : 'ovoz olinmadi';
+      throw new NutqXatosi('provayder', `${sabab}. OpenAI zaxira ovozi ham ishlamadi (${izoh}).`.slice(0, 600));
+    }
   } finally { if (!topshirildi) clearTimeout(timer); }
 }

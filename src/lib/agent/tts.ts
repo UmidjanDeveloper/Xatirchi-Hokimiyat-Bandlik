@@ -3,17 +3,17 @@ import { NutqXatosi, nutqProvayderi, nutqXizmati, nutqYarat, nutqZaxirasi } from
 /** Server ovozi mavjud opt-in sozlamalar bilan ishlaydi; Groq kaliti ishlatilmaydi. */
 export function ttsSozlama(env: NodeJS.ProcessEnv = process.env) {
   const p = nutqProvayderi(env);
-  return p ? { provayder: p.provayder, kalit: p.kalit, model: p.model, voice: p.ovoz } : null;
+  return p ? { provayder: p.provayder, kalit: p.kalit, model: p.model, voice: p.ovoz, katalogTekshir: p.katalogTekshir } : null;
 }
 
 export function matnniOvozga(
   matn: string,
-  sozlama: { provayder?: 'openai' | 'elevenlabs'; kalit: string; model: string; voice: string },
+  sozlama: { provayder?: 'openai' | 'elevenlabs'; kalit: string; model: string; voice: string; katalogTekshir?: boolean },
   signal?: AbortSignal,
   fetchFn: typeof fetch = fetch,
   kutishMs = 18_000
 ): Promise<ArrayBuffer> {
-  return nutqYarat({ provayder: sozlama.provayder, kalit: sozlama.kalit, model: sozlama.model, ovoz: sozlama.voice }, matn, { signal, fetchFn: fetchFn === fetch ? undefined : fetchFn, kutishMs });
+  return nutqYarat({ provayder: sozlama.provayder, kalit: sozlama.kalit, model: sozlama.model, ovoz: sozlama.voice, katalogTekshir: sozlama.katalogTekshir }, matn, { signal, fetchFn: fetchFn === fetch ? undefined : fetchFn, kutishMs });
 }
 
 /** Zaxira ovoz ham yo'q bo'lsa ham, asosiy ovoz bor bo'lsa ham: server ovozi umuman mavjudmi */

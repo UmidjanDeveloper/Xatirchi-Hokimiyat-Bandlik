@@ -11,6 +11,7 @@ import { ovozMavjud, ovozZanjiri } from '@/lib/agent/tts';
 import { NutqXatosi, nutqUlanishi } from '@/lib/agent/nutq';
 import { jonliRuxsatOqi } from '@/lib/agent/jonli';
 import { korishdami } from '@/lib/korish-rejimi';
+import { maxfiyniTozala } from '@/lib/maxfiy';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 25;
@@ -21,8 +22,8 @@ const Tana = z.object({ matn: z.string().trim().min(1).max(ENG_UZUN_NUTQ), jonli
 export async function POST(request: Request) {
   const q = await talabQil([...AGENT_ROLLARI], { korishdaOqish: true });
   if (q instanceof NextResponse) return q;
-  const xato = (matn: string, status: number) => NextResponse.json(
-    { xabar: A(matn, alifboServer()) }, { status, headers: { 'Cache-Control': 'no-store' } }
+  const xato = (matn: string, status: number, qayta = true) => NextResponse.json(
+    { xabar: A(matn, alifboServer()) }, { status, headers: { 'Cache-Control': 'no-store', ...(!qayta ? { 'X-Nutq-Qayta': '0' } : {}) } }
   );
   if (!agentOchiqmi(q.sessiya.rol)) return xato('Рухсат йўқ.', 403);
   if (!ovozMavjud()) return xato(nutqUlanishi() === 'ovoz_id_yoq' ? 'ElevenLabs ovozi tanlanmagan. Vercel sozlamasida ELEVENLABS_VOICE_ID ni kiriting.' : 'Овозли жавоб созланмаган. Матнни ўқишингиз мумкин.', 503);
@@ -72,13 +73,16 @@ export async function POST(request: Request) {
       : { ...await ovozZanjiri(A(parsed.data.matn, 'lot'), { signal: request.signal, zaxira: parsed.data.zaxira }), pcm: false };
     return new Response(n.audio, { headers: {
       'Content-Type': n.pcm ? 'audio/pcm;rate=24000' : 'audio/mpeg', 'X-Accel-Buffering': 'no', 'Cache-Control': 'private, no-store',
-      // Brauzer "zaxira ovoz ishlatilmoqda" deb bir marta ogohlantiradi; sabab matni sarlavhaga chiqmaydi.
+      // Zaxira sababi faqat administratorga, kalitsiz va HTTP uchun kodlangan.
       'X-Nutq-Provayder': n.provayder, ...(n.zaxira ? { 'X-Nutq-Zaxira': '1' } : {}),
+      ...(q.sessiya.rol === 'ADMIN' && n.sabab ? { 'X-Nutq-Sabab': encodeURIComponent(maxfiyniTozala(n.sabab).slice(0, 500)) } : {}),
     } });
   } catch (e) {
     // Do not log user text or provider credentials.
     // OpenAI'ning xom xato matni (`openai 401: {...}`) hech kimga ko'rsatilmaydi; ElevenLabs xabari va zanjir xabari
     // (ikkala xizmatning qisqa sababi) ko'rsatiladi: u kalitsiz va tozalangan.
-    return xato(e instanceof NutqXatosi && !/^openai \d{3}/i.test(e.message) ? e.message : 'Овозни тайёрлаб бўлмади. Жавоб матни экранда.', 502);
+    // Model/kalit/kvota yoki serverdagi format tiklashi allaqachon sinaldi.
+    // Xuddi shu rad javobini MP3 sifatida yana 22 soniya kutmaymiz.
+    return xato(e instanceof NutqXatosi && !/^openai \d{3}/i.test(e.message) ? e.message : 'Овозни тайёрлаб бўлмади. Жавоб матни экранда.', 502, false);
   }
 }

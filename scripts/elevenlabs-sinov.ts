@@ -107,6 +107,11 @@ async function main() {
     // katalog o'chirilgan bo'lsa ham xavfsiz bo'lmagan model ID rad etiladi
     await assert.rejects(nutqYarat({ ...ochiq, model: 'bad id' }, 'Salom', { fetchFn: f }), NutqXatosi);
     assert.equal(urls.length, 1);
+    // MP3 adapter ham opt-out sozlamasini yo'qotmasin (oqim mos kelmasa shu yo'lga o'tadi).
+    urls.length = 0;
+    const opts = { ...env, ELEVENLABS_KATALOG_TEKSHIRUVI: '0' };
+    assert.equal((await matnniOvozga('Salom', ttsSozlama(opts)!, undefined, f)).byteLength, 4);
+    assert.equal(urls.length, 1); assert.ok(!urls[0].endsWith('/models'));
     // ElevenLabs o'zi rad etsa (o'zbekcha qo'llanmaydi) — xato, til olib tashlanib qayta urinilmaydi
     const rad = (async (url) => { urls.push(String(url)); return Response.json({ detail: { status: 'unsupported_language', message: 'Model does not support language_code uz' } }, { status: 422 }); }) as typeof fetch;
     urls.length = 0;

@@ -53,6 +53,14 @@ async function main() {
     const pinned = await ovozOqimi('Keyingi gap.', { env, fetchFn: f, zaxira: true });
     assert.equal(urls.length, 1); assert.ok(urls[0].includes('openai')); assert.ok(pinned.audio instanceof ReadableStream); await pinned.audio.cancel();
   });
+  await test('Both voice providers reject: both causes are reported without exposing the fallback raw body or either key', async () => {
+    const f = (async (url) => {
+      if (String(url).endsWith('/models')) return models();
+      if (String(url).includes('elevenlabs.io')) return Response.json({ detail: { status: 'missing_permissions', message: 'Models Read required' } }, { status: 403 });
+      return new Response('private raw provider body sk-sensitive-fixture-key', { status: 401 });
+    }) as typeof fetch;
+    await assert.rejects(ovozOqimi('Salom.', { env, fetchFn: f }), (e: Error) => /missing_permissions/.test(e.message) && /OpenAI.*HTTP 401/.test(e.message) && !/raw provider|sensitive-fixture/.test(e.message));
+  });
   await test('Midstream error cannot switch voices or expose provider body; partial PCM and oversized bodies fail closed', async () => {
     for (const mode of ['error', 'odd', 'large']) {
       let c!: ReadableStreamDefaultController<Uint8Array>, openai = 0;

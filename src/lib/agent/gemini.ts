@@ -31,11 +31,11 @@ import type { AgentKontekst } from './turlar';
  */
 
 /**
- * Google 3.1 Flash Live Preview'ni "legacy" deb belgilab, gemini-3.8-live ga o'tishni tavsiya qiladi (97–99 til, jumladan o'zbek).
- * Model nomlari tez almashadi: `GEMINI_LIVE_MODEL` bo'sh bo'lsa, kalit uchun mavjud Live modellar ro'yxatidan
- * (`gemini-modellar.ts`) mosi o'zi tanlanadi.
+ * Rasmiy googleapis/js-genai Live API sinovlaridagi model. Hisob uchun mavjudligi
+ * `models.list` bilan aniqlanadi; katalog olinmasa shu nom sinab ko'riladi.
+ * Model nomi va kalit borligi Live kvotasi mavjudligini tasdiqlamaydi.
  */
-export const GEMINI_ODATIY_MODEL = 'gemini-3.8-live';
+export const GEMINI_ODATIY_MODEL = 'gemini-3.1-flash-live-preview';
 const MODEL_ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/;
 const BAZA = 'https://generativelanguage.googleapis.com';
 
@@ -60,14 +60,15 @@ export function geminiSozlama(env: NodeJS.ProcessEnv = process.env, opt: { zaxir
   const model = env.GEMINI_LIVE_MODEL?.trim() || GEMINI_ODATIY_MODEL;
   if (!MODEL_ID.test(model)) return null;
   const sinovBazasi = env.NODE_ENV !== 'production' && /^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(env.GEMINI_API_BAZA_SINOV ?? '') ? env.GEMINI_API_BAZA_SINOV! : '';
+  const tashqiOvoz = ovozMavjud(env) && env.GEMINI_LIVE_OVOZ?.trim().toLowerCase() !== 'gemini';
   return {
     kalit, model,
     surum: env.GEMINI_API_SURUM?.trim() === 'v1beta' ? 'v1beta' : 'v1alpha',
     // Native Live modellar audio javob beradi; TEXT talab qilish ulanishni rad ettiradi.
-    chiqish: ovozMavjud(env) && env.GEMINI_LIVE_CHIQISH?.trim() === 'matn' ? 'matn' : 'transkript',
+    chiqish: tashqiOvoz && env.GEMINI_LIVE_CHIQISH?.trim() === 'matn' ? 'matn' : 'transkript',
     baza: sinovBazasi || BAZA,
     // GEMINI_LIVE_OVOZ=gemini: jonli suhbatda Gemini'ning o'z ovozi (javob tugashini kutmaydi); oddiy "Tinglash" ElevenLabs'da qoladi
-    tashqiOvoz: ovozMavjud(env) && env.GEMINI_LIVE_OVOZ?.trim().toLowerCase() !== 'gemini',
+    tashqiOvoz,
     modelAvto: !env.GEMINI_LIVE_MODEL?.trim(),
   };
 }

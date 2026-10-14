@@ -4,6 +4,7 @@ import { pcmNutqniIjroEt } from './pcm-nutq';
 import { audioKontekstiniUygot, audioSeansiniOl } from './audio-seans';
 import { nutqParchasi } from '@/lib/agent/matnlar';
 import { gapir, gapirishniToxtat, uzbekOvozi } from './ovoz';
+import { ovozTafsiloti } from './ovoz-tafsiloti';
 
 let zaxiraOvozi = false; // Shu oyna ichida keyingi javoblar boshqa ovozga qaytmasin.
 let oqimMumkin = true; // Oqim ishlamagan qurilmada keyingi javoblar MP3 bilan o'qiladi.
@@ -43,7 +44,7 @@ export function javobniGapir(matn: string, h: {
   onBoshlandi(): void;
   onTugadi(): void;
   onXato(xabar: string): void;
-  onZaxiraOvozi?(): void;
+  onZaxiraOvozi?(sabab?: string): void;
 }): void {
   nutqniToxtat();
   const seansniYop = audioSeansiniOl('playback');
@@ -54,7 +55,8 @@ export function javobniGapir(matn: string, h: {
   let kadr: number | null = null;
   let analizator: AnalyserNode | null = null;
   let zaxiraJavob = false;
-  const boshlandi = () => { if (zaxiraJavob) h.onZaxiraOvozi?.(); h.onBoshlandi(); };
+  let zaxiraSababi: string | undefined;
+  const boshlandi = () => { if (zaxiraJavob) h.onZaxiraOvozi?.(zaxiraSababi); h.onBoshlandi(); };
   const bosha = () => {
     seansniYop();
     if (kadr !== null) cancelAnimationFrame(kadr);
@@ -110,14 +112,14 @@ export function javobniGapir(matn: string, h: {
         });
         if (tugadi) { await r.body?.cancel(); return null; }
         // Faqat ovoz olinmagan 502: ruxsat yoki kvota radini qayta so'ramaymiz.
-        if (r.status === 502 && oqim) { await r.body?.cancel(); oqimMumkin = false; kutish(); return ol(false); }
+        if (r.status === 502 && oqim && r.headers.get('x-nutq-qayta') !== '0') { await r.body?.cancel(); oqimMumkin = false; kutish(); return ol(false); }
         if (!r.ok) {
           const d = await r.json().catch(() => ({})) as { xabar?: string };
           if (r.status === 401) window.location.href = '/kirish';
           yakunla(d.xabar ?? 'Овозли жавоб олинмади. Жавобни ўқинг.');
           return null;
         }
-        if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; zaxiraJavob = true; }
+        if (r.headers.get('x-nutq-zaxira') === '1') { zaxiraOvozi = true; zaxiraJavob = true; zaxiraSababi = ovozTafsiloti(r); }
         return r;
       };
       let r = await ol(oqimMumkin);

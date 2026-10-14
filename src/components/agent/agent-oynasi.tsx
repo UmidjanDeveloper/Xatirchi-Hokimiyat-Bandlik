@@ -7,7 +7,7 @@ import { useAlifbo } from '@/components/alifbo/alifbo-provider';
 import { ovozTasdiqQarori } from '@/lib/agent/ovoz-tasdiq';
 import { jonliBoshqaruv } from './jonli-boshqaruv';
 import { jonliBoshla, jonliMumkinmi, type JonliHodisalar } from './jonli-suhbat';
-import { geminiYaqindaYiqildi, geminiYiqildiniBelgila } from './jonli-zaxira';
+import { geminiYaqindaYiqildi, geminiYiqildiniBelgila, geminiYiqildiniTozala } from './jonli-zaxira';
 import { geminiJonliBoshla, geminiJonliMumkinmi } from './jonli-gemini';
 import { hisobotniIjroQil } from './hisobot-ijrosi';
 import { suhbatIfodasi } from '@/lib/agent/robot-ifoda';
@@ -298,7 +298,7 @@ export default function AgentOynasi({
       onDaraja: setOgizDarajasi,
       onYuklash: () => { setNutqYuklanmoqda(true); setHolat('oylamoqda'); },
       onBoshlandi: () => { setNutqYuklanmoqda(false); setHolat('gapirmoqda'); },
-      onZaxiraOvozi: () => { setJonliOvoz('openai'); setOddiyZaxiraOvoz(true); setBildirish(t('ElevenLabs овози олинмади. OpenAI овози танланди.')); },
+      onZaxiraOvozi: (sabab) => { setJonliOvoz('openai'); setOddiyZaxiraOvoz(true); setBildirish(t('ElevenLabs овози олинмади. OpenAI овози танланди.')); if (rol === 'ADMIN' && sabab) setZaxiraSababi(sabab); },
       onXato: (xabar) => {
         suhbatRef.current = false;
         setSuhbatRejimi(false);
@@ -313,7 +313,7 @@ export default function AgentOynasi({
         davomEt();
       },
     });
-  }, [malumot?.ovozChiqish, t, davomEt]);
+  }, [malumot?.ovozChiqish, t, davomEt, rol]);
 
   const hisobotniBoshla = useCallback(
     async (a: Extract<Amal, { tur: 'hisobot' }>, signal?: AbortSignal) => {
@@ -618,6 +618,7 @@ export default function AgentOynasi({
     try {
       const r = await fetch('/api/agent/jonli-tekshir', { method: 'POST' });
       const d = await r.json() as { ok?: boolean; qadamlar?: { nom: string; ok: boolean; ms?: number; izoh: string }[]; xabar?: string };
+      if (r.ok && ['Gemini token', 'Gemini WebSocket + sozlama', 'Gemini javobi'].every((nom) => d.qadamlar?.some((q) => q.nom === nom && q.ok))) geminiYiqildiniTozala();
       setTekshiruv({ ok: Boolean(d.ok), qadamlar: d.qadamlar ?? [{ nom: 'Текширув', ok: false, izoh: d.xabar ?? 'Жавоб олинмади.' }] });
     } catch {
       setTekshiruv({ ok: false, qadamlar: [{ nom: 'Текширув', ok: false, izoh: 'Алоқа узилди. Қайта уриниб кўринг.' }] });
@@ -726,7 +727,7 @@ export default function AgentOynasi({
         <div className="min-w-0 flex-1 text-xs">
           <p className="font-medium text-ink">{t(holatMatni || 'Сизни тинглаяпман')}</p>
           {(jonliFaol || malumot?.ovozChiqish) && <p className="mt-1 text-ink-muted">{t(jonliFaol ? `Овоз: ${jonliOvoz === 'elevenlabs' ? 'ElevenLabs' : jonliOvoz === 'gemini' ? 'Gemini' : 'OpenAI'}` : !oddiyZaxiraOvoz && malumot?.ovozXizmati === 'elevenlabs' ? 'Овоз: ElevenLabs' : 'Овоз: OpenAI')}</p>}
-          {rol === 'ADMIN' && jonliFaol && zaxiraSababi && <p className="mt-1 break-words text-warn" data-zaxira-sababi="ha">{t('Захира сабаби:')} {zaxiraSababi}</p>}
+          {rol === 'ADMIN' && zaxiraSababi && <p className="mt-1 break-words text-warn" data-zaxira-sababi="ha">{t('Захира сабаби:')} {zaxiraSababi}</p>}
           <button type="button" className="mt-2 w-full rounded-md bg-accent px-3 py-2 font-medium text-accent-contrast disabled:opacity-40"
             disabled={!malumotTayyor || !malumot?.jonli || band}
             aria-pressed={jonliFaol} onClick={jonliniBoshla}>

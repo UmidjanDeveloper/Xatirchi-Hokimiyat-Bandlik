@@ -81,6 +81,10 @@ test('Sozlama: model nomi yozilmasa avtomatik tanlanadi (modelAvto); GEMINI_LIVE
   // Gemini ovozi tanlansa ko'rsatma ham "matn yoz" demaydi (aks holda model matn yozib, ovoz chiqmay qolardi)
   const g = geminiSozlama({ ...ENV, GEMINI_LIVE_OVOZ: 'gemini' })!;
   assert.doesNotMatch(geminiSetup(ctx, g, []).systemInstruction.parts[0].text, /Sen MATN yozasan/);
+  const native = geminiSozlama({ ...ENV, GEMINI_LIVE_OVOZ: 'gemini', GEMINI_LIVE_CHIQISH: 'matn' })!;
+  assert.equal(native.chiqish, 'transkript');
+  assert.deepEqual(geminiSetup(ctx, native, []).generationConfig.responseModalities, ['AUDIO']);
+  assert.deepEqual(geminiSetup(ctx, native, []).outputAudioTranscription, {});
   assert.match(geminiSetup(ctx, geminiSozlama(ENV)!, []).systemInstruction.parts[0].text, /Sen MATN yozasan/);
 });
 test('Provayder tanlovi: Gemini (to‘liq bo‘lsa) -> OpenAI -> yo‘q', () => {
@@ -365,7 +369,7 @@ test('Model ro‘yxati: haqiqiy fetch uchun eslab qolinadi (kalit bo‘yicha), `
 });
 test('Model tanlovi: sozlangan bo‘lsa o‘zi; keyin standart; keyin eng yangi "live" (preview emaslari ustun); yaramaydiganlar tashlanadi', () => {
   assert.equal(geminiLiveModeliniTanla(['gemini-3.1-flash-live-preview', 'gemini-3.8-live'], 'gemini-3.1-flash-live-preview'), 'gemini-3.1-flash-live-preview');
-  assert.equal(geminiLiveModeliniTanla(['gemini-3.1-flash-live-preview', 'gemini-3.8-live', 'gemini-4-live'], 'x-yoq'), 'gemini-3.8-live', 'standart model ro‘yxatda bor');
+  assert.equal(geminiLiveModeliniTanla(['gemini-3.1-flash-live-preview', 'gemini-3.8-live', 'gemini-4-live'], 'x-yoq'), GEMINI_ODATIY_MODEL, 'standart model ro‘yxatda bor');
   assert.equal(geminiLiveModeliniTanla(['gemini-3.1-flash-live-preview'], 'x-yoq'), 'gemini-3.1-flash-live-preview', 'eski, lekin ishlaydigan model');
   assert.equal(geminiLiveModeliniTanla(['gemini-4-live', 'gemini-4.1-live', 'gemini-4.1-live-preview'], 'x-yoq'), 'gemini-4.1-live');
   assert.equal(geminiLiveModeliniTanla(['gemini-5-live-preview', 'gemini-4-live'], 'x-yoq'), 'gemini-5-live-preview', 'yangi versiya preview bo‘lsa ham ustun');
@@ -379,10 +383,10 @@ test('Model hal qilish: faqat modelAvto bo‘lganda ro‘yxat so‘raladi; stand
   const aniq = { ...SOZ, model: 'gemini-eski-live', modelAvto: false };
   assert.deepEqual(await geminiModeliniHal(aniq, { fetchFn: bilan(['gemini-3.8-live']) }), aniq); assert.equal(n, 0);
   // standart mavjud: o'zgarmaydi
-  assert.equal((await geminiModeliniHal(SOZ, { fetchFn: bilan(['gemini-3.8-live', 'gemini-4-live']) })).model, 'gemini-3.8-live'); assert.equal(n, 1);
+  assert.equal((await geminiModeliniHal(SOZ, { fetchFn: bilan([GEMINI_ODATIY_MODEL, 'gemini-4-live']) })).model, GEMINI_ODATIY_MODEL); assert.equal(n, 1);
   // standart mavjud emas: eng mos Live model
-  const h = await geminiModeliniHal(SOZ, { fetchFn: bilan(['gemini-3.1-flash-live-preview']) });
-  assert.equal(h.model, 'gemini-3.1-flash-live-preview'); assert.equal(h.kalit, SOZ.kalit); assert.equal(h.tashqiOvoz, SOZ.tashqiOvoz);
+  const h = await geminiModeliniHal(SOZ, { fetchFn: bilan(['gemini-live-2.5-flash']) });
+  assert.equal(h.model, 'gemini-live-2.5-flash'); assert.equal(h.kalit, SOZ.kalit); assert.equal(h.tashqiOvoz, SOZ.tashqiOvoz);
   // ro'yxat bo'sh yoki olinmadi: sozlama o'zgarmaydi, istisno chiqmaydi
   assert.deepEqual(await geminiModeliniHal(SOZ, { fetchFn: bilan([]) }), SOZ);
   assert.deepEqual(await geminiModeliniHal(SOZ, { fetchFn: bilan(new TypeError(`fetch failed ${KALIT}`)) }), SOZ);
@@ -406,6 +410,8 @@ test('Administrator maslahati: yiqilgan qadamga mos aniq amal (Billing, kalit, m
   assert.match(bir(q('ElevenLabs modeli', false, 'ElevenLabs hisobingizda eleven_v3 modeli o‘zbek tilini qo‘llamaydi')), /ELEVENLABS_MODEL_ID=eleven_v4_turbo/);
   assert.match(bir(q('ElevenLabs ovozi', false, 'ElevenLabs hisobidagi kredit yoki tarifni tekshiring. (402)')), /tarif/);
   assert.match(bir(q('ElevenLabs modeli', false, 'ElevenLabs kalitida kerakli ruxsat yo‘q. Text to Speech va Models Read ruxsatlarini tekshiring. (403)')), /Models/);
+  assert.match(bir(q('ElevenLabs modeli', false, '(401: missing_permissions: models_read required)')), /Models/);
+  assert.doesNotMatch(bir(q('Gemini WebSocket + sozlama', false, 'Ulanish yopildi (kod 1011). Internal server error')), /Billing/);
   assert.match(bir(q('ElevenLabs ovozi', false, 'ElevenLabs API kaliti qabul qilinmadi yoki unda ruxsat yo‘q. (401)')), /ELEVENLABS_API_KEY/);
   assert.match(bir(q('ElevenLabs ovozi', false, 'ElevenLabs ovozi yoki modeli topilmadi. Voice ID ni tekshiring. (404)')), /ELEVENLABS_VOICE_ID/);
   assert.match(bir(q('ElevenLabs tezligi', true, 'Birinchi audio 2400 ms', 2400)), /sekin \(2400 ms\)/);

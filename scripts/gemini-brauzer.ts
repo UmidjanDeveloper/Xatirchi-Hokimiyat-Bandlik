@@ -478,6 +478,17 @@ async function main() {
     const first6 = c1.sorovlar[oldCalls]; const ul6 = first6?.body;
     tekshir('C6. Gemini yaqinda yiqilgan: keyingi bosishda Gemini’ga urinilmaydi, to‘g‘ridan-to‘g‘ri OpenAI ({zaxira:true}, qoplashsiz)',
       z6 && ul6?.zaxira === true && ul6?.qoplash === undefined && first6?.tur === 'ulanish', JSON.stringify({ zaxira: ul6?.zaxira, qoplash: ul6?.qoplash, gemini: c1.sorovlar.filter((x) => x.tur === 'gemini_ulanish').length - geminiOldin }));
+    await kut(async () => (await c1.page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1, 10_000);
+    let diagnosticSuccess = false;
+    await c1.page.route('**/api/agent/jonli-tekshir', async (r: S) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: diagnosticSuccess, qadamlar: ['Gemini token', 'Gemini WebSocket + sozlama', 'Gemini javobi'].map((nom) => ({ nom, ok: nom === 'Gemini token' || diagnosticSuccess, izoh: 'fixture' })) }) }));
+    await c1.page.locator('[data-jonli-tekshiruv] summary').click();
+    await c1.page.getByRole('button', { name: 'Уланишни текшириш', exact: true }).click();
+    await c1.page.locator('[data-tekshiruv-natijasi="xato"]').waitFor();
+    tekshir('C6b. Tokenning o‘zi yetmaydi: WebSocket/javob yiqilgan tekshiruv eski Gemini tanaffusini o‘chirmaydi', Boolean(await c1.page.evaluate(() => sessionStorage.getItem('hamroh:gemini-yiqildi'))));
+    diagnosticSuccess = true;
+    await c1.page.getByRole('button', { name: 'Уланишни текшириш', exact: true }).click();
+    await c1.page.locator('[data-tekshiruv-natijasi="ok"]').waitFor();
+    tekshir('C6c. Token, WebSocket va javob ishlagach keyingi suhbat yana Gemini’dan boshlanishi uchun eski tanaffus o‘chadi', (await c1.page.evaluate(() => sessionStorage.getItem('hamroh:gemini-yiqildi'))) === null);
     // muddat o'tgach Gemini yana sinaladi ("ishlasa ishlayveradi")
     await c1.page.evaluate(() => sessionStorage.setItem('hamroh:gemini-yiqildi', String(Date.now() - 4 * 60_000)));
     await kut(async () => (await c1.page.getByRole('button', { name: 'Жонли суҳбат', exact: true }).count()) === 1, 10_000);

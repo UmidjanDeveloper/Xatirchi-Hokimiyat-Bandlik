@@ -10,14 +10,14 @@ import type { TekshiruvQadami } from './gemini-tekshir';
  * ============================================================
  */
 
-const KVOTA = /429|kvota|quota|exhausted|chegara|1011/i;
+const KVOTA = /429|kvota|quota|exhausted|chegara/i;
 const KALIT = /401|403|qabul qilinmadi|ruxsat yo.q|API key|permission/i;
 const SOZLAMA_RAD = /not found|topilmadi|400|404|1007|1008|Unknown name|Invalid|noto.g.ri|sozlamani rad|rad etdi/i;
 
 function geminiMaslahati(izoh: string): string | null {
   if (/ro.yxatida yo.q/i.test(izoh)) return 'GEMINI_LIVE_MODEL kalitingiz uchun mavjud emas: Vercel’da shu o‘zgaruvchini o‘chiring (model o‘zi tanlanadi) yoki «Gemini modellari» qatoridagi ro‘yxatdan birini yozing.';
   if (/ko.rinmayapti/i.test(izoh)) return 'Kalitingiz Live (bidiGenerateContent) modellarini ko‘rmayapti: AI Studio’da shu kalit bog‘langan loyihaning Billing holatini tekshiring yoki yangi kalit yarating.';
-  if (KVOTA.test(izoh)) return 'Gemini kvotasi yoki chegarasi tugagan. Google AI Studio → Billing bo‘limida hisobni faollashtiring: kalit «Free tier / Account inactive» holatida bo‘lsa Live suhbat kvotasi juda kichik yoki yopiq bo‘ladi (pullik darajada Google so‘rovlarni o‘z mahsulotlarini yaxshilashga ishlatmaydi).';
+  if (KVOTA.test(izoh)) return 'Gemini kvotasi yoki chegarasi bo‘yicha rad javobi keldi. Google AI Studio’da aynan shu kalitning loyihasi uchun Rate Limit va Billing holatini tekshiring. «Account inactive» bo‘lsa hisobni faollashtiring; mavjud kalitni faqat shu sababdan almashtirish shart emas.';
   if (KALIT.test(izoh)) return 'GEMINI_API_KEY qabul qilinmadi yoki unga ruxsat yo‘q: AI Studio’da yangi kalit yarating, Vercel’da yangilab Redeploy qiling.';
   if (SOZLAMA_RAD.test(izoh)) return 'Gemini sozlamani rad etdi. Vercel’da GEMINI_LIVE_MODEL ni o‘chiring (model o‘zi tanlanadi) yoki «Gemini modellari» qatoridagi ro‘yxatdan birini yozing; xabar matnini saqlab qo‘ying.';
   if (/bo.sh keldi/i.test(izoh)) return 'Gemini javob matnini bermadi: Vercel’da GEMINI_LIVE_CHIQISH ni o‘chiring (ovozli Live modellar matn emas, transkript rejimida ishlaydi).';
@@ -28,6 +28,7 @@ function geminiMaslahati(izoh: string): string | null {
 function elevenlabsMaslahati(izoh: string): string | null {
   // "Ovoz sozlanmagan (kalit_yoq)": yetishmayotgan nomlarni «Sozlama» qatori aytadi; kalit "rad etilgan" deb aldamaymiz
   if (/sozlanmagan/i.test(izoh)) return null;
+  if (/missing_permissions|models_read|models.*permission|permission.*models/i.test(izoh)) return 'ElevenLabs API Keys → shu kalit sozlamasida «Text to Speech» va «Models» (Read) ruxsatlarini yoqing. Kalitning yoqilganligi bu ruxsatlar borligini anglatmaydi.';
   if (/o.zbek tilini/i.test(izoh)) return 'ElevenLabs modeli o‘zbekchani qo‘llamaydi: Vercel’da ELEVENLABS_MODEL_ID=eleven_v4_turbo qo‘ying (yoki o‘zgaruvchini o‘chiring) va Redeploy qiling. ElevenLabs hujjatida model o‘zbekchani qo‘llashi aytilgan, lekin hisob katalogida ko‘rinmasa: ELEVENLABS_KATALOG_TEKSHIRUVI=0 qo‘yib ko‘ring (qo‘llamasa ElevenLabs o‘zi rad etadi va ovoz OpenAI’ga o‘tadi).';
   if (/\b402\b|tarif|kredit/i.test(izoh)) return 'ElevenLabs hisobidagi tarif yoki kredit yetmaydi: ehtimol bepul tarifda kutubxona ovozlarini API orqali ishlatib bo‘lmaydi. Pullik tarifga o‘ting yoki o‘zingizning ovozingizni tanlang.';
   if (/\b403\b|Models Read|Text to Speech/i.test(izoh)) return 'ElevenLabs kalitida ruxsat yetmaydi: API Keys → kalit sozlamasida «Text to Speech» va «Models» (Read) yoqilgan bo‘lsin.';
@@ -46,6 +47,6 @@ export function tekshiruvMaslahati(qadamlar: TekshiruvQadami[]): string[] {
     if (a) m.add(a);
   }
   const tez = qadamlar.find((q) => q.ok && q.nom === 'ElevenLabs tezligi' && typeof q.ms === 'number' && q.ms > 1500);
-  if (tez) m.add(`ElevenLabs birinchi audio sekin (${tez.ms} ms): jonli suhbat uchun eleven_v4_turbo yoki eleven_flash_v2_5 modellaridan foydalaning (eleven_v3 sekin).`);
+  if (tez) m.add(`ElevenLabs birinchi audio sekin (${tez.ms} ms): hisob katalogida o‘zbekchani qo‘llaydigan tez modelni tanlang. Gemini’ning o‘z ovozini ishlatish uchun GEMINI_LIVE_OVOZ=gemini; bu rejim ElevenLabs ovozidan foydalanmaydi.`);
   return [...m];
 }
